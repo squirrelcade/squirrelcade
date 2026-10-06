@@ -39,7 +39,7 @@ The first read asks Steam about every game you've played, which takes a few minu
 
 With **Settings > Sources > IsThereAnyDeal (PC game prices)** on, the PC wishlist shows each game's best price now (a link to the store that has it), how much off its regular price that is, and its lowest price ever, from [IsThereAnyDeal](https://isthereanydeal.com), which follows the prices of Steam, GOG, Humble, Fanatical and dozens of other stores.
 
-1. Sign in at isthereanydeal.com (free), open your account's API page (isthereanydeal.com/app), register an app, and copy its **API key**.
+1. Sign in at isthereanydeal.com (free), open [My apps](https://isthereanydeal.com/apps/my/), register an app, and copy its **API key** (not its OAuth client ID or secret).
 2. In **Settings > Features**, turn on **PC game prices (IsThereAnyDeal)**: its key and store country (US by default) show right under the switch. Paste the key, and **Save and test** saves it and checks that IsThereAnyDeal takes it. (Once it's on, they're in Settings > Sources > IsThereAnyDeal too.)
 3. Prices are read within half an hour, then every 24 hours (Settings > PC library > Prices). With a free GG.deals key too (its card on Settings > Sources), its prices for the Steam games come in beside IsThereAnyDeal's, retail and key shops, and "Which prices come first" picks the one shown; **Check prices** on the PC wishlist reads them now.
 

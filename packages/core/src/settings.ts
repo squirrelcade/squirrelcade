@@ -2127,7 +2127,7 @@ export const settingDefinitions = {
     section: 'IsThereAnyDeal (PC game prices)',
     label: 'API key',
     description:
-      'A free key: sign in at isthereanydeal.com, open your account\'s API page (isthereanydeal.com/app), register an app and copy its API key. Squirrelcade only reads prices.',
+      'A free key: sign in at isthereanydeal.com, open My apps (isthereanydeal.com/apps/my), register an app and copy its API key (not its OAuth client ID or secret). Squirrelcade only reads prices.',
   }),
   'sources.itadCountry': text({
     page: 'sources',
