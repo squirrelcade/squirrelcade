@@ -4,6 +4,8 @@
 
 A new version is a new image. Pull it and recreate the container: `docker compose pull`, then `docker compose up -d` (or your NAS app's update button; see [Install it](install.md#updating-later)). Before a new version changes the database, Squirrelcade saves a copy of it, and the first visit afterwards shows what's new (again any time: **System > Status > What's new**). The version running is on **System > Status**.
 
+The image has two labels. `latest`, the one the guide installs, moves only with a release (with its notes on GitHub's Releases page). `edge` gets each change as soon as it passes its tests, ahead of the next release: use `ghcr.io/squirrelcade/squirrelcade:edge` in the compose file to try things early, and `:latest` again to stay with the releases. A version can be pinned too, such as `:1.0.0`.
+
 To update automatically, a tool that watches your containers' images can pull each new version for you. The simplest is the community-maintained Watchtower, installed the same way as Squirrelcade (a project or stack of its own), with this compose file:
 
 ```yaml

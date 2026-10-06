@@ -11,6 +11,6 @@ The project's one-page website lives in `site/`: plain HTML and CSS, no build st
   the demo forgets the keys after its cover sync); `site/shots/` holds web-sized JPEG copies of four of them: Today,
   Store Mode on a phone, a console's Top 100, the collection.
 - **Share image:** `site/img/og.png` (1200 × 630).
-- **The GitHub button:** "Coming soon to GitHub" (not a link) while the repository is private; "Get it on GitHub", a link to the repository, once it's public (the `is-soon` class and the `<span>` become an `<a href>`).
+- **The GitHub button:** "Get it on GitHub", a link to the repository (public since 2026-10-06, 1.0.0; it read "Coming soon to GitHub", a `<span>` with the `is-soon` class, while the repository was private).
 - **Publishing a change:** Cloudflare dashboard > Workers & Pages > squirrelcade > Create deployment > upload the
   `site` folder's files (or a zip of them).

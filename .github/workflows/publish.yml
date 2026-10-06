@@ -1,9 +1,14 @@
 name: Publish image
 
-# Runs only when started by hand: Actions > Publish image > Run workflow.
-# Tests the code, then pushes the image to the GitHub Container Registry
-# (ghcr.io/<owner>/squirrelcade, a private package while the repository is private).
+# Tests the code, then pushes the image to the GitHub Container Registry (ghcr.io/<owner>/squirrelcade, public).
+# Two labels move at their own pace (D141):
+# - A release (Releases > publish vX.Y.Z, the version in package.json) builds `latest`, `X.Y.Z` and `X.Y`, and `edge`:
+#   what everyone installs, and only what was released.
+# - Started by hand (Actions > Publish image > Run workflow, on main) builds `edge` and `X.Y.Z-<commit>` only: each
+#   change as soon as it passes, for an install that wants it first; `latest` doesn't move.
 on:
+  release:
+    types: [published]
   workflow_dispatch:
 
 jobs:
@@ -28,11 +33,28 @@ jobs:
       packages: write
     steps:
       - uses: actions/checkout@v5
-      - name: Name and version
+      - name: Name, version and labels
         id: meta
         run: |
-          echo "image=ghcr.io/${GITHUB_REPOSITORY_OWNER,,}/squirrelcade" >> "$GITHUB_OUTPUT"
-          echo "version=$(node -p "require('./package.json').version")-${GITHUB_SHA::7}" >> "$GITHUB_OUTPUT"
+          image="ghcr.io/${GITHUB_REPOSITORY_OWNER,,}/squirrelcade"
+          version=$(node -p "require('./package.json').version")
+          if [ "$GITHUB_EVENT_NAME" = "release" ] && [ "${GITHUB_REF_NAME#v}" != "$version" ]; then
+            echo "The release $GITHUB_REF_NAME doesn't match package.json's version $version." >&2
+            exit 1
+          fi
+          echo "image=$image" >> "$GITHUB_OUTPUT"
+          echo "version=$version-${GITHUB_SHA::7}" >> "$GITHUB_OUTPUT"
+          {
+            echo "tags<<END"
+            echo "$image:edge"
+            echo "$image:$version-${GITHUB_SHA::7}"
+            if [ "$GITHUB_EVENT_NAME" = "release" ]; then
+              echo "$image:latest"
+              echo "$image:$version"
+              echo "$image:${version%.*}"
+            fi
+            echo "END"
+          } >> "$GITHUB_OUTPUT"
       - uses: docker/setup-buildx-action@v3
       - uses: docker/login-action@v3
         with:
@@ -45,9 +67,7 @@ jobs:
           platforms: linux/amd64
           push: true
           build-args: VERSION=${{ steps.meta.outputs.version }}
-          tags: |
-            ${{ steps.meta.outputs.image }}:latest
-            ${{ steps.meta.outputs.image }}:${{ steps.meta.outputs.version }}
+          tags: ${{ steps.meta.outputs.tags }}
           labels: |
             org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
             org.opencontainers.image.version=${{ steps.meta.outputs.version }}

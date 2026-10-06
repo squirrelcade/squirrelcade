@@ -8,6 +8,7 @@ Squirrelcade's code is public on GitHub, free under the AGPL-3.0 license, and it
 
 ### Changed
 
+- **Two labels for the image** (D141): `latest` moves only with a release; `edge` gets each change as soon as it passes its tests, for an install that wants it first. A release is also tagged with its version (`1.0.0`, `1.0`). See [Keep it running](docs/guide/maintain.md).
 - **PriceCharting credited wherever its values show:** "Values from PriceCharting", linked to its site, at the bottom of the menu on every page and under the Stash's value (PriceCharting's one condition, 2026-10-06), and on squirrelcade.com.
 
 ## 0.60.1 (2026-10-06): deals without the manuals, and the green acorn
