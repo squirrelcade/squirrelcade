@@ -99,7 +99,18 @@ async function main() {
     shots.push(file);
     await context.close();
   }
-  await shot('00-today', '/today');
+  // Today on a week with releases on the demo's consoles (there may be none this week): the arrow beside the calendar,
+  // up to its 12 weeks ahead.
+  await shot('00-today', '/today', {
+    act: async (page) => {
+      const after = page.locator('button[aria-label="The week after"]:visible').first();
+      for (let i = 0; i < 12 && (await page.locator('.sc-release').count()) === 0 && (await after.isEnabled()); i++) {
+        await after.click();
+        await page.waitForLoadState('networkidle');
+      }
+      await page.evaluate(() => window.scrollTo(0, 0));
+    },
+  });
   await shot('00-today-phone', '/today', { phone: true });
   await shot('01-collection', '/collection');
   await shot('02-platforms', '/platforms');
