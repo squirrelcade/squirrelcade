@@ -1,0 +1,11 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "squirrelcade",
+      "runtimeExecutable": "node",
+      "runtimeArgs": ["apps/server/dist/main.js"],
+      "port": 7575
+    }
+  ]
+}

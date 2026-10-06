@@ -1,0 +1,1 @@
+ALTER TABLE `imports` ADD `platform_totals` text;

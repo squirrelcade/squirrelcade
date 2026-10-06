@@ -1,0 +1,3825 @@
+{
+ "version": "2026-09-28",
+ "consoles": [
+  {
+   "platformKey": "playstation-3",
+   "profile": {
+    "manufacturer": "Sony Computer Entertainment",
+    "generation": 7,
+    "launches": [
+     {
+      "region": "JP",
+      "date": "2006-11-11",
+      "price": "¥49,980 (20 GB); the 60 GB at open price"
+     },
+     {
+      "region": "NA",
+      "date": "2006-11-17",
+      "price": "US$499 (20 GB), US$599 (60 GB)"
+     },
+     {
+      "region": "EU",
+      "date": "2007-03-23",
+      "price": "€599 (60 GB)"
+     }
+    ],
+    "discontinued": "March 2016 (Europe), October 2016 (North America), May 29, 2017 (Japan)",
+    "unitsSold": "About 87.4 million worldwide (Sony's final figure)",
+    "hardware": [
+     "Cell Broadband Engine CPU, made with Toshiba and IBM: one 3.2 GHz PowerPC core and seven SPE co-processors, six of them for games",
+     "Nvidia RSX \"Reality Synthesizer\" graphics; 256 MB of XDR system memory plus 256 MB of GDDR3 video memory",
+     "A Blu-ray drive that also plays DVDs and CDs; games came on Blu-ray discs",
+     "A hard drive in every model (20 GB at launch, up to 500 GB later), which owners can replace",
+     "HDMI output up to 1080p; wireless Bluetooth controllers (the motion-sensing Sixaxis at launch, the DualShock 3 with vibration from late 2007)",
+     "Three designs: the original (2006), the Slim (2009) and the Super Slim (2012)"
+    ],
+    "competitors": [
+     "Xbox 360",
+     "Wii"
+    ],
+    "story": "The PS3 launched at US$499 and US$599, far above the Xbox 360 and the Wii, with a Cell processor developers found hard to program and a thin launch lineup. Sony sold every console at a loss (analysts estimated more than US$240 each at launch), its games division lost about US$1.9 billion in the year after launch, and with the Xbox 360's year-long head start and the cheaper Wii's motion controls, it started a distant third.\n\nIt recovered. The Slim of 2009 cut production costs by about 70% and the price to US$299, Blu-ray won the high-definition disc war against HD DVD, the free PlayStation Network grew, and a run of acclaimed games, many of them exclusives (Metal Gear Solid 4, Uncharted 2, Demon's Souls, The Last of Us), built its reputation. It finished with about 87.4 million consoles sold, narrowly ahead of the Xbox 360, and nearly a billion games sold by 2019.",
+    "firsts": [
+     "The first console to use Blu-ray discs for its games",
+     "The first console with an HDMI port",
+     "The first console to output games at 1080p (Full HD)",
+     "Launched with the free PlayStation Network for online play and the PlayStation Store; PlayStation Plus began on it in 2010"
+    ],
+    "endOfLife": "The PlayStation 4 replaced it in November 2013. Shipments ended in Europe in March 2016 and in North America in October 2016; the last consoles were made for Japan, until May 29, 2017."
+   },
+   "startHere": [
+    {
+     "title": "Uncharted 2: Among Thieves",
+     "why": "Naughty Dog's cinematic action-adventure set the bar for the console's exclusives and won many 2009 Game of the Year awards."
+    },
+    {
+     "title": "Metal Gear Solid 4: Guns of the Patriots",
+     "why": "Hideo Kojima's PS3-only finale to Solid Snake's story was one of the main reasons to buy the console in 2008."
+    },
+    {
+     "title": "Demon's Souls",
+     "why": "FromSoftware's demanding action RPG started the Souls series and a whole genre of 'Soulslikes'."
+    },
+    {
+     "title": "LittleBigPlanet",
+     "why": "Its \"Play, Create, Share\" idea turned players into level designers, and they shared millions of levels."
+    },
+    {
+     "title": "Journey",
+     "why": "A wordless online pilgrimage that showed what small PlayStation Network games could be; its score was the first from a video game nominated for a Grammy."
+    },
+    {
+     "title": "Resistance: Fall of Man",
+     "why": "The best-selling launch game in North America, and GameSpot's and IGN's PS3 Game of the Year."
+    },
+    {
+     "title": "Gran Turismo 5",
+     "why": "Polyphony's long-awaited simulation, one of the console's best-selling games."
+    },
+    {
+     "title": "The Last of Us",
+     "why": "Naughty Dog's 2013 survival story, released just before the PS4, is often named among the greatest games ever made."
+    }
+   ],
+   "sources": [
+    "https://en.wikipedia.org/wiki/PlayStation_3",
+    "https://en.wikipedia.org/wiki/Uncharted_2:_Among_Thieves",
+    "https://en.wikipedia.org/wiki/Metal_Gear_Solid_4:_Guns_of_the_Patriots",
+    "https://en.wikipedia.org/wiki/Demon's_Souls",
+    "https://en.wikipedia.org/wiki/LittleBigPlanet_(2008_video_game)",
+    "https://en.wikipedia.org/wiki/Journey_(2012_video_game)",
+    "https://en.wikipedia.org/wiki/Resistance:_Fall_of_Man",
+    "https://en.wikipedia.org/wiki/Gran_Turismo_5",
+    "https://en.wikipedia.org/wiki/The_Last_of_Us_(video_game)"
+   ],
+   "status": "draft",
+   "asOf": "2026-09"
+  },
+  {
+   "platformKey": "super-nintendo",
+   "profile": {
+    "manufacturer": "Nintendo",
+    "generation": 4,
+    "launches": [
+     {
+      "region": "JP",
+      "date": "1990-11-21",
+      "price": "¥25,000 (as the Super Famicom)"
+     },
+     {
+      "region": "NA",
+      "date": "1991-08-23",
+      "price": "US$199 with Super Mario World"
+     },
+     {
+      "region": "UK",
+      "date": "1992-04-11",
+      "price": "£150"
+     },
+     {
+      "region": "EU",
+      "date": "1992-06"
+     },
+     {
+      "region": "AU",
+      "date": "1992-07-03"
+     }
+    ],
+    "discontinued": "1998 (Europe), 1999 (North America); the Super Famicom until September 25, 2003 (Japan)",
+    "unitsSold": "49.1 million worldwide (23.35 million in the Americas, 17.17 million in Japan)",
+    "hardware": [
+     "Ricoh 5A22 CPU, based on the 16-bit WDC 65C816, at up to 3.58 MHz; 128 KB of work RAM",
+     "Graphics with a palette of 32,768 colors (up to 256 on screen) and Mode 7, which rotates and scales a background layer for pseudo-3D",
+     "A sound chip designed by Sony's Ken Kutaragi: eight channels of sampled audio with effects such as echo",
+     "Cartridges could carry extra chips, such as the Super FX for 3D polygons and the SA-1 co-processor",
+     "A controller with four face buttons (adding X and Y) and two shoulder buttons (L and R)"
+    ],
+    "competitors": [
+     "Sega Genesis (Mega Drive)",
+     "TurboGrafx-16 (PC Engine)",
+     "Neo Geo"
+    ],
+    "story": "Nintendo came late to the 16-bit race: NEC's PC Engine and Sega's Mega Drive had been out for years, and in North America Sega's aggressive marketing made the Genesis the \"cool\" console. The Super NES answered with richer color and sound, Mode 7 effects and the first home version of Street Fighter II, and Nintendo kept key third-party publishers such as Capcom, Konami, Square and Enix. The console war with Sega stayed close for years.\n\nLate hits such as Donkey Kong Country (1994), whose pre-rendered graphics rivaled the new 32-bit consoles, kept it selling after the PlayStation and Saturn arrived. It sold 49.1 million consoles, the most of its generation, and it is regularly ranked among the greatest consoles, largely for its library.",
+    "firsts": [
+     "Mode 7: rotating and scaling backgrounds for pseudo-3D racing and flying (F-Zero, Pilotwings, Super Mario Kart)",
+     "Enhancement chips in the cartridge, beginning with the Super FX for Star Fox's 3D polygons in 1993",
+     "Shoulder buttons (L and R) on its controller, a layout later controllers kept",
+     "Its censored Mortal Kombat, outsold nearly three to one by the uncensored Genesis version, came amid the 1993 US hearings on violent games that led to the ESRB age ratings"
+    ],
+    "endOfLife": "The Nintendo 64 followed in 1996. A smaller redesign came in 1997 (US$99 in North America); Nintendo stopped making the console in North America in 1999 and the Super Famicom on September 25, 2003, and new Super Famicom games came out until 2000. Its games live on through the Virtual Console, the Super NES Classic Edition (2017) and Nintendo Switch Online."
+   },
+   "startHere": [
+    {
+     "title": "Super Mario World",
+     "why": "The launch game packed with the console, and its best seller: Yoshi, secret exits and a world map to explore."
+    },
+    {
+     "title": "The Legend of Zelda: A Link to the Past",
+     "why": "The top-down Zelda with a Light and a Dark World, the pattern for most Zelda games since."
+    },
+    {
+     "title": "Super Metroid",
+     "why": "Atmosphere, hidden paths and backtracking that defined the exploration games now called 'Metroidvanias'."
+    },
+    {
+     "title": "Chrono Trigger",
+     "why": "Square's time-travel RPG from a \"Dream Team\" of Final Fantasy's, Dragon Quest's and Dragon Ball's creators, with many endings."
+    },
+    {
+     "title": "Final Fantasy VI",
+     "why": "Released in North America as Final Fantasy III: a large ensemble story that showed how far 16-bit storytelling could go."
+    },
+    {
+     "title": "Super Mario Kart",
+     "why": "The first Mario Kart, a showcase for Mode 7 that started the kart racing genre."
+    },
+    {
+     "title": "Street Fighter II Turbo",
+     "why": "The SNES got the first home versions of Capcom's arcade phenomenon, a coup in the console war; Turbo is the faster edition."
+    },
+    {
+     "title": "Donkey Kong Country",
+     "why": "Rare's pre-rendered 3D graphics kept the SNES competitive with the new 32-bit consoles."
+    },
+    {
+     "title": "Star Fox",
+     "why": "A chip in the cartridge, the Super FX, drew 3D polygons years before the Nintendo 64."
+    }
+   ],
+   "sources": [
+    "https://en.wikipedia.org/wiki/Super_Nintendo_Entertainment_System",
+    "https://en.wikipedia.org/wiki/Super_Mario_World",
+    "https://en.wikipedia.org/wiki/The_Legend_of_Zelda:_A_Link_to_the_Past",
+    "https://en.wikipedia.org/wiki/Super_Metroid",
+    "https://en.wikipedia.org/wiki/Chrono_Trigger",
+    "https://en.wikipedia.org/wiki/Final_Fantasy_VI",
+    "https://en.wikipedia.org/wiki/Super_Mario_Kart",
+    "https://en.wikipedia.org/wiki/Street_Fighter_II_Turbo",
+    "https://en.wikipedia.org/wiki/Donkey_Kong_Country",
+    "https://en.wikipedia.org/wiki/Star_Fox_(1993_video_game)"
+   ],
+   "status": "draft",
+   "asOf": "2026-09"
+  },
+  {
+   "platformKey": "nintendo-entertainment-system",
+   "profile": {
+    "manufacturer": "Nintendo",
+    "generation": 3,
+    "launches": [
+     {
+      "region": "JP",
+      "date": "1983-07-15",
+      "price": "¥14,800 (as the Family Computer)"
+     },
+     {
+      "region": "NA",
+      "date": "1985-10-18",
+      "price": "US$180"
+     }
+    ],
+    "discontinued": "1995 (North America, Europe); 2003 (Japan)",
+    "unitsSold": "61.91 million",
+    "hardware": [],
+    "competitors": [
+     "Sega Master System",
+     "Atari 7800"
+    ],
+    "story": null,
+    "firsts": [],
+    "endOfLife": null
+   },
+   "startHere": [],
+   "sources": [
+    "https://en.wikipedia.org/wiki/Nintendo_Entertainment_System"
+   ],
+   "status": "draft",
+   "asOf": "2026-09"
+  },
+  {
+   "platformKey": "famicom-disk-system",
+   "profile": {
+    "manufacturer": "Nintendo",
+    "generation": 3,
+    "launches": [
+     {
+      "region": "JP",
+      "date": "1986-02-21"
+     }
+    ],
+    "discontinued": "1993 (the device); disk rewriting until 2003",
+    "unitsSold": "4.4 million",
+    "hardware": [],
+    "competitors": [],
+    "story": null,
+    "firsts": [],
+    "endOfLife": null
+   },
+   "startHere": [],
+   "sources": [
+    "https://en.wikipedia.org/wiki/Famicom_Disk_System"
+   ],
+   "status": "draft",
+   "asOf": "2026-09"
+  },
+  {
+   "platformKey": "nintendo-64",
+   "profile": {
+    "manufacturer": "Nintendo",
+    "generation": 5,
+    "launches": [
+     {
+      "region": "JP",
+      "date": "1996-06-23"
+     },
+     {
+      "region": "NA",
+      "date": "1996-09-29",
+      "price": "US$199"
+     },
+     {
+      "region": "EU",
+      "date": "1997-03-01",
+      "price": "£249.99"
+     }
+    ],
+    "discontinued": "2002",
+    "unitsSold": "32.93 million",
+    "hardware": [],
+    "competitors": [
+     "PlayStation",
+     "Sega Saturn"
+    ],
+    "story": null,
+    "firsts": [],
+    "endOfLife": null
+   },
+   "startHere": [],
+   "sources": [
+    "https://en.wikipedia.org/wiki/Nintendo_64"
+   ],
+   "status": "draft",
+   "asOf": "2026-09"
+  },
+  {
+   "platformKey": "nintendo-gamecube",
+   "profile": {
+    "manufacturer": "Nintendo",
+    "generation": 6,
+    "launches": [
+     {
+      "region": "JP",
+      "date": "2001-09-14",
+      "price": "¥25,000"
+     },
+     {
+      "region": "NA",
+      "date": "2001-11-18",
+      "price": "US$199"
+     },
+     {
+      "region": "EU",
+      "date": "2002-05-03",
+      "price": "€199"
+     }
+    ],
+    "discontinued": "February 2007",
+    "unitsSold": "21.74 million",
+    "hardware": [],
+    "competitors": [
+     "PlayStation 2",
+     "Xbox",
+     "Dreamcast"
+    ],
+    "story": null,
+    "firsts": [],
+    "endOfLife": null
+   },
+   "startHere": [],
+   "sources": [
+    "https://en.wikipedia.org/wiki/GameCube"
+   ],
+   "status": "draft",
+   "asOf": "2026-09"
+  },
+  {
+   "platformKey": "wii",
+   "profile": {
+    "manufacturer": "Nintendo",
+    "generation": 7,
+    "launches": [
+     {
+      "region": "NA",
+      "date": "2006-11-19",
+      "price": "US$249.99"
+     },
+     {
+      "region": "JP",
+      "date": "2006-12-02",
+      "price": "¥25,000"
+     },
+     {
+      "region": "EU",
+      "date": "2006-12-08",
+      "price": "€249.99"
+     }
+    ],
+    "discontinued": "October 2013 (Japan, Europe); the Wii Mini later in North America",
+    "unitsSold": "101.63 million",
+    "hardware": [],
+    "competitors": [
+     "Xbox 360",
+     "PlayStation 3"
+    ],
+    "story": null,
+    "firsts": [],
+    "endOfLife": null
+   },
+   "startHere": [],
+   "sources": [
+    "https://en.wikipedia.org/wiki/Wii"
+   ],
+   "status": "draft",
+   "asOf": "2026-09"
+  },
+  {
+   "platformKey": "wii-u",
+   "profile": {
+    "manufacturer": "Nintendo",
+    "generation": 8,
+    "launches": [
+     {
+      "region": "NA",
+      "date": "2012-11-18",
+      "price": "US$299 (Basic), US$349 (Deluxe)"
+     },
+     {
+      "region": "EU",
+      "date": "2012-11-30"
+     },
+     {
+      "region": "JP",
+      "date": "2012-12-08"
+     }
+    ],
+    "discontinued": "January 31, 2017",
+    "unitsSold": "13.56 million",
+    "hardware": [],
+    "competitors": [
+     "PlayStation 4",
+     "Xbox One"
+    ],
+    "story": null,
+    "firsts": [],
+    "endOfLife": null
+   },
+   "startHere": [],
+   "sources": [
+    "https://en.wikipedia.org/wiki/Wii_U"
+   ],
+   "status": "draft",
+   "asOf": "2026-09"
+  },
+  {
+   "platformKey": "nintendo-switch",
+   "profile": {
+    "manufacturer": "Nintendo",
+    "generation": 8,
+    "launches": [
+     {
+      "region": "WW",
+      "date": "2017-03-03",
+      "price": "US$299.99"
+     }
+    ],
+    "discontinued": null,
+    "unitsSold": null,
+    "hardware": [],
+    "competitors": [
+     "PlayStation 4",
+     "Xbox One",
+     "PlayStation 5",
+     "Xbox Series X and Series S"
+    ],
+    "story": null,
+    "firsts": [],
+    "endOfLife": null
+   },
+   "startHere": [],
+   "sources": [
+    "https://en.wikipedia.org/wiki/Nintendo_Switch"
+   ],
+   "status": "draft",
+   "asOf": "2026-09"
+  },
+  {
+   "platformKey": "nintendo-switch-2",
+   "profile": {
+    "manufacturer": "Nintendo",
+    "generation": 9,
+    "launches": [
+     {
+      "region": "WW",
+      "date": "2025-06-05",
+      "price": "US$449.99"
+     }
+    ],
+    "discontinued": null,
+    "unitsSold": "23.68 million (as of June 30, 2026)",
+    "hardware": [],
+    "competitors": [
+     "PlayStation 5",
+     "Xbox Series X and Series S"
+    ],
+    "story": null,
+    "firsts": [],
+    "endOfLife": null
+   },
+   "startHere": [],
+   "sources": [
+    "https://en.wikipedia.org/wiki/Nintendo_Switch_2"
+   ],
+   "status": "draft",
+   "asOf": "2026-09"
+  },
+  {
+   "platformKey": "game-boy",
+   "profile": {
+    "manufacturer": "Nintendo",
+    "generation": 4,
+    "launches": [
+     {
+      "region": "JP",
+      "date": "1989-04-21",
+      "price": "¥12,500"
+     },
+     {
+      "region": "NA",
+      "date": "1989-07-31",
+      "price": "US$89.99"
+     },
+     {
+      "region": "EU",
+      "date": "1990-09-28"
+     }
+    ],
+    "discontinued": "March 31, 2003",
+    "unitsSold": "118.69 million (with the Game Boy Color)",
+    "hardware": [],
+    "competitors": [
+     "Atari Lynx",
+     "Sega Game Gear"
+    ],
+    "story": null,
+    "firsts": [],
+    "endOfLife": null
+   },
+   "startHere": [],
+   "sources": [
+    "https://en.wikipedia.org/wiki/Game_Boy"
+   ],
+   "status": "draft",
+   "asOf": "2026-09"
+  },
+  {
+   "platformKey": "game-boy-color",
+   "profile": {
+    "manufacturer": "Nintendo",
+    "generation": 5,
+    "launches": [
+     {
+      "region": "JP",
+      "date": "1998-10-21"
+     },
+     {
+      "region": "NA",
+      "date": "1998-11-18",
+      "price": "US$79.95"
+     },
+     {
+      "region": "EU",
+      "date": "1998-11-23"
+     }
+    ],
+    "discontinued": "March 31, 2003",
+    "unitsSold": "118.69 million (with the original Game Boy)",
+    "hardware": [],
+    "competitors": [
+     "Neo Geo Pocket Color"
+    ],
+    "story": null,
+    "firsts": [],
+    "endOfLife": null
+   },
+   "startHere": [],
+   "sources": [
+    "https://en.wikipedia.org/wiki/Game_Boy_Color"
+   ],
+   "status": "draft",
+   "asOf": "2026-09"
+  },
+  {
+   "platformKey": "game-boy-advance",
+   "profile": {
+    "manufacturer": "Nintendo",
+    "generation": 6,
+    "launches": [
+     {
+      "region": "JP",
+      "date": "2001-03-21"
+     },
+     {
+      "region": "NA",
+      "date": "2001-06-11",
+      "price": "US$99.99"
+     },
+     {
+      "region": "EU",
+      "date": "2001-06-22"
+     }
+    ],
+    "discontinued": "2010",
+    "unitsSold": "81.51 million",
+    "hardware": [],
+    "competitors": [
+     "N-Gage"
+    ],
+    "story": null,
+    "firsts": [],
+    "endOfLife": null
+   },
+   "startHere": [],
+   "sources": [
+    "https://en.wikipedia.org/wiki/Game_Boy_Advance"
+   ],
+   "status": "draft",
+   "asOf": "2026-09"
+  },
+  {
+   "platformKey": "nintendo-ds",
+   "profile": {
+    "manufacturer": "Nintendo",
+    "generation": 7,
+    "launches": [
+     {
+      "region": "NA",
+      "date": "2004-11-21",
+      "price": "US$149.99"
+     },
+     {
+      "region": "JP",
+      "date": "2004-12-02",
+      "price": "¥15,000"
+     },
+     {
+      "region": "EU",
+      "date": "2005-03-11",
+      "price": "€149.99"
+     }
+    ],
+    "discontinued": "Around 2013 (no date given)",
+    "unitsSold": "154 million",
+    "hardware": [],
+    "competitors": [
+     "PlayStation Portable"
+    ],
+    "story": null,
+    "firsts": [],
+    "endOfLife": null
+   },
+   "startHere": [],
+   "sources": [
+    "https://en.wikipedia.org/wiki/Nintendo_DS"
+   ],
+   "status": "draft",
+   "asOf": "2026-09"
+  },
+  {
+   "platformKey": "nintendo-3ds",
+   "profile": {
+    "manufacturer": "Nintendo",
+    "generation": 8,
+    "launches": [
+     {
+      "region": "JP",
+      "date": "2011-02-26",
+      "price": "¥25,000"
+     },
+     {
+      "region": "EU",
+      "date": "2011-03-25"
+     },
+     {
+      "region": "NA",
+      "date": "2011-03-27",
+      "price": "US$249.99"
+     }
+    ],
+    "discontinued": "September 16, 2020",
+    "unitsSold": "About 75.9 million (the 3DS family)",
+    "hardware": [],
+    "competitors": [
+     "PlayStation Vita"
+    ],
+    "story": null,
+    "firsts": [],
+    "endOfLife": null
+   },
+   "startHere": [],
+   "sources": [
+    "https://en.wikipedia.org/wiki/Nintendo_3DS"
+   ],
+   "status": "draft",
+   "asOf": "2026-09"
+  },
+  {
+   "platformKey": "virtual-boy",
+   "profile": {
+    "manufacturer": "Nintendo",
+    "generation": 5,
+    "launches": [
+     {
+      "region": "JP",
+      "date": "1995-07-21"
+     },
+     {
+      "region": "NA",
+      "date": "1995-08-14",
+      "price": "US$179.99"
+     }
+    ],
+    "discontinued": "December 1995 (Japan), 1996 (North America)",
+    "unitsSold": "770,000",
+    "hardware": [],
+    "competitors": [],
+    "story": null,
+    "firsts": [],
+    "endOfLife": null
+   },
+   "startHere": [],
+   "sources": [
+    "https://en.wikipedia.org/wiki/Virtual_Boy"
+   ],
+   "status": "draft",
+   "asOf": "2026-09"
+  },
+  {
+   "platformKey": "game-and-watch",
+   "profile": {
+    "manufacturer": "Nintendo",
+    "generation": 2,
+    "launches": [
+     {
+      "region": "JP",
+      "date": "1980-04-28",
+      "price": "¥5,800"
+     }
+    ],
+    "discontinued": "1991",
+    "unitsSold": "43.4 million",
+    "hardware": [],
+    "competitors": [],
+    "story": null,
+    "firsts": [],
+    "endOfLife": null
+   },
+   "startHere": [],
+   "sources": [
+    "https://en.wikipedia.org/wiki/Game_&_Watch"
+   ],
+   "status": "draft",
+   "asOf": "2026-09"
+  },
+  {
+   "platformKey": "playstation",
+   "profile": {
+    "manufacturer": "Sony Computer Entertainment",
+    "generation": 5,
+    "launches": [
+     {
+      "region": "JP",
+      "date": "1994-12-03",
+      "price": "¥39,800"
+     },
+     {
+      "region": "NA",
+      "date": "1995-09-09",
+      "price": "US$299"
+     },
+     {
+      "region": "EU",
+      "date": "1995-09-29",
+      "price": "£299"
+     }
+    ],
+    "discontinued": "March 23, 2006",
+    "unitsSold": "102.49 million",
+    "hardware": [],
+    "competitors": [
+     "Sega Saturn",
+     "Nintendo 64"
+    ],
+    "story": null,
+    "firsts": [],
+    "endOfLife": null
+   },
+   "startHere": [],
+   "sources": [
+    "https://en.wikipedia.org/wiki/PlayStation_(console)"
+   ],
+   "status": "draft",
+   "asOf": "2026-09"
+  },
+  {
+   "platformKey": "playstation-2",
+   "profile": {
+    "manufacturer": "Sony Computer Entertainment",
+    "generation": 6,
+    "launches": [
+     {
+      "region": "JP",
+      "date": "2000-03-04",
+      "price": "¥39,800"
+     },
+     {
+      "region": "NA",
+      "date": "2000-10-26",
+      "price": "US$299"
+     },
+     {
+      "region": "EU",
+      "date": "2000-11-24",
+      "price": "£299"
+     }
+    ],
+    "discontinued": "December 28, 2012 (Japan); January 4, 2013 (worldwide)",
+    "unitsSold": "About 160 million, the best-selling console",
+    "hardware": [],
+    "competitors": [
+     "Xbox",
+     "GameCube",
+     "Dreamcast"
+    ],
+    "story": null,
+    "firsts": [],
+    "endOfLife": null
+   },
+   "startHere": [],
+   "sources": [
+    "https://en.wikipedia.org/wiki/PlayStation_2"
+   ],
+   "status": "draft",
+   "asOf": "2026-09"
+  },
+  {
+   "platformKey": "playstation-4",
+   "profile": {
+    "manufacturer": "Sony Interactive Entertainment",
+    "generation": 8,
+    "launches": [
+     {
+      "region": "NA",
+      "date": "2013-11-15",
+      "price": "US$399.99"
+     },
+     {
+      "region": "EU",
+      "date": "2013-11-29",
+      "price": "€399.99"
+     },
+     {
+      "region": "JP",
+      "date": "2014-02-22",
+      "price": "¥39,980"
+     }
+    ],
+    "discontinued": "March 28, 2024 (Japan, the last model)",
+    "unitsSold": "Over 117 million (as of March 31, 2022)",
+    "hardware": [],
+    "competitors": [
+     "Xbox One",
+     "Wii U",
+     "Nintendo Switch"
+    ],
+    "story": null,
+    "firsts": [],
+    "endOfLife": null
+   },
+   "startHere": [],
+   "sources": [
+    "https://en.wikipedia.org/wiki/PlayStation_4"
+   ],
+   "status": "draft",
+   "asOf": "2026-09"
+  },
+  {
+   "platformKey": "playstation-5",
+   "profile": {
+    "manufacturer": "Sony Interactive Entertainment",
+    "generation": 9,
+    "launches": [
+     {
+      "region": "NA",
+      "date": "2020-11-12",
+      "price": "US$499 (Digital Edition US$399)"
+     },
+     {
+      "region": "JP",
+      "date": "2020-11-12"
+     },
+     {
+      "region": "EU",
+      "date": "2020-11-19",
+      "price": "€499"
+     }
+    ],
+    "discontinued": null,
+    "unitsSold": "95 million (as of June 30, 2026)",
+    "hardware": [],
+    "competitors": [
+     "Xbox Series X and Series S",
+     "Nintendo Switch 2"
+    ],
+    "story": null,
+    "firsts": [],
+    "endOfLife": null
+   },
+   "startHere": [],
+   "sources": [
+    "https://en.wikipedia.org/wiki/PlayStation_5"
+   ],
+   "status": "draft",
+   "asOf": "2026-09"
+  },
+  {
+   "platformKey": "psp",
+   "profile": {
+    "manufacturer": "Sony Computer Entertainment",
+    "generation": 7,
+    "launches": [
+     {
+      "region": "JP",
+      "date": "2004-12-12"
+     },
+     {
+      "region": "NA",
+      "date": "2005-03-24",
+      "price": "US$249.99"
+     },
+     {
+      "region": "EU",
+      "date": "2005-09-01"
+     }
+    ],
+    "discontinued": "2014",
+    "unitsSold": "76.4 million (as of March 31, 2012)",
+    "hardware": [],
+    "competitors": [
+     "Nintendo DS"
+    ],
+    "story": null,
+    "firsts": [],
+    "endOfLife": null
+   },
+   "startHere": [],
+   "sources": [
+    "https://en.wikipedia.org/wiki/PlayStation_Portable"
+   ],
+   "status": "draft",
+   "asOf": "2026-09"
+  },
+  {
+   "platformKey": "playstation-vita",
+   "profile": {
+    "manufacturer": "Sony Computer Entertainment",
+    "generation": 8,
+    "launches": [
+     {
+      "region": "JP",
+      "date": "2011-12-17"
+     },
+     {
+      "region": "NA",
+      "date": "2012-02-15",
+      "price": "US$249.99"
+     }
+    ],
+    "discontinued": "March 1, 2019",
+    "unitsSold": null,
+    "hardware": [],
+    "competitors": [
+     "Nintendo 3DS"
+    ],
+    "story": null,
+    "firsts": [],
+    "endOfLife": null
+   },
+   "startHere": [],
+   "sources": [
+    "https://en.wikipedia.org/wiki/PlayStation_Vita"
+   ],
+   "status": "draft",
+   "asOf": "2026-09"
+  },
+  {
+   "platformKey": "xbox",
+   "profile": {
+    "manufacturer": "Microsoft",
+    "generation": 6,
+    "launches": [
+     {
+      "region": "NA",
+      "date": "2001-11-15",
+      "price": "US$299"
+     },
+     {
+      "region": "JP",
+      "date": "2002-02-22"
+     },
+     {
+      "region": "EU",
+      "date": "2002-03-14",
+      "price": "€479"
+     }
+    ],
+    "discontinued": "2005 (Japan), 2006 (worldwide)",
+    "unitsSold": "24 million",
+    "hardware": [],
+    "competitors": [
+     "PlayStation 2",
+     "GameCube",
+     "Dreamcast"
+    ],
+    "story": null,
+    "firsts": [],
+    "endOfLife": null
+   },
+   "startHere": [],
+   "sources": [
+    "https://en.wikipedia.org/wiki/Xbox_(console)"
+   ],
+   "status": "draft",
+   "asOf": "2026-09"
+  },
+  {
+   "platformKey": "xbox-360",
+   "profile": {
+    "manufacturer": "Microsoft",
+    "generation": 7,
+    "launches": [
+     {
+      "region": "NA",
+      "date": "2005-11-22",
+      "price": "US$399 (20 GB), US$299 (Core)"
+     },
+     {
+      "region": "EU",
+      "date": "2005-12-02",
+      "price": "€399"
+     },
+     {
+      "region": "JP",
+      "date": "2005-12-10"
+     }
+    ],
+    "discontinued": "April 20, 2016",
+    "unitsSold": "84 million (as of June 2014)",
+    "hardware": [],
+    "competitors": [
+     "PlayStation 3",
+     "Wii"
+    ],
+    "story": null,
+    "firsts": [],
+    "endOfLife": null
+   },
+   "startHere": [],
+   "sources": [
+    "https://en.wikipedia.org/wiki/Xbox_360"
+   ],
+   "status": "draft",
+   "asOf": "2026-09"
+  },
+  {
+   "platformKey": "xbox-one",
+   "profile": {
+    "manufacturer": "Microsoft",
+    "generation": 8,
+    "launches": [
+     {
+      "region": "NA",
+      "date": "2013-11-22",
+      "price": "US$499"
+     },
+     {
+      "region": "EU",
+      "date": "2013-11-22",
+      "price": "€499"
+     },
+     {
+      "region": "JP",
+      "date": "2014-09-04"
+     }
+    ],
+    "discontinued": "2020",
+    "unitsSold": null,
+    "hardware": [],
+    "competitors": [
+     "PlayStation 4",
+     "Wii U",
+     "Nintendo Switch"
+    ],
+    "story": null,
+    "firsts": [],
+    "endOfLife": null
+   },
+   "startHere": [],
+   "sources": [
+    "https://en.wikipedia.org/wiki/Xbox_One"
+   ],
+   "status": "draft",
+   "asOf": "2026-09"
+  },
+  {
+   "platformKey": "xbox-series-x",
+   "profile": {
+    "manufacturer": "Microsoft",
+    "generation": 9,
+    "launches": [
+     {
+      "region": "WW",
+      "date": "2020-11-10",
+      "price": "US$499.99 (Series X), US$299.99 (Series S)"
+     }
+    ],
+    "discontinued": null,
+    "unitsSold": "35 million (as of February 2026)",
+    "hardware": [],
+    "competitors": [
+     "PlayStation 5",
+     "Nintendo Switch 2"
+    ],
+    "story": null,
+    "firsts": [],
+    "endOfLife": null
+   },
+   "startHere": [],
+   "sources": [
+    "https://en.wikipedia.org/wiki/Xbox_Series_X_and_Series_S"
+   ],
+   "status": "draft",
+   "asOf": "2026-09"
+  },
+  {
+   "platformKey": "sega-master-system",
+   "profile": {
+    "manufacturer": "Sega",
+    "generation": 3,
+    "launches": [
+     {
+      "region": "JP",
+      "date": "1985-10-20",
+      "price": "¥16,800 (as the Mark III)"
+     },
+     {
+      "region": "NA",
+      "date": "1986-09",
+      "price": "US$200"
+     },
+     {
+      "region": "EU",
+      "date": "1987-08"
+     }
+    ],
+    "discontinued": "1991 (Japan), 1992 (North America), 1996 (Europe)",
+    "unitsSold": "About 13 million",
+    "hardware": [],
+    "competitors": [
+     "Nintendo Entertainment System",
+     "Atari 7800"
+    ],
+    "story": null,
+    "firsts": [],
+    "endOfLife": null
+   },
+   "startHere": [],
+   "sources": [
+    "https://en.wikipedia.org/wiki/Master_System"
+   ],
+   "status": "draft",
+   "asOf": "2026-09"
+  },
+  {
+   "platformKey": "sega-genesis",
+   "profile": {
+    "manufacturer": "Sega",
+    "generation": 4,
+    "launches": [
+     {
+      "region": "JP",
+      "date": "1988-10-29",
+      "price": "¥21,000 (as the Mega Drive)"
+     },
+     {
+      "region": "NA",
+      "date": "1989-08",
+      "price": "US$189"
+     },
+     {
+      "region": "EU",
+      "date": "1990-09",
+      "price": "£189.99"
+     }
+    ],
+    "discontinued": "1997 (Sega); 1999 (Majesco, North America)",
+    "unitsSold": "30.75 million by Sega, plus consoles by Majesco and Tectoy",
+    "hardware": [],
+    "competitors": [
+     "Super Nintendo Entertainment System",
+     "TurboGrafx-16"
+    ],
+    "story": null,
+    "firsts": [],
+    "endOfLife": null
+   },
+   "startHere": [],
+   "sources": [
+    "https://en.wikipedia.org/wiki/Sega_Genesis"
+   ],
+   "status": "draft",
+   "asOf": "2026-09"
+  },
+  {
+   "platformKey": "sega-cd",
+   "profile": {
+    "manufacturer": "Sega",
+    "generation": 4,
+    "launches": [
+     {
+      "region": "JP",
+      "date": "1991-12-12",
+      "price": "¥49,800 (as the Mega-CD)"
+     },
+     {
+      "region": "NA",
+      "date": "1992-10-15",
+      "price": "US$299"
+     },
+     {
+      "region": "EU",
+      "date": "1993-04"
+     }
+    ],
+    "discontinued": "1996",
+    "unitsSold": "2.24 million",
+    "hardware": [],
+    "competitors": [],
+    "story": null,
+    "firsts": [],
+    "endOfLife": null
+   },
+   "startHere": [],
+   "sources": [
+    "https://en.wikipedia.org/wiki/Sega_CD"
+   ],
+   "status": "draft",
+   "asOf": "2026-09"
+  },
+  {
+   "platformKey": "sega-32x",
+   "profile": {
+    "manufacturer": "Sega",
+    "generation": 5,
+    "launches": [
+     {
+      "region": "NA",
+      "date": "1994-11-21",
+      "price": "US$159.99"
+     },
+     {
+      "region": "EU",
+      "date": "1994-11"
+     },
+     {
+      "region": "JP",
+      "date": "1994-12-03",
+      "price": "¥16,800"
+     }
+    ],
+    "discontinued": "1996",
+    "unitsSold": "665,000",
+    "hardware": [],
+    "competitors": [],
+    "story": null,
+    "firsts": [],
+    "endOfLife": null
+   },
+   "startHere": [],
+   "sources": [
+    "https://en.wikipedia.org/wiki/32X"
+   ],
+   "status": "draft",
+   "asOf": "2026-09"
+  },
+  {
+   "platformKey": "sega-saturn",
+   "profile": {
+    "manufacturer": "Sega",
+    "generation": 5,
+    "launches": [
+     {
+      "region": "JP",
+      "date": "1994-11-22",
+      "price": "¥44,800"
+     },
+     {
+      "region": "NA",
+      "date": "1995-05-11",
+      "price": "US$399.99"
+     },
+     {
+      "region": "EU",
+      "date": "1995-07-08"
+     }
+    ],
+    "discontinued": "1998 (North America, Europe), 2000 (Japan)",
+    "unitsSold": "9.26 million",
+    "hardware": [],
+    "competitors": [
+     "PlayStation",
+     "Nintendo 64"
+    ],
+    "story": null,
+    "firsts": [],
+    "endOfLife": null
+   },
+   "startHere": [],
+   "sources": [
+    "https://en.wikipedia.org/wiki/Sega_Saturn"
+   ],
+   "status": "draft",
+   "asOf": "2026-09"
+  },
+  {
+   "platformKey": "sega-dreamcast",
+   "profile": {
+    "manufacturer": "Sega",
+    "generation": 6,
+    "launches": [
+     {
+      "region": "JP",
+      "date": "1998-11-27",
+      "price": "¥29,000"
+     },
+     {
+      "region": "NA",
+      "date": "1999-09-09",
+      "price": "US$199"
+     },
+     {
+      "region": "EU",
+      "date": "1999-10-14",
+      "price": "£200"
+     }
+    ],
+    "discontinued": "March 31, 2001",
+    "unitsSold": "9.13 million",
+    "hardware": [],
+    "competitors": [
+     "PlayStation 2",
+     "GameCube",
+     "Xbox"
+    ],
+    "story": null,
+    "firsts": [],
+    "endOfLife": null
+   },
+   "startHere": [],
+   "sources": [
+    "https://en.wikipedia.org/wiki/Dreamcast"
+   ],
+   "status": "draft",
+   "asOf": "2026-09"
+  },
+  {
+   "platformKey": "sega-game-gear",
+   "profile": {
+    "manufacturer": "Sega",
+    "generation": 4,
+    "launches": [
+     {
+      "region": "JP",
+      "date": "1990-10-06",
+      "price": "¥19,800"
+     },
+     {
+      "region": "NA",
+      "date": "1991-04",
+      "price": "US$149.99"
+     },
+     {
+      "region": "EU",
+      "date": "1991-04"
+     }
+    ],
+    "discontinued": "1997 (Sega)",
+    "unitsSold": "About 14 million",
+    "hardware": [],
+    "competitors": [
+     "Game Boy",
+     "Atari Lynx"
+    ],
+    "story": null,
+    "firsts": [],
+    "endOfLife": null
+   },
+   "startHere": [],
+   "sources": [
+    "https://en.wikipedia.org/wiki/Game_Gear"
+   ],
+   "status": "draft",
+   "asOf": "2026-09"
+  },
+  {
+   "platformKey": "sega-sg-1000",
+   "profile": {
+    "manufacturer": "Sega",
+    "generation": 3,
+    "launches": [
+     {
+      "region": "JP",
+      "date": "1983-07-15"
+     }
+    ],
+    "discontinued": "July 1984 (the SG-1000); October 1985 (the SG-1000 II)",
+    "unitsSold": null,
+    "hardware": [],
+    "competitors": [],
+    "story": null,
+    "firsts": [],
+    "endOfLife": null
+   },
+   "startHere": [],
+   "sources": [
+    "https://en.wikipedia.org/wiki/SG-1000"
+   ],
+   "status": "draft",
+   "asOf": "2026-09"
+  },
+  {
+   "platformKey": "atari-2600",
+   "profile": {
+    "manufacturer": "Atari, Inc.",
+    "generation": 2,
+    "launches": [
+     {
+      "region": "NA",
+      "date": "1977-09",
+      "price": "US$189.95"
+     },
+     {
+      "region": "EU",
+      "date": "1978"
+     }
+    ],
+    "discontinued": "1992",
+    "unitsSold": "About 30 million",
+    "hardware": [],
+    "competitors": [
+     "Intellivision",
+     "ColecoVision",
+     "Magnavox Odyssey 2"
+    ],
+    "story": null,
+    "firsts": [],
+    "endOfLife": null
+   },
+   "startHere": [],
+   "sources": [
+    "https://en.wikipedia.org/wiki/Atari_2600"
+   ],
+   "status": "draft",
+   "asOf": "2026-09"
+  },
+  {
+   "platformKey": "atari-5200",
+   "profile": {
+    "manufacturer": "Atari, Inc.",
+    "generation": 2,
+    "launches": [
+     {
+      "region": "NA",
+      "date": "1982-10",
+      "price": "US$299.95"
+     }
+    ],
+    "discontinued": "May 21, 1984",
+    "unitsSold": "About 1 million",
+    "hardware": [],
+    "competitors": [
+     "ColecoVision",
+     "Intellivision"
+    ],
+    "story": null,
+    "firsts": [],
+    "endOfLife": null
+   },
+   "startHere": [],
+   "sources": [
+    "https://en.wikipedia.org/wiki/Atari_5200"
+   ],
+   "status": "draft",
+   "asOf": "2026-09"
+  },
+  {
+   "platformKey": "atari-7800",
+   "profile": {
+    "manufacturer": "Atari Corporation",
+    "generation": 3,
+    "launches": [
+     {
+      "region": "NA",
+      "date": "1986-05",
+      "price": "US$140"
+     },
+     {
+      "region": "EU",
+      "date": "1987"
+     }
+    ],
+    "discontinued": "1992",
+    "unitsSold": null,
+    "hardware": [],
+    "competitors": [
+     "Nintendo Entertainment System",
+     "Sega Master System"
+    ],
+    "story": null,
+    "firsts": [],
+    "endOfLife": null
+   },
+   "startHere": [],
+   "sources": [
+    "https://en.wikipedia.org/wiki/Atari_7800"
+   ],
+   "status": "draft",
+   "asOf": "2026-09"
+  },
+  {
+   "platformKey": "atari-lynx",
+   "profile": {
+    "manufacturer": "Atari Corporation",
+    "generation": 4,
+    "launches": [
+     {
+      "region": "NA",
+      "date": "1989-09-01",
+      "price": "US$179.99"
+     }
+    ],
+    "discontinued": "1995",
+    "unitsSold": "About 2 million",
+    "hardware": [],
+    "competitors": [
+     "Game Boy",
+     "Sega Game Gear"
+    ],
+    "story": null,
+    "firsts": [],
+    "endOfLife": null
+   },
+   "startHere": [],
+   "sources": [
+    "https://en.wikipedia.org/wiki/Atari_Lynx"
+   ],
+   "status": "draft",
+   "asOf": "2026-09"
+  },
+  {
+   "platformKey": "atari-jaguar",
+   "profile": {
+    "manufacturer": "Atari Corporation",
+    "generation": 5,
+    "launches": [
+     {
+      "region": "NA",
+      "date": "1993-11-23"
+     },
+     {
+      "region": "EU",
+      "date": "1994-06-27"
+     },
+     {
+      "region": "JP",
+      "date": "1994-12-08"
+     }
+    ],
+    "discontinued": "1996",
+    "unitsSold": "About 250,000",
+    "hardware": [],
+    "competitors": [
+     "3DO",
+     "Sega Saturn",
+     "PlayStation"
+    ],
+    "story": null,
+    "firsts": [],
+    "endOfLife": null
+   },
+   "startHere": [],
+   "sources": [
+    "https://en.wikipedia.org/wiki/Atari_Jaguar"
+   ],
+   "status": "draft",
+   "asOf": "2026-09"
+  },
+  {
+   "platformKey": "magnavox-odyssey",
+   "profile": {
+    "manufacturer": "Magnavox",
+    "generation": 1,
+    "launches": [
+     {
+      "region": "NA",
+      "date": "1972-09",
+      "price": "About US$100"
+     }
+    ],
+    "discontinued": "1975",
+    "unitsSold": "350,000",
+    "hardware": [],
+    "competitors": [],
+    "story": null,
+    "firsts": [],
+    "endOfLife": null
+   },
+   "startHere": [],
+   "sources": [
+    "https://en.wikipedia.org/wiki/Magnavox_Odyssey"
+   ],
+   "status": "draft",
+   "asOf": "2026-09"
+  },
+  {
+   "platformKey": "magnavox-odyssey-2",
+   "profile": {
+    "manufacturer": "Magnavox and Philips",
+    "generation": 2,
+    "launches": [
+     {
+      "region": "NA",
+      "date": "1978-09",
+      "price": "US$179"
+     },
+     {
+      "region": "EU",
+      "date": "1978-12"
+     }
+    ],
+    "discontinued": "March 20, 1984",
+    "unitsSold": "About 2 million",
+    "hardware": [],
+    "competitors": [
+     "Atari 2600",
+     "Intellivision"
+    ],
+    "story": null,
+    "firsts": [],
+    "endOfLife": null
+   },
+   "startHere": [],
+   "sources": [
+    "https://en.wikipedia.org/wiki/Magnavox_Odyssey_2"
+   ],
+   "status": "draft",
+   "asOf": "2026-09"
+  },
+  {
+   "platformKey": "intellivision",
+   "profile": {
+    "manufacturer": "Mattel Electronics",
+    "generation": 2,
+    "launches": [
+     {
+      "region": "NA",
+      "date": "1979",
+      "price": "US$275"
+     }
+    ],
+    "discontinued": "1990 (by then INTV Corporation)",
+    "unitsSold": "Over 3.75 million (1980–83)",
+    "hardware": [],
+    "competitors": [
+     "Atari 2600",
+     "ColecoVision"
+    ],
+    "story": null,
+    "firsts": [],
+    "endOfLife": null
+   },
+   "startHere": [],
+   "sources": [
+    "https://en.wikipedia.org/wiki/Intellivision"
+   ],
+   "status": "draft",
+   "asOf": "2026-09"
+  },
+  {
+   "platformKey": "colecovision",
+   "profile": {
+    "manufacturer": "Coleco",
+    "generation": 2,
+    "launches": [
+     {
+      "region": "NA",
+      "date": "1982-08"
+     },
+     {
+      "region": "EU",
+      "date": "1983-07"
+     }
+    ],
+    "discontinued": "August 1985",
+    "unitsSold": "Over 2 million (1982–83)",
+    "hardware": [],
+    "competitors": [
+     "Atari 2600",
+     "Atari 5200",
+     "Intellivision"
+    ],
+    "story": null,
+    "firsts": [],
+    "endOfLife": null
+   },
+   "startHere": [],
+   "sources": [
+    "https://en.wikipedia.org/wiki/ColecoVision"
+   ],
+   "status": "draft",
+   "asOf": "2026-09"
+  },
+  {
+   "platformKey": "turbografx-16",
+   "profile": {
+    "manufacturer": "NEC and Hudson Soft",
+    "generation": 4,
+    "launches": [
+     {
+      "region": "JP",
+      "date": "1987-10-30",
+      "price": "as the PC Engine"
+     },
+     {
+      "region": "NA",
+      "date": "1989-08-29"
+     }
+    ],
+    "discontinued": "May 1994 (North America), December 1994 (Japan)",
+    "unitsSold": "About 10 million (the card-based consoles)",
+    "hardware": [],
+    "competitors": [
+     "Sega Genesis",
+     "Super Nintendo Entertainment System"
+    ],
+    "story": null,
+    "firsts": [],
+    "endOfLife": null
+   },
+   "startHere": [],
+   "sources": [
+    "https://en.wikipedia.org/wiki/TurboGrafx-16"
+   ],
+   "status": "draft",
+   "asOf": "2026-09"
+  },
+  {
+   "platformKey": "neo-geo",
+   "profile": {
+    "manufacturer": "SNK",
+    "generation": 4,
+    "launches": [
+     {
+      "region": "JP",
+      "date": "1990-04-26",
+      "price": "the AES home console"
+     },
+     {
+      "region": "NA",
+      "date": "1991-07-01",
+      "price": "US$649.99"
+     }
+    ],
+    "discontinued": "1997 (AES), 2004 (MVS arcade)",
+    "unitsSold": "1 million MVS arcade systems and 410,000 AES home consoles",
+    "hardware": [],
+    "competitors": [
+     "Super Nintendo Entertainment System",
+     "Sega Genesis"
+    ],
+    "story": null,
+    "firsts": [],
+    "endOfLife": null
+   },
+   "startHere": [],
+   "sources": [
+    "https://en.wikipedia.org/wiki/Neo_Geo"
+   ],
+   "status": "draft",
+   "asOf": "2026-09"
+  },
+  {
+   "platformKey": "neo-geo-pocket",
+   "profile": {
+    "manufacturer": "SNK",
+    "generation": 5,
+    "launches": [
+     {
+      "region": "JP",
+      "date": "1998-10-28",
+      "price": "¥7,800"
+     }
+    ],
+    "discontinued": "1999 (replaced by the Neo Geo Pocket Color)",
+    "unitsSold": null,
+    "hardware": [],
+    "competitors": [],
+    "story": null,
+    "firsts": [],
+    "endOfLife": null
+   },
+   "startHere": [],
+   "sources": [
+    "https://en.wikipedia.org/wiki/Neo_Geo_Pocket"
+   ],
+   "status": "draft",
+   "asOf": "2026-09"
+  },
+  {
+   "platformKey": "neo-geo-pocket-color",
+   "profile": {
+    "manufacturer": "SNK",
+    "generation": 5,
+    "launches": [
+     {
+      "region": "JP",
+      "date": "1999-03-19",
+      "price": "¥8,900"
+     },
+     {
+      "region": "NA",
+      "date": "1999-08-06",
+      "price": "US$69.95"
+     },
+     {
+      "region": "EU",
+      "date": "1999-10-01"
+     }
+    ],
+    "discontinued": "June 13, 2000 (North America, Europe); October 30, 2001 (Japan)",
+    "unitsSold": null,
+    "hardware": [],
+    "competitors": [
+     "Game Boy Color"
+    ],
+    "story": null,
+    "firsts": [],
+    "endOfLife": null
+   },
+   "startHere": [],
+   "sources": [
+    "https://en.wikipedia.org/wiki/Neo_Geo_Pocket_Color"
+   ],
+   "status": "draft",
+   "asOf": "2026-09"
+  },
+  {
+   "platformKey": "3do",
+   "profile": {
+    "manufacturer": "The 3DO Company (made by Panasonic, Sanyo and GoldStar)",
+    "generation": 5,
+    "launches": [
+     {
+      "region": "NA",
+      "date": "1993-10-04",
+      "price": "US$699.99"
+     },
+     {
+      "region": "JP",
+      "date": "1994-03-20",
+      "price": "¥79,800"
+     },
+     {
+      "region": "EU",
+      "date": "1994-06-10"
+     }
+    ],
+    "discontinued": "1996",
+    "unitsSold": "About 2 million",
+    "hardware": [],
+    "competitors": [
+     "Atari Jaguar",
+     "Sega Saturn",
+     "PlayStation"
+    ],
+    "story": null,
+    "firsts": [],
+    "endOfLife": null
+   },
+   "startHere": [],
+   "sources": [
+    "https://en.wikipedia.org/wiki/3DO"
+   ],
+   "status": "draft",
+   "asOf": "2026-09"
+  },
+  {
+   "platformKey": "n-gage",
+   "profile": {
+    "manufacturer": "Nokia",
+    "generation": 6,
+    "launches": [
+     {
+      "region": "WW",
+      "date": "2003-10-07"
+     }
+    ],
+    "discontinued": "November 26, 2005",
+    "unitsSold": "About 3 million",
+    "hardware": [],
+    "competitors": [
+     "Game Boy Advance"
+    ],
+    "story": null,
+    "firsts": [],
+    "endOfLife": null
+   },
+   "startHere": [],
+   "sources": [
+    "https://en.wikipedia.org/wiki/N-Gage"
+   ],
+   "status": "draft",
+   "asOf": "2026-09"
+  },
+  {
+   "platformKey": "vectrex",
+   "profile": {
+    "manufacturer": "General Consumer Electronics, then Milton Bradley",
+    "generation": 2,
+    "launches": [
+     {
+      "region": "NA",
+      "date": "1982-10",
+      "price": "US$199"
+     },
+     {
+      "region": "EU",
+      "date": "1983"
+     },
+     {
+      "region": "JP",
+      "date": "1983"
+     }
+    ],
+    "discontinued": "February 1984",
+    "unitsSold": null,
+    "hardware": [],
+    "competitors": [],
+    "story": null,
+    "firsts": [],
+    "endOfLife": null
+   },
+   "startHere": [],
+   "sources": [
+    "https://en.wikipedia.org/wiki/Vectrex"
+   ],
+   "status": "draft",
+   "asOf": "2026-09"
+  },
+  {
+   "platformKey": "arcadia-2001",
+   "profile": {
+    "manufacturer": "Emerson Radio",
+    "generation": 2,
+    "launches": [
+     {
+      "region": "NA",
+      "date": "1982-05",
+      "price": "US$99"
+     }
+    ],
+    "discontinued": "1984",
+    "unitsSold": "20,000–30,000 (estimated)",
+    "hardware": [],
+    "competitors": [],
+    "story": null,
+    "firsts": [],
+    "endOfLife": null
+   },
+   "startHere": [],
+   "sources": [
+    "https://en.wikipedia.org/wiki/Arcadia_2001"
+   ],
+   "status": "draft",
+   "asOf": "2026-09"
+  },
+  {
+   "platformKey": "astrocade",
+   "profile": {
+    "manufacturer": "Bally Manufacturing, later Astrovision",
+    "generation": 2,
+    "launches": [
+     {
+      "region": "NA",
+      "date": "1978-04",
+      "price": "US$299"
+     }
+    ],
+    "discontinued": "1983",
+    "unitsSold": null,
+    "hardware": [],
+    "competitors": [],
+    "story": null,
+    "firsts": [],
+    "endOfLife": null
+   },
+   "startHere": [],
+   "sources": [
+    "https://en.wikipedia.org/wiki/Bally_Astrocade"
+   ],
+   "status": "draft",
+   "asOf": "2026-09"
+  },
+  {
+   "platformKey": "epoch-super-cassette-vision",
+   "profile": {
+    "manufacturer": "Epoch",
+    "generation": 3,
+    "launches": [
+     {
+      "region": "JP",
+      "date": "1984-07-17",
+      "price": "¥14,800"
+     },
+     {
+      "region": "EU",
+      "date": "1984"
+     }
+    ],
+    "discontinued": "1987",
+    "unitsSold": "About 300,000",
+    "hardware": [],
+    "competitors": [],
+    "story": null,
+    "firsts": [],
+    "endOfLife": null
+   },
+   "startHere": [],
+   "sources": [
+    "https://en.wikipedia.org/wiki/Super_Cassette_Vision"
+   ],
+   "status": "draft",
+   "asOf": "2026-09"
+  }
+ ],
+ "games": [
+  {
+   "platformKey": "playstation-3",
+   "title": "The Last of Us",
+   "text": "Naughty Dog's 2013 survival story, released months before the PS4, swept that year's Game of the Year awards and is often named among the greatest games ever made.",
+   "sources": [
+    "https://en.wikipedia.org/wiki/The_Last_of_Us_(video_game)"
+   ],
+   "status": "draft"
+  },
+  {
+   "platformKey": "playstation-3",
+   "title": "Uncharted 2: Among Thieves",
+   "text": "Naughty Dog's blockbuster set a new standard for cinematic action games, weaving set pieces into the play, and won many 2009 Game of the Year awards.",
+   "sources": [
+    "https://en.wikipedia.org/wiki/Uncharted_2:_Among_Thieves"
+   ],
+   "status": "draft"
+  },
+  {
+   "platformKey": "playstation-3",
+   "title": "Red Dead Redemption",
+   "text": "Rockstar's open-world Western, set as the frontier fades in 1911, is one of the most celebrated stories and worlds of its generation.",
+   "sources": [
+    "https://en.wikipedia.org/wiki/Red_Dead_Redemption"
+   ],
+   "status": "draft"
+  },
+  {
+   "platformKey": "playstation-3",
+   "title": "Grand Theft Auto IV",
+   "text": "Rockstar's first HD Grand Theft Auto, a grittier Liberty City with physics-driven action, broke entertainment sales records at its 2008 launch.",
+   "sources": [
+    "https://en.wikipedia.org/wiki/Grand_Theft_Auto_IV"
+   ],
+   "status": "draft"
+  },
+  {
+   "platformKey": "playstation-3",
+   "title": "Metal Gear Solid 4: Guns of the Patriots",
+   "text": "Hideo Kojima's PS3-only finale to Solid Snake's saga, with long cinematic scenes on a dual-layer Blu-ray disc: one of the main reasons to buy the console in 2008.",
+   "sources": [
+    "https://en.wikipedia.org/wiki/Metal_Gear_Solid_4:_Guns_of_the_Patriots"
+   ],
+   "status": "draft"
+  },
+  {
+   "platformKey": "playstation-3",
+   "title": "Grand Theft Auto V",
+   "text": "Rockstar's three-hero crime epic was the PS3's best-selling game (about 29.5 million copies on it) and went on to become one of the best-selling games ever.",
+   "sources": [
+    "https://en.wikipedia.org/wiki/Grand_Theft_Auto_V"
+   ],
+   "status": "draft"
+  },
+  {
+   "platformKey": "playstation-3",
+   "title": "Demon's Souls",
+   "text": "FromSoftware's demanding action RPG, with players' messages and bloodstains appearing in each other's worlds, started the Souls series and the 'Soulslike' genre.",
+   "sources": [
+    "https://en.wikipedia.org/wiki/Demon's_Souls"
+   ],
+   "status": "draft"
+  },
+  {
+   "platformKey": "playstation-3",
+   "title": "BioShock",
+   "text": "The underwater city of Rapture and its twist on player choice made it a landmark of storytelling in shooters; the PS3 version came in 2008, a year after Xbox 360 and PC.",
+   "sources": [
+    "https://en.wikipedia.org/wiki/BioShock"
+   ],
+   "status": "draft"
+  },
+  {
+   "platformKey": "playstation-3",
+   "title": "Batman: Arkham City",
+   "text": "Rocksteady's sequel opened Batman's world into a walled-off super-prison and refined the 'freeflow' combat that many action games copied.",
+   "sources": [
+    "https://en.wikipedia.org/wiki/Batman:_Arkham_City"
+   ],
+   "status": "draft"
+  },
+  {
+   "platformKey": "playstation-3",
+   "title": "Portal 2",
+   "text": "Valve's puzzle sequel, with a two-player co-op campaign, came to PS3 with Steamworks and play with PC owners, after Gabe Newell had called the PS3 'a total disaster'.",
+   "sources": [
+    "https://en.wikipedia.org/wiki/Portal_2"
+   ],
+   "status": "draft"
+  },
+  {
+   "platformKey": "playstation-3",
+   "title": "The Elder Scrolls V: Skyrim",
+   "text": "Bethesda's open-world fantasy RPG became one of the best-selling games ever; the PS3 version slowed down as save files grew until patches helped.",
+   "sources": [
+    "https://en.wikipedia.org/wiki/The_Elder_Scrolls_V:_Skyrim"
+   ],
+   "status": "draft"
+  },
+  {
+   "platformKey": "playstation-3",
+   "title": "Uncharted 3: Drake's Deception",
+   "text": "The third Uncharted brought bigger set pieces (a burning château, a capsizing ship, the desert) and more online play.",
+   "sources": [
+    "https://en.wikipedia.org/wiki/Uncharted_3:_Drake's_Deception"
+   ],
+   "status": "draft"
+  },
+  {
+   "platformKey": "playstation-3",
+   "title": "Journey",
+   "text": "Thatgamecompany's wordless desert pilgrimage, where strangers meet online without speaking, won Game of the Year awards; its score was the first from a video game nominated for a Grammy.",
+   "sources": [
+    "https://en.wikipedia.org/wiki/Journey_(2012_video_game)"
+   ],
+   "status": "draft"
+  },
+  {
+   "platformKey": "playstation-3",
+   "title": "Batman: Arkham Asylum",
+   "text": "Rocksteady's 2009 game proved a licensed superhero game could be great, with 'freeflow' combat and detective tools that later games borrowed.",
+   "sources": [
+    "https://en.wikipedia.org/wiki/Batman:_Arkham_Asylum"
+   ],
+   "status": "draft"
+  },
+  {
+   "platformKey": "playstation-3",
+   "title": "LittleBigPlanet",
+   "text": "Media Molecule's \"Play, Create, Share\" platformer turned players into level designers; they made and shared millions of levels.",
+   "sources": [
+    "https://en.wikipedia.org/wiki/LittleBigPlanet_(2008_video_game)"
+   ],
+   "status": "draft"
+  },
+  {
+   "platformKey": "playstation-3",
+   "title": "Dark Souls",
+   "text": "The spiritual successor to Demon's Souls, with an interlocking world and cryptic lore, made FromSoftware's style famous worldwide.",
+   "sources": [
+    "https://en.wikipedia.org/wiki/Dark_Souls_(video_game)"
+   ],
+   "status": "draft"
+  },
+  {
+   "platformKey": "playstation-3",
+   "title": "Mass Effect 2",
+   "text": "BioWare's space RPG, praised as one of the best of its generation, came to PS3 in 2011 with an interactive comic to stand in for the first game, which PS3 never had.",
+   "sources": [
+    "https://en.wikipedia.org/wiki/Mass_Effect_2"
+   ],
+   "status": "draft"
+  },
+  {
+   "platformKey": "playstation-3",
+   "title": "The Orange Box",
+   "text": "Five Valve games on one disc: Half-Life 2 and its two episodes, Portal (whose GLaDOS became an icon) and Team Fortress 2.",
+   "sources": [
+    "https://en.wikipedia.org/wiki/The_Orange_Box"
+   ],
+   "status": "draft"
+  },
+  {
+   "platformKey": "playstation-3",
+   "title": "BioShock Infinite",
+   "text": "Irrational's floating city of Columbia, and Elizabeth at the player's side, made for one of 2013's most discussed stories.",
+   "sources": [
+    "https://en.wikipedia.org/wiki/BioShock_Infinite"
+   ],
+   "status": "draft"
+  },
+  {
+   "platformKey": "playstation-3",
+   "title": "Persona 5",
+   "text": "One of the last big PS3 games (2016 in Japan, 2017 worldwide, alongside a PS4 version): Atlus's stylish high-school RPG brought the series to a mainstream audience.",
+   "sources": [
+    "https://en.wikipedia.org/wiki/Persona_5"
+   ],
+   "status": "draft"
+  },
+  {
+   "platformKey": "playstation-3",
+   "title": "Rock Band 3",
+   "text": "Harmonix added keyboards and a Pro mode with real notes on real instruments, the height of the plastic-instrument craze.",
+   "sources": [
+    "https://en.wikipedia.org/wiki/Rock_Band_3"
+   ],
+   "status": "draft"
+  },
+  {
+   "platformKey": "playstation-3",
+   "title": "God of War III",
+   "text": "Kratos's PS3 debut and the end of his Greek saga, famous for the enormous scale of its battles.",
+   "sources": [
+    "https://en.wikipedia.org/wiki/God_of_War_III"
+   ],
+   "status": "draft"
+  },
+  {
+   "platformKey": "playstation-3",
+   "title": "Fallout 3",
+   "text": "Bethesda took Fallout into first-person 3D in the ruins of Washington, D.C., reviving the series for a new generation.",
+   "sources": [
+    "https://en.wikipedia.org/wiki/Fallout_3"
+   ],
+   "status": "draft"
+  },
+  {
+   "platformKey": "playstation-3",
+   "title": "Call of Duty 4: Modern Warfare",
+   "text": "Moving the series to modern times, it redefined online shooters with perks, killstreaks and unlockable progression, copied across the genre.",
+   "sources": [
+    "https://en.wikipedia.org/wiki/Call_of_Duty_4:_Modern_Warfare"
+   ],
+   "status": "draft"
+  },
+  {
+   "platformKey": "playstation-3",
+   "title": "Street Fighter IV",
+   "text": "The first new main Street Fighter in eleven years revived fighting games worldwide.",
+   "sources": [
+    "https://en.wikipedia.org/wiki/Street_Fighter_IV"
+   ],
+   "status": "draft"
+  },
+  {
+   "platformKey": "playstation-3",
+   "title": "Metal Gear Solid V: The Phantom Pain",
+   "text": "Kojima's last Metal Gear at Konami, an open-world stealth game, still came to PS3 in 2015, two years into the PS4's life.",
+   "sources": [
+    "https://en.wikipedia.org/wiki/Metal_Gear_Solid_V:_The_Phantom_Pain"
+   ],
+   "status": "draft"
+  },
+  {
+   "platformKey": "playstation-3",
+   "title": "LittleBigPlanet 2",
+   "text": "Sold as a 'platform for games': its tools could build whole games, not just levels, and most of the first game's 3 million-plus levels carried over.",
+   "sources": [
+    "https://en.wikipedia.org/wiki/LittleBigPlanet_2"
+   ],
+   "status": "draft"
+  },
+  {
+   "platformKey": "playstation-3",
+   "title": "Rayman Legends",
+   "text": "Ubisoft's hand-drawn platformer, with its celebrated music levels, is one of the best 2D platformers of its time.",
+   "sources": [
+    "https://en.wikipedia.org/wiki/Rayman_Legends"
+   ],
+   "status": "draft"
+  },
+  {
+   "platformKey": "playstation-3",
+   "title": "Rayman Origins",
+   "text": "The first game on Ubisoft's UbiArt Framework brought Rayman back to hand-drawn 2D with four-player co-op.",
+   "sources": [
+    "https://en.wikipedia.org/wiki/Rayman_Origins"
+   ],
+   "status": "draft"
+  },
+  {
+   "platformKey": "playstation-3",
+   "title": "Ni no Kuni: Wrath of the White Witch",
+   "text": "Level-5 made it with Studio Ghibli, whose animation and a Joe Hisaishi score give it the feel of a playable Ghibli film.",
+   "sources": [
+    "https://en.wikipedia.org/wiki/Ni_no_Kuni:_Wrath_of_the_White_Witch"
+   ],
+   "status": "draft"
+  },
+  {
+   "platformKey": "playstation-3",
+   "title": "Mass Effect 3",
+   "text": "The end of Commander Shepard's trilogy; its ending caused such an outcry that BioWare released an Extended Cut.",
+   "sources": [
+    "https://en.wikipedia.org/wiki/Mass_Effect_3"
+   ],
+   "status": "draft"
+  },
+  {
+   "platformKey": "playstation-3",
+   "title": "Killzone 2",
+   "text": "Guerrilla's heavy, gritty shooter was held up against the famous 2005 'target render' trailer, and became a technical showpiece for the PS3.",
+   "sources": [
+    "https://en.wikipedia.org/wiki/Killzone_2"
+   ],
+   "status": "draft"
+  },
+  {
+   "platformKey": "playstation-3",
+   "title": "Ratchet & Clank Future: A Crack in Time",
+   "text": "Often called the best of Insomniac's Future saga, adding time-bending puzzles to the series' weapons and humor.",
+   "sources": [
+    "https://en.wikipedia.org/wiki/Ratchet_&_Clank_Future:_A_Crack_in_Time"
+   ],
+   "status": "draft"
+  },
+  {
+   "platformKey": "playstation-3",
+   "title": "Ratchet & Clank Future: Tools of Destruction",
+   "text": "The series' first PS3 game looked like a playable animated film and was among the first PS3 games to support DualShock 3 vibration.",
+   "sources": [
+    "https://en.wikipedia.org/wiki/Ratchet_&_Clank_Future:_Tools_of_Destruction"
+   ],
+   "status": "draft"
+  },
+  {
+   "platformKey": "playstation-3",
+   "title": "Uncharted: Drake's Fortune",
+   "text": "Naughty Dog's first PS3 game introduced Nathan Drake and the cinematic action-adventure the PlayStation studios became known for.",
+   "sources": [
+    "https://en.wikipedia.org/wiki/Uncharted:_Drake's_Fortune"
+   ],
+   "status": "draft"
+  },
+  {
+   "platformKey": "playstation-3",
+   "title": "inFamous 2",
+   "text": "Sucker Punch's superpowered sequel moved to a city inspired by New Orleans, with good and evil choices shaping Cole's powers.",
+   "sources": [
+    "https://en.wikipedia.org/wiki/Infamous_2"
+   ],
+   "status": "draft"
+  },
+  {
+   "platformKey": "playstation-3",
+   "title": "inFamous",
+   "text": "Sucker Punch's open-world superhero game, where every power is electricity and choices make Cole a hero or infamous.",
+   "sources": [
+    "https://en.wikipedia.org/wiki/Infamous_(video_game)"
+   ],
+   "status": "draft"
+  },
+  {
+   "platformKey": "playstation-3",
+   "title": "Heavy Rain",
+   "text": "Quantic Dream's interactive crime drama, where any of its four leads can die and the story carries on, was a landmark for choice-driven games.",
+   "sources": [
+    "https://en.wikipedia.org/wiki/Heavy_Rain"
+   ],
+   "status": "draft"
+  },
+  {
+   "platformKey": "playstation-3",
+   "title": "Dark Souls II",
+   "text": "The first Souls game not directed by Hidetaka Miyazaki built a new kingdom, Drangleic, and a harsher penalty for dying.",
+   "sources": [
+    "https://en.wikipedia.org/wiki/Dark_Souls_II"
+   ],
+   "status": "draft"
+  },
+  {
+   "platformKey": "playstation-3",
+   "title": "Borderlands 2",
+   "text": "Gearbox's loot-driven co-op shooter, with Handsome Jack as its celebrated villain.",
+   "sources": [
+    "https://en.wikipedia.org/wiki/Borderlands_2"
+   ],
+   "status": "draft"
+  },
+  {
+   "platformKey": "playstation-3",
+   "title": "Burnout Paradise",
+   "text": "Criterion made Burnout an open world, Paradise City, where races start at any intersection, and kept adding to it with free updates.",
+   "sources": [
+    "https://en.wikipedia.org/wiki/Burnout_Paradise"
+   ],
+   "status": "draft"
+  },
+  {
+   "platformKey": "playstation-3",
+   "title": "Gran Turismo 5",
+   "text": "Polyphony's long-awaited simulation, with over a thousand cars and car damage, was one of the PS3's best-selling games.",
+   "sources": [
+    "https://en.wikipedia.org/wiki/Gran_Turismo_5"
+   ],
+   "status": "draft"
+  },
+  {
+   "platformKey": "playstation-3",
+   "title": "Call of Duty: Modern Warfare 2",
+   "text": "The 2009 sequel broke entertainment launch records, earning about US$550 million in its first five days.",
+   "sources": [
+    "https://en.wikipedia.org/wiki/Call_of_Duty:_Modern_Warfare_2"
+   ],
+   "status": "draft"
+  },
+  {
+   "platformKey": "playstation-3",
+   "title": "Assassin's Creed II",
+   "text": "Ezio's Renaissance Italy fixed the first game's repetition and made Assassin's Creed one of Ubisoft's biggest series.",
+   "sources": [
+    "https://en.wikipedia.org/wiki/Assassin's_Creed_II"
+   ],
+   "status": "draft"
+  },
+  {
+   "platformKey": "playstation-3",
+   "title": "Assassin's Creed: Brotherhood",
+   "text": "Ezio's second chapter, set in Rome, added recruitable assassins and the series' first multiplayer.",
+   "sources": [
+    "https://en.wikipedia.org/wiki/Assassin's_Creed:_Brotherhood"
+   ],
+   "status": "draft"
+  },
+  {
+   "platformKey": "playstation-3",
+   "title": "Assassin's Creed IV: Black Flag",
+   "text": "A pirate adventure in the Caribbean with ship battles and open-sea exploration, often called one of the best in the series.",
+   "sources": [
+    "https://en.wikipedia.org/wiki/Assassin's_Creed_IV:_Black_Flag"
+   ],
+   "status": "draft"
+  },
+  {
+   "platformKey": "playstation-3",
+   "title": "Flower",
+   "text": "Thatgamecompany's game about the wind carrying petals, played by tilting the controller, was an early case for games as art on the PlayStation Network.",
+   "sources": [
+    "https://en.wikipedia.org/wiki/Flower_(video_game)"
+   ],
+   "status": "draft"
+  },
+  {
+   "platformKey": "playstation-3",
+   "title": "Dead Space 2",
+   "text": "Visceral's sequel moved Isaac Clarke to a space-station city, the Sprawl, adding set pieces and his own trauma to the horror.",
+   "sources": [
+    "https://en.wikipedia.org/wiki/Dead_Space_2"
+   ],
+   "status": "draft"
+  },
+  {
+   "platformKey": "playstation-3",
+   "title": "Dead Space",
+   "text": "Survival horror aboard the USG Ishimura, with no on-screen display (health is on Isaac's back) and 'strategic dismemberment', influential for years.",
+   "sources": [
+    "https://en.wikipedia.org/wiki/Dead_Space_(2008_video_game)"
+   ],
+   "status": "draft"
+  },
+  {
+   "platformKey": "playstation-3",
+   "title": "Resistance: Fall of Man",
+   "text": "The PS3's best-selling launch game in North America, and GameSpot's and IGN's PS3 Game of the Year.",
+   "sources": [
+    "https://en.wikipedia.org/wiki/Resistance:_Fall_of_Man"
+   ],
+   "status": "draft"
+  },
+  {
+   "platformKey": "playstation-3",
+   "title": "Valkyria Chronicles",
+   "text": "Sega's tactics game with a watercolor look, where each turn moves soldiers in real time, became a cult classic and a series.",
+   "sources": [
+    "https://en.wikipedia.org/wiki/Valkyria_Chronicles_(video_game)"
+   ],
+   "status": "draft"
+  },
+  {
+   "platformKey": "playstation-3",
+   "title": "Metal Gear Rising: Revengeance",
+   "text": "PlatinumGames turned Raiden's spin-off into precise, over-the-top action where the player can cut enemies apart at any angle.",
+   "sources": [
+    "https://en.wikipedia.org/wiki/Metal_Gear_Rising:_Revengeance"
+   ],
+   "status": "draft"
+  },
+  {
+   "platformKey": "playstation-3",
+   "title": "Bayonetta",
+   "text": "Hideki Kamiya's stylish action game from PlatinumGames; its PS3 port was weaker than the Xbox 360 version.",
+   "sources": [
+    "https://en.wikipedia.org/wiki/Bayonetta_(video_game)"
+   ],
+   "status": "draft"
+  },
+  {
+   "platformKey": "playstation-3",
+   "title": "Vanquish",
+   "text": "Shinji Mikami's high-speed shooter, with rocket-powered slides, pushed cover shooters toward speed.",
+   "sources": [
+    "https://en.wikipedia.org/wiki/Vanquish_(video_game)"
+   ],
+   "status": "draft"
+  },
+  {
+   "platformKey": "playstation-3",
+   "title": "Fallout: New Vegas",
+   "text": "Obsidian's Mojave follow-up to Fallout 3, prized for its writing and factions despite bugs at launch.",
+   "sources": [
+    "https://en.wikipedia.org/wiki/Fallout:_New_Vegas"
+   ],
+   "status": "draft"
+  },
+  {
+   "platformKey": "playstation-3",
+   "title": "Deus Ex: Human Revolution",
+   "text": "Eidos-Montréal revived the cyberpunk classic, with stealth, hacking and talking as routes to each goal.",
+   "sources": [
+    "https://en.wikipedia.org/wiki/Deus_Ex:_Human_Revolution"
+   ],
+   "status": "draft"
+  },
+  {
+   "platformKey": "playstation-3",
+   "title": "Dishonored",
+   "text": "Arkane's stealth game in plague-ridden Dunwall, with powers such as Blink, rewarded creative play and runs without killing.",
+   "sources": [
+    "https://en.wikipedia.org/wiki/Dishonored"
+   ],
+   "status": "draft"
+  },
+  {
+   "platformKey": "playstation-3",
+   "title": "Far Cry 3",
+   "text": "Its open island, outposts to take and villain Vaas set the template for later Far Cry and Ubisoft open worlds.",
+   "sources": [
+    "https://en.wikipedia.org/wiki/Far_Cry_3"
+   ],
+   "status": "draft"
+  },
+  {
+   "platformKey": "playstation-3",
+   "title": "Tomb Raider",
+   "text": "Crystal Dynamics' 2013 reboot retold Lara Croft's origin as a survival story and began a new trilogy.",
+   "sources": [
+    "https://en.wikipedia.org/wiki/Tomb_Raider_(2013_video_game)"
+   ],
+   "status": "draft"
+  },
+  {
+   "platformKey": "playstation-3",
+   "title": "Mortal Kombat",
+   "text": "NetherRealm's 2011 reboot returned to 2D fighting and retold the first three games; its story mode set a standard for fighting games.",
+   "sources": [
+    "https://en.wikipedia.org/wiki/Mortal_Kombat_(2011_video_game)"
+   ],
+   "status": "draft"
+  },
+  {
+   "platformKey": "playstation-3",
+   "title": "Tekken Tag Tournament 2",
+   "text": "Namco's tag-team Tekken with almost every character in the series' history.",
+   "sources": [
+    "https://en.wikipedia.org/wiki/Tekken_Tag_Tournament_2"
+   ],
+   "status": "draft"
+  },
+  {
+   "platformKey": "playstation-3",
+   "title": "Soulcalibur IV",
+   "text": "Namco's weapon fighter, famous for its Star Wars guests: Darth Vader on PS3, Yoda on Xbox 360.",
+   "sources": [
+    "https://en.wikipedia.org/wiki/Soulcalibur_IV"
+   ],
+   "status": "draft"
+  },
+  {
+   "platformKey": "playstation-3",
+   "title": "Wipeout HD",
+   "text": "Studio Liverpool's anti-gravity racer ran at 1080p and 60 frames per second, a PlayStation Network showcase; a boxed version with the Fury expansion came out in Europe.",
+   "sources": [
+    "https://en.wikipedia.org/wiki/Wipeout_HD"
+   ],
+   "status": "draft"
+  },
+  {
+   "platformKey": "playstation-3",
+   "title": "Super Stardust HD",
+   "text": "Housemarque's twin-stick shooter was one of the first must-have PlayStation Network games (2007).",
+   "sources": [
+    "https://en.wikipedia.org/wiki/Super_Stardust_HD"
+   ],
+   "status": "draft"
+  },
+  {
+   "platformKey": "playstation-3",
+   "title": "Braid",
+   "text": "Jonathan Blow's time-rewinding puzzle platformer helped start the indie game boom; it came to PS3 in 2009.",
+   "sources": [
+    "https://en.wikipedia.org/wiki/Braid_(video_game)"
+   ],
+   "status": "draft"
+  },
+  {
+   "platformKey": "playstation-3",
+   "title": "Limbo",
+   "text": "Playdead's eerie black-and-white puzzle platformer is an indie landmark; it came to PS3 in 2011.",
+   "sources": [
+    "https://en.wikipedia.org/wiki/Limbo_(video_game)"
+   ],
+   "status": "draft"
+  },
+  {
+   "platformKey": "playstation-3",
+   "title": "The Walking Dead",
+   "text": "Telltale's choice-driven episodes about Lee and Clementine won many 2012 Game of the Year awards and revived adventure games.",
+   "sources": [
+    "https://en.wikipedia.org/wiki/The_Walking_Dead_(video_game)"
+   ],
+   "status": "draft"
+  },
+  {
+   "platformKey": "playstation-3",
+   "title": "Battlefield: Bad Company 2",
+   "text": "DICE's shooter where buildings crumble under fire, with a campaign full of humor.",
+   "sources": [
+    "https://en.wikipedia.org/wiki/Battlefield:_Bad_Company_2"
+   ],
+   "status": "draft"
+  },
+  {
+   "platformKey": "playstation-3",
+   "title": "Battlefield 3",
+   "text": "DICE's modern military shooter on its Frostbite 2 engine, Call of Duty's biggest challenger in 2011.",
+   "sources": [
+    "https://en.wikipedia.org/wiki/Battlefield_3"
+   ],
+   "status": "draft"
+  },
+  {
+   "platformKey": "playstation-3",
+   "title": "Call of Duty: Black Ops",
+   "text": "Treyarch's Cold War story of numbers and conspiracies, with a Zombies mode that became a phenomenon.",
+   "sources": [
+    "https://en.wikipedia.org/wiki/Call_of_Duty:_Black_Ops"
+   ],
+   "status": "draft"
+  },
+  {
+   "platformKey": "playstation-3",
+   "title": "Borderlands",
+   "text": "Gearbox's 2009 'role-playing shooter', with cel-shaded art and procedurally generated guns, started the looter-shooter genre.",
+   "sources": [
+    "https://en.wikipedia.org/wiki/Borderlands_(video_game)"
+   ],
+   "status": "draft"
+  },
+  {
+   "platformKey": "playstation-3",
+   "title": "Dragon Age: Origins",
+   "text": "BioWare's dark fantasy RPG, a spiritual successor to Baldur's Gate, with an origin story for each race and class.",
+   "sources": [
+    "https://en.wikipedia.org/wiki/Dragon_Age:_Origins"
+   ],
+   "status": "draft"
+  },
+  {
+   "platformKey": "playstation-3",
+   "title": "The Elder Scrolls IV: Oblivion",
+   "text": "Bethesda's huge open-world RPG reached PS3 in 2007, a year after Xbox 360 and PC, and set the template for Skyrim.",
+   "sources": [
+    "https://en.wikipedia.org/wiki/The_Elder_Scrolls_IV:_Oblivion"
+   ],
+   "status": "draft"
+  },
+  {
+   "platformKey": "playstation-3",
+   "title": "Mirror's Edge",
+   "text": "DICE's first-person parkour game, with its striking white city, is a cult favorite for how it moves.",
+   "sources": [
+    "https://en.wikipedia.org/wiki/Mirror's_Edge"
+   ],
+   "status": "draft"
+  },
+  {
+   "platformKey": "playstation-3",
+   "title": "Devil May Cry 4",
+   "text": "Capcom's stylish action series' first game beyond PlayStation introduced Nero alongside Dante.",
+   "sources": [
+    "https://en.wikipedia.org/wiki/Devil_May_Cry_4"
+   ],
+   "status": "draft"
+  },
+  {
+   "platformKey": "playstation-3",
+   "title": "DmC: Devil May Cry",
+   "text": "Ninja Theory's reboot reimagined Dante; its combat was praised even as the redesign divided fans.",
+   "sources": [
+    "https://en.wikipedia.org/wiki/DmC:_Devil_May_Cry"
+   ],
+   "status": "draft"
+  },
+  {
+   "platformKey": "playstation-3",
+   "title": "Resident Evil 5",
+   "text": "The series' first HD main game, built around two-player co-op in West Africa, and one of its best sellers.",
+   "sources": [
+    "https://en.wikipedia.org/wiki/Resident_Evil_5"
+   ],
+   "status": "draft"
+  },
+  {
+   "platformKey": "playstation-3",
+   "title": "Catherine",
+   "text": "Atlus's puzzle game about relationships and nightmares, from the Persona team.",
+   "sources": [
+    "https://en.wikipedia.org/wiki/Catherine_(video_game)"
+   ],
+   "status": "draft"
+  },
+  {
+   "platformKey": "playstation-3",
+   "title": "Yakuza 4",
+   "text": "Sega's crime drama in Kamurocho with four playable heroes, mixing melodrama with the series' side stories.",
+   "sources": [
+    "https://en.wikipedia.org/wiki/Yakuza_4"
+   ],
+   "status": "draft"
+  },
+  {
+   "platformKey": "playstation-3",
+   "title": "Yakuza 3",
+   "text": "Kiryu's first main-series game on PS3, which moved part of the story to Okinawa.",
+   "sources": [
+    "https://en.wikipedia.org/wiki/Yakuza_3"
+   ],
+   "status": "draft"
+  },
+  {
+   "platformKey": "playstation-3",
+   "title": "Tales of Xillia",
+   "text": "The 13th main Tales game, with two heroes, Jude and Milla, whose routes through the story differ.",
+   "sources": [
+    "https://en.wikipedia.org/wiki/Tales_of_Xillia"
+   ],
+   "status": "draft"
+  },
+  {
+   "platformKey": "playstation-3",
+   "title": "Final Fantasy XIII",
+   "text": "Square Enix's first HD Final Fantasy, with fast Paradigm battles; its linear design divided fans, but it sold millions and had two sequels.",
+   "sources": [
+    "https://en.wikipedia.org/wiki/Final_Fantasy_XIII"
+   ],
+   "status": "draft"
+  },
+  {
+   "platformKey": "playstation-3",
+   "title": "Gran Turismo 6",
+   "text": "The series' last PS3 game, released weeks after the PS4, with more cars and tracks and a tribute to Ayrton Senna.",
+   "sources": [
+    "https://en.wikipedia.org/wiki/Gran_Turismo_6"
+   ],
+   "status": "draft"
+  },
+  {
+   "platformKey": "playstation-3",
+   "title": "MotorStorm",
+   "text": "Evolution Studios' off-road racer, a European launch game and one of the PS3's two biggest games of 2007.",
+   "sources": [
+    "https://en.wikipedia.org/wiki/MotorStorm_(video_game)"
+   ],
+   "status": "draft"
+  },
+  {
+   "platformKey": "playstation-3",
+   "title": "Killzone 3",
+   "text": "The first Killzone in stereoscopic 3D and with PlayStation Move aiming.",
+   "sources": [
+    "https://en.wikipedia.org/wiki/Killzone_3"
+   ],
+   "status": "draft"
+  },
+  {
+   "platformKey": "playstation-3",
+   "title": "Resistance 2",
+   "text": "Insomniac's sequel took the war to the United States, with eight-player co-op and 60-player online battles.",
+   "sources": [
+    "https://en.wikipedia.org/wiki/Resistance_2"
+   ],
+   "status": "draft"
+  },
+  {
+   "platformKey": "playstation-3",
+   "title": "Rock Band 2",
+   "text": "Harmonix's sequel kept the band together: songs from the first game and a growing download store carried over.",
+   "sources": [
+    "https://en.wikipedia.org/wiki/Rock_Band_2"
+   ],
+   "status": "draft"
+  },
+  {
+   "platformKey": "playstation-3",
+   "title": "Max Payne 3",
+   "text": "Rockstar's bullet-time shooter moved Max to São Paulo, with a grim story and detailed animation.",
+   "sources": [
+    "https://en.wikipedia.org/wiki/Max_Payne_3"
+   ],
+   "status": "draft"
+  },
+  {
+   "platformKey": "playstation-3",
+   "title": "Sleeping Dogs",
+   "text": "An open-world Hong Kong crime story built from the cancelled True Crime: Hong Kong, praised for its martial-arts combat.",
+   "sources": [
+    "https://en.wikipedia.org/wiki/Sleeping_Dogs_(video_game)"
+   ],
+   "status": "draft"
+  },
+  {
+   "platformKey": "playstation-3",
+   "title": "L.A. Noire",
+   "text": "Team Bondi's 1940s detective game captured actors' faces (MotorScan) so players could read suspects during interrogations.",
+   "sources": [
+    "https://en.wikipedia.org/wiki/L.A._Noire"
+   ],
+   "status": "draft"
+  },
+  {
+   "platformKey": "playstation-3",
+   "title": "Just Cause 2",
+   "text": "Avalanche's playground of explosions and grappling-hook stunts over a huge island, Panau.",
+   "sources": [
+    "https://en.wikipedia.org/wiki/Just_Cause_2"
+   ],
+   "status": "draft"
+  },
+  {
+   "platformKey": "playstation-3",
+   "title": "Red Faction: Guerrilla",
+   "text": "Volition's Mars uprising, where whole buildings can be brought down (the Geo-Mod 2.0 engine).",
+   "sources": [
+    "https://en.wikipedia.org/wiki/Red_Faction:_Guerrilla"
+   ],
+   "status": "draft"
+  },
+  {
+   "platformKey": "playstation-3",
+   "title": "Castle Crashers",
+   "text": "The Behemoth's hand-drawn four-player brawler, an Xbox Live Arcade hit that came to PS3 in 2010.",
+   "sources": [
+    "https://en.wikipedia.org/wiki/Castle_Crashers"
+   ],
+   "status": "draft"
+  },
+  {
+   "platformKey": "playstation-3",
+   "title": "Spelunky",
+   "text": "Derek Yu's procedurally generated cave platformer, a landmark of the roguelike revival; it came to PS3 in 2013.",
+   "sources": [
+    "https://en.wikipedia.org/wiki/Spelunky"
+   ],
+   "status": "draft"
+  },
+  {
+   "platformKey": "playstation-3",
+   "title": "Guacamelee!",
+   "text": "DrinkBox's Metroidvania steeped in Mexican culture and lucha libre, on PS3 and Vita with one purchase for both.",
+   "sources": [
+    "https://en.wikipedia.org/wiki/Guacamelee!"
+   ],
+   "status": "draft"
+  },
+  {
+   "platformKey": "playstation-3",
+   "title": "Sound Shapes",
+   "text": "A platformer where everything collected adds a note to the level's song, with music by Beck and deadmau5 among others.",
+   "sources": [
+    "https://en.wikipedia.org/wiki/Sound_Shapes"
+   ],
+   "status": "draft"
+  },
+  {
+   "platformKey": "playstation-3",
+   "title": "Puppeteer",
+   "text": "Sony Japan's theatrical platformer, played out on a puppet-show stage, where Kutaro fights with magic scissors.",
+   "sources": [
+    "https://en.wikipedia.org/wiki/Puppeteer_(video_game)"
+   ],
+   "status": "draft"
+  },
+  {
+   "platformKey": "playstation-3",
+   "title": "Tokyo Jungle",
+   "text": "Survive as animals, from Pomeranians to lions, in a Tokyo empty of people: a strange cult favorite from Sony Japan.",
+   "sources": [
+    "https://en.wikipedia.org/wiki/Tokyo_Jungle"
+   ],
+   "status": "draft"
+  },
+  {
+   "platformKey": "playstation-3",
+   "title": "Dragon's Crown",
+   "text": "Vanillaware's hand-painted fantasy brawler with loot and four-player co-op, directed by George Kamitani.",
+   "sources": [
+    "https://en.wikipedia.org/wiki/Dragon's_Crown"
+   ],
+   "status": "draft"
+  },
+  {
+   "platformKey": "playstation-3",
+   "title": "Skate 3",
+   "text": "EA Black Box's skateboarding game with 'flick-it' stick controls, still loved (and a viral hit for its physics glitches).",
+   "sources": [
+    "https://en.wikipedia.org/wiki/Skate_3"
+   ],
+   "status": "draft"
+  },
+  {
+   "platformKey": "super-nintendo",
+   "title": "The Legend of Zelda: A Link to the Past",
+   "text": "The third Zelda brought the top-down adventure to 16 bits with a Light World and a Dark World to cross between, the pattern for most Zelda games since.",
+   "sources": [
+    "https://en.wikipedia.org/wiki/The_Legend_of_Zelda:_A_Link_to_the_Past"
+   ],
+   "status": "draft"
+  },
+  {
+   "platformKey": "super-nintendo",
+   "title": "Super Metroid",
+   "text": "Samus's third adventure, all atmosphere and hidden paths, defined the exploration style now called 'Metroidvania' and is a speedrunning favorite.",
+   "sources": [
+    "https://en.wikipedia.org/wiki/Super_Metroid"
+   ],
+   "status": "draft"
+  },
+  {
+   "platformKey": "super-nintendo",
+   "title": "Chrono Trigger",
+   "text": "Square's time-travel RPG from a 'Dream Team' (Hironobu Sakaguchi, Yuji Horii and Akira Toriyama), with many endings and a New Game+ that later games copied.",
+   "sources": [
+    "https://en.wikipedia.org/wiki/Chrono_Trigger"
+   ],
+   "status": "draft"
+  },
+  {
+   "platformKey": "super-nintendo",
+   "title": "Super Mario World",
+   "text": "The launch game packed with the console introduced Yoshi and secret exits on a world map; about 20.6 million copies made it the SNES's best seller.",
+   "sources": [
+    "https://en.wikipedia.org/wiki/Super_Mario_World"
+   ],
+   "status": "draft"
+  },
+  {
+   "platformKey": "super-nintendo",
+   "title": "Final Fantasy VI",
+   "text": "Released in North America as Final Fantasy III: a large ensemble cast, an opera scene, and a villain, Kefka, who ruins the world halfway through; the last main Final Fantasy in 2D.",
+   "sources": [
+    "https://en.wikipedia.org/wiki/Final_Fantasy_VI"
+   ],
+   "status": "draft"
+  },
+  {
+   "platformKey": "super-nintendo",
+   "title": "Super Mario RPG: Legend of the Seven Stars",
+   "text": "Square and Nintendo made the first Mario RPG; its timed button presses in battle carried on in Paper Mario and Mario & Luigi.",
+   "sources": [
+    "https://en.wikipedia.org/wiki/Super_Mario_RPG"
+   ],
+   "status": "draft"
+  },
+  {
+   "platformKey": "super-nintendo",
+   "title": "Donkey Kong Country 2: Diddy's Kong Quest",
+   "text": "Rare's sequel starred Diddy and Dixie Kong in pirate-themed worlds, with a celebrated score by David Wise.",
+   "sources": [
+    "https://en.wikipedia.org/wiki/Donkey_Kong_Country_2"
+   ],
+   "status": "draft"
+  },
+  {
+   "platformKey": "super-nintendo",
+   "title": "Super Mario World 2: Yoshi's Island",
+   "text": "Yoshi carries baby Mario through a crayon-drawn world; the Super FX 2 chip in the cartridge powers its effects.",
+   "sources": [
+    "https://en.wikipedia.org/wiki/Yoshi's_Island"
+   ],
+   "status": "draft"
+  },
+  {
+   "platformKey": "super-nintendo",
+   "title": "EarthBound",
+   "text": "Shigesato Itoi's funny, strange modern-day RPG sold poorly in North America at first, then became one of the most beloved cult classics.",
+   "sources": [
+    "https://en.wikipedia.org/wiki/EarthBound"
+   ],
+   "status": "draft"
+  },
+  {
+   "platformKey": "super-nintendo",
+   "title": "Super Mario Kart",
+   "text": "The first Mario Kart started the kart racing genre; Mode 7 tracks and its battle mode made it the fourth best-selling SNES game (8.76 million).",
+   "sources": [
+    "https://en.wikipedia.org/wiki/Super_Mario_Kart"
+   ],
+   "status": "draft"
+  },
+  {
+   "platformKey": "super-nintendo",
+   "title": "Street Fighter II Turbo",
+   "text": "The faster \"Hyper Fighting\" edition of the arcade phenomenon; the SNES had the first home versions of Street Fighter II, a big win in the console war.",
+   "sources": [
+    "https://en.wikipedia.org/wiki/Street_Fighter_II_Turbo"
+   ],
+   "status": "draft"
+  },
+  {
+   "platformKey": "super-nintendo",
+   "title": "Secret of Mana",
+   "text": "Square's action RPG with real-time battles for up to three players (with a Multitap), and a much-loved score by Hiroki Kikuta.",
+   "sources": [
+    "https://en.wikipedia.org/wiki/Secret_of_Mana"
+   ],
+   "status": "draft"
+  },
+  {
+   "platformKey": "super-nintendo",
+   "title": "Super Castlevania IV",
+   "text": "Konami remade Simon Belmont's quest for 16 bits, with a whip that swings in eight directions and rotating Mode 7 rooms.",
+   "sources": [
+    "https://en.wikipedia.org/wiki/Super_Castlevania_IV"
+   ],
+   "status": "draft"
+  },
+  {
+   "platformKey": "super-nintendo",
+   "title": "Donkey Kong Country",
+   "text": "Rare's pre-rendered 3D graphics made the SNES look like the new 32-bit consoles; 6.1 million copies sold in its first 45 days, a record at the time.",
+   "sources": [
+    "https://en.wikipedia.org/wiki/Donkey_Kong_Country"
+   ],
+   "status": "draft"
+  },
+  {
+   "platformKey": "super-nintendo",
+   "title": "Mega Man X",
+   "text": "Capcom's reinvention of Mega Man for a darker future: wall jumps, dashes and armor upgrades.",
+   "sources": [
+    "https://en.wikipedia.org/wiki/Mega_Man_X_(video_game)"
+   ],
+   "status": "draft"
+  },
+  {
+   "platformKey": "super-nintendo",
+   "title": "Super Punch-Out!!",
+   "text": "Nintendo's boxing game about reading each opponent's tells, with big, colorful fighters.",
+   "sources": [
+    "https://en.wikipedia.org/wiki/Super_Punch-Out!!"
+   ],
+   "status": "draft"
+  },
+  {
+   "platformKey": "super-nintendo",
+   "title": "Contra III: The Alien Wars",
+   "text": "Konami's run-and-gun with huge bosses and top-down Mode 7 stages; in Europe it became Super Probotector, with robots.",
+   "sources": [
+    "https://en.wikipedia.org/wiki/Contra_III:_The_Alien_Wars"
+   ],
+   "status": "draft"
+  },
+  {
+   "platformKey": "super-nintendo",
+   "title": "Final Fantasy IV",
+   "text": "Released in North America as Final Fantasy II: it introduced the Active Time Battle system and a character-driven story, both series staples.",
+   "sources": [
+    "https://en.wikipedia.org/wiki/Final_Fantasy_IV"
+   ],
+   "status": "draft"
+  },
+  {
+   "platformKey": "super-nintendo",
+   "title": "Star Fox",
+   "text": "The first game with the Super FX chip in its cartridge, drawing 3D polygons years before the Nintendo 64.",
+   "sources": [
+    "https://en.wikipedia.org/wiki/Star_Fox_(1993_video_game)"
+   ],
+   "status": "draft"
+  },
+  {
+   "platformKey": "super-nintendo",
+   "title": "Kirby Super Star",
+   "text": "Several Kirby games in one cartridge, with two-player co-op, including \"The Great Cave Offensive\" and \"Milky Way Wishes\".",
+   "sources": [
+    "https://en.wikipedia.org/wiki/Kirby_Super_Star"
+   ],
+   "status": "draft"
+  },
+  {
+   "platformKey": "super-nintendo",
+   "title": "Super Street Fighter II",
+   "text": "The edition that added four new fighters: Cammy, Fei Long, T. Hawk and Dee Jay.",
+   "sources": [
+    "https://en.wikipedia.org/wiki/Super_Street_Fighter_II"
+   ],
+   "status": "draft"
+  },
+  {
+   "platformKey": "super-nintendo",
+   "title": "F-Zero",
+   "text": "A Super Famicom launch game: futuristic racing at high speed, a Mode 7 showcase that inspired later racers such as Wipeout.",
+   "sources": [
+    "https://en.wikipedia.org/wiki/F-Zero_(video_game)"
+   ],
+   "status": "draft"
+  },
+  {
+   "platformKey": "super-nintendo",
+   "title": "Teenage Mutant Ninja Turtles IV: Turtles in Time",
+   "text": "Konami's arcade beat 'em up, rebuilt for the SNES with new stages and its famous throw toward the screen.",
+   "sources": [
+    "https://en.wikipedia.org/wiki/Teenage_Mutant_Ninja_Turtles:_Turtles_in_Time"
+   ],
+   "status": "draft"
+  },
+  {
+   "platformKey": "super-nintendo",
+   "title": "Trials of Mana",
+   "text": "Seiken Densetsu 3, in Japanese only until 2019: pick three of six heroes, each with a story of their own.",
+   "sources": [
+    "https://en.wikipedia.org/wiki/Trials_of_Mana"
+   ],
+   "status": "draft"
+  },
+  {
+   "platformKey": "super-nintendo",
+   "title": "Super Ghouls 'n Ghosts",
+   "text": "Capcom's famously hard platformer, where Arthur's armor breaks at one hit; the first in its series made for a home console rather than arcades.",
+   "sources": [
+    "https://en.wikipedia.org/wiki/Super_Ghouls_'n_Ghosts"
+   ],
+   "status": "draft"
+  },
+  {
+   "platformKey": "super-nintendo",
+   "title": "Donkey Kong Country 3: Dixie Kong's Double Trouble!",
+   "text": "Rare's third Country game, with Dixie and her cousin Kiddy, one of the last big SNES games.",
+   "sources": [
+    "https://en.wikipedia.org/wiki/Donkey_Kong_Country_3"
+   ],
+   "status": "draft"
+  },
+  {
+   "platformKey": "super-nintendo",
+   "title": "Final Fantasy V",
+   "text": "Japan-only on the SNES, it perfected the Job system that lets any character learn any class's abilities.",
+   "sources": [
+    "https://en.wikipedia.org/wiki/Final_Fantasy_V"
+   ],
+   "status": "draft"
+  },
+  {
+   "platformKey": "super-nintendo",
+   "title": "Terranigma",
+   "text": "Quintet's action RPG about bringing the Earth back to life, released in Japan and Europe but never in North America.",
+   "sources": [
+    "https://en.wikipedia.org/wiki/Terranigma"
+   ],
+   "status": "draft"
+  },
+  {
+   "platformKey": "super-nintendo",
+   "title": "Illusion of Gaia",
+   "text": "Quintet's action RPG journey through the ruins and wonders of a reimagined Earth.",
+   "sources": [
+    "https://en.wikipedia.org/wiki/Illusion_of_Gaia"
+   ],
+   "status": "draft"
+  },
+  {
+   "platformKey": "super-nintendo",
+   "title": "Breath of Fire II",
+   "text": "Capcom's dragon-themed RPG sequel, with a darker story and a town that grows as you recruit people.",
+   "sources": [
+    "https://en.wikipedia.org/wiki/Breath_of_Fire_II"
+   ],
+   "status": "draft"
+  },
+  {
+   "platformKey": "super-nintendo",
+   "title": "Tactics Ogre: Let Us Cling Together",
+   "text": "Yasumi Matsuno's tactical RPG of ethnic war and hard choices, a forerunner of Final Fantasy Tactics.",
+   "sources": [
+    "https://en.wikipedia.org/wiki/Tactics_Ogre"
+   ],
+   "status": "draft"
+  },
+  {
+   "platformKey": "super-nintendo",
+   "title": "Harvest Moon",
+   "text": "The first Harvest Moon: farm, befriend a village and marry, a gentle game that started a genre.",
+   "sources": [
+    "https://en.wikipedia.org/wiki/Harvest_Moon_(video_game)"
+   ],
+   "status": "draft"
+  },
+  {
+   "platformKey": "super-nintendo",
+   "title": "ActRaiser",
+   "text": "Quintet mixed side-scrolling action with god-game city building, early in the console's life.",
+   "sources": [
+    "https://en.wikipedia.org/wiki/ActRaiser"
+   ],
+   "status": "draft"
+  },
+  {
+   "platformKey": "super-nintendo",
+   "title": "Pilotwings",
+   "text": "A Super Famicom launch game: flight lessons in Mode 7 that showed off the console's pseudo-3D.",
+   "sources": [
+    "https://en.wikipedia.org/wiki/Pilotwings_(video_game)"
+   ],
+   "status": "draft"
+  },
+  {
+   "platformKey": "super-nintendo",
+   "title": "Lufia II: Rise of the Sinistrals",
+   "text": "Neverland's RPG, known for its Zelda-like dungeon puzzles and the endless Ancient Cave.",
+   "sources": [
+    "https://en.wikipedia.org/wiki/Lufia_II:_Rise_of_the_Sinistrals"
+   ],
+   "status": "draft"
+  },
+  {
+   "platformKey": "super-nintendo",
+   "title": "Demon's Crest",
+   "text": "Capcom's dark adventure starring the gargoyle Firebrand; a commercial failure then, a cult favorite now.",
+   "sources": [
+    "https://en.wikipedia.org/wiki/Demon's_Crest"
+   ],
+   "status": "draft"
+  },
+  {
+   "platformKey": "super-nintendo",
+   "title": "Mega Man X2",
+   "text": "The second X game used Capcom's Cx4 chip in the cartridge for its wireframe 3D effects.",
+   "sources": [
+    "https://en.wikipedia.org/wiki/Mega_Man_X2"
+   ],
+   "status": "draft"
+  },
+  {
+   "platformKey": "super-nintendo",
+   "title": "Super Mario All-Stars",
+   "text": "The NES Super Mario games remade in 16-bit graphics, including the West's first official release of Japan's harder Super Mario Bros. 2, as The Lost Levels.",
+   "sources": [
+    "https://en.wikipedia.org/wiki/Super_Mario_All-Stars"
+   ],
+   "status": "draft"
+  },
+  {
+   "platformKey": "super-nintendo",
+   "title": "Ogre Battle: The March of the Black Queen",
+   "text": "Yasumi Matsuno's real-time strategy RPG with branching endings, the first Ogre Battle.",
+   "sources": [
+    "https://en.wikipedia.org/wiki/Ogre_Battle:_The_March_of_the_Black_Queen"
+   ],
+   "status": "draft"
+  },
+  {
+   "platformKey": "super-nintendo",
+   "title": "Street Fighter Alpha 2",
+   "text": "A late SNES port that used a compression chip (the S-DD1) to fit the arcade game onto a cartridge.",
+   "sources": [
+    "https://en.wikipedia.org/wiki/Street_Fighter_Alpha_2"
+   ],
+   "status": "draft"
+  },
+  {
+   "platformKey": "super-nintendo",
+   "title": "Sunset Riders",
+   "text": "Konami's Wild West arcade run-and-gun, brought to the SNES in 1993.",
+   "sources": [
+    "https://en.wikipedia.org/wiki/Sunset_Riders"
+   ],
+   "status": "draft"
+  },
+  {
+   "platformKey": "super-nintendo",
+   "title": "Killer Instinct",
+   "text": "Rare's fighting game of long combos and pre-rendered fighters; the SNES version came on a black cartridge.",
+   "sources": [
+    "https://en.wikipedia.org/wiki/Killer_Instinct_(1994_video_game)"
+   ],
+   "status": "draft"
+  },
+  {
+   "platformKey": "super-nintendo",
+   "title": "Zombies Ate My Neighbors",
+   "text": "LucasArts' two-player run-and-gun parody of horror movies: rescue the neighbors from B-movie monsters.",
+   "sources": [
+    "https://en.wikipedia.org/wiki/Zombies_Ate_My_Neighbors"
+   ],
+   "status": "draft"
+  },
+  {
+   "platformKey": "super-nintendo",
+   "title": "Dragon Quest V",
+   "text": "A story that follows its hero from childhood to fatherhood, with monsters that join the party; not in English until the 2009 DS remake.",
+   "sources": [
+    "https://en.wikipedia.org/wiki/Dragon_Quest_V"
+   ],
+   "status": "draft"
+  },
+  {
+   "platformKey": "super-nintendo",
+   "title": "Fire Emblem: Genealogy of the Holy War",
+   "text": "The fourth Fire Emblem told its story across two generations, with children inheriting their parents' traits.",
+   "sources": [
+    "https://en.wikipedia.org/wiki/Fire_Emblem:_Genealogy_of_the_Holy_War"
+   ],
+   "status": "draft"
+  },
+  {
+   "platformKey": "super-nintendo",
+   "title": "Live A Live",
+   "text": "Square's anthology RPG of seven stories across time, in Japanese only until its 2022 remake on Nintendo Switch.",
+   "sources": [
+    "https://en.wikipedia.org/wiki/Live_A_Live"
+   ],
+   "status": "draft"
+  },
+  {
+   "platformKey": "super-nintendo",
+   "title": "Secret of Evermore",
+   "text": "Square's only game made in the United States: a boy and his shape-shifting dog in worlds out of B movies.",
+   "sources": [
+    "https://en.wikipedia.org/wiki/Secret_of_Evermore"
+   ],
+   "status": "draft"
+  },
+  {
+   "platformKey": "super-nintendo",
+   "title": "Soul Blazer",
+   "text": "Quintet's action RPG, where clearing monster lairs frees the souls of a world's people.",
+   "sources": [
+    "https://en.wikipedia.org/wiki/Soul_Blazer"
+   ],
+   "status": "draft"
+  },
+  {
+   "platformKey": "super-nintendo",
+   "title": "Kirby's Dream Course",
+   "text": "Kirby as the ball in a mini-golf puzzle game from HAL Laboratory.",
+   "sources": [
+    "https://en.wikipedia.org/wiki/Kirby's_Dream_Course"
+   ],
+   "status": "draft"
+  },
+  {
+   "platformKey": "super-nintendo",
+   "title": "Uniracers",
+   "text": "DMA Design's unicycle stunt racer; a Pixar lawsuit over its unicycle stopped production, so cartridges are scarce.",
+   "sources": [
+    "https://en.wikipedia.org/wiki/Uniracers"
+   ],
+   "status": "draft"
+  },
+  {
+   "platformKey": "super-nintendo",
+   "title": "Axelay",
+   "text": "Konami's shooter whose vertical stages roll away like a drum, a technical showpiece.",
+   "sources": [
+    "https://en.wikipedia.org/wiki/Axelay"
+   ],
+   "status": "draft"
+  },
+  {
+   "platformKey": "super-nintendo",
+   "title": "Super Bomberman 2",
+   "text": "Hudson's party classic for up to four players with a Multitap.",
+   "sources": [
+    "https://en.wikipedia.org/wiki/Super_Bomberman_2"
+   ],
+   "status": "draft"
+  },
+  {
+   "platformKey": "super-nintendo",
+   "title": "Mortal Kombat II",
+   "text": "Unlike the first game, the SNES version kept the blood and fatalities, once age ratings had arrived.",
+   "sources": [
+    "https://en.wikipedia.org/wiki/Mortal_Kombat_II"
+   ],
+   "status": "draft"
+  },
+  {
+   "platformKey": "super-nintendo",
+   "title": "NBA Jam",
+   "text": "Midway's over-the-top two-on-two basketball (\"He's on fire!\") was a huge arcade and home hit.",
+   "sources": [
+    "https://en.wikipedia.org/wiki/NBA_Jam_(1993_video_game)"
+   ],
+   "status": "draft"
+  },
+  {
+   "platformKey": "super-nintendo",
+   "title": "Tetris Attack",
+   "text": "Japan's Panel de Pon, dressed with Yoshi's Island characters for the West: a fast block-swapping puzzler.",
+   "sources": [
+    "https://en.wikipedia.org/wiki/Tetris_Attack"
+   ],
+   "status": "draft"
+  },
+  {
+   "platformKey": "super-nintendo",
+   "title": "Star Ocean",
+   "text": "tri-Ace's science-fiction RPG squeezed 48 megabits and voice clips onto a cartridge with a compression chip; Japan only until later remakes.",
+   "sources": [
+    "https://en.wikipedia.org/wiki/Star_Ocean_(video_game)"
+   ],
+   "status": "draft"
+  },
+  {
+   "platformKey": "super-nintendo",
+   "title": "Romancing SaGa 3",
+   "text": "Square's open-ended RPG with eight heroes to choose from; Japan only until a 2019 remaster.",
+   "sources": [
+    "https://en.wikipedia.org/wiki/Romancing_SaGa_3"
+   ],
+   "status": "draft"
+  },
+  {
+   "platformKey": "super-nintendo",
+   "title": "Front Mission",
+   "text": "Square's mech tactics RPG of a near-future war; Japan only on the Super Famicom.",
+   "sources": [
+    "https://en.wikipedia.org/wiki/Front_Mission_(video_game)"
+   ],
+   "status": "draft"
+  },
+  {
+   "platformKey": "super-nintendo",
+   "title": "Bahamut Lagoon",
+   "text": "Square's tactics RPG of commanding dragons, a late Super Famicom game never sold in English.",
+   "sources": [
+    "https://en.wikipedia.org/wiki/Bahamut_Lagoon"
+   ],
+   "status": "draft"
+  },
+  {
+   "platformKey": "super-nintendo",
+   "title": "Dragon Quest VI",
+   "text": "The last of the Zenithian trilogy, with a dream world beside the real one; in English from the 2011 DS remake.",
+   "sources": [
+    "https://en.wikipedia.org/wiki/Dragon_Quest_VI"
+   ],
+   "status": "draft"
+  },
+  {
+   "platformKey": "super-nintendo",
+   "title": "Dragon Quest III",
+   "text": "A 1996 Super Famicom remake of the classic Famicom RPG, with new graphics and extras; Japan only.",
+   "sources": [
+    "https://en.wikipedia.org/wiki/Dragon_Quest_III"
+   ],
+   "status": "draft"
+  },
+  {
+   "platformKey": "super-nintendo",
+   "title": "Rock n' Roll Racing",
+   "text": "Combat racing to licensed rock and metal songs, made by Silicon & Synapse, soon renamed Blizzard Entertainment.",
+   "sources": [
+    "https://en.wikipedia.org/wiki/Rock_n'_Roll_Racing"
+   ],
+   "status": "draft"
+  },
+  {
+   "platformKey": "super-nintendo",
+   "title": "The Lost Vikings",
+   "text": "Blizzard's early puzzle platformer (as Silicon & Synapse): three Vikings with different skills who must work together.",
+   "sources": [
+    "https://en.wikipedia.org/wiki/The_Lost_Vikings"
+   ],
+   "status": "draft"
+  },
+  {
+   "platformKey": "super-nintendo",
+   "title": "Pocky & Rocky",
+   "text": "Natsume's co-op shooter: a shrine maiden and a tanuki against monsters from Japanese folklore.",
+   "sources": [
+    "https://en.wikipedia.org/wiki/Pocky_&_Rocky"
+   ],
+   "status": "draft"
+  },
+  {
+   "platformKey": "super-nintendo",
+   "title": "The Legend of the Mystical Ninja",
+   "text": "The first Ganbare Goemon game released in the West: a comic adventure through Edo-period Japan.",
+   "sources": [
+    "https://en.wikipedia.org/wiki/The_Legend_of_the_Mystical_Ninja"
+   ],
+   "status": "draft"
+  },
+  {
+   "platformKey": "super-nintendo",
+   "title": "Super Turrican 2",
+   "text": "Factor 5's run-and-gun showcase of what the SNES could do with graphics and sound.",
+   "sources": [
+    "https://en.wikipedia.org/wiki/Super_Turrican_2"
+   ],
+   "status": "draft"
+  },
+  {
+   "platformKey": "super-nintendo",
+   "title": "Kirby's Dream Land 3",
+   "text": "Kirby with a crayon look and animal friends, and the last SNES game Nintendo published in North America (1997).",
+   "sources": [
+    "https://en.wikipedia.org/wiki/Kirby's_Dream_Land_3"
+   ],
+   "status": "draft"
+  },
+  {
+   "platformKey": "super-nintendo",
+   "title": "Mega Man 7",
+   "text": "The original Mega Man's 16-bit entry, which introduced Bass and Treble.",
+   "sources": [
+    "https://en.wikipedia.org/wiki/Mega_Man_7"
+   ],
+   "status": "draft"
+  },
+  {
+   "platformKey": "super-nintendo",
+   "title": "Mega Man X3",
+   "text": "The last Mega Man X on the SNES, where Zero became playable.",
+   "sources": [
+    "https://en.wikipedia.org/wiki/Mega_Man_X3"
+   ],
+   "status": "draft"
+  },
+  {
+   "platformKey": "super-nintendo",
+   "title": "Breath of Fire",
+   "text": "Capcom's first Breath of Fire, starting the series of Ryu, who turns into dragons.",
+   "sources": [
+    "https://en.wikipedia.org/wiki/Breath_of_Fire_(video_game)"
+   ],
+   "status": "draft"
+  },
+  {
+   "platformKey": "super-nintendo",
+   "title": "Shadowrun",
+   "text": "The cyberpunk tabletop RPG as a noir mystery, driven by keywords learned in conversation.",
+   "sources": [
+    "https://en.wikipedia.org/wiki/Shadowrun_(1993_video_game)"
+   ],
+   "status": "draft"
+  },
+  {
+   "platformKey": "super-nintendo",
+   "title": "Super Star Wars: The Empire Strikes Back",
+   "text": "The second of LucasArts' famously hard Super Star Wars games, adding Luke's Force powers.",
+   "sources": [
+    "https://en.wikipedia.org/wiki/Super_Star_Wars:_The_Empire_Strikes_Back"
+   ],
+   "status": "draft"
+  },
+  {
+   "platformKey": "super-nintendo",
+   "title": "Super Star Wars",
+   "text": "LucasArts' side-scrolling take on the 1977 film, known for its difficulty and its X-wing stage.",
+   "sources": [
+    "https://en.wikipedia.org/wiki/Super_Star_Wars"
+   ],
+   "status": "draft"
+  },
+  {
+   "platformKey": "super-nintendo",
+   "title": "Disney's Aladdin",
+   "text": "Capcom's SNES Aladdin, a different game from Virgin's Genesis version, and a polished platformer in its own right.",
+   "sources": [
+    "https://en.wikipedia.org/wiki/Disney's_Aladdin_(SNES_video_game)"
+   ],
+   "status": "draft"
+  },
+  {
+   "platformKey": "super-nintendo",
+   "title": "The Magical Quest Starring Mickey Mouse",
+   "text": "Capcom's Mickey Mouse platformer, where costumes change his powers.",
+   "sources": [
+    "https://en.wikipedia.org/wiki/Disney's_Magical_Quest"
+   ],
+   "status": "draft"
+  },
+  {
+   "platformKey": "super-nintendo",
+   "title": "SimCity",
+   "text": "Will Wright's city builder, with Nintendo's own touches: Dr. Wright as an adviser and Bowser as a disaster.",
+   "sources": [
+    "https://en.wikipedia.org/wiki/SimCity_(1989_video_game)"
+   ],
+   "status": "draft"
+  },
+  {
+   "platformKey": "super-nintendo",
+   "title": "Wild Guns",
+   "text": "Natsume's steampunk Western shooting gallery, a cult favorite for two players.",
+   "sources": [
+    "https://en.wikipedia.org/wiki/Wild_Guns"
+   ],
+   "status": "draft"
+  },
+  {
+   "platformKey": "super-nintendo",
+   "title": "The Ninja Warriors",
+   "text": "Natsume's beat 'em up with robot ninjas, released as The Ninja Warriors Again in Japan.",
+   "sources": [
+    "https://en.wikipedia.org/wiki/The_Ninja_Warriors"
+   ],
+   "status": "draft"
+  },
+  {
+   "platformKey": "super-nintendo",
+   "title": "Earthworm Jim",
+   "text": "Shiny Entertainment's surreal, hand-animated platformer starring a worm in a robot suit.",
+   "sources": [
+    "https://en.wikipedia.org/wiki/Earthworm_Jim_(video_game)"
+   ],
+   "status": "draft"
+  },
+  {
+   "platformKey": "super-nintendo",
+   "title": "Mario Paint",
+   "text": "It came with the SNES Mouse: drawing, animation and a music composer whose songs still circulate online.",
+   "sources": [
+    "https://en.wikipedia.org/wiki/Mario_Paint"
+   ],
+   "status": "draft"
+  },
+  {
+   "platformKey": "super-nintendo",
+   "title": "Ken Griffey Jr. Presents Major League Baseball",
+   "text": "Nintendo's baseball game with real teams and stadiums but fictional players; only Griffey himself was real.",
+   "sources": [
+    "https://en.wikipedia.org/wiki/Ken_Griffey_Jr._Presents_Major_League_Baseball"
+   ],
+   "status": "draft"
+  },
+  {
+   "platformKey": "super-nintendo",
+   "title": "Tecmo Super Bowl",
+   "text": "The SNES follow-up to Tecmo's NES classic, which was the first game licensed by both the NFL and its players' union.",
+   "sources": [
+    "https://en.wikipedia.org/wiki/Tecmo_Super_Bowl"
+   ],
+   "status": "draft"
+  },
+  {
+   "platformKey": "super-nintendo",
+   "title": "Super Tennis",
+   "text": "An early SNES sports game with quick, precise tennis, still well regarded.",
+   "sources": [
+    "https://en.wikipedia.org/wiki/Super_Tennis"
+   ],
+   "status": "draft"
+  },
+  {
+   "platformKey": "super-nintendo",
+   "title": "International Superstar Soccer Deluxe",
+   "text": "Konami's soccer game, a forerunner of the Pro Evolution Soccer series.",
+   "sources": [
+    "https://en.wikipedia.org/wiki/International_Superstar_Soccer_Deluxe"
+   ],
+   "status": "draft"
+  },
+  {
+   "platformKey": "super-nintendo",
+   "title": "Ultimate Mortal Kombat 3",
+   "text": "The fullest Mortal Kombat 3, bringing back favorites such as Scorpion and Kitana.",
+   "sources": [
+    "https://en.wikipedia.org/wiki/Ultimate_Mortal_Kombat_3"
+   ],
+   "status": "draft"
+  },
+  {
+   "platformKey": "super-nintendo",
+   "title": "Gradius III",
+   "text": "Konami's arcade shooter, a North American launch game, known for slowing down when the screen got busy.",
+   "sources": [
+    "https://en.wikipedia.org/wiki/Gradius_III"
+   ],
+   "status": "draft"
+  },
+  {
+   "platformKey": "super-nintendo",
+   "title": "R-Type III: The Third Lightning",
+   "text": "Irem's R-Type made for the SNES, with new Force devices.",
+   "sources": [
+    "https://en.wikipedia.org/wiki/R-Type_III:_The_Third_Lightning"
+   ],
+   "status": "draft"
+  },
+  {
+   "platformKey": "super-nintendo",
+   "title": "Castlevania: Dracula X",
+   "text": "A reworked version of the PC Engine's Rondo of Blood, with new levels.",
+   "sources": [
+    "https://en.wikipedia.org/wiki/Castlevania:_Dracula_X"
+   ],
+   "status": "draft"
+  },
+  {
+   "platformKey": "super-nintendo",
+   "title": "Sparkster",
+   "text": "Konami's rocket-powered opossum, the only Rocket Knight game on a Nintendo console.",
+   "sources": [
+    "https://en.wikipedia.org/wiki/Sparkster"
+   ],
+   "status": "draft"
+  },
+  {
+   "platformKey": "super-nintendo",
+   "title": "Super Adventure Island",
+   "text": "Hudson's platformer with a soundtrack by Yuzo Koshiro.",
+   "sources": [
+    "https://en.wikipedia.org/wiki/Super_Adventure_Island"
+   ],
+   "status": "draft"
+  },
+  {
+   "platformKey": "super-nintendo",
+   "title": "Tales of Phantasia",
+   "text": "The first Tales game, on a 48-megabit cartridge that even held an opening song with vocals.",
+   "sources": [
+    "https://en.wikipedia.org/wiki/Tales_of_Phantasia"
+   ],
+   "status": "draft"
+  },
+  {
+   "platformKey": "super-nintendo",
+   "title": "Fire Emblem: Thracia 776",
+   "text": "The last Super Famicom Fire Emblem (1999), sold first through Nintendo Power download kiosks.",
+   "sources": [
+    "https://en.wikipedia.org/wiki/Fire_Emblem:_Thracia_776"
+   ],
+   "status": "draft"
+  },
+  {
+   "platformKey": "super-nintendo",
+   "title": "Wario's Woods",
+   "text": "Toad's puzzle game, also the last game Nintendo released for the NES in North America.",
+   "sources": [
+    "https://en.wikipedia.org/wiki/Wario's_Woods"
+   ],
+   "status": "draft"
+  },
+  {
+   "platformKey": "super-nintendo",
+   "title": "Plok",
+   "text": "Software Creations' platformer whose hero throws his own limbs, with music by Tim and Geoff Follin.",
+   "sources": [
+    "https://en.wikipedia.org/wiki/Plok!"
+   ],
+   "status": "draft"
+  },
+  {
+   "platformKey": "super-nintendo",
+   "title": "Clock Tower",
+   "text": "Human's point-and-click horror game of hiding from the Scissorman; Japan only on the Super Famicom.",
+   "sources": [
+    "https://en.wikipedia.org/wiki/Clock_Tower_(1995_video_game)"
+   ],
+   "status": "draft"
+  },
+  {
+   "platformKey": "super-nintendo",
+   "title": "Metal Warriors",
+   "text": "LucasArts' mech action game with two-player versus battles, released only in North America.",
+   "sources": [
+    "https://en.wikipedia.org/wiki/Metal_Warriors"
+   ],
+   "status": "draft"
+  },
+  {
+   "platformKey": "super-nintendo",
+   "title": "Mega Man & Bass",
+   "text": "A late Super Famicom game (1998) where Bass is playable; in English from the 2003 Game Boy Advance version.",
+   "sources": [
+    "https://en.wikipedia.org/wiki/Mega_Man_&_Bass"
+   ],
+   "status": "draft"
+  },
+  {
+   "platformKey": "super-nintendo",
+   "title": "Flashback",
+   "text": "Delphine's rotoscoped science-fiction adventure, a cinematic platformer in the style of Another World.",
+   "sources": [
+    "https://en.wikipedia.org/wiki/Flashback_(1992_video_game)"
+   ],
+   "status": "draft"
+  },
+  {
+   "platformKey": "super-nintendo",
+   "title": "Stunt Race FX",
+   "text": "Nintendo's second Super FX game: 3D racing with cartoon cars.",
+   "sources": [
+    "https://en.wikipedia.org/wiki/Stunt_Race_FX"
+   ],
+   "status": "draft"
+  },
+  {
+   "platformKey": "super-nintendo",
+   "title": "Top Gear",
+   "text": "Kemco's split-screen racer with a memorable soundtrack by Barry Leitch.",
+   "sources": [
+    "https://en.wikipedia.org/wiki/Top_Gear_(video_game)"
+   ],
+   "status": "draft"
+  }
+ ]
+}

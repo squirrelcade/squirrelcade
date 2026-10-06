@@ -1,0 +1,33 @@
+{
+  "name": "squirrelcade",
+  "version": "1.0.0",
+  "private": true,
+  "license": "AGPL-3.0-only",
+  "description": "Self-hosted video game collection manager",
+  "type": "module",
+  "workspaces": [
+    "packages/*",
+    "apps/*"
+  ],
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "dev:server": "npm run dev --workspace @squirrelcade/server",
+    "dev:web": "npm run dev --workspace @squirrelcade/web",
+    "build": "npm run build --workspaces --if-present",
+    "test": "npm run test --workspaces --if-present",
+    "typecheck": "npm run typecheck --workspaces --if-present",
+    "check:eol": "node scripts/check-eol.mjs",
+    "fix:eol": "node scripts/check-eol.mjs --fix",
+    "start": "node apps/server/dist/main.js"
+  },
+  "devDependencies": {
+    "@types/node": "^22.20.4",
+    "@vitest/coverage-v8": "^3.2.7",
+    "axe-core": "^4.13.0",
+    "playwright-core": "^1.63.0",
+    "typescript": "^5.9.3",
+    "vitest": "^3.2.7"
+  }
+}

@@ -1,0 +1,26 @@
+# Example Docker Compose setup. Copy to docker-compose.yml and adjust the paths.
+services:
+  squirrelcade:
+    image: ghcr.io/squirrelcade/squirrelcade:latest
+    # Or build it from the source code instead of pulling it: build: .
+    container_name: squirrelcade
+    restart: unless-stopped
+    # Run as your own user so files in the mounted folders belong to you.
+    user: "1000:1000"
+    environment:
+      - TZ=Etc/UTC # your time zone, for example America/Phoenix
+    volumes:
+      # Database, settings, logs and automatic backups.
+      - ./config:/config
+      # Optional: a folder where you drop PriceCharting collection exports.
+      - ./imports:/imports
+      # Optional: the folder Playnite saves its library backups to (Playnite > Settings > Backup), read-only.
+      # Squirrelcade reads the newest backup's library files in place; the backups' artwork is never copied.
+      # - /path/to/Playnite Backup:/playnite:ro
+      # Optional: a second place for each backup (Settings > Storage > Second backup folder).
+      # - /path/to/nas/squirrelcade-backups:/backup-copies
+    # Optional: a group that may read the Playnite folder, when it's on a share only that group reads.
+    # group_add:
+    #   - "101"
+    ports:
+      - "7575:7575"

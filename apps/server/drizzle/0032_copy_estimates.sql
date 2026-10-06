@@ -1,0 +1,1 @@
+ALTER TABLE `copies` ADD `estimated_cents` integer;

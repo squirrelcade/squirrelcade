@@ -1,0 +1,37 @@
+# Stays on this PC and is never pushed (see AGENTS.md)
+private/
+.work/
+CLAUDE.local.md
+.claude/settings.local.json
+.claude/*.lock
+
+# Secrets and machine-specific config
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.p12
+*.pfx
+*credentials*.json
+*service-account*.json
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+
+# Node
+node_modules/
+
+# OS files
+Thumbs.db
+desktop.ini
+.DS_Store
+
+# Build and dependencies
+dist/
+coverage/
+*.tsbuildinfo
+# Local development data (database, logs, backups)
+.dev-config/

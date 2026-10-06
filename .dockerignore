@@ -1,0 +1,9 @@
+**/node_modules
+**/dist
+.git
+.github
+.work
+.dev-config
+.claude
+private
+*.log

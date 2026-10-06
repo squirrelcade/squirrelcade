@@ -1,0 +1,41 @@
+name: An idea
+description: Something Squirrelcade could do, or do better.
+labels: [idea, needs review]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for the idea. Your AI can help write it: paste [docs/ai/request-prompt.md](https://github.com/squirrelcade/squirrelcade/blob/main/docs/ai/request-prompt.md)
+        into Claude, ChatGPT or another AI, and it gives you this form filled in. Ideas are reviewed; the approved ones
+        get the "approved" label and go into a future version.
+  - type: textarea
+    id: idea
+    attributes:
+      label: What you'd like
+      description: What Squirrelcade would do, and where you'd find it.
+    validations:
+      required: true
+  - type: textarea
+    id: why
+    attributes:
+      label: Why
+      description: What you'd use it for; what you do today instead.
+    validations:
+      required: true
+  - type: textarea
+    id: example
+    attributes:
+      label: An example
+      description: A real case, if you have one, such as a game, a console or a page, and what you'd see.
+  - type: markdown
+    attributes:
+      value: |
+        Squirrelcade is for anyone's collection, so a taste or a number usually becomes a setting with a neutral default. If
+        your idea is one of those, say what you'd set it to.
+  - type: checkboxes
+    id: private
+    attributes:
+      label: Before you send
+      options:
+        - label: Nothing in this issue is a password, a key, or something else I'd rather keep private.
+          required: true

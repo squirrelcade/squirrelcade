@@ -1,0 +1,208 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <title>Squirrelcade: your video game stash, sorted</title>
+    <meta name="description" content="Squirrelcade is a free app you run on your own server. It knows every game on every console you collect: what you own, what it's worth, and which games you want next, ranked in acorns." />
+    <meta name="theme-color" content="#111111" />
+    <link rel="icon" type="image/svg+xml" href="favicon.svg" />
+    <link rel="apple-touch-icon" href="apple-touch-icon.png" />
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="Squirrelcade" />
+    <meta property="og:description" content="Your video game stash, sorted: every console's checklist, what it's worth, and Store Mode for the hunt. Self-hosted and free." />
+    <meta property="og:image" content="https://squirrelcade.com/img/og.png" />
+    <meta property="og:url" content="https://squirrelcade.com/" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <link rel="preload" href="fonts/fredoka-600.woff2" as="font" type="font/woff2" crossorigin />
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <header class="hero">
+      <div class="wrap hero-grid">
+        <div class="hero-copy">
+          <a class="brand" href="/" aria-label="Squirrelcade home">
+            <img src="img/squirrel.svg" alt="" width="40" height="40" />
+            <span class="wordmark"><span class="sq">squirrel</span><span class="cade">cade</span></span>
+          </a>
+          <p class="eyebrow">Free · Self-hosted · For collectors</p>
+          <h1>Your video game stash, sorted.</h1>
+          <p class="lead">Squirrelcade is a free app you run on your own server. It knows every game on every console you collect: what you own, what it's worth, and what you're still hunting.</p>
+          <div class="ctas">
+            <span class="btn btn-primary is-soon" aria-disabled="true"><svg viewBox="0 0 16 16" aria-hidden="true"><path fill="currentColor" d="M8 0a8 8 0 0 0-2.53 15.59c.4.07.55-.17.55-.38v-1.34c-2.22.48-2.69-1.07-2.69-1.07-.36-.92-.89-1.17-.89-1.17-.73-.5.06-.49.06-.49.8.06 1.23.83 1.23.83.71 1.22 1.87.87 2.33.66.07-.52.28-.87.5-1.07-1.77-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82a7.6 7.6 0 0 1 4 0c1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48v2.2c0 .21.15.46.55.38A8 8 0 0 0 8 0Z"/></svg>Coming soon to GitHub</span>
+            <a class="btn btn-ghost" href="#tour">Take the tour</a>
+          </div>
+          <p class="fineprint">The code opens to everyone soon, free under the AGPL-3.0 license. It runs in one Docker container on a NAS, a mini PC or any Linux box.</p>
+        </div>
+        <div class="hero-art" aria-hidden="true">
+          <div class="pixel-squirrel"><img src="img/squirrel.svg" alt="" width="256" height="256" /></div>
+          <div class="acorns"><span></span><span></span><span></span></div>
+        </div>
+      </div>
+    </header>
+
+    <nav class="rooms wrap" aria-label="What's inside">
+      <a class="room" href="#tour"><span class="room-name">Today</span><span class="room-what">The home page: the game of the day, this week's releases, deals</span></a>
+      <a class="room" href="#tour"><span class="room-name">Stash</span><span class="room-what">Every copy you own, its condition and what it's worth</span></a>
+      <a class="room room-acorn" href="#acorns"><span class="room-name">Acorns</span><span class="room-what">Your wishlist, ranked by how much you want each game</span></a>
+      <a class="room" href="#tour"><span class="room-name">Almanac</span><span class="room-what">Every console's checklist, Top 100, history and your statistics</span></a>
+      <a class="room" href="#features-title"><span class="room-name">Friends</span><span class="room-what">Your collections side by side, and trades that come out even</span></a>
+    </nav>
+
+    <main>
+      <section class="tour wrap" id="tour" aria-labelledby="tour-title">
+        <p class="eyebrow eyebrow-dark">A look inside</p>
+        <h2 id="tour-title">Every console, every copy, at a glance</h2>
+        <div class="showcase">
+          <figure class="browser">
+            <div class="browser-bar"><span></span><span></span><span></span></div>
+            <img src="shots/today.jpg" alt="The Today page: a greeting, the game of the day with its score, and the games released this week in earlier years" width="1440" height="900" loading="lazy" />
+            <figcaption>Today, the home page: the game of the day, this week's releases, deals against the market and your Stash's pulse.</figcaption>
+          </figure>
+          <figure class="phone">
+            <img src="shots/store.jpg" alt="Store Mode on a phone: a search for Zelda, each result's answer in large type: you own it or you need it" width="390" height="844" loading="lazy" />
+            <figcaption>Store Mode: scan a box in a shop and know at once.</figcaption>
+          </figure>
+        </div>
+        <div class="showcase-row">
+          <figure class="browser">
+            <div class="browser-bar"><span></span><span></span><span></span></div>
+            <img src="shots/console.jpg" alt="A console's page: how much of its catalog you own, and its Top 100 games as a board of squares, owned ones filled in" width="1440" height="900" loading="lazy" />
+            <figcaption>The Almanac: each console's checklist and its Top 100, what you have and what's left to hunt.</figcaption>
+          </figure>
+          <figure class="browser">
+            <div class="browser-bar"><span></span><span></span><span></span></div>
+            <img src="shots/collection.jpg" alt="The Collection page: each copy with its box art, console, condition and value" width="1440" height="900" loading="lazy" />
+            <figcaption>Your Stash: every copy with its box art, condition and what it's worth.</figcaption>
+          </figure>
+        </div>
+      </section>
+
+      <section class="features" aria-labelledby="features-title">
+        <div class="wrap">
+          <p class="eyebrow eyebrow-dark">What it does</p>
+          <h2 id="features-title">Made for the hunt</h2>
+          <ul class="feature-grid">
+            <li>
+              <h3>Every console's checklist</h3>
+              <p>The Almanac: complete game lists for the consoles you collect, from Wikipedia and your own lists, with what you own and what's missing on each, its Top 100 and its history.</p>
+            </li>
+            <li>
+              <h3>What it's worth</h3>
+              <p>Values from your PriceCharting export or your own spreadsheet, over time and by console, beside what you paid.</p>
+            </li>
+            <li>
+              <h3>Store Mode, even with no signal</h3>
+              <p>Scan a barcode in a shop and see at once, in big letters: you need it, you own it, or you have it on another console. It answers from your phone when the signal drops.</p>
+            </li>
+            <li>
+              <h3>A wishlist ranked in acorns</h3>
+              <p>Every game you don't have, ranked by your own rules: your favorite consoles and genres, reviews, the series you collect. <a href="#acorns">What's an acorn?</a></p>
+            </li>
+            <li>
+              <h3>Add games by hand</h3>
+              <p>No export needed. Pick the console, start typing, and Squirrelcade suggests the title from that console's game list. What you paid, when and a note go into your Stash with it.</p>
+            </li>
+            <li>
+              <h3>Coming soon and deals</h3>
+              <p>New releases on your consoles, last year's games now cheaper, and PriceCharting's deal emails lined up against your wishlist, with a manual or a case listed alone left out.</p>
+            </li>
+            <li>
+              <h3>Your server, your data</h3>
+              <p>One Docker container on your NAS or mini PC. Your collection stays at home, with regular backups you can copy anywhere.</p>
+            </li>
+            <li>
+              <h3>Works on its own</h3>
+              <p>No AI, no outside account. Add what you use when you want it: PriceCharting values, IGDB box art, RomM, Playnite, Steam, email, phone alerts and more.</p>
+            </li>
+            <li>
+              <h3>Compare with friends</h3>
+              <p>Swap a file with a friend who runs Squirrelcade too: your collections side by side, console by console, what each of you is missing, and trades that come out even by value.</p>
+            </li>
+            <li>
+              <h3>Ask Claude</h3>
+              <p>Connect Claude and ask in your own words: which of these 30 garage-sale games do I already have? What's at the top of my wishlist, and why? Read-only, and it stays on your home network.</p>
+            </li>
+            <li>
+              <h3>Ready to sell</h3>
+              <p>A listing for eBay or Mercari written from your copy, priced after fees and shipping, with what it sold for lately.</p>
+            </li>
+            <li>
+              <h3>Set up with your AI's help</h3>
+              <p>Paste the setup prompt into Claude, ChatGPT or another AI, free accounts included. It checks your server first, then walks you through every step.</p>
+            </li>
+          </ul>
+        </div>
+      </section>
+
+      <section class="acorn-explainer wrap" id="acorns" aria-labelledby="acorns-title">
+        <p class="eyebrow eyebrow-dark">The Acorns wishlist</p>
+        <h2 id="acorns-title">What's an acorn?</h2>
+        <p class="intro">An acorn is how much you'd want a game you don't have yet. A game's acorns, from 0 to 100, add up from rules you set, and your wishlist ranks every missing game by them. It's Squirrelcade's own unit, so it's never mistaken for a review score.</p>
+        <div class="acorn-grid">
+          <div>
+            <h3 class="acorn-sub">Where acorns come from</h3>
+            <ul class="acorn-rules">
+              <li><span><b>Reviews.</b> Critics' and players' ratings (with free IGDB keys) give up to 31 acorns, trusted more when more people rated the game.</span></li>
+              <li><span><b>Your consoles and genres,</b> in the order you like them. Squirrelcade starts the order from what you've been collecting lately.</span></li>
+              <li><span><b>Series you collect.</b> The more of a series you own, the more its other games are worth to you.</span></li>
+              <li><span><b>Finishing a console.</b> Extra acorns when only a few games are left on it.</span></li>
+              <li><span><b>Your own say.</b> Must Have adds 20, Strong Interest 10. Do Not Recommend takes a game off the list for good.</span></li>
+              <li><span><b>Optional rules:</b> your own sets, other regions' releases, games you already own on PC, and more.</span></li>
+            </ul>
+          </div>
+          <figure class="receipt" aria-labelledby="receipt-game">
+            <div class="receipt-head">
+              <div>
+                <div class="receipt-game" id="receipt-game">Chrono Trigger</div>
+                <div class="receipt-console">Super Nintendo</div>
+              </div>
+              <div class="receipt-total"><span class="acorn-icon" aria-hidden="true"></span>93</div>
+            </div>
+            <table>
+              <tr><td>Reviews: 93 out of 100</td><td class="n">+31</td></tr>
+              <tr><td>Super Nintendo, your favorite console</td><td class="n">+22</td></tr>
+              <tr><td>Role-playing, a genre you love</td><td class="n">+15</td></tr>
+              <tr><td>You marked it Must Have</td><td class="n">+20</td></tr>
+              <tr><td>A series you collect</td><td class="n">+5</td></tr>
+              <tr class="sum"><td>Acorns</td><td class="n">93</td></tr>
+            </table>
+            <figcaption>An example. Open any game in Squirrelcade to see its own acorns and where each one came from.</figcaption>
+          </figure>
+        </div>
+        <ul class="acorn-uses">
+          <li><h3>A list worth reading</h3><p>The top picks mix things up: each game already picked from a console takes a few acorns off the next one from it, so your top ten isn't all one console or one series.</p></li>
+          <li><h3>Your rules, your list</h3><p>Change any rule on Acorns ranking and the whole list re-ranks. Snooze a game to leave it off for a few months.</p></li>
+          <li><h3>Acorns everywhere you decide</h3><p>In Store Mode at the shelf, beside deals and coming releases, in the game of the day, and in Claude's answers.</p></li>
+        </ul>
+      </section>
+
+      <section class="steps wrap" aria-labelledby="steps-title">
+        <p class="eyebrow eyebrow-dark">Getting started</p>
+        <h2 id="steps-title">Three steps from your shelf to the hunt</h2>
+        <ol class="step-list">
+          <li><span class="step-n">1</span><h3>Install it</h3><p>One container on Synology, Unraid, TrueNAS, Portainer or plain Docker, with a step-by-step guide, or your AI walking you through it.</p></li>
+          <li><span class="step-n">2</span><h3>Bring your collection</h3><p>Type your games in, or upload an export from PriceCharting or a spreadsheet. Squirrelcade builds each console's checklist from it.</p></li>
+          <li><span class="step-n">3</span><h3>Go hunting</h3><p>Open it on your phone in a shop. It tells you what to grab and what to leave on the shelf.</p></li>
+        </ol>
+      </section>
+
+      <section class="closer" aria-labelledby="closer-title">
+        <div class="wrap closer-inner">
+          <img src="img/squirrel.svg" alt="" width="96" height="96" />
+          <div>
+            <h2 id="closer-title">A squirrel stashes for winter. You stash games.</h2>
+            <p>Squirrelcade is named for both: a stash, and the arcade. It's free, and it's coming to GitHub soon.</p>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <footer class="footer">
+      <div class="wrap footer-inner">
+        <span class="wordmark small"><span class="sq">squirrel</span><span class="cade">cade</span></span>
+        <p>Free software under the AGPL-3.0 license. Game lists from Wikipedia (CC BY-SA), box art from IGDB, values from your own <a href="https://www.pricecharting.com">PriceCharting</a> export, with PriceCharting's OK. Squirrelcade isn't affiliated with any of them or with any console maker.</p>
+      </div>
+    </footer>
+  </body>
+</html>

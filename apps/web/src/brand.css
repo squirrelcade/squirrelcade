@@ -1,0 +1,867 @@
+/*
+ * The October 2026 look (docs/design/redesign.md, from the owner's brand kit): its colors as variables for both color
+ * schemes (dark follows the kit; light puts the same brand colors on warm light neutrals), and the few classes the
+ * redesigned pages share. Mantine's own colors are set from the same values in main.tsx.
+ */
+:root {
+  --sc-chrome: #ffffff;
+  --sc-ground: #f4f2ee;
+  --sc-surface: #ffffff;
+  --sc-sunken: #f8f6f2;
+  --sc-raised: #efebe5;
+  --sc-line: #e2ddd5;
+  --sc-line-strong: #cfc8be;
+  --sc-text: #1d1a16;
+  --sc-soft: #3d3832;
+  --sc-muted: #6b655d;
+  --sc-cade: #3dbe74;
+  --sc-cade-ink: #0f1f16;
+  --sc-cade-text: #1e7546;
+  --sc-deep: #e3f4ea;
+  --sc-deep-line: #a9dcbb;
+  --sc-deep-ink: #0f3b25;
+  --sc-have-bg: #dcf3e5;
+  --sc-have: #1a6b40;
+  --sc-gold: #7d5a10;
+  --sc-gold-bg: #fbf1d9;
+  --sc-gold-line: #e6cf95;
+  --sc-over: #8f3414;
+  --sc-over-bg: #fbe4dc;
+  --sc-tag-bg: #ebe7e1;
+  --sc-ps: #3987e5;
+  --sc-xbox: #199e70;
+  --sc-nintendo: #d95926;
+  --sc-other: #c98500;
+  --sc-avatar-bg: #f4dfc9;
+  --sc-avatar: #6e3f1e;
+  --sc-pill-bg: #1e7546;
+  --sc-gold-fill: #d9a033;
+  --sc-info-bg: #e3eefa;
+  --sc-info: #1d4f86;
+  --sc-info-line: #a9c5e8;
+}
+
+[data-mantine-color-scheme='dark'] {
+  --sc-chrome: #111111;
+  --sc-ground: #161616;
+  --sc-surface: #1d1d1d;
+  --sc-sunken: #191919;
+  --sc-raised: #262626;
+  --sc-line: #2c2c2c;
+  --sc-line-strong: #383838;
+  --sc-text: #f2efea;
+  --sc-soft: #cbc6be;
+  --sc-muted: #9e988f;
+  --sc-cade-text: #7fdda6;
+  --sc-deep: #16392a;
+  --sc-deep-line: #22553b;
+  --sc-deep-ink: #ffffff;
+  --sc-have-bg: #1f4d34;
+  --sc-have: #a3edc2;
+  --sc-gold: #e9b44c;
+  --sc-gold-bg: #2a2312;
+  --sc-gold-line: #5a4a26;
+  --sc-over: #f2a285;
+  --sc-over-bg: #3a1f17;
+  --sc-tag-bg: #2f2f2f;
+  --sc-avatar-bg: #3a2a1c;
+  --sc-avatar: #e3a866;
+  --sc-pill-bg: #0f2a1d;
+  --sc-gold-fill: #e9b44c;
+  --sc-info-bg: #15263a;
+  --sc-info: #9cc7f5;
+  --sc-info-line: #26466a;
+}
+
+/* Cards and windows on the ground: the kit's surface (the page itself is Mantine's body, the ground). */
+.mantine-Card-root,
+.mantine-Paper-root {
+  background-color: var(--sc-surface);
+}
+
+/* The menu's current page: deep green with a cade bar at its edge, as the kit draws it. */
+.mantine-NavLink-root[data-active] {
+  background-color: var(--sc-deep);
+  color: var(--sc-deep-ink);
+  box-shadow: inset 3px 0 0 var(--sc-cade);
+}
+.mantine-NavLink-root[data-active] .mantine-NavLink-label {
+  font-weight: 700;
+}
+
+/* Pixel type: labels, scores and big numbers only (never running text). */
+.sc-pixel {
+  font-family: Silkscreen, ui-monospace, 'Cascadia Mono', Consolas, monospace;
+  font-weight: 400;
+  letter-spacing: 0.04em;
+}
+
+/* Status tags in capitals: HAVE IT, WISHLIST #1, MISSING, SCORE 78. Ovals (Mantine's badges) stay where they are. */
+.sc-tag {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  line-height: 1.5;
+  text-transform: uppercase;
+  white-space: nowrap;
+  background: var(--sc-tag-bg);
+  color: var(--sc-soft);
+}
+.sc-tag[data-tone='have'] {
+  background: var(--sc-have-bg);
+  color: var(--sc-have);
+}
+.sc-tag[data-tone='want'] {
+  background: var(--sc-gold-bg);
+  color: var(--sc-gold);
+}
+.sc-tag[data-tone='missing'] {
+  background: transparent;
+  border: 1px dashed var(--sc-gold);
+  color: var(--sc-gold);
+  padding: 1px 7px;
+}
+.sc-tag[data-tone='deep'] {
+  background: var(--sc-deep);
+  color: var(--sc-deep-ink);
+}
+.sc-tag[data-tone='over'] {
+  background: var(--sc-over-bg);
+  color: var(--sc-over);
+}
+/* A count as a tag (+33 added, 0 removed): larger, in ordinary case. */
+.sc-tag[data-size='lg'] {
+  padding: 6px 12px;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: normal;
+  text-transform: none;
+}
+
+/* The redesigned pages' cards (Today, 0.48.0): the kit's surface, a hairline and a 16px corner. */
+.sc-card {
+  background: var(--sc-surface);
+  border: 1px solid var(--sc-line);
+  border-radius: 16px;
+  min-width: 0;
+}
+.sc-card[data-tone='gold'] {
+  border-color: var(--sc-gold-line);
+}
+.sc-pad {
+  padding: 20px;
+}
+@media (max-width: 40em) {
+  .sc-pad {
+    padding: 16px;
+  }
+}
+.sc-h2 {
+  margin: 0;
+  font-family: Fredoka, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+  font-weight: 600;
+  font-size: 22px;
+  line-height: 1.25;
+  text-wrap: balance;
+}
+.sc-label {
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--sc-muted);
+}
+.sc-muted {
+  color: var(--sc-muted);
+}
+.sc-soft {
+  color: var(--sc-soft);
+}
+
+/* Rows of cards that wrap: the wide card takes the room, the narrow one keeps at least its basis. */
+.sc-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 24px;
+  align-items: stretch;
+}
+.sc-row > .sc-wide {
+  flex: 999 1 560px;
+  min-width: 0;
+}
+.sc-row > .sc-narrow {
+  flex: 1 1 320px;
+  min-width: 0;
+}
+@media (max-width: 40em) {
+  .sc-row {
+    gap: 16px;
+  }
+}
+
+/* Cards side by side, as many as fit (one column on a phone). */
+.sc-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 340px), 1fr));
+  gap: 24px;
+  align-items: start;
+}
+@media (max-width: 40em) {
+  .sc-grid {
+    gap: 16px;
+  }
+}
+
+/* A section a chip links to (#deals, #week, #review) stops below the header. */
+.sc-card[id] {
+  scroll-margin-top: 76px;
+}
+
+/* A green strip across a card's top (Game of the Day), and a sunken footer for its buttons. */
+.sc-strip {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 8px 12px;
+  padding: 11px 20px;
+  background: var(--sc-deep);
+  border-bottom: 1px solid var(--sc-deep-line);
+  color: var(--sc-have);
+}
+.sc-strip-pill {
+  padding: 2px 9px;
+  border-radius: 4px;
+  background: var(--sc-pill-bg);
+  color: #ffffff;
+  font-weight: 700;
+  font-size: 12px;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+.sc-foot {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  padding: 14px 24px;
+  background: var(--sc-sunken);
+  border-top: 1px solid var(--sc-line);
+}
+
+/* Chips: a game's console (with its maker's color dot), its place on the wishlist. */
+.sc-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: var(--sc-raised);
+  color: var(--sc-text);
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 1.4;
+}
+.sc-dot {
+  flex: none;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--dot, var(--sc-other));
+}
+
+/* The page's head chips (3 deals below market, 4 questions for you): links shaped as pills. */
+.sc-head-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 40px;
+  padding: 0 14px;
+  border-radius: 999px;
+  border: 1px solid var(--sc-line-strong);
+  color: var(--sc-text);
+  font-weight: 600;
+  font-size: 15px;
+  text-decoration: none;
+}
+.sc-head-chip:hover {
+  background: var(--sc-raised);
+}
+.sc-head-chip[data-tone='gold'] {
+  border-color: var(--sc-gold-line);
+  background: var(--sc-gold-bg);
+}
+.sc-head-chip .sc-pixel {
+  color: var(--sc-cade-text);
+}
+.sc-head-chip[data-tone='gold'] .sc-pixel {
+  color: var(--sc-gold);
+}
+
+/* A bar of a share (points, a price against the market, copies by console): a track and its fill. */
+.sc-meter {
+  display: block;
+  height: 8px;
+  border-radius: 4px;
+  background: var(--sc-line);
+  overflow: hidden;
+}
+.sc-meter > span {
+  display: block;
+  height: 100%;
+  border-radius: 0 4px 4px 0;
+  background: var(--fill, var(--sc-cade));
+}
+.sc-meter[data-size='lg'],
+.sc-meter[data-size='lg'] > span {
+  height: 10px;
+}
+
+/* Buttons and filters shaped as the kit draws them: a pill that is on (deep green) or off (a hairline). */
+.sc-toggle {
+  min-height: 36px;
+  padding: 0 12px;
+  border-radius: 999px;
+  border: 1px solid var(--sc-line-strong);
+  background: transparent;
+  color: var(--sc-soft);
+  font: inherit;
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+}
+.sc-toggle[aria-pressed='true'] {
+  border-color: var(--sc-deep-line);
+  background: var(--sc-deep);
+  color: var(--sc-deep-ink);
+}
+.sc-toggle:focus-visible {
+  outline: 2px solid var(--sc-cade);
+  outline-offset: 2px;
+}
+
+/* The squirrel and the name in the header: the way home, to Today. */
+.sc-brand-link {
+  display: inline-flex;
+  align-items: center;
+  min-width: 0;
+  color: inherit;
+  text-decoration: none;
+  border-radius: 8px;
+}
+.sc-brand-link:focus-visible {
+  outline: 2px solid var(--sc-cade);
+  outline-offset: 3px;
+}
+
+/* A list's rows divided by hairlines (game history, movers). */
+.sc-rows > * + * {
+  border-top: 1px solid var(--sc-line);
+}
+
+/* Out this week: seven days side by side (scrolling sideways on a phone), today's in deep green. Where the whole week
+   fits with room for them, the arrows sit on its two sides; otherwise beside the title (the owner, 2026-10-06). */
+.sc-week-card {
+  container: week / inline-size;
+}
+.sc-week-frame {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.sc-week-card .sc-week-side {
+  display: none;
+  flex: none;
+}
+@container week (min-width: 1180px) {
+  .sc-week-card .sc-week-side {
+    display: inline-flex;
+  }
+  .sc-week-card .sc-week-title-arrows {
+    display: none;
+  }
+}
+.sc-week {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(150px, 1fr));
+  gap: 8px;
+  min-width: 1060px;
+}
+.sc-day {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 10px;
+  min-height: 200px;
+  border-radius: 10px;
+  background: var(--sc-sunken);
+  border: 1px solid var(--sc-line);
+}
+.sc-day[data-today='true'] {
+  background: var(--sc-deep);
+  border-color: var(--sc-deep-line);
+}
+.sc-day-num {
+  font-family: Fredoka, sans-serif;
+  font-weight: 700;
+  font-size: 22px;
+  line-height: 1;
+  color: var(--sc-text);
+}
+.sc-day[data-today='true'] .sc-day-num {
+  color: var(--sc-cade-text);
+}
+/* Its quieter text a step lighter there (the muted gray is too faint on the deep green). */
+.sc-day[data-today='true'] .sc-muted {
+  color: var(--sc-soft);
+}
+.sc-release {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 9px 10px;
+  border: 0;
+  border-radius: 8px;
+  background: var(--sc-raised);
+  color: var(--sc-text);
+  font: inherit;
+  text-align: start;
+  cursor: pointer;
+  position: relative;
+  overflow: hidden;
+  padding-left: 13px;
+}
+/* The tile's edge: its console's maker's color, or several stacked for a game out on several (0.54.0). */
+.sc-release-edge {
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 3px;
+}
+.sc-release:hover {
+  outline: 1px solid var(--sc-line-strong);
+}
+.sc-release:focus-visible {
+  outline: 2px solid var(--sc-cade);
+  outline-offset: 1px;
+}
+
+/* The game of the day's name: the card's headline. */
+.sc-gotd-title {
+  margin: 0;
+  font-family: Fredoka, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+  font-weight: 700;
+  font-size: clamp(26px, 4vw, 34px);
+  line-height: 1.1;
+  text-wrap: balance;
+}
+
+/* The signed-in account's initial, in the header (the kit's squirrel brown). */
+.sc-avatar {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: var(--sc-avatar-bg);
+  color: var(--sc-avatar);
+  font-size: 13px;
+}
+
+/* Today's greeting. */
+.sc-hello {
+  margin: 4px 0 0;
+  font-family: Fredoka, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+  font-weight: 700;
+  font-size: clamp(30px, 5vw, 42px);
+  line-height: 1.05;
+  text-wrap: balance;
+}
+
+/* A console's head (0.49.0): its name large, its catalog as a bar in three parts, its counts as tiles. */
+.sc-console {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 26px;
+  border-radius: 18px;
+  margin-bottom: 16px;
+}
+@media (max-width: 40em) {
+  .sc-console {
+    padding: 18px;
+  }
+}
+.sc-console-title {
+  margin: 0;
+  font-family: Fredoka, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+  font-weight: 700;
+  font-size: clamp(34px, 6vw, 56px);
+  line-height: 1;
+  text-wrap: balance;
+}
+.sc-split {
+  display: flex;
+  gap: 2px;
+  height: 14px;
+  border-radius: 4px;
+  overflow: hidden;
+}
+.sc-split > span {
+  min-width: 2px;
+}
+.sc-tiles {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(118px, 1fr));
+  gap: 10px;
+}
+.sc-tile {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 12px;
+  border-radius: 12px;
+  background: var(--sc-sunken);
+  border: 1px solid var(--sc-line);
+  color: var(--sc-text);
+  text-decoration: none;
+}
+.sc-tile:hover {
+  border-color: var(--sc-line-strong);
+}
+.sc-tile:focus-visible {
+  outline: 2px solid var(--sc-cade);
+  outline-offset: 2px;
+}
+.sc-tile[aria-current='page'] {
+  border-color: var(--sc-cade);
+  box-shadow: inset 0 0 0 1px var(--sc-cade);
+}
+.sc-tile-label {
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--sc-muted);
+}
+.sc-tile-number {
+  font-family: Fredoka, sans-serif;
+  font-weight: 700;
+  font-size: 28px;
+  line-height: 1.15;
+}
+.sc-tile[data-tone='gold'] {
+  border-color: var(--sc-gold-line);
+}
+.sc-tile[data-tone='gold'] .sc-tile-label {
+  color: var(--sc-gold);
+}
+
+/* The Top 100 as a board of ten by ten: owned filled green, not owned a dashed gold square, a dot for RomM. */
+.sc-board {
+  display: grid;
+  grid-template-columns: repeat(10, minmax(0, 1fr));
+  gap: 6px;
+}
+.sc-square {
+  position: relative;
+  aspect-ratio: 1 / 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 6px;
+  border: 2px solid var(--sc-deep-line);
+  background: var(--sc-have-bg);
+  color: var(--sc-have);
+  font-family: Silkscreen, ui-monospace, monospace;
+  font-size: 13px;
+  padding: 0;
+  cursor: pointer;
+  transition: opacity 120ms;
+}
+.sc-square[data-own='missing'] {
+  background: transparent;
+  border-style: dashed;
+  border-color: var(--sc-gold);
+  color: var(--sc-gold);
+}
+.sc-square[data-own='unsure'] {
+  background: var(--sc-raised);
+  border-color: var(--sc-line-strong);
+  color: var(--sc-soft);
+}
+.sc-square[data-dim='true'] {
+  opacity: 0.18;
+}
+/* With its box art (0.53.0): the art in the middle, the rank in the top left corner. Games you don't have show theirs in
+   gray, the ones to answer a little faded. */
+.sc-square[data-art='true'] .sc-square-rank {
+  position: absolute;
+  top: 4px;
+  left: 6px;
+  font-size: 11px;
+  line-height: 1.2;
+}
+.sc-square-art {
+  position: absolute;
+  top: 20px;
+  left: 50%;
+  height: calc(100% - 27px);
+  width: auto;
+  aspect-ratio: 3 / 4;
+  transform: translateX(-50%);
+  object-fit: cover;
+  border-radius: 3px;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.35);
+}
+.sc-square[data-own='missing'] .sc-square-art {
+  filter: grayscale(1);
+  opacity: 0.55;
+}
+.sc-square[data-own='unsure'] .sc-square-art {
+  opacity: 0.75;
+}
+.sc-square:hover {
+  outline: 2px solid var(--sc-text);
+  outline-offset: 1px;
+}
+.sc-square:focus-visible {
+  outline: 2px solid var(--sc-cade);
+  outline-offset: 2px;
+}
+.sc-square .sc-romm-dot {
+  position: absolute;
+  right: 4px;
+  bottom: 4px;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--sc-have);
+}
+.sc-square[data-own='missing'] .sc-romm-dot {
+  background: var(--sc-gold);
+}
+@media (max-width: 40em) {
+  .sc-board {
+    gap: 3px;
+  }
+  .sc-square {
+    font-size: 10px;
+    border-width: 1px;
+    border-radius: 4px;
+  }
+  .sc-square .sc-romm-dot {
+    right: 2px;
+    bottom: 2px;
+    width: 4px;
+    height: 4px;
+  }
+  /* Too small for box art on a phone: the rank alone, in the middle. */
+  .sc-square-art {
+    display: none;
+  }
+  .sc-square[data-art='true'] .sc-square-rank {
+    position: static;
+    font-size: inherit;
+  }
+}
+
+/* A console's history: its facts as tiles, its launches along a line. */
+.sc-facts {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 220px), 1fr));
+  gap: 12px;
+}
+.sc-fact {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 14px;
+  border-radius: 12px;
+  background: var(--sc-sunken);
+  border: 1px solid var(--sc-line);
+  min-width: 0;
+}
+.sc-timeline {
+  position: relative;
+  display: grid;
+  gap: 14px;
+  padding-top: 4px;
+  min-width: max-content;
+}
+.sc-timeline::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 10px;
+  height: 2px;
+  background: var(--sc-line-strong);
+}
+.sc-timeline-step {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  max-width: 260px;
+}
+.sc-timeline-dot {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: var(--sc-faint, var(--sc-muted));
+  border: 3px solid var(--sc-surface);
+}
+.sc-timeline-step[data-ends='true'] .sc-timeline-dot {
+  background: var(--sc-cade);
+}
+.sc-timeline-year {
+  font-size: 16px;
+}
+.sc-timeline-step[data-ends='true'] .sc-timeline-year {
+  color: var(--sc-cade-text);
+}
+
+/* Store Mode's verdict (0.50.0): the answer in large pixel type on its tone's color, and its reason under it. */
+.sc-verdict {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 12px 16px;
+  border-radius: 14px;
+  border: 2px solid var(--v-line, var(--sc-line-strong));
+  background: var(--v-bg, var(--sc-raised));
+  color: var(--v-ink, var(--sc-soft));
+}
+.sc-verdict-word {
+  font-family: Silkscreen, ui-monospace, 'Cascadia Mono', Consolas, monospace;
+  font-size: 24px;
+  line-height: 1.15;
+}
+.sc-verdict-reason {
+  font-size: 15px;
+  font-weight: 600;
+}
+@media (max-width: 40em) {
+  .sc-verdict-word {
+    font-size: 20px;
+  }
+}
+.sc-verdict[data-tone='go'] {
+  --v-bg: var(--sc-cade);
+  --v-ink: var(--sc-cade-ink);
+  --v-line: var(--sc-cade);
+}
+.sc-verdict[data-tone='own'] {
+  --v-bg: var(--sc-have-bg);
+  --v-ink: var(--sc-have);
+  --v-line: var(--sc-deep-line);
+}
+.sc-verdict[data-tone='warn'] {
+  --v-bg: var(--sc-gold-bg);
+  --v-ink: var(--sc-gold);
+  --v-line: var(--sc-gold-line);
+}
+.sc-verdict[data-tone='info'] {
+  --v-bg: var(--sc-info-bg);
+  --v-ink: var(--sc-info);
+  --v-line: var(--sc-info-line);
+}
+
+/* The phone's bar at the bottom (0.51.0): five places, the current one in green, Store Mode's camera on a green tile. */
+.sc-tabbar {
+  display: flex;
+  height: 100%;
+  background: var(--sc-chrome);
+  border-top: 1px solid var(--sc-line);
+}
+.sc-tab {
+  flex: 1 1 0;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--sc-muted);
+  font: inherit;
+  font-size: 11px;
+  line-height: 1.2;
+  text-decoration: none;
+  cursor: pointer;
+}
+.sc-tab[aria-current='page'] {
+  color: var(--sc-cade-text);
+  font-weight: 800;
+}
+.sc-tab:focus-visible {
+  outline: 2px solid var(--sc-cade);
+  outline-offset: -3px;
+}
+.sc-tab-store {
+  width: 44px;
+  height: 28px;
+  border-radius: 10px;
+  background: var(--sc-have-bg);
+  color: var(--sc-deep-ink);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* A game's acorns (D121): the number with the pixel acorn after it. */
+.sc-acorns {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  white-space: nowrap;
+}
+
+/* Your preference as its mark and acorns (0.53.0): a small pill that opens the levels. */
+.sc-pref {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  min-height: 26px;
+  padding: 1px 9px;
+  border-radius: 999px;
+  border: 1px solid var(--sc-line-strong);
+  color: var(--sc-text);
+  font-size: 13px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+.sc-pref:hover {
+  background: var(--sc-raised);
+}
+.sc-pref:focus-visible {
+  outline: 2px solid var(--sc-cade);
+  outline-offset: 2px;
+}
+.sc-pref[data-empty='true'] {
+  color: var(--sc-muted);
+  border-style: dashed;
+}
+
+/* A game's acorns as a ring's number, in the pixel face. */
+.sc-score {
+  font-family: Silkscreen, ui-monospace, monospace;
+  font-size: 30px;
+  line-height: 1;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sc-pixel,
+  .sc-tag {
+    transition: none;
+  }
+}

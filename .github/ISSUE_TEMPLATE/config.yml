@@ -1,0 +1,5 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Installing and setting up
+    url: https://github.com/squirrelcade/squirrelcade/blob/main/docs/guide/README.md
+    about: The step-by-step guide, from nothing to daily use. Its last page, "Keep it running", has what to do when something's wrong.

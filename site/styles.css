@@ -1,0 +1,211 @@
+/* squirrelcade.com: one page in the app's look (the October 2026 brand kit, docs/design/redesign.md): charcoal, the
+   arcade green, the squirrel's brown and acorn gold; Fredoka for the display type, Silkscreen (pixel type) for small
+   labels, pixel art at whole-pixel sizes. Light and dark follow the visitor's system setting. */
+@font-face { font-family: Fredoka; font-weight: 400; font-display: swap; src: url(fonts/fredoka-400.woff2) format('woff2'); }
+@font-face { font-family: Fredoka; font-weight: 600; font-display: swap; src: url(fonts/fredoka-600.woff2) format('woff2'); }
+@font-face { font-family: Fredoka; font-weight: 700; font-display: swap; src: url(fonts/fredoka-700.woff2) format('woff2'); }
+@font-face { font-family: Silkscreen; font-weight: 400; font-display: swap; src: url(fonts/silkscreen-400.woff2) format('woff2'); }
+
+:root {
+  --bg: #f4f2ee;
+  --surface: #ffffff;
+  --ink: #1d1a16;
+  --muted: #6b655d;
+  --line: #e2ddd5;
+  --deep: #111111;
+  --deep-green: #16392a;
+  --forest: #1e7546;
+  --acorn: #3dbe74;
+  --acorn-ink: #0f1f16;
+  --tail: #e3a866;
+  --brown: #8e5428;
+  --gold: #e9b44c;
+  --cap: #5e3b1e;
+  --on-deep: #f2efea;
+  --on-deep-muted: #b5afa6;
+  --word-sq: #a8632d;
+  --word-cade: #1e7546;
+  --eyebrow: #1e7546;
+  --shadow: 0 24px 60px -24px rgba(17, 17, 17, 0.45);
+  --display: Fredoka, 'Trebuchet MS', system-ui, sans-serif;
+  --body: system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #161616;
+    --surface: #1d1d1d;
+    --ink: #f2efea;
+    --muted: #9e988f;
+    --line: #2c2c2c;
+    --word-sq: #c0763a;
+    --word-cade: #3dbe74;
+    --eyebrow: #7fdda6;
+    --shadow: 0 24px 60px -24px rgba(0, 0, 0, 0.7);
+    color-scheme: dark;
+  }
+}
+
+* { box-sizing: border-box; }
+html { scroll-behavior: smooth; }
+body { margin: 0; background: var(--bg); color: var(--ink); font: 400 1.0625rem/1.65 var(--body); -webkit-font-smoothing: antialiased; }
+img { max-width: 100%; height: auto; display: block; }
+a { color: inherit; }
+.wrap { max-width: 1120px; margin: 0 auto; padding-inline: 20px; }
+h1, h2, h3 { font-family: var(--display); font-weight: 600; line-height: 1.12; text-wrap: balance; margin: 0; }
+h2 { font-size: clamp(1.75rem, 3.6vw, 2.5rem); }
+h3 { font-size: 1.2rem; }
+p { margin: 0; }
+
+.eyebrow { font: 400 0.8rem/1.2 Silkscreen, ui-monospace, monospace; letter-spacing: 0.08em; color: var(--acorn); margin-bottom: 14px; }
+.eyebrow-dark { color: var(--eyebrow); }
+
+/* The hero: the app's charcoal chrome with a faint pixel grid and a green glow, the squirrel large. */
+.hero {
+  background-color: var(--deep);
+  background-image:
+    radial-gradient(circle at 78% 40%, rgba(61, 190, 116, 0.16), transparent 42%),
+    linear-gradient(rgba(255, 255, 255, 0.035) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.035) 1px, transparent 1px);
+  background-size: auto, 24px 24px, 24px 24px;
+  color: var(--on-deep);
+  padding-block: 28px 72px;
+  overflow: hidden;
+  border-bottom: 2px solid var(--acorn);
+}
+.hero-grid { display: grid; grid-template-columns: 1.15fr 0.85fr; gap: 40px; align-items: center; }
+.hero-copy { min-width: 0; display: grid; gap: 0; }
+.brand { display: inline-flex; align-items: center; gap: 12px; text-decoration: none; margin-bottom: 56px; width: max-content; }
+.brand img { image-rendering: pixelated; }
+.wordmark { font: 700 1.75rem/1 var(--display); letter-spacing: -0.02em; }
+.wordmark .sq { color: #c0763a; }
+.wordmark .cade { color: var(--acorn); }
+.hero h1 { font-size: clamp(2.4rem, 6vw, 4.2rem); letter-spacing: -0.02em; margin-bottom: 20px; }
+.lead { font-size: clamp(1.05rem, 1.6vw, 1.25rem); color: var(--on-deep-muted); max-width: 34em; margin-bottom: 30px; }
+.ctas { display: flex; flex-wrap: wrap; gap: 12px; margin-bottom: 18px; }
+.btn { display: inline-flex; align-items: center; gap: 10px; font: 600 1.05rem/1 var(--display); padding: 15px 22px; border-radius: 12px; text-decoration: none; border: 2px solid transparent; }
+.btn svg { width: 20px; height: 20px; }
+.btn-primary { background: var(--acorn); color: var(--acorn-ink); box-shadow: 0 4px 0 #1e7546; }
+.btn-primary:hover { transform: translateY(-1px); }
+.btn-primary.is-soon { cursor: default; background: rgba(233, 180, 76, 0.12); color: var(--gold); border-color: rgba(233, 180, 76, 0.6); border-style: dashed; box-shadow: none; transform: none; }
+.btn-ghost { color: var(--on-deep); border-color: rgba(240, 246, 241, 0.35); }
+.btn-ghost:hover { border-color: var(--on-deep); }
+.btn:focus-visible { outline: 3px solid var(--acorn); outline-offset: 3px; }
+.fineprint { font-size: 0.92rem; color: var(--on-deep-muted); max-width: 36em; }
+
+.hero-art { position: relative; display: grid; place-items: center; min-height: 320px; }
+.pixel-squirrel { width: min(100%, 320px); aspect-ratio: 1; display: grid; place-items: center; border-radius: 32px; background: rgba(255, 255, 255, 0.04); border: 2px solid rgba(255, 255, 255, 0.08); }
+.pixel-squirrel img { width: 72%; image-rendering: pixelated; animation: bob 3.2s ease-in-out infinite; }
+@keyframes bob { 50% { transform: translateY(-8px); } }
+.acorns { position: absolute; inset: 0; pointer-events: none; }
+.acorns span {
+  position: absolute; width: 30px; height: 36px; image-rendering: pixelated;
+  background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 5 6' shape-rendering='crispEdges'%3E%3Cpath d='M2 0h1v1H2z' fill='%236b3a10'/%3E%3Cpath d='M0 1h5v2H0z' fill='%236b3a10'/%3E%3Cpath d='M1 3h3v2H1zM2 5h1v1H2z' fill='%2346a36b'/%3E%3C/svg%3E") center / contain no-repeat;
+}
+.acorns span:nth-child(1) { left: 6%; top: 12%; transform: rotate(-14deg); }
+.acorns span:nth-child(2) { right: 4%; top: 22%; transform: rotate(12deg) scale(0.8); }
+.acorns span:nth-child(3) { left: 14%; bottom: 6%; transform: rotate(8deg) scale(0.9); }
+
+/* What's inside: the app's sections in a row of small tiles under the hero, their names in the app's own words. */
+.rooms { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 12px; margin-top: -36px; position: relative; }
+.room { display: grid; gap: 4px; align-content: start; padding: 14px 16px; border-radius: 14px; background: var(--surface); border: 1px solid var(--line); box-shadow: var(--shadow); text-decoration: none; min-width: 0; }
+.room:hover { border-color: var(--acorn); }
+.room:focus-visible { outline: 3px solid var(--acorn); outline-offset: 3px; }
+.room-name { font: 600 1.1rem/1.2 var(--display); display: flex; align-items: center; gap: 8px; }
+.room-acorn .room-name::after {
+  content: ''; width: 15px; height: 18px; image-rendering: pixelated;
+  background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 5 6' shape-rendering='crispEdges'%3E%3Cpath d='M2 0h1v1H2z' fill='%236b3a10'/%3E%3Cpath d='M0 1h5v2H0z' fill='%236b3a10'/%3E%3Cpath d='M1 3h3v2H1zM2 5h1v1H2z' fill='%2346a36b'/%3E%3C/svg%3E") center / contain no-repeat;
+}
+.room-what { color: var(--muted); font-size: 0.88rem; line-height: 1.4; }
+
+/* The tour: screenshots from a made-up collection, in a browser frame and a phone. */
+.tour { padding-block: 88px 40px; }
+.tour h2 { margin-bottom: 40px; max-width: 18em; }
+.showcase { display: grid; grid-template-columns: 1fr 260px; gap: 32px; align-items: end; margin-bottom: 32px; }
+.showcase-row { display: grid; grid-template-columns: 1fr 1fr; gap: 32px; }
+figure { margin: 0; min-width: 0; }
+figcaption { color: var(--muted); font-size: 0.95rem; margin-top: 12px; }
+.browser > img, .phone > img { box-shadow: var(--shadow); }
+.browser > img { border-radius: 0 0 12px 12px; border: 1px solid var(--line); border-top: 0; }
+.browser-bar { height: 30px; display: flex; align-items: center; gap: 7px; padding-inline: 12px; background: var(--deep); border-radius: 12px 12px 0 0; }
+.browser-bar span { width: 11px; height: 11px; border-radius: 50%; background: #c0763a; }
+.browser-bar span:nth-child(2) { background: var(--gold); }
+.browser-bar span:nth-child(3) { background: var(--acorn); }
+.phone > img { border-radius: 34px; border: 9px solid #0b0b0b; }
+
+/* What it does. */
+.features { padding-block: 72px; }
+.features h2 { margin-bottom: 36px; }
+.feature-grid { list-style: none; padding: 0; margin: 0; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 20px; }
+.feature-grid li { background: var(--surface); border: 1px solid var(--line); border-radius: 16px; padding: 24px; display: grid; gap: 10px; align-content: start; }
+.feature-grid h3 { display: flex; align-items: center; gap: 12px; }
+.feature-grid h3::before {
+  content: ''; flex: none; width: 20px; height: 24px; image-rendering: pixelated;
+  background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 5 6' shape-rendering='crispEdges'%3E%3Cpath d='M2 0h1v1H2z' fill='%236b3a10'/%3E%3Cpath d='M0 1h5v2H0z' fill='%236b3a10'/%3E%3Cpath d='M1 3h3v2H1zM2 5h1v1H2z' fill='%2346a36b'/%3E%3C/svg%3E") center / contain no-repeat;
+}
+.feature-grid p { color: var(--muted); }
+.feature-grid p a { color: var(--eyebrow); font-weight: 600; }
+
+/* What's an acorn: the rules beside one example game's acorns, listed as the app lists them, then how the list uses them. */
+.acorn-explainer { padding-block: 8px 72px; }
+.acorn-explainer h2 { margin-bottom: 16px; }
+.acorn-explainer .intro { color: var(--muted); font-size: 1.12rem; max-width: 40em; margin-bottom: 40px; }
+.acorn-grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 420px); gap: 48px; align-items: start; }
+.acorn-sub { margin-bottom: 18px; }
+.acorn-rules { list-style: none; padding: 0; margin: 0; display: grid; gap: 14px; }
+.acorn-rules li { display: grid; grid-template-columns: 20px minmax(0, 1fr); gap: 14px; align-items: start; }
+.acorn-rules li::before { content: ''; width: 20px; height: 24px; margin-top: 2px; image-rendering: pixelated; background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 5 6' shape-rendering='crispEdges'%3E%3Cpath d='M2 0h1v1H2z' fill='%236b3a10'/%3E%3Cpath d='M0 1h5v2H0z' fill='%236b3a10'/%3E%3Cpath d='M1 3h3v2H1zM2 5h1v1H2z' fill='%2346a36b'/%3E%3C/svg%3E") center / contain no-repeat; }
+.acorn-rules b { font-family: var(--display); font-weight: 600; }
+.receipt { background: var(--surface); border: 1px solid var(--line); border-radius: 16px; padding: 22px 24px; box-shadow: var(--shadow); }
+.receipt-head { display: flex; justify-content: space-between; align-items: center; gap: 16px; margin-bottom: 12px; }
+.receipt-game { font: 600 1.2rem/1.2 var(--display); }
+.receipt-console { color: var(--muted); font-size: 0.92rem; }
+.receipt-total { display: inline-flex; align-items: center; gap: 8px; font: 700 2rem/1 var(--display); color: var(--eyebrow); font-variant-numeric: tabular-nums; }
+.acorn-icon { width: 25px; height: 30px; image-rendering: pixelated; background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 5 6' shape-rendering='crispEdges'%3E%3Cpath d='M2 0h1v1H2z' fill='%236b3a10'/%3E%3Cpath d='M0 1h5v2H0z' fill='%236b3a10'/%3E%3Cpath d='M1 3h3v2H1zM2 5h1v1H2z' fill='%2346a36b'/%3E%3C/svg%3E") center / contain no-repeat; }
+.receipt table { width: 100%; border-collapse: collapse; font-size: 0.97rem; }
+.receipt td { padding: 9px 0; border-top: 1px solid var(--line); }
+.receipt td.n { text-align: right; padding-left: 12px; white-space: nowrap; font-weight: 600; font-variant-numeric: tabular-nums; }
+.receipt tr.sum td { border-top: 2px solid var(--ink); font-family: var(--display); font-weight: 600; font-size: 1.05rem; }
+.receipt figcaption { font-size: 0.88rem; margin-top: 14px; }
+.acorn-uses { list-style: none; padding: 0; margin: 48px 0 0; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 28px; }
+.acorn-uses li { border-top: 3px solid var(--acorn); padding-top: 16px; display: grid; gap: 8px; align-content: start; }
+.acorn-uses p { color: var(--muted); }
+
+/* Getting started. */
+.steps { padding-block: 32px 88px; }
+.steps h2 { margin-bottom: 36px; }
+.step-list { list-style: none; padding: 0; margin: 0; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 28px; }
+.step-list li { display: grid; gap: 10px; align-content: start; }
+.step-n { width: 48px; height: 48px; border-radius: 14px; display: grid; place-items: center; background: var(--deep-green); color: var(--acorn); font: 400 1.4rem/1 Silkscreen, ui-monospace, monospace; }
+.step-list p { color: var(--muted); }
+
+/* The closer and the footer. */
+.closer { background: var(--deep-green); color: var(--on-deep); padding-block: 56px; }
+.closer-inner { display: flex; align-items: center; gap: 28px; }
+.closer img { image-rendering: pixelated; flex: none; }
+.closer h2 { font-size: clamp(1.5rem, 3vw, 2.1rem); margin-bottom: 8px; }
+.closer p { color: var(--on-deep-muted); }
+.footer { padding-block: 32px 48px; }
+.footer-inner { display: grid; gap: 10px; }
+.wordmark.small { font-size: 1.3rem; }
+.footer .wordmark .sq { color: var(--word-sq); }
+.footer .wordmark .cade { color: var(--word-cade); }
+.footer p { color: var(--muted); font-size: 0.9rem; max-width: 52em; }
+
+@media (max-width: 900px) {
+  .hero-grid { grid-template-columns: 1fr; }
+  .hero-art { min-height: 0; }
+  .pixel-squirrel { width: 180px; }
+  .brand { margin-bottom: 28px; }
+  .showcase { grid-template-columns: 1fr; }
+  .showcase .phone { max-width: 260px; justify-self: center; }
+  .showcase-row { grid-template-columns: 1fr; }
+  .feature-grid, .step-list, .acorn-grid, .acorn-uses { grid-template-columns: 1fr; }
+  .rooms { grid-template-columns: repeat(2, minmax(0, 1fr)); margin-top: 20px; }
+  .rooms .room:last-child { grid-column: 1 / -1; }
+  .closer-inner { flex-direction: column; text-align: center; }
+}
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
+  .pixel-squirrel img { animation: none; }
+}

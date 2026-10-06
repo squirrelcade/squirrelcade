@@ -1,0 +1,59 @@
+name: Something's wrong
+description: A page that fails, a wrong number, a game counted wrong, a message that didn't come.
+labels: [problem]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time. The more exactly you say what happened, the faster it gets fixed.
+  - type: textarea
+    id: what
+    attributes:
+      label: What you did
+      description: The page, and the steps that lead to the problem.
+      placeholder: "Platforms > Super Nintendo > Missing, then clicked a game's title."
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: What you expected, and what happened instead
+      description: A screenshot helps a lot. A page that fails says "This page couldn't be shown".
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: Version
+      description: System > Status shows it (for example 0.12.3).
+    validations:
+      required: true
+  - type: dropdown
+    id: install
+    attributes:
+      label: Where it runs
+      options:
+        - Synology (Container Manager)
+        - Unraid
+        - Portainer
+        - TrueNAS
+        - Another Linux server with Docker
+        - Docker Desktop (Windows or Mac)
+        - Something else
+    validations:
+      required: true
+  - type: textarea
+    id: support
+    attributes:
+      label: Support file (optional)
+      description: >
+        System > Status > Support file downloads the version, health, settings (never passwords or keys), recent tasks
+        and log lines. It can include your server's address, your email address and the titles of your games, and an
+        issue here can be public: look it over first, remove what you'd rather not share, or say you'll send it privately.
+  - type: checkboxes
+    id: private
+    attributes:
+      label: Before you send
+      options:
+        - label: Nothing in this issue is a password, a key, or something else I'd rather keep private.
+          required: true

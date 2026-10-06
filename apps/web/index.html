@@ -1,0 +1,53 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#173d2a" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+    <!-- With credentials, so the manifest also loads behind a sign-in proxy such as Cloudflare Access. -->
+    <link rel="manifest" href="/manifest.webmanifest" crossorigin="use-credentials" />
+    <title>Squirrelcade</title>
+    <style>
+      /* An iPhone zooms the page into a field whose text is smaller than 16px when it's tapped (and doesn't zoom back
+         out): on a touch screen, every field's text is at least 16px. */
+      @media (pointer: coarse) {
+        input:not([type='checkbox']):not([type='radio']):not([type='range']),
+        textarea,
+        select {
+          font-size: max(16px, 1em) !important;
+        }
+      }
+      /* The header stays one line: its left side (the menu button, the squirrel and the name) takes the room the
+         buttons leave, and the name gets smaller, then hides, when that room is short (a phone shows the squirrel). */
+      .sc-brand-bar {
+        container-type: inline-size;
+        flex: 1;
+        min-width: 0;
+      }
+      .sc-brand-bar .sc-brand-name {
+        font-size: 21px;
+      }
+      @media (min-width: 48em) {
+        .sc-brand-bar .sc-brand-name {
+          font-size: 24px;
+        }
+      }
+      @container (max-width: 200px) {
+        .sc-brand-bar .sc-brand-name {
+          font-size: 17px;
+        }
+      }
+      @container (max-width: 172px) {
+        .sc-brand-bar .sc-brand-name {
+          display: none !important;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>

@@ -1,0 +1,39 @@
+name: Monthly upkeep
+
+# The monthly upkeep check (STATUS, "Next 9"): every outside address Help, squirrelcade.com and the app point people to,
+# asked for once (scripts/check-links.mjs). When one is broken, an issue says which and where (a comment on the open
+# one, if there is one); nothing broken, nothing to read. Also by hand: Actions > Monthly upkeep > Run workflow.
+on:
+  schedule:
+    # The 1st of each month, 6 AM in Arizona.
+    - cron: '0 13 1 * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  links:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+      - name: Ask for every outside address
+        id: links
+        continue-on-error: true
+        run: node scripts/check-links.mjs --report upkeep-report.md
+      - name: Say what's broken in an issue
+        if: steps.links.outcome == 'failure'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          title="Monthly upkeep: outside addresses to fix"
+          number=$(gh issue list --state open --search "\"$title\" in:title" --json number -q '.[0].number')
+          if [ -n "$number" ]; then
+            gh issue comment "$number" --body-file upkeep-report.md
+          else
+            gh issue create --title "$title" --body-file upkeep-report.md
+          fi

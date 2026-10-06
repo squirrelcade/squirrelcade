@@ -1,0 +1,26 @@
+<?xml version="1.0"?>
+<!--
+  Squirrelcade's Unraid template, until it's in Community Applications. Save it on the flash drive as
+  /boot/config/plugins/dockerMan/templates-user/my-squirrelcade.xml (the "flash" share: config/plugins/dockerMan/templates-user),
+  then Docker > Add Container > Template: my-squirrelcade. See docs/guide/install.md.
+-->
+<Container version="2">
+  <Name>squirrelcade</Name>
+  <Repository>ghcr.io/squirrelcade/squirrelcade:latest</Repository>
+  <Registry>https://ghcr.io/squirrelcade/squirrelcade</Registry>
+  <Network>bridge</Network>
+  <Privileged>false</Privileged>
+  <Shell>sh</Shell>
+  <Support>https://github.com/squirrelcade/squirrelcade</Support>
+  <Project>https://github.com/squirrelcade/squirrelcade</Project>
+  <Overview>Squirrelcade keeps track of a video game collection: every copy you own, completion per console from Wikipedia's lists, a wishlist that explains every point, Store Mode for your phone in a store (barcode scanning, even offline), selling a game (eBay and Mercari listings written for you), achievements from RetroAchievements, Xbox, PlayStation and Steam, each console's Top 100 and history, and your PC games from Playnite. It starts from your PriceCharting export (or a spreadsheet), and everything else is optional. Help > AI-assisted setup gives a prompt for your own AI to take you through the rest.</Overview>
+  <Category>Tools: MediaApp:Other</Category>
+  <WebUI>http://[IP]:[PORT:7575]/</WebUI>
+  <ExtraParams>--user 99:100</ExtraParams>
+  <Config Name="Web interface" Target="7575" Default="7575" Mode="tcp" Description="The port Squirrelcade's pages are on." Type="Port" Display="always" Required="true" Mask="false">7575</Config>
+  <Config Name="Config" Target="/config" Default="/mnt/user/appdata/squirrelcade/config" Mode="rw" Description="The database, settings, logs and Squirrelcade's own backups: back this folder up." Type="Path" Display="always" Required="true" Mask="false">/mnt/user/appdata/squirrelcade/config</Config>
+  <Config Name="Imports" Target="/imports" Default="/mnt/user/appdata/squirrelcade/imports" Mode="rw" Description="The watched folder: a PriceCharting export saved here updates your collection within 15 minutes." Type="Path" Display="always" Required="false" Mask="false">/mnt/user/appdata/squirrelcade/imports</Config>
+  <Config Name="Playnite backups" Target="/playnite" Default="" Mode="ro" Description="Optional, for the PC library: the folder Playnite saves its library backups to (Playnite > Settings > Backup), read-only. Then Settings > Features > PC library, folder /playnite." Type="Path" Display="advanced" Required="false" Mask="false"></Config>
+  <Config Name="Second backup folder" Target="/backup-copies" Default="" Mode="rw" Description="Optional: another disk or share where each of Squirrelcade's backups is copied too. Then Settings > Storage > Second backup folder, /backup-copies." Type="Path" Display="advanced" Required="false" Mask="false"></Config>
+  <Config Name="Time zone" Target="TZ" Default="America/New_York" Mode="" Description="Your time zone, such as America/Chicago or Europe/London." Type="Variable" Display="always" Required="false" Mask="false">America/New_York</Config>
+</Container>
