@@ -13,7 +13,7 @@ import { PreferencePicker } from '../Preference';
 import { monthsFromNow, SNOOZES } from '../choices';
 import { ShareButton } from '../ShareLinks';
 import { GameOfTheDayCard } from './GameOfTheDay';
-import { Acorns, Reviews, type ReviewsOf } from '../Acorn';
+import { Acorn, Acorns, Reviews, type ReviewsOf } from '../Acorn';
 
 interface Entry {
   platformKey: string;
@@ -76,7 +76,11 @@ export function WishlistPage() {
   return (
     <>
       <PageHeader help="wishlist"
-        title="Acorns wishlist"
+        title={
+          <>
+            Acorns wishlist <Acorn size={24} />
+          </>
+        }
         actions={
           <Group gap="xs">
             {canEdit && <ShareButton kind="wishlist" />}

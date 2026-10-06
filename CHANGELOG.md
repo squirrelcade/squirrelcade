@@ -2,6 +2,12 @@
 
 What changed in each version of Squirrelcade (called Gamefolio before 0.35.0). The decisions behind these (D01, D02...) are in [docs/DECISIONS.md](docs/DECISIONS.md), each with a tag to roll it back.
 
+## 1.1.0 (coming): the Stash's chest
+
+### Added
+
+- **The Stash's chest** (D142): a pixel treasure chest for what you have, as the acorn is for what you want. It's the Stash's mark in the menu (in the gamepad's place) and on the phone's tab bar, after the Stash page's title, and before whatever says you have a game: "Have it" on Today and in the game drawer, "You own it" and "Owned" in Coming soon, Past releases, Series, Deals, Check a list and the page friends check, the Owned tile and tab of a console and of a set, Store Mode's "You own this", and each side's copies when you compare with a friend. The Acorns wishlist's title has its acorn.
+
 ## 1.0.0 (2026-10-06): the first public release
 
 Squirrelcade's code is public on GitHub, free under the AGPL-3.0 license, and its image can be pulled by anyone. PriceCharting supports the way Squirrelcade uses its values (each person's own export, credited and linked). The versions below are how it got here.

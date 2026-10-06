@@ -17,7 +17,7 @@ import { ConsoleHead } from './ConsoleHead';
 import { GameCover, GameTitle } from '../GameDrawer';
 import { MATCH_METHODS, REJECTABLE, type MatchMethod } from '../choices';
 import { PreferencePicker } from '../Preference';
-import { Acorns, Reviews, type ReviewsOf } from '../Acorn';
+import { Acorns, Reviews, StashMark, type ReviewsOf } from '../Acorn';
 
 type Status = 'missing' | 'review' | 'owned' | 'excluded' | 'unconfirmed' | 'upcoming' | 'extra';
 
@@ -159,7 +159,9 @@ export function PlatformDetailPage() {
               </Badge>
             )}
           </Tabs.Tab>
-          <Tabs.Tab value="owned">Owned</Tabs.Tab>
+          <Tabs.Tab value="owned" leftSection={<StashMark size={13} />}>
+            Owned
+          </Tabs.Tab>
           <Tabs.Tab value="excluded">Excluded</Tabs.Tab>
           {(d.counts.unconfirmed > 0 || tab === 'unconfirmed') && (
             <Tabs.Tab value="unconfirmed">

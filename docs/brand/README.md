@@ -17,6 +17,8 @@ The pixel squirrel: a squirrel holding its acorn, on a 16 × 16 pixel grid. The 
 | Eye | `#111111` | |
 | Deep green | `#16392a` | the app icon's background; the app's highlighted panels and secondary buttons |
 
+**The two marks:** the acorn counts what you want (D121); the Stash's treasure chest marks what you have (D142), on a 7 × 6 grid: its frame in the acorn cap's brown (`#6b3a10`), its wood in the tail's color (`#c27a3f`), its lock in the app's gold (`#e9b44c`). Both are drawn in `apps/web/src/Acorn.tsx`, and as CSS images on squirrelcade.com.
+
 The wordmark's "squirrel" is `#c0763a` on dark backgrounds and `#a8632d` on light ones; "cade" is the arcade green, `#3dbe74` on dark and `#1e7546` on light. The app's other colors (the charcoal neutrals, the platform colors) are in `apps/web/src/brand.css`.
 
 ## Type

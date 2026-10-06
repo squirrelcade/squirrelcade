@@ -5,6 +5,7 @@ import { IconDots, IconDownload, IconPlus, IconRefresh, IconSearch, IconUpload, 
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router';
+import { StashMark } from '../Acorn';
 import { api } from '../api';
 import { PageHeader } from '../components';
 import { count, dateTime } from '../format';
@@ -498,7 +499,9 @@ export function SetDetailPage() {
       <Tabs value={tab} onChange={setTab}>
         <Tabs.List mb="sm">
           <Tabs.Tab value="missing">Missing ({count(of('missing').length)})</Tabs.Tab>
-          <Tabs.Tab value="owned">Owned ({count(of('owned').length)})</Tabs.Tab>
+          <Tabs.Tab value="owned" leftSection={<StashMark size={13} />}>
+            Owned ({count(of('owned').length)})
+          </Tabs.Tab>
           {set.review > 0 && <Tabs.Tab value="review">To review ({count(of('review').length)})</Tabs.Tab>}
         </Tabs.List>
       </Tabs>

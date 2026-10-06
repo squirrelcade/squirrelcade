@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react';
+import { Have } from './Acorn';
 import { ANSWERS, type Answer } from './choices';
 
 /** Each answer's tone (brand.css): go for a game you need, own for yours, warn for one to check, info and plain for the rest. */
@@ -15,12 +16,14 @@ const TONE: Record<Answer, 'go' | 'own' | 'warn' | 'info' | 'plain'> = {
 
 /**
  * Store Mode's verdict (0.50.0, the redesign's): the answer in large pixel type on its tone's color, and the one thing
- * that matters most about it under it (its place on the wishlist, what yours is worth, where you have it).
+ * that matters most about it under it (its place on the wishlist, what yours is worth, where you have it). A game you
+ * have has the Stash's chest before it (D142).
  */
 export function Verdict({ answer, reason }: { answer: Answer; reason: ReactNode }) {
+  const label = ANSWERS[answer].label;
   return (
     <div className="sc-verdict" data-tone={TONE[answer]}>
-      <span className="sc-verdict-word">{ANSWERS[answer].label}</span>
+      <span className="sc-verdict-word">{TONE[answer] === 'own' ? <Have size={22}>{label}</Have> : label}</span>
       {reason && <span className="sc-verdict-reason">{reason}</span>}
     </div>
   );

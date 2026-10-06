@@ -5,6 +5,7 @@ import { IconCamera, IconChevronDown, IconDownload, IconFileSpreadsheet, IconLay
 import { keepPreviousData, useQuery } from '@tanstack/react-query';
 import { useState } from 'react';
 import { Link, useSearchParams } from 'react-router';
+import { StashMark } from '../Acorn';
 import { api } from '../api';
 import { RegionBadge } from '../Region';
 import { RommLinks, type RommLink } from '../Romm';
@@ -179,6 +180,13 @@ function CoverTile({ item }: { item: Item }) {
   );
 }
 
+/** The page's title with the Stash's chest after it (D142), as Acorns ranking has the acorn. */
+const STASH_TITLE = (
+  <>
+    Stash <StashMark size={24} />
+  </>
+);
+
 export function CollectionPage() {
   const [params, setParams] = useSearchParams();
   // The list or the grid: the page's parameter, else what this browser used last.
@@ -237,7 +245,7 @@ export function CollectionPage() {
   if (summary.data && summary.data.currentImport === null && (summary.data.totals?.copies ?? 0) === 0) {
     return (
       <>
-        <PageHeader help="collection" title="Stash" />
+        <PageHeader help="collection" title={STASH_TITLE} />
         <Stack align="center" mt="xl" gap="sm">
           <Text size="lg">Your collection is empty.</Text>
           <Text c="dimmed" size="sm" ta="center" maw={480}>
@@ -262,7 +270,7 @@ export function CollectionPage() {
   return (
     <>
       <PageHeader help="collection"
-        title="Stash"
+        title={STASH_TITLE}
         description={summary.data?.currentImport ? `From ${summary.data.currentImport.fileName}, updated ${date(summary.data.currentImport.appliedAt, dateFormat)}` : undefined}
         actions={
           <Group gap="xs">

@@ -1,6 +1,6 @@
 {
   "name": "squirrelcade",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "private": true,
   "license": "AGPL-3.0-only",
   "description": "Self-hosted video game collection manager",

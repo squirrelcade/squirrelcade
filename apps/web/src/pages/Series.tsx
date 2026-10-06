@@ -7,6 +7,7 @@ import { Fragment, useEffect, useState } from 'react';
 import { useSearchParams } from 'react-router';
 import { api } from '../api';
 import { count, releaseDate } from '../format';
+import { StashMark } from '../Acorn';
 import { GameTitle } from '../GameDrawer';
 import { PreferencePicker } from '../Preference';
 import { notifyError, notifySuccess, useCanEdit, useSetting } from '../hooks';
@@ -133,7 +134,7 @@ function SeriesGames({ name }: { name: string }) {
       {canEdit && <StoryOrder opened={editing} onClose={() => setEditing(false)} name={name} titles={titles} stories={stories} hasOne={story !== null} onSaved={() => setOrder('story')} />}
       {sorted.map((g) => (
         <Group key={`${g.platformKey}|${g.title}`} gap={8} wrap="nowrap">
-          <Badge size="sm" variant="light" color={STATUS[g.status]?.color ?? 'gray'} style={{ textTransform: 'none', flexShrink: 0 }} w={120}>
+          <Badge size="sm" variant="light" color={STATUS[g.status]?.color ?? 'gray'} style={{ textTransform: 'none', flexShrink: 0 }} w={120} leftSection={g.status === 'owned' ? <StashMark size={11} /> : undefined}>
             {STATUS[g.status]?.label ?? g.status}
           </Badge>
           <div style={{ minWidth: 0, flex: 1 }}>

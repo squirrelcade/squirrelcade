@@ -8,7 +8,7 @@ import { count, date, releaseDate } from '../format';
 import { GameCover, GameTitle, PriceLinks } from '../GameDrawer';
 import { PreferencePicker } from '../Preference';
 import { useSetting } from '../hooks';
-import { Acorns, Reviews, type ReviewsOf } from '../Acorn';
+import { Acorns, Reviews, StashMark, type ReviewsOf } from '../Acorn';
 
 /** A past year's releases around this time (GET /api/v1/catalogs/past). */
 interface PastYear {
@@ -179,7 +179,7 @@ export function PastReleasesPage() {
                               </Table.Td>
                               <Table.Td>
                                 {status ? (
-                                  <Badge size="sm" variant="light" color={status.color} style={{ textTransform: 'none' }}>
+                                  <Badge size="sm" variant="light" color={status.color} style={{ textTransform: 'none' }} leftSection={g.status === 'owned' ? <StashMark size={11} /> : undefined}>
                                     {status.label}
                                   </Badge>
                                 ) : (

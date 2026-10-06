@@ -6,6 +6,7 @@ import { Link } from 'react-router';
 import { api } from '../api';
 import { PageHeader } from '../components';
 import { count } from '../format';
+import { StashMark } from '../Acorn';
 import { GameTitle } from '../GameDrawer';
 import { PreferencePicker } from '../Preference';
 import { notifyError } from '../hooks';
@@ -127,7 +128,7 @@ export function ListCheckPage() {
             {(Object.keys(VERDICTS) as Verdict[])
               .filter((v) => tally.get(v))
               .map((v) => (
-                <Badge key={v} variant="light" color={VERDICTS[v].color} style={{ textTransform: 'none' }}>
+                <Badge key={v} variant="light" color={VERDICTS[v].color} style={{ textTransform: 'none' }} leftSection={v === 'own' ? <StashMark size={12} /> : undefined}>
                   {VERDICTS[v].label}: {count(tally.get(v)!)}
                 </Badge>
               ))}
@@ -159,7 +160,7 @@ export function ListCheckPage() {
                           </Text>
                         </Table.Td>
                         <Table.Td>
-                          <Badge variant="light" color={VERDICTS[v].color} style={{ textTransform: 'none' }}>
+                          <Badge variant="light" color={VERDICTS[v].color} style={{ textTransform: 'none' }} leftSection={v === 'own' ? <StashMark size={12} /> : undefined}>
                             {VERDICTS[v].label}
                           </Badge>
                           {(result.ownedOn.length > 0 || result.ownedOnPc.length > 0) && (

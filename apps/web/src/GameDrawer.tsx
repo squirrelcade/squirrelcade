@@ -19,7 +19,7 @@ import { NOTE_MAX, useGameNotes } from './notes';
 import { PreferencePicker } from './Preference';
 import { RegionBadge } from './Region';
 import { RommLinks, type RommLink } from './Romm';
-import { Acorns, Reviews } from './Acorn';
+import { Acorns, Have, Reviews, StashMark } from './Acorn';
 
 /** One game on one console (GET /api/v1/game). */
 interface GameView {
@@ -562,7 +562,7 @@ export function GameDrawer() {
                 <Group gap={6}>
                   {tags.map((t) => (
                     <span key={t.label} className="sc-tag" data-tone={t.tone}>
-                      {t.label}
+                      {t.tone === 'have' ? <Have>{t.label}</Have> : t.label}
                     </span>
                   ))}
                 </Group>
@@ -587,11 +587,11 @@ export function GameDrawer() {
               )}
               <Group gap={6}>
                 {status ? (
-                  <Badge color={status.color} variant="light" style={{ textTransform: 'none' }}>
+                  <Badge color={status.color} variant="light" style={{ textTransform: 'none' }} leftSection={c?.status === 'owned' ? <StashMark size={12} /> : undefined}>
                     {status.label}
                   </Badge>
                 ) : (
-                  <Badge color="gray" variant="outline" style={{ textTransform: 'none' }}>
+                  <Badge color="gray" variant="outline" style={{ textTransform: 'none' }} leftSection={g.copies.length > 0 ? <StashMark size={12} /> : undefined}>
                     {g.copies.length > 0 ? 'You own it; not in the catalog' : "Not in the console's catalog"}
                   </Badge>
                 )}

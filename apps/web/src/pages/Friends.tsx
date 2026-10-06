@@ -5,7 +5,7 @@ import { IconArrowsExchange, IconClipboardText, IconDots, IconDownload, IconPenc
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useState, type ReactNode } from 'react';
 import { Link, Navigate, useNavigate, useParams, useSearchParams } from 'react-router';
-import { Acorns } from '../Acorn';
+import { Acorns, StashMark } from '../Acorn';
 import { api, ApiError } from '../api';
 import { CopyButton } from '../Copy';
 import { PageHeader } from '../components';
@@ -904,6 +904,8 @@ function SideCell({ side, currency }: { side: Side | null; currency: string }) {
   return (
     <>
       <Text size="sm">
+        {/* Their Stash's chest (D142), as the wishlist badges have acorns. */}
+        <StashMark size={12} />{' '}
         {side.copies > 1 ? `${side.copies} copies: ` : ''}
         {conditions}
       </Text>

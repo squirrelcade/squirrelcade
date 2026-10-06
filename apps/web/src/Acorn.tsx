@@ -1,4 +1,5 @@
 import { VisuallyHidden } from '@mantine/core';
+import type { ReactNode } from 'react';
 
 /**
  * The acorn (D121): Squirrelcade's unit for how much you'd want a game, so it's never taken for a review score. The
@@ -19,6 +20,39 @@ export function Acorn({ size = 14 }: { size?: number }) {
       <path d="M2 0h1v1H2zM0 1h5v2H0z" fill="#6b3a10" />
       <path d="M1 3h3v2H1zM2 5h1v1H2z" fill="#46a36b" />
     </svg>
+  );
+}
+
+/**
+ * The Stash's mark (D142): a pixel treasure chest for what you have, as the acorn is for what you want. It stands for
+ * the Stash in the menu and on its page, and before whatever says you have a game ("Have it", "You own it", "Owned").
+ * Decorative: the words beside it say what it means.
+ */
+export function StashMark({ size = 14 }: { size?: number }) {
+  return (
+    <svg
+      viewBox="0 0 7 6"
+      width={Math.round((size * 7) / 6)}
+      height={size}
+      shapeRendering="crispEdges"
+      aria-hidden="true"
+      focusable="false"
+      style={{ display: 'inline-block', flex: 'none', verticalAlign: '-0.12em' }}
+    >
+      <path d="M1 0h5v1H1zM0 1h1v5H0zM6 1h1v5H6zM1 2h2v1H1zM4 2h2v1H4zM1 5h5v1H1z" fill="#6b3a10" />
+      <path d="M1 1h5v1H1zM1 3h2v2H1zM4 3h2v2H4zM3 4h1v1H3z" fill="#c27a3f" />
+      <path d="M3 2h1v2H3z" fill="#e9b44c" />
+    </svg>
+  );
+}
+
+/** Words that say you have a game ("Have it", "Owned") with the Stash's mark before them (D142). */
+export function Have({ children, size = 12 }: { children: ReactNode; size?: number }) {
+  return (
+    <span className="sc-marked">
+      <StashMark size={size} />
+      {children}
+    </span>
   );
 }
 

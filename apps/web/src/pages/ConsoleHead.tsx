@@ -3,6 +3,7 @@ import { IconDownload, IconPlus } from '@tabler/icons-react';
 import { useQuery } from '@tanstack/react-query';
 import { Fragment, type ReactNode } from 'react';
 import { Link } from 'react-router';
+import { Have } from '../Acorn';
 import { api } from '../api';
 import { HelpLink } from '../components';
 import { count, date, wholeMoney } from '../format';
@@ -67,7 +68,7 @@ export function ConsoleHead({ d, tab, tiles, canEdit, onAdd }: { d: ConsoleCount
   const copies = d.regions.reduce((sum, r) => sum + r.copies, 0);
 
   const counting = d.counts.owned + d.counts.missing + d.counts.review;
-  const tile = (value: string, label: string, n: number, tone?: 'gold', hint?: string): ReactNode => (
+  const tile = (value: string, label: ReactNode, n: number, tone?: 'gold', hint?: string): ReactNode => (
     <Link key={value} to={`?tab=${value}`} replace className="sc-tile" data-tone={tone} aria-current={tab === value ? 'page' : undefined} title={hint}>
       <span className="sc-tile-label">{label}</span>
       <span className="sc-tile-number">{count(n)}</span>
@@ -139,7 +140,7 @@ export function ConsoleHead({ d, tab, tiles, canEdit, onAdd }: { d: ConsoleCount
         </div>
         {tiles && (
           <div className="sc-tiles">
-            {tile('owned', 'Owned', d.counts.owned)}
+            {tile('owned', <Have>Owned</Have>, d.counts.owned)}
             {tile('missing', 'Missing', d.counts.missing, 'gold')}
             {tile('review', 'Needs review', d.counts.review)}
             {tile('excluded', 'Excluded', d.counts.excluded)}

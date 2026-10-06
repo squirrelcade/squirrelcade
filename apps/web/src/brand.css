@@ -818,11 +818,17 @@
   justify-content: center;
 }
 
-/* A game's acorns (D121): the number with the pixel acorn after it. */
+/* A game's acorns (D121): the number with the pixel acorn after it. "Have it" with the Stash's chest before it (D142). */
 .sc-acorns {
   display: inline-flex;
   align-items: center;
   gap: 3px;
+  white-space: nowrap;
+}
+.sc-marked {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
   white-space: nowrap;
 }
 

@@ -112,6 +112,10 @@ p { margin: 0; }
 .room:hover { border-color: var(--acorn); }
 .room:focus-visible { outline: 3px solid var(--acorn); outline-offset: 3px; }
 .room-name { font: 600 1.1rem/1.2 var(--display); display: flex; align-items: center; gap: 8px; }
+.room-stash .room-name::after {
+  content: ''; width: 21px; height: 18px; image-rendering: pixelated;
+  background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 7 6' shape-rendering='crispEdges'%3E%3Cpath d='M1 0h5v1H1zM0 1h1v5H0zM6 1h1v5H6zM1 2h2v1H1zM4 2h2v1H4zM1 5h5v1H1z' fill='%236b3a10'/%3E%3Cpath d='M1 1h5v1H1zM1 3h2v2H1zM4 3h2v2H4zM3 4h1v1H3z' fill='%23c27a3f'/%3E%3Cpath d='M3 2h1v2H3z' fill='%23e9b44c'/%3E%3C/svg%3E") center / contain no-repeat;
+}
 .room-acorn .room-name::after {
   content: ''; width: 15px; height: 18px; image-rendering: pixelated;
   background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 5 6' shape-rendering='crispEdges'%3E%3Cpath d='M2 0h1v1H2z' fill='%236b3a10'/%3E%3Cpath d='M0 1h5v2H0z' fill='%236b3a10'/%3E%3Cpath d='M1 3h3v2H1zM2 5h1v1H2z' fill='%2346a36b'/%3E%3C/svg%3E") center / contain no-repeat;
@@ -140,9 +144,11 @@ figcaption { color: var(--muted); font-size: 0.95rem; margin-top: 12px; }
 .feature-grid li { background: var(--surface); border: 1px solid var(--line); border-radius: 16px; padding: 24px; display: grid; gap: 10px; align-content: start; }
 .feature-grid h3 { display: flex; align-items: center; gap: 12px; }
 .feature-grid h3::before {
-  content: ''; flex: none; width: 20px; height: 24px; image-rendering: pixelated;
+  content: ''; flex: none; width: 28px; height: 24px; image-rendering: pixelated;
   background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 5 6' shape-rendering='crispEdges'%3E%3Cpath d='M2 0h1v1H2z' fill='%236b3a10'/%3E%3Cpath d='M0 1h5v2H0z' fill='%236b3a10'/%3E%3Cpath d='M1 3h3v2H1zM2 5h1v1H2z' fill='%2346a36b'/%3E%3C/svg%3E") center / contain no-repeat;
 }
+/* The cards about what you have: the Stash's chest (D142) in the acorn's place (the mark's box fits either, so the titles line up). */
+.feature-grid li.have h3::before { background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 7 6' shape-rendering='crispEdges'%3E%3Cpath d='M1 0h5v1H1zM0 1h1v5H0zM6 1h1v5H6zM1 2h2v1H1zM4 2h2v1H4zM1 5h5v1H1z' fill='%236b3a10'/%3E%3Cpath d='M1 1h5v1H1zM1 3h2v2H1zM4 3h2v2H4zM3 4h1v1H3z' fill='%23c27a3f'/%3E%3Cpath d='M3 2h1v2H3z' fill='%23e9b44c'/%3E%3C/svg%3E") center / contain no-repeat; }
 .feature-grid p { color: var(--muted); }
 .feature-grid p a { color: var(--eyebrow); font-weight: 600; }
 

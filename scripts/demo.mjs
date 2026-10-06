@@ -120,6 +120,18 @@ async function main() {
   await shot('10-timeline', '/platforms?view=timeline');
   await shot('11-features', '/settings/features');
   await shot('12-updates', '/updates');
+  // A game you have, with the Stash's chest (D142): its drawer, and Store Mode's answer on a phone.
+  const mine = (await call('GET', '/collection/items?pageSize=1&q=uncharted')).data.items?.[0];
+  if (mine?.platformKey) {
+    await shot('13-owned-drawer', `/collection?game=${encodeURIComponent(`${mine.platformKey}|${mine.title}`)}`);
+    await shot('14-store-owned-phone', '/store', {
+      phone: true,
+      act: async (page) => {
+        await page.getByPlaceholder('Barcode or title').fill(mine.title);
+        await page.waitForTimeout(2500);
+      },
+    });
+  }
   await browser.close();
   console.log(`${shots.length} screenshots in ${out}`);
 }

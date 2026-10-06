@@ -15,7 +15,7 @@ import { consoleOf, dealConsoles, dealOrder, isNewListing, offPercent, type Deal
 import { GameOfTheDayCard } from './GameOfTheDay';
 import type { MissingCopy } from './Review';
 import { SetupChecklist } from './system/SetupChecklist';
-import { Acorns, Reviews, type ReviewsOf } from '../Acorn';
+import { Acorns, Have, Reviews, type ReviewsOf } from '../Acorn';
 
 interface Deal {
   /** IGDB's rating, beside its acorns (0.53.0). */
@@ -280,7 +280,7 @@ function GameHistory({ today, games }: { today: string; games: HistoryGame[] }) 
                 <span style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginTop: 4 }}>
                   {h.status === 'owned' ? (
                     <span className="sc-tag" data-tone="have" style={{ fontSize: 11 }}>
-                      Have it
+                      <Have size={11}>Have it</Have>
                     </span>
                   ) : (
                     (h.rank !== null || h.score != null) && (
@@ -428,7 +428,7 @@ function WeekStrip({ today, releases }: { today: string; releases: Release[] }) 
                         <span style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
                           {have && (
                             <span className="sc-tag" data-tone="have" style={{ fontSize: 11 }}>
-                              Have it
+                              <Have size={11}>Have it</Have>
                             </span>
                           )}
                           {score >= 0 && (

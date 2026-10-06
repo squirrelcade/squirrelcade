@@ -8,7 +8,7 @@ import { PageHeader } from '../components';
 import { money, timeAgo } from '../format';
 import { useCanEdit, useSetting } from '../hooks';
 import { GameCover, GameTitle } from '../GameDrawer';
-import { Acorns, Reviews, type ReviewsOf } from '../Acorn';
+import { Acorns, Reviews, StashMark, type ReviewsOf } from '../Acorn';
 import { consoleOf, dealConsoles, dealOrder, isNewListing, type DealOrder } from '../dealTools';
 
 /** A deal from PriceCharting's emails, matched to the catalogs (GET /api/v1/deals). */
@@ -128,7 +128,7 @@ export function DealsPage() {
                       {x.platform ?? x.console}
                     </Text>
                     {status && (
-                      <Badge size="sm" color={status.color} variant="light">
+                      <Badge size="sm" color={status.color} variant="light" leftSection={x.status === 'owned' ? <StashMark size={11} /> : undefined}>
                         {status.label}
                       </Badge>
                     )}

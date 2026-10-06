@@ -5,6 +5,7 @@ import { IconArrowLeft, IconCheck, IconPlus } from '@tabler/icons-react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
 import { Link, useSearchParams } from 'react-router';
+import { StashMark } from '../Acorn';
 import { api } from '../api';
 import { PageHeader } from '../components';
 import { CONDITIONS, TOUCHED, useFromPriceCharting } from '../CopyDetails';
@@ -140,7 +141,7 @@ export function AddGamePage() {
                   <Group gap={6} wrap="nowrap">
                     <Text size="sm">{option.value}</Text>
                     {s && s.owned > 0 && (
-                      <Badge size="xs" variant="light" color="green" style={{ textTransform: 'none' }}>
+                      <Badge size="xs" variant="light" color="green" style={{ textTransform: 'none' }} leftSection={<StashMark size={10} />}>
                         You have {s.owned}
                       </Badge>
                     )}

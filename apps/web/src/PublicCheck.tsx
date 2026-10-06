@@ -2,6 +2,7 @@ import { Alert, Anchor, Badge, Button, Card, Group, Loader, Stack, Text, TextInp
 import { IconCurrencyDollar, IconVideoFilled } from '@tabler/icons-react';
 import { useQuery } from '@tanstack/react-query';
 import { useState } from 'react';
+import { StashMark } from './Acorn';
 import { api, errorMessage } from './api';
 import { Cover, RetryCountdown } from './components';
 import { money } from './format';
@@ -61,7 +62,7 @@ function CheckCard({ r, currency }: { r: CheckAnswer; currency: string }) {
           <Text size="sm" c="dimmed">
             {r.platform}
           </Text>
-          <Badge size="lg" color={answer.color} variant="filled" style={{ textTransform: 'none' }} maw="100%">
+          <Badge size="lg" color={answer.color} variant="filled" style={{ textTransform: 'none' }} maw="100%" leftSection={r.answer === 'own' ? <StashMark size={14} /> : undefined}>
             {answer.label}
           </Badge>
           {r.answer === 'elsewhere' && r.ownedOn.length > 0 && <Text size="sm">They have it on {r.ownedOn.join(', ')}.</Text>}

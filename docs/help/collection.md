@@ -2,6 +2,8 @@
 
 Squirrelcade keeps your collection: every copy you own is a record of its own, with what only you know about it (where it is, tags, loans, photos). Type your games in (**Add a game**, below), or keep them up to date from an export: PriceCharting's brings each copy's value and its history, and a spreadsheet of your own or another collection app's export works too. Both together work as well.
 
+The Stash's mark is a little treasure chest. Wherever Squirrelcade says you have a game ("Have it", "You own it", "Owned"), the chest is beside it, as the acorn is beside what you want.
+
 ## Updating it
 
 1. On PriceCharting, **My Collection > Download (CSV)**. Keep the file's name (`collection_YYYYMMDD.csv`): its date is the date of the prices.

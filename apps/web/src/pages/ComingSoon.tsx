@@ -9,7 +9,7 @@ import { count, releaseDate } from '../format';
 import { useSetting } from '../hooks';
 import { GameTitle } from '../GameDrawer';
 import { PreferencePicker } from '../Preference';
-import { Acorns, Reviews, type ReviewsOf } from '../Acorn';
+import { Acorns, Reviews, StashMark, type ReviewsOf } from '../Acorn';
 
 /** A game not out yet (GET /api/v1/catalogs/upcoming). */
 interface Upcoming {
@@ -155,7 +155,7 @@ export function ComingSoonPage() {
                         <Text size="sm">{g.platform}</Text>
                       </Table.Td>
                       <Table.Td>
-                        <Badge size="sm" variant="light" color={STATUS[g.status]?.color ?? 'gray'} style={{ textTransform: 'none' }}>
+                        <Badge size="sm" variant="light" color={STATUS[g.status]?.color ?? 'gray'} style={{ textTransform: 'none' }} leftSection={g.status === 'owned' ? <StashMark size={11} /> : undefined}>
                           {STATUS[g.status]?.label ?? g.status}
                         </Badge>
                       </Table.Td>

@@ -1,7 +1,7 @@
 import { SETTINGS_PAGES } from '@squirrelcade/core';
 import { ActionIcon, Anchor, AppShell, Badge, Burger, Button, Group, Menu, NavLink, ScrollArea, Text, Tooltip, UnstyledButton } from '@mantine/core';
 import { useDisclosure, useMediaQuery } from '@mantine/hooks';
-import { IconSun, IconVideoFilled, IconChevronDown, IconBook2, IconDeviceDesktop, IconDeviceGamepad2, IconHelp, IconListCheck, IconLogout, IconMenu2, IconPlus, IconServer, IconSettings, IconUser, IconUsersGroup } from '@tabler/icons-react';
+import { IconSun, IconVideoFilled, IconChevronDown, IconBook2, IconDeviceDesktop, IconHelp, IconListCheck, IconLogout, IconMenu2, IconPlus, IconServer, IconSettings, IconUser, IconUsersGroup } from '@tabler/icons-react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useState, type ReactNode } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router';
@@ -15,7 +15,7 @@ import { clearCopy } from './offline';
 import { PasswordModal } from './Password';
 import { useFeature, usePageTitle, useSession, useSetting, useSettings } from './hooks';
 import { DEEP_BUTTON } from './look';
-import { Acorn } from './Acorn';
+import { Acorn, StashMark } from './Acorn';
 
 const SYSTEM_PAGES = [
   { path: '/system/status', label: 'Status' },
@@ -214,7 +214,7 @@ export function Layout({ children }: { children: ReactNode }) {
             The Stash (the collection, named for what a squirrel keeps, 2026-10-06): the games you have, and keeping them
             up to date.
           */}
-          <NavLink label="Stash" leftSection={<IconDeviceGamepad2 size={18} />} opened={inCollection} onClick={() => navigate('/collection')} childrenOffset={28}>
+          <NavLink label="Stash" leftSection={<StashMark size={16} />} opened={inCollection} onClick={() => navigate('/collection')} childrenOffset={28}>
             {link('/collection', 'Stash')}
             {link('/collection/copies', 'Copies')}
             {link('/collection/upgrades', 'Upgrades')}
@@ -296,7 +296,7 @@ export function Layout({ children }: { children: ReactNode }) {
           {(
             [
               ['/today', 'Today', <IconSun size={22} />, path === '/today' || path === '/'],
-              ['/collection', 'Stash', <IconDeviceGamepad2 size={22} />, inCollection],
+              ['/collection', 'Stash', <StashMark size={20} />, inCollection],
             ] as [string, string, ReactNode, boolean][]
           ).map(([to, label, icon, on]) => (
             <Link key={to} to={to} className="sc-tab" aria-current={on ? 'page' : undefined} onClick={close}>

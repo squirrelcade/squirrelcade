@@ -174,6 +174,10 @@ export async function uiTest(target, account, check) {
     let found = await pageProblems();
     check('ui: signs in', found.length === 0, found.join(' | '));
     check('ui: the sign-in boxes stay open to password managers', signInBoxes.every((v) => v === 'false'), signInBoxes.join(', '));
+    // The Stash's chest (D142): beside Stash in the menu, in the gamepad's place.
+    const menuChests = await page.locator('nav.mantine-AppShell-navbar svg[viewBox="0 0 7 6"]').count();
+    const gamepads = await page.locator('nav.mantine-AppShell-navbar .tabler-icon-device-gamepad-2').count();
+    check("ui: the Stash's chest is beside Stash in the menu", menuChests >= 1 && gamepads === 0, `chests: ${menuChests}, gamepads: ${gamepads}`);
 
     const paths = [
       '/today',
@@ -285,6 +289,10 @@ export async function uiTest(target, account, check) {
     // Section titles are upper case on the page, and innerText gives them as shown.
     const shown = await drawer.innerText();
     check('ui: a title opens the game drawer', found.length === 0 && /your copies/i.test(shown), found.join(' | ') || (/your copies/i.test(shown) ? '' : shown.slice(0, 200)));
+    // The chest before "Have it" and "You own it" in the drawer, and on the console's Owned tab (D142).
+    const drawerChests = await drawer.locator('svg[viewBox="0 0 7 6"]').count();
+    const tabChest = await page.getByRole('tab', { name: 'Owned', exact: true }).locator('svg[viewBox="0 0 7 6"]').count();
+    check("ui: the Stash's chest marks a game you have, in the drawer and on the Owned tab", drawerChests >= 2 && tabChest === 1, `drawer: ${drawerChests}, tab: ${tabChest}`);
     await page.keyboard.press('Escape');
     await drawer.waitFor({ state: 'hidden', timeout: 5000 });
     check('ui: Escape closes the drawer', !new URL(page.url()).searchParams.has('game'), page.url());
@@ -835,6 +843,8 @@ export async function uiTest(target, account, check) {
     await page.getByText('You own this').first().waitFor({ timeout: 10000 });
     found = await pageProblems();
     check('ui: Store Mode answers', found.length === 0, found.join(' | '));
+    const verdictChest = await page.locator('.sc-verdict[data-tone="own"] svg[viewBox="0 0 7 6"]').count();
+    check(`ui: Store Mode's "You own this" has the Stash's chest`, verdictChest >= 1, `chests: ${verdictChest}`);
     // A game you don't have: its price on PriceCharting one tap away; the header's camera goes to Store Mode.
     await page.getByPlaceholder('Barcode or title').fill('demons souls');
     const price = page.getByRole('link', { name: 'Price on PriceCharting' }).first();

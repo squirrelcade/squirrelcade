@@ -23,11 +23,13 @@ import {
   TextInput,
   Title,
   Tooltip,
+  VisuallyHidden,
 } from '@mantine/core';
 import { IconCheck, IconDots, IconExternalLink, IconPencil, IconSearch } from '@tabler/icons-react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Fragment, useMemo, useState, type ReactNode } from 'react';
 import { Link, useSearchParams } from 'react-router';
+import { StashMark } from '../Acorn';
 import { api } from '../api';
 import { GameCover, GameTitle, useOpenGame } from '../GameDrawer';
 import { notifyError, notifySuccess, useCanEdit, useSetting } from '../hooks';
@@ -979,13 +981,14 @@ export function TimelinePanel() {
   const games = timeline.data.games.filter((g) => shown.has(g.platformKey));
   const generations = [...new Set(consoles.map((c) => c.generation ?? 0))].sort((a, b) => a - b);
   const years = [...new Set([...consoles.map((c) => c.launched).filter((y): y is number => y !== null), ...games.map((g) => g.year)])].sort((a, b) => a - b);
-  const mark = (o: ListOwnership) => (o === 'owned' ? '✓' : o === 'review' || o === 'maybe' ? '?' : '');
+  // A game you have: the Stash's chest (D142); one that might be yours: a question mark.
+  const mark = (o: ListOwnership) => (o === 'owned' ? <StashMark size={12} /> : o === 'review' || o === 'maybe' ? '?' : '');
 
   return (
     <Stack gap="md">
       <Group justify="space-between" wrap="wrap">
         <Text size="sm" c="dimmed">
-          Consoles by the year they came out, with their best games from the Top 100 lists and their &quot;Start here&quot; games (✓ you have it).
+          Consoles by the year they came out, with their best games from the Top 100 lists and their &quot;Start here&quot; games (<StashMark size={12} /> you have it).
         </Text>
         {collected.length > 0 && <Switch size="sm" label="Consoles you don't collect too" checked={all} onChange={(e) => setAll(e.currentTarget.checked)} />}
       </Group>
@@ -1049,9 +1052,10 @@ export function TimelinePanel() {
                           {g.startHere ? ', start here' : ''})
                         </Text>
                         {mark(g.owned) && (
-                          <Text span size="xs" c={g.owned === 'owned' ? 'green' : 'yellow'} fw={700} aria-label={g.owned === 'owned' ? 'you have it' : 'maybe'}>
+                          <Text span size="xs" c={g.owned === 'owned' ? 'green' : 'yellow'} fw={700}>
                             {' '}
-                            {mark(g.owned)}
+                            <span aria-hidden="true">{mark(g.owned)}</span>
+                            <VisuallyHidden>{g.owned === 'owned' ? 'you have it' : 'maybe'}</VisuallyHidden>
                           </Text>
                         )}
                         {g.owned !== 'owned' && g.catalogTitle && (
