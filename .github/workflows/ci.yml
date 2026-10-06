@@ -1,8 +1,7 @@
 name: CI
 
-# Documents the app neither bundles nor tests: a push changing only these runs nothing (Actions
-# minutes are limited on a private repository). docs/help, docs/MATCHING.md and CHANGELOG.md are in the app, so
-# they still run it.
+# Documents the app neither bundles nor tests: a push changing only these runs nothing (a run would test nothing they
+# change). docs/help, docs/MATCHING.md and CHANGELOG.md are in the app, so they still run it.
 on:
   push:
     branches: [main]
@@ -47,9 +46,21 @@ jobs:
       - run: npm test
       - run: npm run build
 
+  # The image for Intel/AMD and for 64-bit ARM, each built and run on its own kind of machine (no emulator).
   docker:
-    runs-on: ubuntu-latest
     needs: test
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - arch: amd64
+            runner: ubuntu-latest
+            elf: 3e
+          - arch: arm64
+            runner: ubuntu-24.04-arm
+            elf: b7
+    name: docker (${{ matrix.arch }})
+    runs-on: ${{ matrix.runner }}
     steps:
       - uses: actions/checkout@v5
       - uses: docker/setup-buildx-action@v3
@@ -70,16 +81,25 @@ jobs:
           done
           curl -fsS http://127.0.0.1:7575/api/v1/auth/session | grep '"setupRequired":true'
           curl -fsS http://127.0.0.1:7575/ | grep -q '<div id="root">'
+      # A program for this processor (the ELF header's machine: 3e x86-64, b7 64-bit ARM) that runs: given an empty
+      # folder, it reports that there's no library.
+      - name: The Playnite reader is built for this processor and runs
+        run: |
+          docker cp squirrelcade:/app/bin/playnite-reader /tmp/reader
+          file /tmp/reader || true
+          [ "$(od -An -tx1 -j18 -N1 /tmp/reader | tr -d ' ')" = "${{ matrix.elf }}" ]
+          docker exec squirrelcade sh -c '/app/bin/playnite-reader --library-dir /tmp 2>&1; true' | grep '"ok":false'
       - uses: actions/setup-node@v5
         with:
           node-version: 22
           cache: npm
       # For the browser walk-through: playwright-core drives the runner's own Chrome (no browser download).
       - run: npm ci
+      # The interface is the same code on both, so it's walked in a browser on Intel/AMD; ARM gets the API's walk-through.
       - name: Walk through a fresh install, then the interface in Chrome
         run: node scripts/smoke-test.mjs http://127.0.0.1:7575
         env:
-          SMOKE_UI: '1'
+          SMOKE_UI: ${{ matrix.arch == 'amd64' && '1' || '' }}
       - name: Container log
         if: always()
         run: docker logs squirrelcade
