@@ -5,14 +5,18 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
 import { Link } from 'react-router';
 import { api } from '../api';
-import { PageHeader, StatusBadge } from '../components';
+import { PageHeader, StatusBadge, type SortDirection } from '../components';
 import { count, dateTime } from '../format';
 import { notifyError, notifySuccess, useSetting } from '../hooks';
+import { sortRows, useSort } from '../sort';
 import { MailCard } from './MailExtras';
 import { SendToPriceCharting } from './SendExtras';
 
 /** What the upload takes: PriceCharting's CSV, or the zip it arrives in. */
 export const EXPORT_FILES = { 'text/csv': ['.csv'], 'application/vnd.ms-excel': ['.csv'], 'application/zip': ['.zip'], 'application/x-zip-compressed': ['.zip'] };
+
+/** The history's headings sort it (D144): updates newest first, files and statuses A to Z, counts most first. */
+const SORTS = { when: 'desc', file: 'asc', status: 'asc', games: 'desc', added: 'desc', removed: 'desc', changed: 'desc' } as const satisfies Record<string, SortDirection>;
 
 interface ImportSummary {
   id: number;
@@ -96,6 +100,12 @@ export function ImportsPage() {
   });
 
   const pending = list.data?.filter((i) => i.status === 'pending') ?? [];
+  const sorting = useSort(SORTS, 'when');
+  const rows = sortRows(
+    list.data ?? [],
+    (i) => (sorting.by === 'file' ? i.fileName : sorting.by === 'status' ? i.status : sorting.by === 'games' ? i.rowCount : sorting.by === 'added' ? i.addedCount : sorting.by === 'removed' ? i.removedCount : sorting.by === 'changed' ? i.changedCount : i.createdAt),
+    sorting.dir,
+  );
 
   return (
     <>
@@ -156,17 +166,17 @@ export function ImportsPage() {
         <Table striped highlightOnHover>
           <Table.Thead>
             <Table.Tr>
-              <Table.Th>When</Table.Th>
-              <Table.Th>File</Table.Th>
-              <Table.Th>Status</Table.Th>
-              <Table.Th ta="right">Games</Table.Th>
-              <Table.Th ta="right">Added</Table.Th>
-              <Table.Th ta="right">Removed</Table.Th>
-              <Table.Th ta="right">Changed</Table.Th>
+              {sorting.th('when', 'When')}
+              {sorting.th('file', 'File')}
+              {sorting.th('status', 'Status')}
+              {sorting.th('games', 'Games', { ta: 'right' })}
+              {sorting.th('added', 'Added', { ta: 'right' })}
+              {sorting.th('removed', 'Removed', { ta: 'right' })}
+              {sorting.th('changed', 'Changed', { ta: 'right' })}
             </Table.Tr>
           </Table.Thead>
           <Table.Tbody>
-            {list.data?.map((i) => (
+            {rows.map((i) => (
               <Table.Tr key={i.id} style={{ cursor: 'pointer' }} onClick={() => setOpenId(i.id)}>
                 <Table.Td>{dateTime(i.createdAt, dateFormat)}</Table.Td>
                 <Table.Td>

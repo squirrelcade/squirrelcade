@@ -3,9 +3,10 @@ import { IconPlayerPlay } from '@tabler/icons-react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Link } from 'react-router';
 import { api } from '../../api';
-import { PageHeader, StatusBadge } from '../../components';
+import { PageHeader, StatusBadge, type SortDirection } from '../../components';
 import { dateTime, interval, timeAgo } from '../../format';
 import { notifyError, useSetting } from '../../hooks';
+import { sortRows, useSort } from '../../sort';
 
 /** A service's task, and its card: where the service is switched on and set up. */
 const TASK_HOME: Record<string, string> = {
@@ -43,6 +44,12 @@ interface Run {
   message: string | null;
 }
 
+/** The tasks' headings sort them (D144): names A to Z, schedules longest first, last runs newest first, next runs soonest first; listed is the server's order. */
+const SORTS = { task: 'asc', schedule: 'desc', last: 'desc', next: 'asc', listed: 'asc' } as const satisfies Record<string, SortDirection>;
+
+/** The run history's headings sort it (D144): times newest first, words A to Z. */
+const RUNS = { started: 'desc', task: 'asc', trigger: 'asc', result: 'asc', details: 'asc' } as const satisfies Record<string, SortDirection>;
+
 /** Background tasks: each one's schedule and last run, "run now", and the run history. */
 export function TasksPage() {
   const queryClient = useQueryClient();
@@ -55,6 +62,20 @@ export function TasksPage() {
     onError: (err) => notifyError(err),
   });
   const titles = new Map(tasks.data?.map((t) => [t.name, t.title]));
+  const sorting = useSort(SORTS, 'listed');
+  const listed = tasks.data ?? [];
+  const taskRows = sortRows(
+    listed,
+    (t) => (sorting.by === 'task' ? t.title : sorting.by === 'schedule' ? t.intervalMs : sorting.by === 'last' ? t.lastRun?.startedAt : sorting.by === 'next' ? t.nextRunAt : listed.indexOf(t)),
+    sorting.dir,
+  );
+  // The run history sorts on its own (?runssort=task&runsdir=asc).
+  const runSorting = useSort(RUNS, 'started', 'runs');
+  const runRows = sortRows(
+    history.data ?? [],
+    (r) => (runSorting.by === 'task' ? (titles.get(r.task) ?? r.task) : runSorting.by === 'trigger' ? r.trigger : runSorting.by === 'result' ? r.status : runSorting.by === 'details' ? r.message : r.startedAt),
+    runSorting.dir,
+  );
 
   return (
     <>
@@ -64,15 +85,15 @@ export function TasksPage() {
           <Table striped>
             <Table.Thead>
               <Table.Tr>
-                <Table.Th>Task</Table.Th>
-                <Table.Th>Schedule</Table.Th>
-                <Table.Th>Last run</Table.Th>
-                <Table.Th>Next run</Table.Th>
+                {sorting.th('task', 'Task')}
+                {sorting.th('schedule', 'Schedule')}
+                {sorting.th('last', 'Last run')}
+                {sorting.th('next', 'Next run')}
                 <Table.Th />
               </Table.Tr>
             </Table.Thead>
             <Table.Tbody>
-              {tasks.data?.map((t) => (
+              {taskRows.map((t) => (
                 <Table.Tr key={t.name}>
                   <Table.Td>
                     <Text size="sm" fw={500}>
@@ -125,15 +146,15 @@ export function TasksPage() {
           <Table striped>
             <Table.Thead>
               <Table.Tr>
-                <Table.Th>Started</Table.Th>
-                <Table.Th>Task</Table.Th>
-                <Table.Th>Trigger</Table.Th>
-                <Table.Th>Result</Table.Th>
-                <Table.Th>Details</Table.Th>
+                {runSorting.th('started', 'Started')}
+                {runSorting.th('task', 'Task')}
+                {runSorting.th('trigger', 'Trigger')}
+                {runSorting.th('result', 'Result')}
+                {runSorting.th('details', 'Details')}
               </Table.Tr>
             </Table.Thead>
             <Table.Tbody>
-              {history.data?.map((r) => (
+              {runRows.map((r) => (
                 <Table.Tr key={r.id}>
                   <Table.Td>{dateTime(r.startedAt, dateFormat)}</Table.Td>
                   <Table.Td>{titles.get(r.task) ?? r.task}</Table.Td>

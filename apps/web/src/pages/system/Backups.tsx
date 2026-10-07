@@ -3,9 +3,10 @@ import { IconDownload, IconHistory, IconTrash } from '@tabler/icons-react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Link } from 'react-router';
 import { api } from '../../api';
-import { PageHeader } from '../../components';
+import { PageHeader, type SortDirection } from '../../components';
 import { bytes, dateTime } from '../../format';
 import { notifyError, notifySuccess, useSetting } from '../../hooks';
+import { sortRows, useSort } from '../../sort';
 
 interface BackupList {
   folder: string;
@@ -15,6 +16,9 @@ interface BackupList {
   backups: { name: string; bytes: number; createdAt: string; kind: 'scheduled' | 'manual' | 'update' }[];
 }
 
+/** The backups' headings sort them (D144): newest and biggest first, kinds A to Z. */
+const SORTS = { made: 'desc', kind: 'asc', size: 'desc' } as const satisfies Record<string, SortDirection>;
+
 /** Backups: make one now, download or delete them, and restore one (applied at the next start). */
 export function BackupsPage() {
   const queryClient = useQueryClient();
@@ -22,6 +26,13 @@ export function BackupsPage() {
   const keep = useSetting('storage.backupRetention', 14);
   const { data } = useQuery({ queryKey: ['backups'], queryFn: () => api<BackupList>('/backups') });
   const refresh = () => queryClient.invalidateQueries({ queryKey: ['backups'] });
+  const sorting = useSort(SORTS, 'made');
+  // A kind sorts by the name it shows.
+  const rows = sortRows(
+    data?.backups ?? [],
+    (b) => (sorting.by === 'kind' ? (b.kind === 'manual' ? 'Manual' : b.kind === 'update' ? 'Before update' : 'Automatic') : sorting.by === 'size' ? b.bytes : b.createdAt),
+    sorting.dir,
+  );
 
   const create = useMutation({
     mutationFn: () => api<{ name: string }>('/backups', { method: 'POST' }),
@@ -79,14 +90,14 @@ export function BackupsPage() {
         <Table striped>
           <Table.Thead>
             <Table.Tr>
-              <Table.Th>Made</Table.Th>
-              <Table.Th>Kind</Table.Th>
-              <Table.Th ta="right">Size</Table.Th>
+              {sorting.th('made', 'Made')}
+              {sorting.th('kind', 'Kind')}
+              {sorting.th('size', 'Size', { ta: 'right' })}
               <Table.Th />
             </Table.Tr>
           </Table.Thead>
           <Table.Tbody>
-            {data?.backups.map((b) => (
+            {rows.map((b) => (
               <Table.Tr key={b.name}>
                 <Table.Td>
                   <Text size="sm">{dateTime(b.createdAt, dateFormat)}</Text>

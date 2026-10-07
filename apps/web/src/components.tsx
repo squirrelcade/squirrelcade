@@ -12,16 +12,33 @@ export type SortDirection = 'asc' | 'desc';
  * A table heading that sorts by its column: click to sort by it, click again to reverse. The arrow
  * shows the column the table is sorted by and which way; the others show a faint double arrow.
  */
-export function SortableTh({ label, active, direction, onSort, ta }: { label: ReactNode; active: boolean; direction: SortDirection; onSort: () => void; ta?: 'left' | 'right' }) {
+export function SortableTh({
+  label,
+  active,
+  direction,
+  onSort,
+  ta,
+  w,
+  visibleFrom,
+}: {
+  label: ReactNode;
+  active: boolean;
+  direction: SortDirection;
+  onSort: () => void;
+  ta?: 'left' | 'right';
+  w?: number | string;
+  visibleFrom?: 'xs' | 'sm' | 'md' | 'lg' | 'xl';
+}) {
   const Icon = active ? (direction === 'asc' ? IconChevronUp : IconChevronDown) : IconSelector;
   return (
-    <Table.Th ta={ta} p={0} aria-sort={active ? (direction === 'asc' ? 'ascending' : 'descending') : 'none'}>
+    <Table.Th ta={ta} p={0} w={w} visibleFrom={visibleFrom} aria-sort={active ? (direction === 'asc' ? 'ascending' : 'descending') : 'none'}>
       <UnstyledButton onClick={onSort} px="sm" py={8} w="100%" style={{ display: 'flex', justifyContent: ta === 'right' ? 'flex-end' : 'flex-start' }}>
         <Group gap={4} wrap="nowrap">
           <Text fw={700} size="sm">
             {label}
           </Text>
-          <Icon size={14} stroke={1.5} style={{ opacity: active ? 1 : 0.4 }} />
+          {/* The arrow stays off paper (the report's print styles hide .no-print). */}
+          <Icon className="no-print" size={14} stroke={1.5} style={{ opacity: active ? 1 : 0.4 }} />
         </Group>
       </UnstyledButton>
     </Table.Th>

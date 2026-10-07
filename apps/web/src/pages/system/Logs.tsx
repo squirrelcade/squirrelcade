@@ -2,9 +2,10 @@ import { Badge, Group, Select, Switch, Table, Text } from '@mantine/core';
 import { useQuery } from '@tanstack/react-query';
 import { useState } from 'react';
 import { api } from '../../api';
-import { PageHeader } from '../../components';
+import { PageHeader, type SortDirection } from '../../components';
 import { dateTime } from '../../format';
 import { useSetting } from '../../hooks';
+import { sortRows, useSort } from '../../sort';
 
 interface LogEntry {
   time: string;
@@ -14,6 +15,10 @@ interface LogEntry {
 }
 
 const LEVEL_COLORS: Record<string, string> = { debug: 'gray', info: 'blue', warn: 'yellow', error: 'red', fatal: 'red' };
+
+/** The log's headings sort it (D144): times newest first, levels the most serious first, words A to Z. */
+const SORTS = { time: 'desc', level: 'desc', area: 'asc', message: 'asc' } as const satisfies Record<string, SortDirection>;
+const SEVERITY: Record<string, number> = { debug: 1, info: 2, warn: 3, error: 4, fatal: 5 };
 
 /** The recent log lines, filtered by level. */
 export function LogsPage() {
@@ -25,6 +30,8 @@ export function LogsPage() {
     queryFn: () => api<LogEntry[]>(`/system/logs?level=${level}&limit=500`),
     refetchInterval: live ? 5_000 : false,
   });
+  const sorting = useSort(SORTS, 'time');
+  const rows = sortRows(data ?? [], (e) => (sorting.by === 'level' ? (SEVERITY[e.level] ?? 0) : sorting.by === 'area' ? e.context : sorting.by === 'message' ? e.message : e.time), sorting.dir);
   return (
     <>
       <PageHeader help="troubleshooting"
@@ -53,14 +60,14 @@ export function LogsPage() {
         <Table striped verticalSpacing={4}>
           <Table.Thead>
             <Table.Tr>
-              <Table.Th w={180}>Time</Table.Th>
-              <Table.Th w={80}>Level</Table.Th>
-              <Table.Th w={140}>Area</Table.Th>
-              <Table.Th>Message</Table.Th>
+              {sorting.th('time', 'Time', { w: 180 })}
+              {sorting.th('level', 'Level', { w: 80 })}
+              {sorting.th('area', 'Area', { w: 140 })}
+              {sorting.th('message', 'Message')}
             </Table.Tr>
           </Table.Thead>
           <Table.Tbody>
-            {data?.map((e, i) => (
+            {rows.map((e, i) => (
               <Table.Tr key={`${e.time}-${i}`}>
                 <Table.Td>
                   <Text size="xs">{dateTime(e.time, dateFormat)}</Text>

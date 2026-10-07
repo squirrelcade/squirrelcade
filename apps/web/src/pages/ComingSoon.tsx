@@ -4,11 +4,12 @@ import { useQuery } from '@tanstack/react-query';
 import { useState } from 'react';
 import { Link } from 'react-router';
 import { api } from '../api';
-import { PageHeader } from '../components';
+import { PageHeader, type SortDirection } from '../components';
+import { sortRows, useSort } from '../sort';
 import { count, releaseDate } from '../format';
 import { useSetting } from '../hooks';
 import { GameTitle } from '../GameDrawer';
-import { PreferencePicker } from '../Preference';
+import { PreferencePicker, preferenceLevels } from '../Preference';
 import { Acorns, Reviews, StashMark, type ReviewsOf } from '../Acorn';
 
 /** A game not out yet (GET /api/v1/catalogs/upcoming). */
@@ -35,6 +36,9 @@ const STATUS: Record<string, { label: string; color: string }> = {
   upcoming: { label: 'Not counted yet', color: 'gray' },
 };
 
+/** The list's sorts and which way each goes first (D144): release dates soonest first, as the list comes; words A to Z; yours first; acorns and reviews most first; preferences most wanted first. */
+const SORTS = { release: 'asc', title: 'asc', platform: 'asc', you: 'desc', acorns: 'desc', reviews: 'desc', preference: 'asc' } as const satisfies Record<string, SortDirection>;
+
 /** "2026-10-06" -> "October 2026"; "TBA" and years alone as they are. */
 function monthOf(date: string): string {
   const m = /^(\d{4})-(\d{2})/.exec(date);
@@ -48,7 +52,10 @@ function monthOf(date: string): string {
  */
 export function ComingSoonPage() {
   const dateFormat = useSetting('general.dateFormat', 'us');
+  const points = useSetting('wishlist.preferencePoints', {});
   const [platform, setPlatform] = useState<string | null>(null);
+  // A heading sorts each month's games by its column; the months stay soonest first.
+  const sorting = useSort(SORTS, 'release');
   const list = useQuery({ queryKey: ['catalogs', 'upcoming'], queryFn: () => api<Upcoming[]>('/catalogs/upcoming') });
   const all = list.data ?? [];
   const consoles = [...new Map(all.map((g) => [g.platformKey, g.platform])).entries()];
@@ -59,6 +66,11 @@ export function ComingSoonPage() {
     if (groups.at(-1)?.[0] !== month) groups.push([month, []]);
     groups.at(-1)![1].push(g);
   }
+  // Each preference's place, most wanted first.
+  const places = new Map(preferenceLevels(points).map((l, i) => [l.value, i]));
+  // A release that's only "TBA" has no date to sort by.
+  const sortValue = (g: Upcoming) =>
+    ({ release: /^\d{4}/.test(g.releaseDate) ? g.releaseDate : null, title: g.title, platform: g.platform, you: g.status === 'owned', acorns: g.score, reviews: g.reviews?.rating, preference: places.get(g.preference ?? '') })[sorting.by];
 
   return (
     <>
@@ -113,17 +125,13 @@ export function ComingSoonPage() {
             <Table highlightOnHover>
               <Table.Thead>
                 <Table.Tr>
-                  <Table.Th w={120}>Release</Table.Th>
-                  <Table.Th>Game</Table.Th>
-                  <Table.Th visibleFrom="sm">Console</Table.Th>
-                  <Table.Th>You</Table.Th>
-                  <Table.Th ta="right" visibleFrom="sm">
-                    Acorns
-                  </Table.Th>
-                  <Table.Th ta="right" visibleFrom="sm">
-                    Reviews
-                  </Table.Th>
-                  <Table.Th visibleFrom="sm">Your preference</Table.Th>
+                  {sorting.th('release', 'Release', { w: 120 })}
+                  {sorting.th('title', 'Game')}
+                  {sorting.th('platform', 'Console', { visibleFrom: 'sm' })}
+                  {sorting.th('you', 'You')}
+                  {sorting.th('acorns', 'Acorns', { ta: 'right', visibleFrom: 'sm' })}
+                  {sorting.th('reviews', 'Reviews', { ta: 'right', visibleFrom: 'sm' })}
+                  {sorting.th('preference', 'Your preference', { visibleFrom: 'sm' })}
                 </Table.Tr>
               </Table.Thead>
               <Table.Tbody>
@@ -135,7 +143,7 @@ export function ComingSoonPage() {
                       </Text>
                     </Table.Td>
                   </Table.Tr>,
-                  ...games.map((g) => (
+                  ...sortRows(games, sortValue, sorting.dir).map((g) => (
                     <Table.Tr key={`${g.platformKey}|${g.entryId}`}>
                       <Table.Td>
                         <Text size="sm">{/^\d{4}/.test(g.releaseDate) ? releaseDate(g.releaseDate, dateFormat) : g.releaseDate}</Text>

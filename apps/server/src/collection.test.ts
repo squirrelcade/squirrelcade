@@ -72,6 +72,29 @@ describe('collection import', () => {
     expect(res.items.map((i: { title: string }) => i.title)).toEqual(['Cheap Buy', 'Paid Full', 'No Price Paid']);
   });
 
+  it('sorts by each column of the Stash, either way, with empty ones last (D144)', async () => {
+    const csv = [
+      HEADER,
+      '1,"Banjo",Nintendo 64,5000,"Item, Box, and Manual",,,,1000,1,2026-01-03,,,,',
+      '2,"Astro",Playstation 3,2000,"Item Only",,,,,1,2026-01-01,,,,',
+      '3,"Crash",Playstation 3,3000,"Item and Box",,,,2500,1,2026-01-02,,,,',
+    ].join('\n');
+    await upload('collection_20260926.csv', csv);
+    const titles = async (query: string) => (await g.app.inject({ url: `/api/v1/collection/items?${query}`, cookies })).json().items.map((i: { title: string }) => i.title);
+    expect(await titles('sort=title')).toEqual(['Astro', 'Banjo', 'Crash']);
+    expect(await titles('sort=title&dir=desc')).toEqual(['Crash', 'Banjo', 'Astro']);
+    // Each column's own first direction: the newest, the most valuable first.
+    expect(await titles('sort=added')).toEqual(['Banjo', 'Crash', 'Astro']);
+    expect(await titles('sort=added&dir=asc')).toEqual(['Astro', 'Crash', 'Banjo']);
+    expect(await titles('sort=value&dir=asc')).toEqual(['Astro', 'Crash', 'Banjo']);
+    // Nothing paid is last either way.
+    expect(await titles('sort=paid')).toEqual(['Crash', 'Banjo', 'Astro']);
+    expect(await titles('sort=paid&dir=asc')).toEqual(['Banjo', 'Crash', 'Astro']);
+    // Conditions best first: complete, then the game and its box, then the game alone.
+    expect(await titles('sort=condition')).toEqual(['Banjo', 'Crash', 'Astro']);
+    expect(await titles('sort=platform&dir=desc')).toEqual(['Astro', 'Crash', 'Banjo']);
+  });
+
   it('lists games owned more than once', async () => {
     const twice = [...GAMES, ['1', 'Uncharted', 'Playstation 3', 1000, 'Item Only']] as typeof GAMES;
     await upload('collection_20260926.csv', exportCsv(twice));

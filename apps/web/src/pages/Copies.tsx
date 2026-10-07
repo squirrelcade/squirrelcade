@@ -6,10 +6,11 @@ import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tansta
 import { useState } from 'react';
 import { useSearchParams } from 'react-router';
 import { api } from '../api';
-import { PageHeader } from '../components';
+import { PageHeader, type SortDirection } from '../components';
 import { count } from '../format';
 import { GameTitle, useOpenGame } from '../GameDrawer';
 import { notifyError, notifySuccess, useCanEdit, useSetting } from '../hooks';
+import { useSort } from '../sort';
 
 interface ConsoleCopies {
   copyKey: string;
@@ -41,6 +42,9 @@ interface CopiesGroup {
 }
 
 type View = 'sealed-playable' | 'sealed-only' | 'repeats' | 'multiple' | 'all';
+
+/** The list's headings sort it on the server (D144): games A to Z first, copies most first. */
+const SORTS = { title: 'asc', copies: 'desc' } as const satisfies Record<string, SortDirection>;
 
 interface CopiesList {
   view: View;
@@ -88,7 +92,8 @@ export function CopiesPage() {
   const [q] = useDebouncedValue(search, 250);
   const pageSize = useSetting('interface.pageSize', 100);
   const how = view === 'sealed-playable' ? params.get('how') : null;
-  const query = new URLSearchParams({ view, page: String(page), pageSize: String(pageSize) });
+  const sorting = useSort(SORTS, 'title');
+  const query = new URLSearchParams({ view, sort: sorting.by, dir: sorting.dir, page: String(page), pageSize: String(pageSize) });
   if (q) query.set('q', q);
   if (how) query.set('how', how);
   const list = useQuery({ queryKey: ['copies', query.toString()], queryFn: () => api<CopiesList>(`/copies?${query}`), placeholderData: keepPreviousData });
@@ -184,8 +189,8 @@ export function CopiesPage() {
             <Table striped verticalSpacing={6}>
               <Table.Thead>
                 <Table.Tr>
-                  <Table.Th>Game</Table.Th>
-                  <Table.Th>Copies and PC games</Table.Th>
+                  {sorting.th('title', 'Game')}
+                  {sorting.th('copies', 'Copies and PC games')}
                   {sealedView && !narrow && <Table.Th>Play it without opening one</Table.Th>}
                 </Table.Tr>
               </Table.Thead>

@@ -8,9 +8,10 @@ import { Link, Navigate, useNavigate, useParams, useSearchParams } from 'react-r
 import { Acorns, StashMark } from '../Acorn';
 import { api, ApiError } from '../api';
 import { CopyButton } from '../Copy';
-import { PageHeader } from '../components';
+import { PageHeader, type SortDirection } from '../components';
 import { count, date, money, timeAgo } from '../format';
 import { notifyError, notifySuccess, usePageTitle, useSetting } from '../hooks';
+import { sortRows, useSort } from '../sort';
 
 /** A friend's file, in short (GET /api/v1/friends). */
 interface FileSummary {
@@ -782,12 +783,17 @@ function IncomingModal({
 type Show = 'all' | 'both' | 'you' | 'them';
 const PAGE = 150;
 
+/** The comparison's columns and which way each sorts first (D144): games A to Z, each side's copies most first. */
+const COMPARE_SORTS = { title: 'asc', mine: 'desc', theirs: 'desc' } as const satisfies Record<string, SortDirection>;
+
 /** Your games and a friend's on one console at a time: both of you, only you, only them. */
 function CompareTab({ friend, platform, onPlatform }: { friend: Friend; platform: string | null; onPlatform: (key: string) => void }) {
   const mine = useSetting('general.currency', 'USD');
   const [show, setShow] = useState<Show>('all');
   const [search, setSearch] = useState('');
   const [limit, setLimit] = useState(PAGE);
+  // A heading sorts the games by its column (D144); You and the friend by copies, none counting as 0.
+  const sorting = useSort(COMPARE_SORTS, 'title');
   const cmp = useQuery({
     queryKey: ['friends', friend.id, 'compare', platform],
     queryFn: () => api<Comparison>(`/friends/${friend.id}/compare${platform ? `?platform=${encodeURIComponent(platform)}` : ''}`),
@@ -803,6 +809,7 @@ function CompareTab({ friend, platform, onPlatform }: { friend: Friend; platform
       (show === 'all' || (show === 'both' ? r.mine && r.theirs : show === 'you' ? r.mine && !r.theirs : !r.mine && r.theirs)) &&
       (!words || r.title.toLowerCase().includes(words) || (r.theirTitle ?? '').toLowerCase().includes(words)),
   );
+  const sorted = sortRows(rows, (r) => (sorting.by === 'mine' ? (r.mine?.copies ?? 0) : sorting.by === 'theirs' ? (r.theirs?.copies ?? 0) : r.title), sorting.dir);
 
   return (
     <Stack gap="sm">
@@ -848,14 +855,14 @@ function CompareTab({ friend, platform, onPlatform }: { friend: Friend; platform
           <Table striped highlightOnHover verticalSpacing={6}>
             <Table.Thead>
               <Table.Tr>
-                <Table.Th>Game</Table.Th>
-                <Table.Th>You</Table.Th>
-                <Table.Th>{friend.name}</Table.Th>
+                {sorting.th('title', 'Game')}
+                {sorting.th('mine', 'You')}
+                {sorting.th('theirs', friend.name)}
                 <Table.Th />
               </Table.Tr>
             </Table.Thead>
             <Table.Tbody>
-              {rows.slice(0, limit).map((r) => (
+              {sorted.slice(0, limit).map((r) => (
                 <Table.Tr key={r.key}>
                   <Table.Td>
                     <Text size="sm">{r.title}</Text>

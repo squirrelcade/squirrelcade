@@ -1,11 +1,15 @@
 import { Anchor, Badge, Button, Group, Loader, Stack, Table, Text } from '@mantine/core';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { api } from '../api';
-import { PageHeader } from '../components';
+import { PageHeader, type SortDirection } from '../components';
 import type { Loan } from '../CopyDetails';
 import { date } from '../format';
 import { GameTitle } from '../GameDrawer';
 import { notifyError, notifySuccess, useCanEdit, useSetting } from '../hooks';
+import { sortRows, useSort } from '../sort';
+
+/** The loans' headings sort them (D144): games and people A to Z, lent days newest first, due days soonest first (the server's order, overdue on top). */
+const SORTS = { title: 'asc', who: 'asc', since: 'desc', due: 'asc' } as const satisfies Record<string, SortDirection>;
 
 /**
  * Collection > Loans: the games you lent and haven't got back (overdue ones first), and the ones given back. You
@@ -25,6 +29,8 @@ export function LoansPage() {
     onError: (err) => notifyError(err),
   });
   const title = (l: Loan) => (l.platformKey ? <GameTitle platformKey={l.platformKey} title={l.title} fw={500} /> : <Text size="sm">{l.title}</Text>);
+  const sorting = useSort(SORTS, 'due');
+  const open = sortRows(loans.data?.open ?? [], (l) => (sorting.by === 'title' ? l.title : sorting.by === 'who' ? l.lentTo : sorting.by === 'since' ? l.lentAt : l.dueAt), sorting.dir);
   return (
     <>
       <PageHeader help="your-copies" title="Loans" description="Games you lent: lend one from its copy in the game's drawer." />
@@ -38,15 +44,15 @@ export function LoansPage() {
               <Table verticalSpacing={6} striped>
                 <Table.Thead>
                   <Table.Tr>
-                    <Table.Th>Game</Table.Th>
-                    <Table.Th>Lent to</Table.Th>
-                    <Table.Th>Since</Table.Th>
-                    <Table.Th>Due back</Table.Th>
+                    {sorting.th('title', 'Game')}
+                    {sorting.th('who', 'Lent to')}
+                    {sorting.th('since', 'Since')}
+                    {sorting.th('due', 'Due back')}
                     {canEdit && <Table.Th />}
                   </Table.Tr>
                 </Table.Thead>
                 <Table.Tbody>
-                  {loans.data.open.map((l) => (
+                  {open.map((l) => (
                     <Table.Tr key={l.id}>
                       <Table.Td>
                         {title(l)}

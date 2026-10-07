@@ -4,10 +4,11 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
 import { Link, useSearchParams } from 'react-router';
 import { api } from '../api';
-import { PageHeader } from '../components';
+import { PageHeader, type SortDirection } from '../components';
 import { count, date } from '../format';
 import { notifyError, useSetting } from '../hooks';
 import { GameTitle } from '../GameDrawer';
+import { sortRows, useSort } from '../sort';
 
 /** A copy whose file (PriceCharting's export, the owner's spreadsheet) no longer has it. */
 export interface MissingCopy {
@@ -24,6 +25,9 @@ export interface MissingCopy {
 }
 
 const FILE_OF: Record<MissingCopy['source'], string> = { pricecharting: "PriceCharting's export", spreadsheet: 'your spreadsheet', squirrelcade: 'its file' };
+
+/** The look-alikes' heading sorts them (D144): games A to Z; listed is the server's order, by console. */
+const SORTS = { title: 'asc', listed: 'asc' } as const satisfies Record<string, SortDirection>;
 
 interface Queue {
   lookAlikes: { platformKey: string; platform: string; entryId: number; title: string; suggestions: { productId: string; title: string; reason: string }[] }[];
@@ -57,6 +61,7 @@ export function ReviewPage() {
   const tab = params.get('tab') === 'marked' ? 'marked' : params.get('tab') === 'copies' ? 'copies' : 'lookalikes';
   const [platform, setPlatform] = useState<string | null>(null);
   const [reason, setReason] = useState<string | null>(null);
+  const sorting = useSort(SORTS, 'listed');
   const queryClient = useQueryClient();
   const dateFormat = useSetting('general.dateFormat', 'us');
   const queue = useQuery({ queryKey: ['catalogs', 'review'], queryFn: () => api<Queue>('/review') });
@@ -86,7 +91,11 @@ export function ReviewPage() {
   const onConsole = (q?.lookAlikes ?? []).filter((x) => !platform || x.platformKey === platform);
   // Why a pair looks alike ("One title contains the other", "... (romanized differently)"), to answer alike ones together.
   const reasons = [...new Map(onConsole.flatMap((x) => x.suggestions.map((s) => s.reason)).map((r) => [r, onConsole.filter((x) => x.suggestions.some((s) => s.reason === r)).length])).entries()].sort((a, b) => b[1] - a[1]);
-  const lookAlikes = onConsole.filter((x) => !reason || x.suggestions.some((s) => s.reason === reason));
+  const lookAlikes = sortRows(
+    onConsole.filter((x) => !reason || x.suggestions.some((s) => s.reason === reason)),
+    (x) => (sorting.by === 'title' ? x.title : onConsole.indexOf(x)),
+    sorting.dir,
+  );
   // Questions with one suggestion, the only kind "Same game for all" answers.
   const single = lookAlikes.filter((x) => x.suggestions.length === 1);
   const marked = (q?.marked ?? []).filter((x) => !platform || x.platformKey === platform);
@@ -222,7 +231,7 @@ export function ReviewPage() {
                 <Table verticalSpacing={6} striped>
                   <Table.Thead>
                     <Table.Tr>
-                      <Table.Th>Catalog game</Table.Th>
+                      {sorting.th('title', 'Catalog game')}
                       <Table.Th>Is it one of these you own?</Table.Th>
                     </Table.Tr>
                   </Table.Thead>

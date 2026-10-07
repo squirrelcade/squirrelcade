@@ -3,10 +3,11 @@ import { useQuery } from '@tanstack/react-query';
 import { useState } from 'react';
 import { Link } from 'react-router';
 import { api } from '../api';
-import { PageHeader } from '../components';
+import { PageHeader, type SortDirection } from '../components';
+import { sortRows, useSort } from '../sort';
 import { count, date, releaseDate } from '../format';
 import { GameCover, GameTitle, PriceLinks } from '../GameDrawer';
-import { PreferencePicker } from '../Preference';
+import { PreferencePicker, preferenceLevels } from '../Preference';
 import { useSetting } from '../hooks';
 import { Acorns, Reviews, StashMark, type ReviewsOf } from '../Acorn';
 
@@ -43,6 +44,9 @@ const STATUS: Record<string, { label: string; color: string }> = {
 
 const yearsAgo = (n: number) => `${n} year${n === 1 ? '' : 's'} ago`;
 
+/** Each year's sorts and which way each goes first (D144): release dates oldest first, as the list comes; titles A to Z; yours first; acorns and reviews most first; preferences most wanted first. */
+const SORTS = { released: 'asc', title: 'asc', you: 'desc', acorns: 'desc', reviews: 'desc', preference: 'asc' } as const satisfies Record<string, SortDirection>;
+
 /**
  * Past releases: the games that came out around this time of year in each of the last few years, on the consoles
  * you collect, since a game a year or more old often costs less than at release. Each has links to its prices
@@ -50,16 +54,20 @@ const yearsAgo = (n: number) => `${n} year${n === 1 ? '' : 's'} ago`;
  */
 export function PastReleasesPage() {
   const dateFormat = useSetting('general.dateFormat', 'us');
+  const points = useSetting('wishlist.preferencePoints', {});
   const [show, setShow] = useState<'missing' | 'all'>('missing');
-  const [order, setOrder] = useState<'date' | 'score'>('date');
+  // A heading sorts each year's games by its column; By date and By acorns are two of them.
+  const sorting = useSort(SORTS, 'released');
   const [platform, setPlatform] = useState<string | null>(null);
   const list = useQuery({ queryKey: ['catalogs', 'past'], queryFn: () => api<PastYear[]>('/catalogs/past') });
   const years = list.data ?? [];
   const wanted = (g: PastGame) => (show === 'all' || g.status !== 'owned') && (!platform || g.platformKey === platform);
   const listed = years.flatMap((y) => y.games).filter((g) => show === 'all' || g.status !== 'owned');
   const consoles = [...new Map(listed.map((g) => [g.platformKey, g.platform])).entries()].sort((a, b) => a[1].localeCompare(b[1]));
+  // Each preference's place, most wanted first.
+  const places = new Map(preferenceLevels(points).map((l, i) => [l.value, i]));
   const sorted = (games: PastGame[]) =>
-    order === 'score' ? [...games].sort((a, b) => (b.score ?? -Infinity) - (a.score ?? -Infinity) || a.releaseDate.localeCompare(b.releaseDate)) : games;
+    sortRows(games, (g) => ({ released: g.releaseDate, title: g.title, you: g.status === 'owned', acorns: g.score, reviews: g.reviews?.rating, preference: places.get(g.preference ?? '') })[sorting.by], sorting.dir);
 
   return (
     <>
@@ -92,8 +100,8 @@ export function PastReleasesPage() {
             />
             <SegmentedControl
               size="xs"
-              value={order}
-              onChange={(v) => setOrder(v as 'date' | 'score')}
+              value={sorting.by === 'acorns' ? 'score' : sorting.by === 'released' ? 'date' : ''}
+              onChange={(v) => (v === 'score' ? sorting.set('acorns', SORTS.acorns) : sorting.set('released', SORTS.released))}
               data={[
                 { value: 'date', label: 'By date' },
                 { value: 'score', label: 'By acorns' },
@@ -144,12 +152,12 @@ export function PastReleasesPage() {
                     <Table highlightOnHover>
                       <Table.Thead>
                         <Table.Tr>
-                          <Table.Th w={110}>Released</Table.Th>
-                          <Table.Th>Game</Table.Th>
-                          <Table.Th>You</Table.Th>
-                          <Table.Th ta="right">Acorns</Table.Th>
-                          <Table.Th ta="right">Reviews</Table.Th>
-                          <Table.Th>Your preference</Table.Th>
+                          {sorting.th('released', 'Released', { w: 110 })}
+                          {sorting.th('title', 'Game')}
+                          {sorting.th('you', 'You')}
+                          {sorting.th('acorns', 'Acorns', { ta: 'right' })}
+                          {sorting.th('reviews', 'Reviews', { ta: 'right' })}
+                          {sorting.th('preference', 'Your preference')}
                           <Table.Th>Prices</Table.Th>
                         </Table.Tr>
                       </Table.Thead>

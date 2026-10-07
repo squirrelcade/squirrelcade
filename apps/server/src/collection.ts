@@ -1487,6 +1487,8 @@ export class CollectionService {
     q?: string;
     completeness?: string;
     sort?: string;
+    /** Which way: each column has its own first (title A to Z, value and date added most or newest first). */
+    dir?: string;
     page?: number;
     pageSize?: number;
     duplicates?: boolean;
@@ -1506,18 +1508,21 @@ export class CollectionService {
     if (query.region) where.push(eq(copies.region, query.region));
     if (query.completeness) where.push(eq(copies.completeness, query.completeness));
     if (query.q) where.push(like(copies.title, `%${query.q.replace(/[%_]/g, '')}%`));
+    // A column of the Stash's table, either way (D144): `dir` when it's given, else the column's own first direction.
+    // Copies with nothing in the column (no value, no price paid, no date) come last either way.
+    const way = (column: Parameters<typeof asc>[0], first: 'asc' | 'desc') => ((query.dir === 'asc' || query.dir === 'desc' ? query.dir : first) === 'asc' ? asc(column) : desc(column));
+    const paidFirst = sql`case when coalesce(${copies.costCents}, 0) > 0 then 0 else 1 end`;
+    // Conditions best first: graded, sealed, complete, then the parts.
+    const condition = sql`case ${copies.completeness} when 'graded' then 0 when 'sealed' then 1 when 'complete' then 2 when 'item-box' then 3 when 'item-manual' then 4 when 'loose' then 5 when 'box-only' then 6 when 'manual-only' then 7 else 8 end`;
     const order = {
-      title: [asc(copies.title), asc(copies.id)],
-      value: [desc(copies.valueCents), asc(copies.title), asc(copies.id)],
+      title: [way(copies.title, 'asc'), asc(copies.id)],
+      platform: [way(platforms.name, 'asc'), asc(copies.title), asc(copies.id)],
+      condition: [way(condition, 'asc'), asc(copies.title), asc(copies.id)],
+      value: [sql`${copies.valueCents} is null`, way(copies.valueCents, 'desc'), asc(copies.title), asc(copies.id)],
+      paid: [paidFirst, way(copies.costCents, 'desc'), asc(copies.title), asc(copies.id)],
       // What a copy gained since it was bought (value minus price paid); copies without a price paid last.
-      gain: [
-        sql`case when coalesce(${copies.costCents}, 0) > 0 then 0 else 1 end`,
-        desc(sql`coalesce(${copies.valueCents}, 0) - coalesce(${copies.costCents}, 0)`),
-        asc(copies.title),
-        asc(copies.id),
-      ],
-      added: [desc(copies.dateEntered), asc(copies.title), asc(copies.id)],
-      platform: [asc(platforms.name), asc(copies.title), asc(copies.id)],
+      gain: [paidFirst, way(sql`coalesce(${copies.valueCents}, 0) - coalesce(${copies.costCents}, 0)`, 'desc'), asc(copies.title), asc(copies.id)],
+      added: [sql`${copies.dateEntered} is null`, way(copies.dateEntered, 'desc'), asc(copies.title), asc(copies.id)],
     }[query.sort ?? 'title'] ?? [asc(copies.title), asc(copies.id)];
     const pageSize = Math.min(Math.max(query.pageSize ?? 100, 1), 1000);
     const page = Math.max(query.page ?? 1, 1);
@@ -1811,7 +1816,9 @@ export function registerCollectionRoutes(
       region: q.region || undefined,
       q: q.q || undefined,
       completeness: q.completeness || undefined,
-      sort: q.sort || undefined,
+      // Someone who can't see prices paid can't sort by them either: the order would give them away.
+      sort: !may.paid && (q.sort === 'paid' || q.sort === 'gain') ? undefined : q.sort || undefined,
+      dir: q.dir || undefined,
       page: q.page ? Number(q.page) : undefined,
       pageSize: q.pageSize ? Number(q.pageSize) : undefined,
       duplicates: q.duplicates === '1' || q.duplicates === 'true',

@@ -3,7 +3,8 @@ import { IconDownload } from '@tabler/icons-react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
 import { api } from '../api';
-import { PageHeader, StatCard } from '../components';
+import { PageHeader, StatCard, type SortDirection } from '../components';
+import { sortRows, useSort } from '../sort';
 import { count, date, money } from '../format';
 import { GameTitle } from '../GameDrawer';
 import { notifyError, useSetting } from '../hooks';
@@ -49,6 +50,9 @@ interface Suggested {
   since?: string;
 }
 
+/** The sold table's sorts and which way each goes first (D144): sales newest first, words A to Z, money most first. */
+const SORTS = { sold: 'desc', title: 'asc', where: 'asc', price: 'desc', fees: 'desc', net: 'desc', gain: 'desc' } as const satisfies Record<string, SortDirection>;
+
 /**
  * Collection > Sales (0.22.0, D86): what you've sold and what it brought, in money and in meals (the owner's plan: play a
  * game, then sell it for a lunch), the games worth selling next, and each sale, with a download.
@@ -60,6 +64,7 @@ export function SalesPage() {
   const sales = useQuery({ queryKey: ['sales'], queryFn: () => api<{ sales: Sale[]; month: SalesTotal; year: SalesTotal; all: SalesTotal; mealCents: number }>('/sales') });
   const next = useQuery({ queryKey: ['sales', 'suggestions'], queryFn: () => api<{ finished: Suggested[]; twice: Suggested[]; rising: Suggested[] }>('/sales/suggestions') });
   const [selling, setSelling] = useState<{ id: number; title: string } | null>(null);
+  const sorting = useSort(SORTS, 'sold');
   const undo = useMutation({
     mutationFn: (id: number) => api(`/sales/${id}`, { method: 'DELETE' }),
     onSuccess: () => Promise.all(['sales', 'collection', 'game', 'send'].map((k) => queryClient.invalidateQueries({ queryKey: [k] }))),
@@ -67,6 +72,9 @@ export function SalesPage() {
   });
   const s = sales.data;
   const meals = (t: SalesTotal) => (t.meals === 1 ? '1 meal' : `${count(t.meals)} meals`);
+  // What each heading sorts the sales by: the figures as the table shows them, with their shipping.
+  const sortValue = (x: Sale) =>
+    ({ sold: x.soldAt, title: x.title, where: SOLD_VIA_NAMES[x.marketplace] ?? x.marketplace, price: x.soldCents + x.shippingChargedCents, fees: x.feesCents + x.shippingCostCents, net: x.netCents, gain: x.gainCents })[sorting.by];
   const suggestions = (list: Suggested[], empty: string) =>
     list.length === 0 ? (
       <Text c="dimmed" size="sm" mt="xs">
@@ -160,18 +168,18 @@ export function SalesPage() {
                 <Table verticalSpacing={4} striped>
                   <Table.Thead>
                     <Table.Tr>
-                      <Table.Th>Sold</Table.Th>
-                      <Table.Th>Game</Table.Th>
-                      <Table.Th>Where</Table.Th>
-                      <Table.Th ta="right">For</Table.Th>
-                      <Table.Th ta="right">Fees and shipping</Table.Th>
-                      <Table.Th ta="right">Net</Table.Th>
-                      <Table.Th ta="right">Over its cost</Table.Th>
+                      {sorting.th('sold', 'Sold')}
+                      {sorting.th('title', 'Game')}
+                      {sorting.th('where', 'Where')}
+                      {sorting.th('price', 'For', { ta: 'right' })}
+                      {sorting.th('fees', 'Fees and shipping', { ta: 'right' })}
+                      {sorting.th('net', 'Net', { ta: 'right' })}
+                      {sorting.th('gain', 'Over its cost', { ta: 'right' })}
                       <Table.Th />
                     </Table.Tr>
                   </Table.Thead>
                   <Table.Tbody>
-                    {s.sales.map((x) => (
+                    {sortRows(s.sales, sortValue, sorting.dir).map((x) => (
                       <Table.Tr key={x.id}>
                         <Table.Td>{date(x.soldAt, dateFormat)}</Table.Td>
                         <Table.Td>

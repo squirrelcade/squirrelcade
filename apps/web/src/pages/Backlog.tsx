@@ -6,11 +6,12 @@ import { keepPreviousData, useQuery } from '@tanstack/react-query';
 import { useState } from 'react';
 import { useSearchParams } from 'react-router';
 import { api } from '../api';
-import { PageHeader } from '../components';
+import { PageHeader, type SortDirection } from '../components';
 import { count } from '../format';
 import { GameCover, GameTitle } from '../GameDrawer';
 import { notifySuccess, useCanEdit, useSetting } from '../hooks';
 import { PlayBadge, PlayPicker, useSetPlay } from '../Playing';
+import { sortRows, useSort } from '../sort';
 import { useCollectionSummary } from './Collection';
 
 /** An owned game and where the owner is with it (GET /api/v1/play). */
@@ -40,6 +41,9 @@ const TABS: { value: string; label: string }[] = [
   { value: 'unmarked', label: 'Not marked' },
   { value: 'rated', label: 'Rated' },
 ];
+
+/** The backlog's headings sort it (D144): games A to Z, your ratings highest first. */
+const SORTS = { title: 'asc', rating: 'desc' } as const satisfies Record<string, SortDirection>;
 
 /** "What to play next": one game from the backlog, with a button to start it and one for another pick. */
 function NextPick({ platform, canEdit }: { platform: string; canEdit: boolean }) {
@@ -121,6 +125,7 @@ export function BacklogPage() {
   const status = params.get('status') ?? 'backlog';
   const platform = params.get('platform') ?? '';
   const page = Number(params.get('page') ?? 1);
+  const sorting = useSort(SORTS, 'title');
   const [search, setSearch] = useState(params.get('q') ?? '');
   const [debounced] = useDebouncedValue(search, 250);
   const query = new URLSearchParams({ status });
@@ -136,7 +141,8 @@ export function BacklogPage() {
     setParams(next, { replace: true });
   }
 
-  const items = list.data?.items ?? [];
+  // The server sends every game in the tab: sorted here, then paged.
+  const items = sortRows(list.data?.items ?? [], (g) => (sorting.by === 'rating' ? g.rating : g.title), sorting.dir);
   const shown = items.slice((page - 1) * pageSize, page * pageSize);
   return (
     <>
@@ -182,8 +188,8 @@ export function BacklogPage() {
         <Table striped verticalSpacing={6}>
           <Table.Thead>
             <Table.Tr>
-              <Table.Th>Game</Table.Th>
-              <Table.Th>{canEdit ? 'Played, and your rating' : 'Played'}</Table.Th>
+              {sorting.th('title', 'Game')}
+              {sorting.th('rating', canEdit ? 'Played, and your rating' : 'Played')}
             </Table.Tr>
           </Table.Thead>
           <Table.Tbody>

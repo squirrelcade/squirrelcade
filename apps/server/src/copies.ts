@@ -170,7 +170,7 @@ export class CopiesService {
   }
 
   /** The Copies page: a view's games (searched, a page at a time) and how many games each view has. */
-  list(query: { view?: string; how?: string; q?: string; page?: number; pageSize?: number }, may: { pc: boolean; romm: boolean }) {
+  list(query: { view?: string; how?: string; q?: string; sort?: string; dir?: string; page?: number; pageSize?: number }, may: { pc: boolean; romm: boolean }) {
     const view: CopiesView = COPIES_VIEWS.includes(query.view as CopiesView) ? (query.view as CopiesView) : 'sealed-playable';
     const withPc = may.pc && this.pc.enabled();
     const all = this.groups(withPc).map((g) => ({ ...g, playable: this.playWays(g, { pc: withPc, romm: may.romm }) }));
@@ -193,9 +193,14 @@ export class CopiesService {
         (!how || g.playable.some((w) => w.kind === how)) &&
         (!q || [g.title, ...g.consoles.map((c) => c.title), ...g.pc.map((p) => p.title)].some((t) => normalizeTitle(t).includes(q))),
     );
+    // The headings sort the list (D144): by title (A to Z first, the order the games come in) or by how many copies
+    // (most first), either way.
+    const byCopies = query.sort === 'copies';
+    const dir = query.dir === 'asc' || query.dir === 'desc' ? query.dir : byCopies ? 'desc' : 'asc';
+    const sorted = byCopies ? [...rows].sort((a, b) => (dir === 'asc' ? a.total - b.total : b.total - a.total) || a.title.localeCompare(b.title)) : dir === 'asc' ? rows : [...rows].reverse();
     const pageSize = Math.min(Math.max(query.pageSize ?? 100, 1), 500);
     const page = Math.max(query.page ?? 1, 1);
-    return { view, counts, total: rows.length, page, pageSize, pcOn: withPc, items: rows.slice((page - 1) * pageSize, page * pageSize) };
+    return { view, counts, total: sorted.length, page, pageSize, pcOn: withPc, items: sorted.slice((page - 1) * pageSize, page * pageSize) };
   }
 
   /** Games to move a copy to ("Same game as..."), by title. */
@@ -227,9 +232,9 @@ export class CopiesService {
 /** The Copies page's games, the search for "Same game as...", and the owner's answers. */
 export function registerCopiesRoutes(app: FastifyInstance, copies: CopiesService): void {
   app.get('/api/v1/copies', async (request) => {
-    const q = request.query as { view?: string; how?: string; q?: string; page?: string; pageSize?: string };
+    const q = request.query as { view?: string; how?: string; q?: string; sort?: string; dir?: string; page?: string; pageSize?: string };
     const may = shown(request);
-    return copies.list({ view: q.view, how: q.how, q: q.q, page: Number(q.page) || 1, pageSize: Number(q.pageSize) || 100 }, { pc: may.pc, romm: may.romm });
+    return copies.list({ view: q.view, how: q.how, q: q.q, sort: q.sort, dir: q.dir, page: Number(q.page) || 1, pageSize: Number(q.pageSize) || 100 }, { pc: may.pc, romm: may.romm });
   });
 
   app.get('/api/v1/copies/search', async (request) => {

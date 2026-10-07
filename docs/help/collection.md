@@ -103,7 +103,7 @@ Values come from your sheet, so they're only as current as you keep them.
 ## The Collection page
 
 - **List** or **Grid** (cover art and titles); your browser remembers which.
-- Filters by console, region, condition and title; by what you played ([What you played](playing.md)); and by where a copy is, its tags, and whether it's lent or for sale ([Your copies](your-copies.md)). The sort follows the column you click.
+- Filters by console, region, condition and title; by what you played ([What you played](playing.md)); and by where a copy is, its tags, and whether it's lent or for sale ([Your copies](your-copies.md)). Click a column's heading to sort by it, and again for the other way (titles A to Z first; value, price paid and Added most or newest first). The sort menu does the same in the grid and on a phone, with a button beside it to reverse it.
 - A copy from another region has a badge (JP, PAL, Asia).
 - **Download > What's shown here (CSV)** gives the copies on the page as a spreadsheet that Excel or Google Sheets open: every copy with its console, region, condition, value, price paid, dates, the catalog game it counts as, what you played of it and where it is. It follows the page's filters.
 - **Download > Everything (Excel workbook)** gives one .xlsx file with a tab for each part: a summary by console, the whole collection, the wishlist, each console's missing games, what you played, your loans, the games for sale, your notes, the PC library and the Top 100 lists of the consoles you collect.

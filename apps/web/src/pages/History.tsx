@@ -31,12 +31,14 @@ import { Fragment, useMemo, useState, type ReactNode } from 'react';
 import { Link, useSearchParams } from 'react-router';
 import { StashMark } from '../Acorn';
 import { api } from '../api';
+import type { SortDirection } from '../components';
 import { GameCover, GameTitle, useOpenGame } from '../GameDrawer';
 import { notifyError, notifySuccess, useCanEdit, useSetting } from '../hooks';
 import { releaseDate } from '../format';
 import { PreferencePicker } from '../Preference';
 import { RommLinks, type RommLink } from '../Romm';
 import { PlayBadge, type Play } from '../Playing';
+import { sortRows, useSort } from '../sort';
 
 /** A history text as the API sends it (see apps/server/src/history.ts). */
 export interface HistoryText {
@@ -336,6 +338,12 @@ export function WhyModal({ platformKey, title, why, onClose }: { platformKey: st
 
 type Show = 'all' | 'owned' | 'missing';
 
+/** The Top 100 list's columns and which way each sorts first (D144): the rank and titles in order, what you have and RomM yes first. */
+const TOP100_SORTS = { rank: 'asc', title: 'asc', owned: 'desc', romm: 'desc' } as const satisfies Record<string, SortDirection>;
+
+/** What you have of a listed game, as the You column sorts it: owned, to review, maybe, not owned. */
+const HAVE: Record<ListOwnership, number> = { owned: 3, review: 2, maybe: 1, missing: 0 };
+
 /** A console's Top 100 list: its best games in ranked order, what you have of them, why each matters, and RomM. */
 export function Top100Tab({ platformKey, narrow }: { platformKey: string; narrow: boolean }) {
   const [params, setParams] = useSearchParams();
@@ -344,6 +352,8 @@ export function Top100Tab({ platformKey, narrow }: { platformKey: string; narrow
   // A board of ten by ten with the hunting list beside it (the redesign's), or the list with why each game matters.
   const view = params.get('view') === 'list' ? 'list' : 'board';
   const [search, setSearch] = useState('');
+  // The list sorts by its headings (D144), in keys of its own: the console page's ?sort= is its catalog's.
+  const sorting = useSort(TOP100_SORTS, 'rank', 'top');
   const setParam = (key: string, value: string | null) => {
     const next = new URLSearchParams(params);
     if (value) next.set(key, value);
@@ -363,6 +373,7 @@ export function Top100Tab({ platformKey, narrow }: { platformKey: string; narrow
       ),
     [d, show, onlyRomm, q],
   );
+  const sorted = sortRows(rows, (r) => (sorting.by === 'title' ? r.title : sorting.by === 'owned' ? HAVE[r.owned] : sorting.by === 'romm' ? r.romm !== null : r.rank), sorting.dir);
   if (top.isError) return <Text c="red">{(top.error as Error).message}</Text>;
   if (!d) return <Loader />;
   const s = d.summary;
@@ -436,16 +447,14 @@ export function Top100Tab({ platformKey, narrow }: { platformKey: string; narrow
         <Table verticalSpacing={6} striped>
           <Table.Thead>
             <Table.Tr>
-              <Table.Th w={40} ta="right">
-                #
-              </Table.Th>
-              <Table.Th>Game</Table.Th>
-              {!narrow && <Table.Th w={190}>You</Table.Th>}
-              {romm && !narrow && <Table.Th w={110}>RomM</Table.Th>}
+              {sorting.th('rank', '#', { ta: 'right', w: 40 })}
+              {sorting.th('title', 'Game')}
+              {!narrow && sorting.th('owned', 'You', { w: 190 })}
+              {romm && !narrow && sorting.th('romm', 'RomM', { w: 110 })}
             </Table.Tr>
           </Table.Thead>
           <Table.Tbody>
-            {rows.map((r) => {
+            {sorted.map((r) => {
               const name = r.catalogTitle ?? r.title;
               const on = r.catalogPlatformKey ?? platformKey;
               const credits = [r.developers.join(', '), r.publishers.filter((p) => !r.developers.includes(p)).join(', ')].filter(Boolean).join(' / ');

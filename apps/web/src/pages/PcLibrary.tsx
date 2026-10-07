@@ -11,6 +11,7 @@ import { PageHeader, SortableTh, StatCard, type SortDirection } from '../compone
 import { count, date, dateTime } from '../format';
 import { notifyError, notifySuccess, useCanEdit, useFeature, useSetting } from '../hooks';
 import { GameTitle } from '../GameDrawer';
+import { sortRows, useSort } from '../sort';
 
 /** One game in one storefront (GET /api/v1/pc/games). */
 interface PcRecord {
@@ -63,6 +64,9 @@ const OWNERSHIP_COLOR: Record<PcOwnership, string> = { permanent: 'teal', subscr
 const COLUMNS = { title: 'asc', playtime: 'desc', played: 'desc', storefronts: 'desc' } as const satisfies Record<string, SortDirection>;
 type Column = keyof typeof COLUMNS;
 
+/** The sealed games table's columns and which way each sorts first (D144): words A to Z, the PC version's price most first. */
+const SEALED_SORTS = { title: 'asc', consoles: 'asc', pc: 'desc' } as const satisfies Record<string, SortDirection>;
+
 /**
  * The PC library: the games in your PC storefronts as Playnite knows them, one row per game with its
  * storefronts (colored by how each counts), playtime and the console copies of the same game. Owning a
@@ -109,6 +113,19 @@ export function PcLibraryPage() {
   // Their PC versions: the PC wishlist has them (with IsThereAnyDeal's prices, when PC game prices are on).
   const pcWishlist = useQuery({ queryKey: ['pc', 'wishlist'], queryFn: () => api<PcWishlist>('/pc/wishlist'), enabled: view === 'sealed' });
   const pcVersion = new Map((pcWishlist.data?.items ?? []).map((e) => [pcFamilyKey(e.title), e]));
+  // The sealed games sort by their headings too (D144), in keys of their own (?sort= is the games table's). On PC sorts
+  // by today's price when PC game prices are on, else by whether the PC wishlist has it.
+  const sealedSorting = useSort(SEALED_SORTS, 'title', 'sealed');
+  const sealedRows = sortRows(
+    sealed.data ?? [],
+    (g) => {
+      if (sealedSorting.by === 'title') return g.title;
+      if (sealedSorting.by === 'consoles') return g.consoles.map((c) => c.platform).join(', ');
+      const pc = pcVersion.get(g.key) ?? pcVersion.get(pcFamilyKey(g.title));
+      return pcWishlist.data?.pricesOn ? (pc?.price && !pc.price.missing ? pc.price.currentCents : null) : pc !== undefined;
+    },
+    sealedSorting.dir,
+  );
   const refresh = () => queryClient.invalidateQueries({ queryKey: ['pc'] });
 
   const read = useMutation({
@@ -333,13 +350,13 @@ export function PcLibraryPage() {
           <Table striped>
             <Table.Thead>
               <Table.Tr>
-                <Table.Th>Game</Table.Th>
-                <Table.Th>Console copies</Table.Th>
-                <Table.Th>On PC</Table.Th>
+                {sealedSorting.th('title', 'Game')}
+                {sealedSorting.th('consoles', 'Console copies')}
+                {sealedSorting.th('pc', 'On PC')}
               </Table.Tr>
             </Table.Thead>
             <Table.Tbody>
-              {(sealed.data ?? []).map((g) => {
+              {sealedRows.map((g) => {
                 const pc = pcVersion.get(g.key) ?? pcVersion.get(pcFamilyKey(g.title));
                 return (
                   <Table.Tr key={g.key}>

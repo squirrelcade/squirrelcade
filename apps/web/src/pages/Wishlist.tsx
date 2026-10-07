@@ -5,11 +5,12 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Fragment, useState } from 'react';
 import { Link, useSearchParams } from 'react-router';
 import { api } from '../api';
-import { PageHeader } from '../components';
+import { PageHeader, type SortDirection } from '../components';
+import { sortRows, useSort } from '../sort';
 import { count, date, dateTime } from '../format';
 import { notifyError, useCanEdit, useSetting, useSettingsState } from '../hooks';
 import { GameCover, GameTitle } from '../GameDrawer';
-import { PreferencePicker } from '../Preference';
+import { PreferencePicker, preferenceLevels } from '../Preference';
 import { monthsFromNow, SNOOZES } from '../choices';
 import { ShareButton } from '../ShareLinks';
 import { GameOfTheDayCard } from './GameOfTheDay';
@@ -56,6 +57,9 @@ function useSnooze() {
 }
 
 const PRIORITY_COLORS = { High: 'green', Medium: 'yellow', Low: 'gray' } as const;
+
+/** The wishlist's sorts and which way each goes first (D144): the rank from the top, words A to Z, acorns, reviews and priority most first, preferences most wanted first. */
+const SORTS = { rank: 'asc', title: 'asc', platform: 'asc', acorns: 'desc', reviews: 'desc', priority: 'desc', preference: 'asc' } as const satisfies Record<string, SortDirection>;
 
 /** The wishlist: the top picks and each console's list, every score explained point by point, with snoozes and preferences. */
 export function WishlistPage() {
@@ -177,6 +181,11 @@ export function WishlistPage() {
 function EntryTable({ entries: all, ranked }: { entries: Entry[]; ranked?: boolean }) {
   const [open, setOpen] = useState<string | null>(null);
   const [filter, setFilter] = useState('');
+  // Until a heading is clicked, the top picks keep their rank and a console's list its acorns, the order they come in.
+  const sorting = useSort(SORTS, ranked ? 'rank' : 'acorns');
+  const points = useSetting('wishlist.preferencePoints', {});
+  // Each preference's place, most wanted first.
+  const places = new Map(preferenceLevels(points).map((l, i) => [l.value, i]));
   // The whole phrase anywhere ("wii u"), or every word as the start of a word ("dq swo").
   const phrase = filter.trim().toLowerCase();
   const words = phrase.split(/\s+/).filter(Boolean);
@@ -186,7 +195,11 @@ function EntryTable({ entries: all, ranked }: { entries: Entry[]; ranked?: boole
     const starts = text.split(/[^a-z0-9]+/).filter(Boolean);
     return words.every((w) => starts.some((s) => s.startsWith(w)));
   };
-  const entries = phrase ? all.filter(matches) : all;
+  const entries = sortRows(
+    phrase ? all.filter(matches) : all,
+    (e) => ({ rank: e.rank, title: e.title, platform: e.platform, acorns: e.masterScore ?? e.score, reviews: e.reviews?.rating, priority: { High: 3, Medium: 2, Low: 1 }[e.priority], preference: places.get(e.preference ?? '') })[sorting.by],
+    sorting.dir,
+  );
   const snooze = useSnooze();
   // A viewer sees the wishlist, not the snooze.
   const canEdit = useCanEdit();
@@ -215,13 +228,13 @@ function EntryTable({ entries: all, ranked }: { entries: Entry[]; ranked?: boole
       <Table verticalSpacing={6} highlightOnHover>
         <Table.Thead>
           <Table.Tr>
-            {ranked && <Table.Th w={50}>#</Table.Th>}
-            <Table.Th>Game</Table.Th>
-            {!narrow && <Table.Th>Platform</Table.Th>}
-            <Table.Th ta="right">Acorns</Table.Th>
-            {!narrow && <Table.Th ta="right">Reviews</Table.Th>}
-            {!narrow && <Table.Th>Priority</Table.Th>}
-            {!narrow && <Table.Th>Your preference</Table.Th>}
+            {ranked && sorting.th('rank', '#', { w: 50 })}
+            {sorting.th('title', 'Game')}
+            {!narrow && sorting.th('platform', 'Platform')}
+            {sorting.th('acorns', 'Acorns', { ta: 'right' })}
+            {!narrow && sorting.th('reviews', 'Reviews', { ta: 'right' })}
+            {!narrow && sorting.th('priority', 'Priority')}
+            {!narrow && sorting.th('preference', 'Your preference')}
             <Table.Th w={1} />
           </Table.Tr>
         </Table.Thead>

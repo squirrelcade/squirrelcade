@@ -2,8 +2,10 @@ import { Button, Group, Loader, Stack, Table, Text, Title } from '@mantine/core'
 import { IconPrinter } from '@tabler/icons-react';
 import { useQuery } from '@tanstack/react-query';
 import { api } from '../api';
+import type { SortDirection } from '../components';
 import { count, date, money, wholeMoney } from '../format';
 import { useSetting } from '../hooks';
+import { sortRows, useSort } from '../sort';
 
 /** GET /api/v1/collection/report. */
 interface CollectionReport {
@@ -33,6 +35,12 @@ const PRINT_CSS = `
   .report-console { break-before: auto; }
 }`;
 
+/** The platforms' headings sort them (D144): platforms A to Z, counts and money most first. */
+const SORTS = { platform: 'asc', games: 'desc', copies: 'desc', value: 'desc', paid: 'desc' } as const satisfies Record<string, SortDirection>;
+
+/** Each platform's copies sort by their headings too (D144): words A to Z, quantities and money most first. */
+const ITEMS = { title: 'asc', condition: 'asc', region: 'asc', qty: 'desc', value: 'desc', paid: 'desc', where: 'asc' } as const satisfies Record<string, SortDirection>;
+
 /**
  * Collection > Report: every copy by platform with its condition, value (and what you paid and where it's kept,
  * when that's shown), and the totals, laid out to print or save as a PDF, for insurance or a record of the collection.
@@ -40,10 +48,21 @@ const PRINT_CSS = `
 export function ReportPage() {
   const dateFormat = useSetting('general.dateFormat', 'us');
   const report = useQuery({ queryKey: ['collection', 'report'], queryFn: () => api<CollectionReport>('/collection/report') });
+  const sorting = useSort(SORTS, 'platform');
+  // Every platform's copies sort the same way, on their own (?itemssort=value&itemsdir=desc); the platforms keep their order.
+  const itemSorting = useSort(ITEMS, 'title', 'items');
   const r = report.data;
   if (!r) return report.isError ? <Text c="red">The report couldn't be made.</Text> : <Loader />;
   const paid = r.totals.costCents !== null;
   const where = r.consoles.some((c) => c.items.some((i) => i.location));
+  const consoleRows = sortRows(r.consoles, (c) => (sorting.by === 'games' ? c.games : sorting.by === 'copies' ? c.copies : sorting.by === 'value' ? c.valueCents : sorting.by === 'paid' ? c.costCents : c.platform), sorting.dir);
+  // A price paid of 0 shows blank, so it sorts with the blanks.
+  const itemRows = (items: CollectionReport['consoles'][number]['items']) =>
+    sortRows(
+      items,
+      (i) => (itemSorting.by === 'condition' ? i.condition : itemSorting.by === 'region' ? i.region : itemSorting.by === 'qty' ? i.quantity : itemSorting.by === 'value' ? i.valueCents : itemSorting.by === 'paid' ? i.costCents || null : itemSorting.by === 'where' ? i.location : i.title),
+      itemSorting.dir,
+    );
   return (
     <Stack gap="lg">
       <style>{PRINT_CSS}</style>
@@ -64,15 +83,15 @@ export function ReportPage() {
         <Table verticalSpacing={2} withTableBorder>
           <Table.Thead>
             <Table.Tr>
-              <Table.Th>Platform</Table.Th>
-              <Table.Th ta="right">Games</Table.Th>
-              <Table.Th ta="right">Copies</Table.Th>
-              <Table.Th ta="right">Value</Table.Th>
-              {paid && <Table.Th ta="right">Paid</Table.Th>}
+              {sorting.th('platform', 'Platform')}
+              {sorting.th('games', 'Games', { ta: 'right' })}
+              {sorting.th('copies', 'Copies', { ta: 'right' })}
+              {sorting.th('value', 'Value', { ta: 'right' })}
+              {paid && sorting.th('paid', 'Paid', { ta: 'right' })}
             </Table.Tr>
           </Table.Thead>
           <Table.Tbody>
-            {r.consoles.map((c) => (
+            {consoleRows.map((c) => (
               <Table.Tr key={c.platform}>
                 <Table.Td>{c.platform}</Table.Td>
                 <Table.Td ta="right">{count(c.games)}</Table.Td>
@@ -96,17 +115,17 @@ export function ReportPage() {
             <Table verticalSpacing={1} fz="xs" striped>
               <Table.Thead>
                 <Table.Tr>
-                  <Table.Th>Title</Table.Th>
-                  <Table.Th>Condition</Table.Th>
-                  <Table.Th>Region</Table.Th>
-                  <Table.Th ta="right">Qty</Table.Th>
-                  <Table.Th ta="right">Value each</Table.Th>
-                  {paid && <Table.Th ta="right">Paid each</Table.Th>}
-                  {where && <Table.Th>Where it is</Table.Th>}
+                  {itemSorting.th('title', 'Title')}
+                  {itemSorting.th('condition', 'Condition')}
+                  {itemSorting.th('region', 'Region')}
+                  {itemSorting.th('qty', 'Qty', { ta: 'right' })}
+                  {itemSorting.th('value', 'Value each', { ta: 'right' })}
+                  {paid && itemSorting.th('paid', 'Paid each', { ta: 'right' })}
+                  {where && itemSorting.th('where', 'Where it is')}
                 </Table.Tr>
               </Table.Thead>
               <Table.Tbody>
-                {c.items.map((i, n) => (
+                {itemRows(c.items).map((i, n) => (
                   <Table.Tr key={`${i.title}|${n}`}>
                     <Table.Td>
                       {i.title}

@@ -4,10 +4,11 @@ import { useQuery } from '@tanstack/react-query';
 import { useState } from 'react';
 import { Link } from 'react-router';
 import { api } from '../api';
-import { PageHeader } from '../components';
+import { PageHeader, type SortDirection } from '../components';
 import { money } from '../format';
 import { GameTitle } from '../GameDrawer';
 import { useSetting } from '../hooks';
+import { sortRows, useSort } from '../sort';
 
 /** GET /api/v1/collection/upgrades: an owned game whose best copy isn't complete. */
 interface Upgrade {
@@ -26,6 +27,12 @@ interface Upgrade {
 
 type Filter = 'all' | 'loose' | 'box' | 'manual';
 
+/** The upgrades' headings sort them (D144): games and copies A to Z, worth and ratings most first. */
+const SORTS = { title: 'asc', copy: 'asc', worth: 'desc', rating: 'desc', igdb: 'desc' } as const satisfies Record<string, SortDirection>;
+
+/** What a game's best copy lacks, as its badge says it. */
+const lacking = (u: Upgrade) => (u.completeness === 'loose' ? 'Loose' : u.missing.includes('box') ? 'No box' : 'No manual');
+
 /**
  * Collection > Upgrades: the games whose best copy isn't complete (loose, or without its box or its manual), the
  * ones you like best first (your rating in What you played, then IGDB's, then the copy's value), each with
@@ -38,8 +45,14 @@ export function UpgradesPage() {
   const upgrades = useQuery({ queryKey: ['collection', 'upgrades'], queryFn: () => api<{ items: Upgrade[] }>('/collection/upgrades') });
   const all = upgrades.data?.items ?? [];
   const anyRating = all.some((u) => u.rating !== null);
+  // The server's order (your rating, then IGDB's, then worth) is the rating column's, or IGDB's when nothing's rated: ties keep it.
+  const sorting = useSort(SORTS, anyRating ? 'rating' : 'igdb');
   const count = (f: Filter) => all.filter((u) => matches(u, f)).length;
-  const shown = all.filter((u) => matches(u, filter) && (!ratedOnly || u.rating !== null));
+  const shown = sortRows(
+    all.filter((u) => matches(u, filter) && (!ratedOnly || u.rating !== null)),
+    (u) => (sorting.by === 'title' ? u.title : sorting.by === 'copy' ? lacking(u) : sorting.by === 'worth' ? u.valueCents : sorting.by === 'rating' ? u.rating : u.igdbRating),
+    sorting.dir,
+  );
   return (
     <>
       <PageHeader
@@ -71,11 +84,11 @@ export function UpgradesPage() {
             <Table verticalSpacing={6} striped>
               <Table.Thead>
                 <Table.Tr>
-                  <Table.Th>Game</Table.Th>
-                  <Table.Th>Your copy</Table.Th>
-                  <Table.Th ta="right">Worth</Table.Th>
-                  {anyRating && <Table.Th ta="right">Your rating</Table.Th>}
-                  <Table.Th ta="right">IGDB</Table.Th>
+                  {sorting.th('title', 'Game')}
+                  {sorting.th('copy', 'Your copy')}
+                  {sorting.th('worth', 'Worth', { ta: 'right' })}
+                  {anyRating && sorting.th('rating', 'Your rating', { ta: 'right' })}
+                  {sorting.th('igdb', 'IGDB', { ta: 'right' })}
                   <Table.Th>Complete copy</Table.Th>
                 </Table.Tr>
               </Table.Thead>
@@ -90,7 +103,7 @@ export function UpgradesPage() {
                     </Table.Td>
                     <Table.Td>
                       <Badge variant="light" color={u.completeness === 'loose' ? 'gray' : 'blue'} tt="none">
-                        {u.completeness === 'loose' ? 'Loose' : u.missing.includes('box') ? 'No box' : 'No manual'}
+                        {lacking(u)}
                       </Badge>
                     </Table.Td>
                     <Table.Td ta="right">{u.valueCents !== null ? money(u.valueCents, currency) : '—'}</Table.Td>

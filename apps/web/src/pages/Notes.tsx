@@ -2,22 +2,31 @@ import { Anchor, Loader, Stack, Table, Text, TextInput } from '@mantine/core';
 import { IconSearch } from '@tabler/icons-react';
 import { useState } from 'react';
 import { Link } from 'react-router';
-import { PageHeader } from '../components';
+import { PageHeader, type SortDirection } from '../components';
 import { date } from '../format';
 import { GameTitle } from '../GameDrawer';
 import { useSetting } from '../hooks';
 import { useGameNotes } from '../notes';
+import { sortRows, useSort } from '../sort';
+
+/** Your notes' headings sort them (D144): games and notes A to Z, changes newest first. */
+const SORTS = { title: 'asc', note: 'asc', changed: 'desc' } as const satisfies Record<string, SortDirection>;
 
 /** Your notes: every note you've written on a game, newest first, with a search of titles, consoles and notes. */
 export function NotesPage() {
   const { notes, loading } = useGameNotes();
   const dateFormat = useSetting('general.dateFormat', 'us');
   const [search, setSearch] = useState('');
+  const sorting = useSort(SORTS, 'changed');
   const words = search.toLowerCase().split(/\s+/).filter(Boolean);
-  const shown = notes.filter((n) => {
-    const text = `${n.title} ${n.platform} ${n.note}`.toLowerCase();
-    return words.every((w) => text.includes(w));
-  });
+  const shown = sortRows(
+    notes.filter((n) => {
+      const text = `${n.title} ${n.platform} ${n.note}`.toLowerCase();
+      return words.every((w) => text.includes(w));
+    }),
+    (n) => (sorting.by === 'title' ? n.title : sorting.by === 'note' ? n.note : n.updatedAt),
+    sorting.dir,
+  );
 
   return (
     <>
@@ -53,9 +62,9 @@ export function NotesPage() {
             <Table striped>
               <Table.Thead>
                 <Table.Tr>
-                  <Table.Th>Game</Table.Th>
-                  <Table.Th>Note</Table.Th>
-                  <Table.Th>Changed</Table.Th>
+                  {sorting.th('title', 'Game')}
+                  {sorting.th('note', 'Note')}
+                  {sorting.th('changed', 'Changed')}
                 </Table.Tr>
               </Table.Thead>
               <Table.Tbody>

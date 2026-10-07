@@ -7,11 +7,12 @@ import { useState } from 'react';
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router';
 import { StashMark } from '../Acorn';
 import { api } from '../api';
-import { PageHeader } from '../components';
+import { PageHeader, type SortDirection } from '../components';
 import { count, dateTime } from '../format';
 import { notifyError, notifySuccess, useCanEdit, usePageTitle, useSetting, useSettings } from '../hooks';
 import { GameTitle } from '../GameDrawer';
 import { PreferencePicker } from '../Preference';
+import { sortRows, useSort } from '../sort';
 import { SeriesList } from './Series';
 
 /** A set with its completion (GET /api/v1/sets). */
@@ -63,6 +64,12 @@ const CATALOG_STATUS: Record<string, string> = {
   upcoming: 'Not out yet',
   excluded: 'Left out of its console’s catalog',
 };
+
+/** The sets table's columns and which way each sorts first (D144): names A to Z, completion and consoles most first. */
+const SET_SORTS = { name: 'asc', complete: 'desc', consoles: 'desc' } as const satisfies Record<string, SortDirection>;
+
+/** A set's games table's columns and which way each sorts first (D144): words A to Z. */
+const GAME_SORTS = { title: 'asc', console: 'asc', notes: 'asc' } as const satisfies Record<string, SortDirection>;
 
 /** Makes a set: a ready-made one, from a Wikipedia list, or from the owner's own CSV. */
 function NewSet({ opened, onClose, have }: { opened: boolean; onClose: () => void; have: readonly string[] }) {
@@ -208,6 +215,9 @@ export function SetsPage() {
   const [params, setParams] = useSearchParams();
   const tab = params.get('tab') === 'series' ? 'series' : 'sets';
   const list = useQuery({ queryKey: ['sets'], queryFn: () => api<SetSummary[]>('/sets') });
+  // A heading sorts the sets by its column (D144).
+  const sorting = useSort(SET_SORTS, 'name');
+  const sets = sortRows(list.data ?? [], (s) => (sorting.by === 'complete' ? s.percent : sorting.by === 'consoles' ? s.platforms.length : s.name), sorting.dir);
   return (
     <>
       <PageHeader help="sets"
@@ -244,13 +254,13 @@ export function SetsPage() {
           <Table highlightOnHover>
             <Table.Thead>
               <Table.Tr>
-                <Table.Th>Set</Table.Th>
-                <Table.Th>Complete</Table.Th>
-                <Table.Th visibleFrom="sm">Consoles</Table.Th>
+                {sorting.th('name', 'Set')}
+                {sorting.th('complete', 'Complete')}
+                {sorting.th('consoles', 'Consoles', { visibleFrom: 'sm' })}
               </Table.Tr>
             </Table.Thead>
             <Table.Tbody>
-              {list.data!.map((s) => (
+              {sets.map((s) => (
                 <Table.Tr key={s.key}>
                   <Table.Td>
                     <Anchor component={Link} to={`/sets/${s.key}`} fw={500}>
@@ -302,6 +312,8 @@ export function SetDetailPage() {
   const [tab, setTab] = useState<string | null>('missing');
   const [platform, setPlatform] = useState<string | null>(null);
   const [search, setSearch] = useState('');
+  // A heading sorts the games by its column (D144), on every tab.
+  const sorting = useSort(GAME_SORTS, 'title');
   const detail = useQuery({ queryKey: ['sets', key], queryFn: () => api<{ set: SetSummary; games: SetGame[] }>(`/sets/${key}`) });
   usePageTitle(detail.data?.set.name ?? 'Sets', settings?.['general.instanceName'] || 'Squirrelcade');
   const refresh = () => queryClient.invalidateQueries({ queryKey: ['sets'] });
@@ -360,7 +372,9 @@ export function SetDetailPage() {
   const { set, games } = detail.data;
   const q = search.trim().toLowerCase();
   const shown = games.filter((g) => (!platform || g.platformKey === platform) && (!q || g.title.toLowerCase().includes(q)));
-  const of = (status: SetGame['status']) => shown.filter((g) => g.status === status);
+  // The third column is what the row shows: the copies it's owned as, else the list's notes (nothing while it waits for Review).
+  const sorted = sortRows(shown, (g) => (sorting.by === 'console' ? g.platform : sorting.by === 'notes' ? (g.status === 'owned' ? g.ownedAs.join('; ') : g.status === 'review' ? null : g.notes) : g.title), sorting.dir);
+  const of = (status: SetGame['status']) => sorted.filter((g) => g.status === status);
 
   return (
     <>
@@ -509,9 +523,9 @@ export function SetDetailPage() {
         <Table highlightOnHover>
           <Table.Thead>
             <Table.Tr>
-              <Table.Th>Game</Table.Th>
-              <Table.Th>Console</Table.Th>
-              <Table.Th visibleFrom="sm">{tab === 'owned' ? 'Owned as' : 'Notes'}</Table.Th>
+              {sorting.th('title', 'Game')}
+              {sorting.th('console', 'Console')}
+              {sorting.th('notes', tab === 'owned' ? 'Owned as' : 'Notes', { visibleFrom: 'sm' })}
               <Table.Th w={40} />
             </Table.Tr>
           </Table.Thead>

@@ -1,7 +1,7 @@
 import { COMPLETENESS_LABELS, COMPLETENESS_SHORT, igdbCoverUrl, PLAY_STATUSES, REGION_LABELS, type Completeness, type Region, type TestKind, type TestResult } from '@squirrelcade/core';
-import { Anchor, AspectRatio, Badge, Box, Button, Center, Group, Image, Loader, Menu, Pagination, SegmentedControl, Select, SimpleGrid, Stack, Switch, Table, Text, TextInput, Tooltip } from '@mantine/core';
+import { ActionIcon, Anchor, AspectRatio, Badge, Box, Button, Center, Group, Image, Loader, Menu, Pagination, SegmentedControl, Select, SimpleGrid, Stack, Switch, Table, Text, TextInput, Tooltip } from '@mantine/core';
 import { useDebouncedValue, useMediaQuery } from '@mantine/hooks';
-import { IconCamera, IconChevronDown, IconDownload, IconFileSpreadsheet, IconLayoutGrid, IconList, IconMapPin, IconNotes, IconPlus, IconSearch, IconUserShare } from '@tabler/icons-react';
+import { IconCamera, IconChevronDown, IconDownload, IconFileSpreadsheet, IconLayoutGrid, IconList, IconMapPin, IconNotes, IconPlus, IconSearch, IconSortAscending, IconSortDescending, IconUserShare } from '@tabler/icons-react';
 import { keepPreviousData, useQuery } from '@tanstack/react-query';
 import { useState } from 'react';
 import { Link, useSearchParams } from 'react-router';
@@ -9,7 +9,8 @@ import { StashMark } from '../Acorn';
 import { api } from '../api';
 import { RegionBadge } from '../Region';
 import { RommLinks, type RommLink } from '../Romm';
-import { Cover, PageHeader, StatCard } from '../components';
+import { Cover, PageHeader, StatCard, type SortDirection } from '../components';
+import { useSort } from '../sort';
 import { PriceMovers } from './PriceMovers';
 import { Spending } from './Spending';
 import { ValueHistory } from './ValueHistory';
@@ -180,6 +181,10 @@ function CoverTile({ item }: { item: Item }) {
   );
 }
 
+/** The Stash's sorts and which way each goes first (D144): words A to Z, conditions best first, money and dates most or newest first. */
+const SORTS = { title: 'asc', platform: 'asc', condition: 'asc', value: 'desc', paid: 'desc', added: 'desc', gain: 'desc' } as const satisfies Record<string, SortDirection>;
+type Sort = keyof typeof SORTS;
+
 /** The page's title with the Stash's chest after it (D142), as Acorns ranking has the acorn. */
 const STASH_TITLE = (
   <>
@@ -207,7 +212,8 @@ export function CollectionPage() {
   // The download takes the filters the table shows (the page and sort don't matter to it).
   const exportQuery = new URLSearchParams([...params].filter(([k]) => ['platform', 'region', 'completeness', 'q', 'duplicates', ...EXTRA_FILTERS].includes(k)));
   const exportHref = `/api/v1/collection/export${exportQuery.size > 0 ? `?${exportQuery}` : ''}`;
-  const sort = params.get('sort') ?? 'title';
+  // A heading sorts by its column; the menu beside the filters does too, for the grid and phones (D144).
+  const sorting = useSort(SORTS, 'title');
   const page = Number(params.get('page') ?? 1);
   const pageSize = useSetting('interface.pageSize', 100);
   const currency = useSetting('general.currency', 'USD');
@@ -217,7 +223,7 @@ export function CollectionPage() {
   // On a phone the table keeps title and value; platform and condition go under the title.
   const narrow = useMediaQuery('(max-width: 48em)');
 
-  const query = new URLSearchParams({ sort, page: String(page), pageSize: String(pageSize) });
+  const query = new URLSearchParams({ sort: sorting.by, dir: sorting.dir, page: String(page), pageSize: String(pageSize) });
   if (platform) query.set('platform', platform);
   if (region) query.set('region', region);
   if (completeness) query.set('completeness', completeness);
@@ -459,15 +465,26 @@ export function CollectionPage() {
           data={[
             { value: 'title', label: 'Sort by title' },
             { value: 'platform', label: 'Sort by platform' },
+            { value: 'condition', label: 'Sort by condition' },
             { value: 'value', label: 'Sort by value' },
-            { value: 'gain', label: 'Sort by gain (value − paid)' },
-            { value: 'added', label: 'Recently added' },
+            ...(seesPaid
+              ? [
+                  { value: 'paid', label: 'Sort by price paid' },
+                  { value: 'gain', label: 'Sort by gain (value − paid)' },
+                ]
+              : []),
+            { value: 'added', label: 'Sort by date added' },
           ]}
-          value={sort}
-          onChange={(v) => set('sort', v ?? 'title')}
+          value={sorting.by}
+          onChange={(v) => v && sorting.set(v as Sort, SORTS[v as Sort])}
           allowDeselect={false}
-          w={170}
+          w={190}
         />
+        <Tooltip label={sorting.dir === 'asc' ? 'Ascending: click to reverse' : 'Descending: click to reverse'}>
+          <ActionIcon variant="default" size="lg" aria-label={sorting.dir === 'asc' ? 'Sorted ascending: reverse it' : 'Sorted descending: reverse it'} onClick={() => sorting.sortBy(sorting.by)}>
+            {sorting.dir === 'asc' ? <IconSortAscending size={18} /> : <IconSortDescending size={18} />}
+          </ActionIcon>
+        </Tooltip>
         <SegmentedControl
           size="xs"
           aria-label="View"
@@ -514,12 +531,12 @@ export function CollectionPage() {
         <Table striped highlightOnHover verticalSpacing={density === 'compact' ? 4 : 'sm'}>
           <Table.Thead>
             <Table.Tr>
-              <Table.Th>Title</Table.Th>
-              {!narrow && <Table.Th>Platform</Table.Th>}
-              {!narrow && <Table.Th>Condition</Table.Th>}
-              <Table.Th ta="right">Value</Table.Th>
-              {!narrow && seesPaid && <Table.Th ta="right">Paid</Table.Th>}
-              {!narrow && <Table.Th>Added</Table.Th>}
+              {sorting.th('title', 'Title')}
+              {!narrow && sorting.th('platform', 'Platform')}
+              {!narrow && sorting.th('condition', 'Condition')}
+              {sorting.th('value', 'Value', { ta: 'right' })}
+              {!narrow && seesPaid && sorting.th('paid', 'Paid', { ta: 'right' })}
+              {!narrow && sorting.th('added', 'Added')}
             </Table.Tr>
           </Table.Thead>
           <Table.Tbody>

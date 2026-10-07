@@ -3,7 +3,8 @@ import { IconDownload } from '@tabler/icons-react';
 import { useQuery } from '@tanstack/react-query';
 import { useState } from 'react';
 import { api } from '../api';
-import { PageHeader } from '../components';
+import { PageHeader, type SortDirection } from '../components';
+import { sortRows, useSort } from '../sort';
 import { CopyDetailsModal, type CopyRef } from '../CopyDetails';
 import { money } from '../format';
 import { GameCover, GameTitle } from '../GameDrawer';
@@ -36,6 +37,9 @@ interface Duplicate {
   items: { copyKey: string; condition: string; quantity: number; valueCents: number | null; sale: 'sale' | 'trade' | null; platformKey: string | null }[];
 }
 
+/** The for-sale table's sorts and which way each goes first (D144): words A to Z, money most first; listed is the order the list comes in (by console, then title). */
+const SORTS = { listed: 'asc', title: 'asc', condition: 'asc', asking: 'desc', value: 'desc' } as const satisfies Record<string, SortDirection>;
+
 /**
  * Collection > For sale: the copies you marked for sale or trade, with asking prices, a download and a link to
  * share; and the games you own more than once, to choose from.
@@ -46,8 +50,12 @@ export function ForSalePage() {
   const sale = useQuery({ queryKey: ['sale'], queryFn: () => api<{ currency: string; items: SaleItem[]; duplicates: Duplicate[] }>('/sale') });
   const [editing, setEditing] = useState<CopyRef | null>(null);
   const [selling, setSelling] = useState<{ id: number; title: string } | null>(null);
+  // Until a heading is clicked, the copies keep the list's order (by console, then title), which no heading has.
+  const sorting = useSort(SORTS, 'listed');
   const edit = (x: { copyKey: string; title: string; platform: string | null; condition: string }) => setEditing({ copyKey: x.copyKey, title: x.title, platform: x.platform ?? '', condition: x.condition });
   const items = sale.data?.items ?? [];
+  const listed = new Map(items.map((s, i) => [s, i]));
+  const rows = sortRows(items, (s) => ({ listed: listed.get(s), title: s.title, condition: s.condition, asking: s.askingCents, value: s.valueCents })[sorting.by], sorting.dir);
   const duplicates = (sale.data?.duplicates ?? []).filter((d) => d.items.some((i) => !i.sale));
   return (
     <>
@@ -77,15 +85,15 @@ export function ForSalePage() {
               <Table verticalSpacing={6} striped>
                 <Table.Thead>
                   <Table.Tr>
-                    <Table.Th>Game</Table.Th>
-                    <Table.Th>Condition</Table.Th>
-                    <Table.Th ta="right">Asking</Table.Th>
-                    <Table.Th ta="right">Value</Table.Th>
+                    {sorting.th('title', 'Game')}
+                    {sorting.th('condition', 'Condition')}
+                    {sorting.th('asking', 'Asking', { ta: 'right' })}
+                    {sorting.th('value', 'Value', { ta: 'right' })}
                     {canEdit && <Table.Th />}
                   </Table.Tr>
                 </Table.Thead>
                 <Table.Tbody>
-                  {items.map((s) => (
+                  {rows.map((s) => (
                     <Table.Tr key={s.copyKey}>
                       <Table.Td>
                         <Group gap="sm" wrap="nowrap">

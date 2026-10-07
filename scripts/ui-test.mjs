@@ -110,7 +110,8 @@ export async function uiTest(target, account, check) {
     let problems = [];
     // WebKit reports a request cut off by leaving the page as "... due to access control checks"; Squirrelcade calls only
     // its own address, so that's never a real access problem.
-    page.on('pageerror', (e) => !(webkitRun && /due to access control checks/.test(e.message)) && problems.push(`thrown: ${e.message}`));
+    const cutOff = (e) => webkitRun && /due to access control checks/.test(e.message);
+    page.on('pageerror', (e) => !cutOff(e) && problems.push(`thrown: ${e.message}`));
     // A 4xx is an expected answer (a service not set up yet); the browser's note about it isn't a problem.
     page.on('console', (m) => m.type() === 'error' && !m.text().startsWith('Failed to load resource') && problems.push(`console: ${m.text()}`));
     page.on('response', (r) => r.status() >= 500 && problems.push(`server error ${r.status()}: ${r.url().replace(base, '')}`));
@@ -781,7 +782,7 @@ export async function uiTest(target, account, check) {
     if (links.length === 0) throw new Error(`No share link for Mom; the links: ${JSON.stringify(allLinks.map((l) => l.name))}`);
     const outsiderContext = await browser.newContext({ serviceWorkers: 'block', viewport: { width: 390, height: 844 } });
     const outsider = await outsiderContext.newPage();
-    outsider.on('pageerror', (e) => problems.push(`share page thrown: ${e.message}`));
+    outsider.on('pageerror', (e) => !cutOff(e) && problems.push(`share page thrown: ${e.message}`));
     await outsider.goto(`${base}${links[0].path}`);
     await outsider.getByRole('heading', { name: 'Wishlist' }).waitFor({ timeout: 10000 });
     await outsider.getByText(/Shared with Mom/).waitFor({ timeout: 10000 }).catch(() => undefined);
@@ -813,6 +814,24 @@ export async function uiTest(target, account, check) {
       dupShown && (extra === 0 || dupLink === '/collection/copies?view=repeats') && extra === sums.totals.copies - sums.totals.games,
       `${dupText}; shown: ${dupShown}; link: ${dupLink}; copies ${sums.totals.copies}, games ${sums.totals.games}`,
     );
+    // A heading sorts the Stash (D144): Added once is the newest first, twice the oldest, as the server orders them.
+    const firstOf = async (query) => (await (await page.request.get(`${base}/api/v1/collection/items?${query}&pageSize=1`)).json()).items[0]?.title ?? '';
+    const addedHeading = page.getByRole('columnheader', { name: 'Added' });
+    // The rows shown stay until the new order arrives, so wait for the expected first row.
+    const firstRowShows = (title) => page.locator('tbody tr').first().filter({ hasText: title }).waitFor({ timeout: 10000 }).then(() => true, () => false);
+    const headingSays = (way) => addedHeading.and(page.locator(`[aria-sort="${way}"]`)).waitFor({ timeout: 10000 }).catch(() => {});
+    await addedHeading.getByRole('button').click();
+    await headingSays('descending');
+    const newest = await firstOf('sort=added');
+    const newestFirst = newest !== '' && (await firstRowShows(newest));
+    await addedHeading.getByRole('button').click();
+    await headingSays('ascending');
+    const oldest = await firstOf('sort=added&dir=asc');
+    const oldestFirst = oldest !== '' && (await firstRowShows(oldest));
+    const ariaSort = await addedHeading.getAttribute('aria-sort');
+    check('ui: a heading sorts the Stash either way (Added: newest first, then oldest)', newestFirst && oldestFirst && ariaSort === 'ascending', `newest first: ${newestFirst} (${newest}), oldest first: ${oldestFirst} (${oldest}), aria-sort: ${ariaSort}`);
+    await page.goto(`${base}/collection`);
+    await settle();
     await page.keyboard.press('/');
     // Empty, it lists the games opened lately (the drawer just showed some).
     await page.getByText('Opened lately').waitFor({ timeout: 5000 });
@@ -1318,7 +1337,7 @@ export async function uiTest(target, account, check) {
     const invite = await (await page.request.post(`${base}/api/v1/invites`, { data: { name: 'Mom' } })).json();
     const viewerContext = await browser.newContext({ serviceWorkers: 'block', viewport: { width: 1280, height: 800 } });
     const viewer = await viewerContext.newPage();
-    viewer.on('pageerror', (e) => problems.push(`viewer thrown: ${e.message}`));
+    viewer.on('pageerror', (e) => !cutOff(e) && problems.push(`viewer thrown: ${e.message}`));
     await viewer.goto(`${base}${invite.path}`);
     await viewer.getByText('Welcome, Mom').waitFor({ timeout: 10000 });
     await viewer.getByLabel('Username').fill('mom');
@@ -1350,7 +1369,7 @@ export async function uiTest(target, account, check) {
     await page.request.put(`${base}/api/v1/settings`, { data: { changes: { 'security.publicCheck': 'phones', 'security.publicCheckValue': true } } });
     const phoneContext = await browser.newContext({ serviceWorkers: 'block', viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true });
     const phone = await phoneContext.newPage();
-    phone.on('pageerror', (e) => problems.push(`phone thrown: ${e.message}`));
+    phone.on('pageerror', (e) => !cutOff(e) && problems.push(`phone thrown: ${e.message}`));
     await phone.goto(`${base}/`);
     await phone.getByText('Shopping for them?').waitFor({ timeout: 10000 });
     await phone.getByLabel('Title or barcode to check').fill('okami');
@@ -1380,7 +1399,7 @@ export async function uiTest(target, account, check) {
     // they can make a page's code fail to load.)
     const swContext = await browser.newContext({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true });
     const sw = await swContext.newPage();
-    sw.on('pageerror', (e) => problems.push(`offline thrown: ${e.message}`));
+    sw.on('pageerror', (e) => !cutOff(e) && problems.push(`offline thrown: ${e.message}`));
     let offlineStart = '';
     let offlineStep = 'signing in';
     try {

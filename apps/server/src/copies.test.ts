@@ -110,6 +110,11 @@ describe('Copies', () => {
     const list = (await g.app.inject({ url: '/api/v1/copies?view=repeats', cookies })).json();
     expect(list.counts).toMatchObject({ repeats: 2, multiple: 3 });
     expect(list.items.map((x: Group) => x.title)).toEqual(['Battlefield 4', 'Hades']);
+    // The headings sort it (D144): by title either way, or by how many copies, most first.
+    const titles = async (query: string) => (await g.app.inject({ url: `/api/v1/copies?view=all&${query}`, cookies })).json().items.map((x: Group) => x.title);
+    expect(await titles('sort=title&dir=desc')).toEqual(['Okami', 'Hades', 'Battlefield 4']);
+    expect(await titles('sort=copies')).toEqual(['Battlefield 4', 'Hades', 'Okami']);
+    expect(await titles('sort=copies&dir=asc')).toEqual(['Hades', 'Okami', 'Battlefield 4']);
   });
 
   it('lets the owner say a copy is another game, or the same game under another name, and take it back', async () => {

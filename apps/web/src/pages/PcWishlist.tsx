@@ -5,10 +5,12 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Fragment, useState } from 'react';
 import { Link, useSearchParams } from 'react-router';
 import { api } from '../api';
-import { Cover, PageHeader } from '../components';
+import { Cover, PageHeader, type SortDirection } from '../components';
+import { sortRows, useSort } from '../sort';
 import { count, dateTime, money } from '../format';
 import { notifyError, notifySuccess, useCanEdit, useSetting } from '../hooks';
 import { monthsFromNow, SNOOZES } from '../choices';
+import { preferenceLevels } from '../Preference';
 import { Acorns } from '../Acorn';
 
 /** A game on the PC wishlist (GET /api/v1/pc/wishlist). */
@@ -110,6 +112,9 @@ export interface PcWishlist {
 
 const PRIORITY_COLORS = { High: 'green', Medium: 'yellow', Low: 'gray' } as const;
 
+/** The PC wishlist's sorts and which way each goes first (D144): the rank from the top, titles A to Z, reviews, prices and acorns most first, preferences most wanted first. */
+const SORTS = { rank: 'asc', title: 'asc', reviews: 'desc', price: 'desc', acorns: 'desc', preference: 'asc' } as const satisfies Record<string, SortDirection>;
+
 /**
  * The PC wishlist: PC games worth buying, found through IGDB (the genres you score highest, the series
  * you collect, the PC versions of console games you keep sealed) and ranked on the console wishlist's
@@ -126,6 +131,7 @@ export function PcWishlistPage() {
   const [search, setSearch] = useState('');
   // "PC deals": the wishlist's games on sale now (with PC game prices on).
   const [params, setParams] = useSearchParams();
+  const sorting = useSort(SORTS, 'rank');
   const list = useQuery({ queryKey: ['pc', 'wishlist'], queryFn: () => api<PcWishlist>('/pc/wishlist') });
   const refresh = () => queryClient.invalidateQueries({ queryKey: ['pc', 'wishlist'] });
   const discover = useMutation({
@@ -155,6 +161,13 @@ export function PcWishlistPage() {
   const onSale = (e: PcEntry) => Boolean(e.price && !e.price.missing && e.price.currentCents !== null && (e.price.cut ?? 0) > 0);
   const q = search.trim().toLowerCase();
   const items = (data?.items ?? []).filter((e) => (!deals || onSale(e)) && (!q || e.title.toLowerCase().includes(q) || (e.details.genres ?? []).some((g) => g.toLowerCase().includes(q))));
+  // Each preference's place, most wanted first.
+  const places = new Map(preferenceLevels(preferences).map((l, i) => [l.value, i]));
+  const rows = sortRows(
+    items,
+    (e) => ({ rank: e.rank, title: e.title, reviews: e.steam?.percent, price: e.price && !e.price.missing ? e.price.currentCents : null, acorns: e.score, preference: places.get(e.preference ?? '') })[sorting.by],
+    sorting.dir,
+  );
 
   return (
     <>
@@ -218,17 +231,17 @@ export function PcWishlistPage() {
           <Table highlightOnHover>
             <Table.Thead>
               <Table.Tr>
-                <Table.Th w={40}>#</Table.Th>
-                <Table.Th>Game</Table.Th>
-                {!narrow && <Table.Th>Reviews</Table.Th>}
-                {data?.pricesOn && <Table.Th ta="right">Price</Table.Th>}
-                <Table.Th ta="right">Acorns</Table.Th>
-                {!narrow && <Table.Th>Preference</Table.Th>}
+                {sorting.th('rank', '#', { w: 40 })}
+                {sorting.th('title', 'Game')}
+                {!narrow && sorting.th('reviews', 'Reviews')}
+                {data?.pricesOn && sorting.th('price', 'Price', { ta: 'right' })}
+                {sorting.th('acorns', 'Acorns', { ta: 'right' })}
+                {!narrow && sorting.th('preference', 'Preference')}
                 <Table.Th w={70} />
               </Table.Tr>
             </Table.Thead>
             <Table.Tbody>
-              {items.map((e) => {
+              {rows.map((e) => {
                 const expanded = open === e.key;
                 return (
                   <Fragment key={e.key}>

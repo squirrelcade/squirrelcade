@@ -4,13 +4,14 @@ import { useMutation } from '@tanstack/react-query';
 import { useState } from 'react';
 import { Link } from 'react-router';
 import { api } from '../api';
-import { PageHeader } from '../components';
+import { PageHeader, type SortDirection } from '../components';
 import { count } from '../format';
 import { StashMark } from '../Acorn';
 import { GameTitle } from '../GameDrawer';
 import { PreferencePicker } from '../Preference';
 import { notifyError } from '../hooks';
 import { parseLine, type Line } from '../lines';
+import { sortRows, useSort } from '../sort';
 
 /** One answer of POST /api/v1/owned. */
 interface Owned {
@@ -42,6 +43,12 @@ const VERDICTS: Record<Verdict, { label: string; color: string }> = {
   other: { label: 'Not a collecting target', color: 'gray' },
 };
 
+/**
+ * The answers' columns and which way each sorts first (D144): as the list had them (no heading), games A to Z, and
+ * answers in the order of the counts above them (you own it first).
+ */
+const SORTS = { listed: 'asc', title: 'asc', answer: 'asc' } as const satisfies Record<string, SortDirection>;
+
 /** What a line comes to, from the server's answers for it. */
 function verdict(r: Owned): Verdict {
   if (r.owned) return 'own';
@@ -57,6 +64,8 @@ function verdict(r: Owned): Verdict {
  */
 export function ListCheckPage() {
   const [text, setText] = useState('');
+  // A heading sorts the answers by its column (D144); until one is clicked they stay in the list's order.
+  const sorting = useSort(SORTS, 'listed');
   const lines = text
     .split('\n')
     .map((l) => l.trim())
@@ -88,6 +97,11 @@ export function ListCheckPage() {
   const rows = check.data ?? [];
   const tally = new Map<Verdict, number>();
   for (const r of rows) tally.set(verdict(r.result), (tally.get(verdict(r.result)) ?? 0) + 1);
+  const sorted = sortRows(
+    rows.map((r, i) => ({ ...r, i })),
+    (r) => (sorting.by === 'title' ? (r.result.answers[0]?.title ?? r.line.title) : sorting.by === 'answer' ? Object.keys(VERDICTS).indexOf(verdict(r.result)) : r.i),
+    sorting.dir,
+  );
 
   return (
     <Stack maw={900} gap="md">
@@ -138,12 +152,12 @@ export function ListCheckPage() {
               <Table verticalSpacing={6}>
                 <Table.Thead>
                   <Table.Tr>
-                    <Table.Th>Game</Table.Th>
-                    <Table.Th>Answer</Table.Th>
+                    {sorting.th('title', 'Game')}
+                    {sorting.th('answer', 'Answer')}
                   </Table.Tr>
                 </Table.Thead>
                 <Table.Tbody>
-                  {rows.map(({ line, result }, i) => {
+                  {sorted.map(({ line, result, i }) => {
                     const v = verdict(result);
                     const first = result.answers[0];
                     return (

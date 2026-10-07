@@ -6,11 +6,13 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Fragment, useEffect, useState } from 'react';
 import { useSearchParams } from 'react-router';
 import { api } from '../api';
+import type { SortDirection } from '../components';
 import { count, releaseDate } from '../format';
 import { StashMark } from '../Acorn';
 import { GameTitle } from '../GameDrawer';
 import { PreferencePicker } from '../Preference';
 import { notifyError, notifySuccess, useCanEdit, useSetting } from '../hooks';
+import { sortRows, useSort } from '../sort';
 
 /** One series across the consoles' catalogs (GET /api/v1/series). */
 interface Series {
@@ -57,11 +59,14 @@ const STATUS: Record<string, { label: string; color: string }> = {
   upcoming: { label: 'Not out yet', color: 'blue' },
 };
 
-const SORTS = {
-  owned: (a: Series, b: Series) => b.owned - a.owned || b.percent - a.percent || a.name.localeCompare(b.name),
-  closest: (a: Series, b: Series) => a.missing - b.missing || b.owned - a.owned || a.name.localeCompare(b.name),
-  name: (a: Series, b: Series) => a.name.localeCompare(b.name),
-};
+/** The series table's columns and which way each sorts first (D144): names A to Z, counts most first. */
+const SORTS = { name: 'asc', owned: 'desc', missing: 'desc' } as const satisfies Record<string, SortDirection>;
+
+/** The menu's orders, each a column and a way, so the menu and the headings sort the table alike (D144). */
+const ORDERS = { owned: ['owned', 'desc'], closest: ['missing', 'asc'], name: ['name', 'asc'] } as const satisfies Record<string, readonly [keyof typeof SORTS, SortDirection]>;
+
+/** Most owned, then most complete, then A to Z: the order series that tie in a column keep. */
+const MOST_OWNED = (a: Series, b: Series) => b.owned - a.owned || b.percent - a.percent || a.name.localeCompare(b.name);
 
 /** The orders an opened series can take; the choice is remembered on this device. */
 const GAME_ORDERS = {
@@ -162,7 +167,8 @@ export function SeriesList() {
   const [params] = useSearchParams();
   const named = params.get('series');
   const [filter, setFilter] = useState(named ?? '');
-  const [sort, setSort] = useState<keyof typeof SORTS>('owned');
+  // The headings sort the table and so does the menu above it (D144), in keys of their own: ?sort= is the Your sets tab's.
+  const sorting = useSort(SORTS, 'owned', 'series');
   const [open, setOpen] = useState<string | null>(named);
   const [all, setAll] = useState(false);
   const [settingUp, setSettingUp] = useState(false);
@@ -173,7 +179,7 @@ export function SeriesList() {
   const phrase = filter.trim().toLowerCase();
   // The series you hid (Set up) stay out of the list, unless the address names one.
   const listed = (list.data ?? []).filter((s) => !hidden.includes(s.name) || s.name === named);
-  const found = listed.filter((s) => !phrase || s.name.toLowerCase().includes(phrase)).sort(SORTS[sort]);
+  const found = sortRows(listed.filter((s) => !phrase || s.name.toLowerCase().includes(phrase)).sort(MOST_OWNED), (s) => s[sorting.by], sorting.dir);
   const shown = all ? found : found.slice(0, shownAtOnce);
 
   if ((list.data ?? []).length === 0) {
@@ -203,8 +209,11 @@ export function SeriesList() {
         <TextInput placeholder="Filter by series" aria-label="Filter by series" leftSection={<IconSearch size={16} />} value={filter} onChange={(e) => setFilter(e.currentTarget.value)} w={260} />
         <SegmentedControl
           size="xs"
-          value={sort}
-          onChange={(v) => setSort(v as keyof typeof SORTS)}
+          value={Object.entries(ORDERS).find(([, [by, dir]]) => by === sorting.by && dir === sorting.dir)?.[0] ?? ''}
+          onChange={(v) => {
+            const [by, dir] = ORDERS[v as keyof typeof ORDERS];
+            sorting.set(by, dir);
+          }}
           data={[
             { value: 'owned', label: 'Most owned' },
             { value: 'closest', label: 'Fewest missing' },
@@ -227,9 +236,9 @@ export function SeriesList() {
         <Table highlightOnHover>
           <Table.Thead>
             <Table.Tr>
-              <Table.Th>Series</Table.Th>
-              <Table.Th>Owned</Table.Th>
-              <Table.Th ta="right">Missing</Table.Th>
+              {sorting.th('name', 'Series')}
+              {sorting.th('owned', 'Owned')}
+              {sorting.th('missing', 'Missing', { ta: 'right' })}
             </Table.Tr>
           </Table.Thead>
           <Table.Tbody>
