@@ -283,7 +283,7 @@ export function PlatformDetailPage() {
           {tab === 'review' && (
             <Text size="sm" c="dimmed" mb="xs" maw={760}>
               Questions only you can answer. A copy you own may be one of these games (Same game or Different), or a game was marked as maybe not an ordinary store
-              release (It's a target puts it on this checklist, Not a target leaves it off). Until you answer, these games count as neither owned nor missing. Review
+              release (It's a target puts it on this checklist; Exclude it, at the bottom of a game's drawer, moves it to the Excluded tab). Until you answer, these games count as neither owned nor missing. Review
               has every console's questions in one place.
             </Text>
           )}

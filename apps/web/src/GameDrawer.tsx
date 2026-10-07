@@ -1,8 +1,8 @@
 import { DrawerHistory, type HistoryText } from './pages/History';
 import { COMPLETENESS_LABELS, priceChartingUrl, shopLinksFor, shopUrl, type Completeness, type SettingsValues, type ShopLink, SHOPS_IN_LISTS } from '@squirrelcade/core';
-import { Anchor, Badge, Box, Button, Divider, Drawer, Group, Loader, Menu, Spoiler, Stack, Table, Text, Textarea, Tooltip } from '@mantine/core';
+import { Anchor, Badge, Box, Button, Divider, Drawer, Group, Loader, Menu, Modal, Spoiler, Stack, Table, Text, Textarea, Tooltip } from '@mantine/core';
 import { useMediaQuery } from '@mantine/hooks';
-import { IconCheck, IconClock, IconNotes, IconPlus, IconShoppingCart, IconX } from '@tabler/icons-react';
+import { IconCheck, IconClock, IconEyeOff, IconNotes, IconPlus, IconRestore, IconShoppingCart, IconX } from '@tabler/icons-react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Fragment, useEffect, useState, type ReactNode } from 'react';
 import { Link, useSearchParams } from 'react-router';
@@ -165,7 +165,7 @@ const STATUS: Record<string, { label: string; color: string }> = {
   review: { label: 'To review', color: 'yellow' },
   unconfirmed: { label: 'Not confirmed physical', color: 'orange' },
   upcoming: { label: 'Not out yet', color: 'blue' },
-  excluded: { label: 'Not a target', color: 'gray' },
+  excluded: { label: 'Excluded', color: 'gray' },
 };
 
 /** Where a catalog's game came from, as the drawer says it. */
@@ -538,6 +538,8 @@ export function GameDrawer() {
   // redraws the content (WebKit showed one) must not close a window or lose what was typed in it.
   const [adding, setAdding] = useState<{ platformKey: string; platform: string; title: string } | null>(null);
   const [selling, setSelling] = useState<{ id: number; title: string } | null>(null);
+  // Excluding a game from its console's checklist, or making it a target again, asks first (D145).
+  const [confirming, setConfirming] = useState<'exclude' | 'include' | null>(null);
 
   const setStatus = (targetStatus: 'required' | 'excluded', done: string) => c && change.mutate({ path: `/catalogs/entries/${c.entryId}`, method: 'PATCH', json: { targetStatus }, done });
   const decide = (productId: string, decision: 'confirmed' | 'rejected' | 'undo') =>
@@ -608,7 +610,7 @@ export function GameDrawer() {
               </Group>
               {c && (
                 <Text size="xs" c="dimmed">
-                  {[SOURCES[c.source] ?? `From ${c.source}`, c.yourChoice && (c.targetStatus === 'excluded' ? 'you said not a target' : 'you said it counts'), c.notes].filter(Boolean).join(' · ')}
+                  {[SOURCES[c.source] ?? `From ${c.source}`, c.yourChoice && (c.targetStatus === 'excluded' ? 'you excluded it' : 'you said it counts'), c.notes].filter(Boolean).join(' · ')}
                 </Text>
               )}
             </Stack>
@@ -653,11 +655,6 @@ export function GameDrawer() {
                   It's a target
                 </Button>
               )}
-              {c.status === 'excluded' && (
-                <Button size="compact-sm" variant="light" loading={busy} onClick={() => setStatus('required', `${g.title} counts on ${g.platform} again.`)}>
-                  It's a target
-                </Button>
-              )}
               {WANTED.has(c.status) && !c.purchase && (
                 <Button
                   size="compact-sm"
@@ -667,11 +664,6 @@ export function GameDrawer() {
                   onClick={() => change.mutate({ path: '/purchases', method: 'POST', json: { entryId: c.entryId }, done: `${g.title} is in your collection. Its condition and price are under Your copies.` })}
                 >
                   I bought it
-                </Button>
-              )}
-              {WANTED.has(c.status) && (
-                <Button size="compact-sm" variant="subtle" color="gray" loading={busy} onClick={() => setStatus('excluded', `${g.title} no longer counts on ${g.platform}.`)}>
-                  Not a target
                 </Button>
               )}
             </Group>
@@ -1021,8 +1013,86 @@ export function GameDrawer() {
               How copies count
             </Anchor>
           </Group>
+          {/* Excluding it from the checklist, and making it a target again: at the very bottom, apart, and only after a
+              question (D145), so a slip can't do either. */}
+          {c && canEdit && (WANTED.has(c.status) || c.status === 'excluded') && (
+            <>
+              <Divider />
+              <Group justify="space-between" gap="xs">
+                <Text size="xs" c="dimmed" style={{ flex: '1 1 240px' }}>
+                  {c.status === 'excluded'
+                    ? `Excluded: it doesn't count on the ${g.platform} checklist.`
+                    : `Not something to collect, like a store kiosk or a demo disc? Exclude it from the ${g.platform} checklist.`}
+                </Text>
+                {c.status === 'excluded' ? (
+                  <Button size="compact-sm" variant="subtle" leftSection={<IconRestore size={14} />} onClick={() => setConfirming('include')}>
+                    Make it a target
+                  </Button>
+                ) : (
+                  <Button size="compact-sm" variant="subtle" color="red" leftSection={<IconEyeOff size={14} />} onClick={() => setConfirming('exclude')}>
+                    Exclude it
+                  </Button>
+                )}
+              </Group>
+            </>
+          )}
         </Stack>
       )}
+      <Modal
+        opened={confirming !== null && Boolean(g && c)}
+        onClose={() => setConfirming(null)}
+        title={<Text fw={700}>{confirming === 'include' ? 'Make it a target again?' : 'Exclude it from the checklist?'}</Text>}
+        centered
+      >
+        {g &&
+          (confirming === 'include' ? (
+            <Stack>
+              <Text size="sm">
+                <b>{g.title}</b> goes back on the {g.platform} checklist as a game you're missing, so {g.platform}'s completion goes down until you own it. It can
+                come back on your Acorns wishlist and in release reminders too.
+              </Text>
+              <Group justify="flex-end">
+                <Button variant="default" onClick={() => setConfirming(null)}>
+                  Cancel
+                </Button>
+                <Button
+                  loading={busy}
+                  onClick={() => {
+                    setConfirming(null);
+                    setStatus('required', `${g.title} is a target on ${g.platform} again.`);
+                  }}
+                >
+                  Make it a target
+                </Button>
+              </Group>
+            </Stack>
+          ) : (
+            <Stack>
+              <Text size="sm">
+                <b>{g.title}</b> moves to {g.platform}'s Excluded tab. It stops counting as missing, so the {g.platform} checklist can reach 100%, and it leaves your
+                Acorns wishlist and release reminders.
+              </Text>
+              <Text size="sm" c="dimmed">
+                Nothing is deleted. To bring it back, open it from the Excluded tab and choose Make it a target.
+              </Text>
+              <Group justify="flex-end">
+                <Button variant="default" onClick={() => setConfirming(null)}>
+                  Cancel
+                </Button>
+                <Button
+                  color="red"
+                  loading={busy}
+                  onClick={() => {
+                    setConfirming(null);
+                    setStatus('excluded', `${g.title} is excluded from ${g.platform}. Its Excluded tab can bring it back.`);
+                  }}
+                >
+                  Exclude it
+                </Button>
+              </Group>
+            </Stack>
+          ))}
+      </Modal>
       <AddCopyModal game={adding} onClose={() => setAdding(null)} />
       <SellHelper copy={selling} onClose={() => setSelling(null)} />
       <CopyDetailsModal copy={editing} onClose={() => setEditing(null)} />

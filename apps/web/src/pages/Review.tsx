@@ -282,7 +282,7 @@ export function ReviewPage() {
               <Text size="sm" c="dimmed" maw={760}>
                 Should these games be on your checklists? Each was marked as maybe not an ordinary store release, for the reason above its group. Until you answer, a
                 game counts as neither owned nor missing, and it isn't recommended. <b>It's a target</b> puts it on its console's checklist: missing until you own it,
-                and it can be recommended. <b>Not a target</b> leaves it off (you can change either on the console's page). Leaving them unanswered is fine.
+                and it can be recommended. <b>Exclude</b> moves it to its console's Excluded tab (the game's drawer can change either later). Leaving them unanswered is fine.
               </Text>
               {groups(marked).map(([reason, items]) => (
                 <Stack key={reason} gap="xs">
@@ -327,7 +327,7 @@ export function ReviewPage() {
                                     It's a target
                                   </Button>
                                   <Button size="compact-xs" variant="default" disabled={busy} onClick={() => setStatus.mutate({ entryId: x.entryId, targetStatus: 'excluded' })}>
-                                    Not a target
+                                    Exclude
                                   </Button>
                                 </Group>
                               )}

@@ -298,6 +298,42 @@ export async function uiTest(target, account, check) {
     await drawer.waitFor({ state: 'hidden', timeout: 5000 });
     check('ui: Escape closes the drawer', !new URL(page.url()).searchParams.has('game'), page.url());
 
+    // Exclude it takes a missing game off the checklist from the bottom of its drawer, and Make it a target brings it
+    // back: each asks first, and Cancel changes nothing (D145).
+    const ps3Counts = async () => (await (await page.request.get(`${base}/api/v1/catalogs/playstation-3?pageSize=1`)).json()).counts;
+    const countsBefore = await ps3Counts();
+    await page.goto(`${base}/platforms/playstation-3?tab=missing`);
+    await settle();
+    const missingRow = page.locator('tbody').getByRole('button', { name: /^Show / }).first();
+    const missingName = ((await missingRow.getAttribute('aria-label')) ?? '').replace(/^Show /, '');
+    await missingRow.click();
+    await drawer.getByRole('button', { name: 'Exclude it' }).click();
+    const excludeDialog = page.getByRole('dialog', { name: 'Exclude it from the checklist?' });
+    await excludeDialog.getByRole('button', { name: 'Cancel' }).click();
+    await excludeDialog.waitFor({ state: 'hidden', timeout: 5000 });
+    const afterCancel = await ps3Counts();
+    await drawer.getByRole('button', { name: 'Exclude it' }).click();
+    await excludeDialog.getByRole('button', { name: 'Exclude it' }).click();
+    await drawer.getByRole('button', { name: 'Make it a target' }).waitFor({ timeout: 10000 });
+    const countsExcluded = await ps3Counts();
+    await drawer.getByRole('button', { name: 'Make it a target' }).click();
+    await page.getByRole('dialog', { name: 'Make it a target again?' }).getByRole('button', { name: 'Make it a target' }).click();
+    await drawer.getByRole('button', { name: 'Exclude it' }).waitFor({ timeout: 10000 });
+    const countsBack = await ps3Counts();
+    found = await pageProblems();
+    check(
+      'ui: Exclude it and Make it a target each ask first, from the bottom of the drawer (D145)',
+      found.length === 0 &&
+        afterCancel.excluded === countsBefore.excluded &&
+        countsExcluded.excluded === countsBefore.excluded + 1 &&
+        countsExcluded.missing === countsBefore.missing - 1 &&
+        countsBack.missing === countsBefore.missing &&
+        countsBack.excluded === countsBefore.excluded,
+      found.join(' | ') || `${missingName}: before ${JSON.stringify(countsBefore)}, excluded ${JSON.stringify(countsExcluded)}, back ${JSON.stringify(countsBack)}`,
+    );
+    await page.keyboard.press('Escape');
+    await drawer.waitFor({ state: 'hidden', timeout: 5000 });
+
     // The Top 100 tab opens as a board of ten by ten with the hunting list beside it; a square opens its game.
     await page.goto(`${base}/platforms/playstation-3?tab=top100`);
     await page.getByRole('heading', { name: 'Hunting list' }).waitFor({ timeout: 15000 });

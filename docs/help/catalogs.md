@@ -22,12 +22,12 @@ When sources disagree about a game's release date or format, the most trusted on
 
 ## A console's page
 
-- At the top: who made the console, its generation and its launch in your region (with Top 100 lists and console history on), how complete its catalog is as one bar in three parts (owned, missing, to review), and its counts as tiles that open their tab: owned, missing, needs review, excluded (not a target), not confirmed physical, upcoming, not in catalog. Under them, how many games and copies you have for it, and their worth with its change over the last month or so of updates.
+- At the top: who made the console, its generation and its launch in your region (with Top 100 lists and console history on), how complete its catalog is as one bar in three parts (owned, missing, to review), and its counts as tiles that open their tab: owned, missing, needs review, excluded (games taken off its checklist), not confirmed physical, upcoming, not in catalog. Under them, how many games and copies you have for it, and their worth with its change over the last month or so of updates.
 - Tabs for each of those, **Not in catalog** (games you own that match no catalog game: compilations, special releases, other names), and, with those parts on, **Top 100** and **History** ([Top 100 and history](top100-history.md)).
 - **Download** gives the catalog as a spreadsheet.
 - **Add game** adds a game the catalog doesn't have.
 
-A game's menu (and its drawer) answers the questions about it: **Not a target** (it won't count as missing), **It's a target**, **It's physical**, **I bought it**.
+A game's drawer (click its title) answers the questions about it: **I bought it**, **It's physical**, **It's a target**. At its very bottom, **Exclude it** takes it off the console's checklist: it moves to the **Excluded** tab and no longer counts as missing, so a kiosk or a demo disc can't keep a console under 100%. Open an excluded game there and **Make it a target** brings it back. Both ask first and say what will happen.
 
 ## When a copy counts
 

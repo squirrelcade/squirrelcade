@@ -1,5 +1,5 @@
 import { ActionIcon, Button, Group, Menu, Modal, MultiSelect, Stack, Text, TextInput, Textarea } from '@mantine/core';
-import { IconDots, IconEyeOff, IconRestore, IconTrash } from '@tabler/icons-react';
+import { IconDots, IconRestore, IconTrash } from '@tabler/icons-react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useEffect, useState } from 'react';
 import { api } from '../api';
@@ -151,6 +151,9 @@ export function EntryMenu({ entry }: { entry: { id: number; title: string; targe
   });
   const excludedHere = entry.targetStatus === 'excluded';
   const excludedByList = entry.status === 'excluded' && !excludedHere;
+  // Excluding a game, or making it a target again, isn't in this menu, where a slip of the mouse could do it: both are
+  // at the bottom of the game's drawer, and ask first (D145).
+  if (entry.status !== 'unconfirmed' && !excludedByList && entry.source !== 'user') return null;
 
   return (
     <Menu position="bottom-end" withinPortal>
@@ -165,17 +168,7 @@ export function EntryMenu({ entry }: { entry: { id: number; title: string; targe
             It had a physical release: count it
           </Menu.Item>
         )}
-        {excludedHere ? (
-          <Menu.Item leftSection={<IconRestore size={14} />} onClick={() => setStatus.mutate('required')}>
-            Make it a target again
-          </Menu.Item>
-        ) : excludedByList ? (
-          <Menu.Item disabled>Excluded by the ignore list</Menu.Item>
-        ) : (
-          <Menu.Item leftSection={<IconEyeOff size={14} />} onClick={() => setStatus.mutate('excluded')}>
-            Not a collecting target
-          </Menu.Item>
-        )}
+        {excludedByList && <Menu.Item disabled>Excluded by the ignore list</Menu.Item>}
         {entry.source === 'user' && (
           <Menu.Item
             color="red"

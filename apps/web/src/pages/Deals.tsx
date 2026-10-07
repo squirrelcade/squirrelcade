@@ -37,7 +37,7 @@ const STATUS: Record<string, { label: string; color: string }> = {
   missing: { label: 'Need it', color: 'orange' },
   review: { label: 'Check it', color: 'yellow' },
   unconfirmed: { label: 'Need it if physical', color: 'cyan' },
-  excluded: { label: 'Not a target', color: 'gray' },
+  excluded: { label: 'Excluded', color: 'gray' },
 };
 
 /**
