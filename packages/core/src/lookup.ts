@@ -1,7 +1,7 @@
 import { withoutEditionWords } from './catalog.js';
 import { platformInText } from './catalogList.js';
 import { KNOWN_PLATFORMS } from './platforms.js';
-import { normalizeTitle, romajiTokens } from './text.js';
+import { matchTokens, normalizeTitle, romajiTokens } from './text.js';
 
 /** Words retail product names add around a game's title. */
 const PLATFORM_WORDS = [
@@ -86,13 +86,13 @@ function rank(t: string, q: string): number {
  * A title normalized, and with Japanese long vowels folded, kept once worked out: Store Mode searches every
  * catalog title on each keystroke, and the titles hardly change. Forgotten when it grows past a limit.
  */
-const searchForms = new Map<string, { plain: string; folded: string }>();
-function searchForm(title: string): { plain: string; folded: string } {
+const searchForms = new Map<string, { plain: string; folded: string; numbered: string }>();
+function searchForm(title: string): { plain: string; folded: string; numbered: string } {
   let form = searchForms.get(title);
   if (!form) {
     if (searchForms.size > 200_000) searchForms.clear();
     const plain = normalizeTitle(title);
-    form = { plain, folded: romajiTokens(plain.split(' ')).join(' ') };
+    form = { plain, folded: romajiTokens(plain.split(' ')).join(' '), numbered: matchTokens(title).join(' ') };
     searchForms.set(title, form);
   }
   return form;
@@ -108,7 +108,10 @@ export function searchRank(title: string, query: string): number {
   const t = searchForm(title);
   const plain = rank(t.plain, q.plain);
   if (plain > 0) return plain;
-  return rank(t.folded, q.folded);
+  const folded = rank(t.folded, q.folded);
+  if (folded > 0) return folded;
+  // Numbers written either way, as catalogs match them: "Mafia 2" finds "Mafia II", "Final Fantasy VII" "Final Fantasy 7".
+  return rank(t.numbered, q.numbered);
 }
 
 /**

@@ -67,6 +67,8 @@ describe('PC library', () => {
     const status = (await g.app.inject({ url: '/api/v1/pc', cookies })).json();
     expect(status).toMatchObject({ records: 5, families: 4, owned: 2, playtimeHours: 52 });
     expect(status.byStorefront.find((s: { storefront: string }) => s.storefront === 'Xbox')).toEqual({ storefront: 'Xbox', records: 2, owned: 0, subscription: 0, historical: 2 });
+    // A search finds numbers written either way, as the header's search does ("Forza Horizon V" is Forza Horizon 5).
+    expect((await games('&q=forza%20horizon%20v')).items.map((f: { title: string }) => f.title)).toEqual(['Forza Horizon 5']);
 
     // The audit (the old workbook's tab works as it is) and a single answer on a game decide ownership.
     const audit = ['Source,Storefront Game ID,Source Title,Ownership Status,Active', 'Xbox,9,Halo Infinite,Subscription Access,Yes', 'Xbox,10,Forza Horizon 5,Permanent / Claimed,Yes'].join('\n');

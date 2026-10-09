@@ -1,6 +1,7 @@
 import {
   normalizeTitle,
   parsePcAudit,
+  searchRank,
   parsePlayniteSnapshot,
   pcFamilyKey,
   pcOwnership,
@@ -494,7 +495,9 @@ export class PcService {
       // Steam achievements: games completed on Steam, or with at least one.
       if (!query.noAchievements && query.achievements === 'completed' && !f.records.some((r) => achievementsOf(r)?.completed)) return false;
       if (!query.noAchievements && query.achievements === 'started' && !f.records.some((r) => (achievementsOf(r)?.earned ?? 0) > 0)) return false;
-      if (q && !normalizeTitle(f.title).includes(q) && !f.records.some((r) => normalizeTitle(r.name).includes(q))) return false;
+      // A title found as the header's search finds one too: numbers written either way ("Mafia 2" finds "Mafia II").
+      const found = (title: string) => normalizeTitle(title).includes(q) || searchRank(title, query.q!) > 0;
+      if (q && !found(f.title) && !f.records.some((r) => found(r.name))) return false;
       if (query.storefront && !f.records.some((r) => r.storefront === query.storefront)) return false;
       if (query.ownership && !f.records.some((r) => r.ownership === query.ownership)) return false;
       if (query.installed === 'yes' && !f.installed) return false;

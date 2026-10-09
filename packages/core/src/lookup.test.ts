@@ -49,6 +49,18 @@ describe('searchRank', () => {
   });
 });
 
+describe('searchRank with numbers written either way', () => {
+  it('finds a Roman numeral typed as a number, and a number typed as one', () => {
+    expect(searchRank('Mafia II', 'mafia 2')).toBe(3);
+    expect(searchRank('Mafia II: Definitive Edition', 'mafia 2')).toBe(2);
+    expect(searchRank('Final Fantasy VII Remake', 'final fantasy 7')).toBe(2);
+    expect(searchRank('Final Fantasy 7', 'final fantasy vii')).toBe(3);
+    expect(searchRank('Mafia III', 'mafia 2')).toBe(0);
+    // A lone X stays a letter: Mega Man X isn't Mega Man 10.
+    expect(searchRank('Mega Man X', 'mega man 10')).toBe(0);
+  });
+});
+
 describe('searchRank with Japanese titles', () => {
   it('finds a title typed with its long vowels written out, or not', () => {
     expect(searchRank('Jikkyō Powerful Pro Yakyū 3', 'Jikkyou Powerful Pro Yakyuu 3')).toBe(3);
