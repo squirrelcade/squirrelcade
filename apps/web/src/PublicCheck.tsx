@@ -107,7 +107,7 @@ interface ShelfAnswer {
   games: { title: string; answer: CheckAnswer['answer']; ownedOn: string[]; wishlist: { priority: string; rank: number | null } | null; read: string }[];
   unsure: ShelfUnsure[];
   reads: number;
-  model: { sent: number; titles: number } | { error: string } | null;
+  model: { id: string | null; state: 'waiting' | 'reading' | 'done' | 'failed'; titles: number; sent: number; error: string | null } | null;
 }
 
 /**
@@ -142,8 +142,18 @@ function PublicShelf() {
       if (mine !== run.current) return;
       setBusy('asking');
       const pieces = consoles.data.model ? reader.photoPieces(canvas, consoles.data.pieces) : [];
-      const found = await api<ShelfAnswer>('/check/shelf', { method: 'POST', json: { platformKey, reads: read.lines.map((l) => ({ text: l.text, score: l.score })), pieces } });
-      if (mine === run.current) setAnswer(found);
+      let found = await api<ShelfAnswer>('/check/shelf', { method: 'POST', json: { platformKey, reads: read.lines.map((l) => ({ text: l.text, score: l.score })), pieces } });
+      if (mine !== run.current) return;
+      setAnswer(found);
+      setBusy(null);
+      // The owner's AI reader, when it helps: the answer again, every two seconds, until it has read the photo too.
+      const job = found.model?.id;
+      const until = Date.now() + 11 * 60_000;
+      while (job && found.model && (found.model.state === 'waiting' || found.model.state === 'reading') && Date.now() < until && mine === run.current) {
+        await new Promise((r) => setTimeout(r, 2000));
+        found = await api<ShelfAnswer>(`/check/shelf/${job}`);
+        if (mine === run.current) setAnswer(found);
+      }
     } catch (err) {
       if (mine === run.current) setFailure(errorMessage(err));
     } finally {
@@ -195,7 +205,12 @@ function PublicShelf() {
             {answer.games.length === 0 ? 'No game on the photo was read well enough to name it.' : `${answer.games.length} ${answer.games.length === 1 ? 'game' : 'games'} read`}
             {answer.unsure.length > 0 ? `, ${answer.unsure.length} unsure` : ''}.
           </Text>
-          {answer.model && 'error' in answer.model && (
+          {answer.model && (answer.model.state === 'waiting' || answer.model.state === 'reading') && (
+            <Text size="xs" c="dimmed">
+              Their AI reader is looking at the photo too (up to a minute)…
+            </Text>
+          )}
+          {answer.model?.state === 'failed' && (
             <Text size="xs" c="dimmed">
               Their AI reader didn't help this time: {answer.model.error}
             </Text>

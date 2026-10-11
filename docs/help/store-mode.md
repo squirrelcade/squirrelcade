@@ -52,7 +52,7 @@ Signing out removes the copy (and then Squirrelcade no longer opens without a co
 
 Under the list, the photo shows a box around each spine read as a game. Spines with no box weren't read well enough: stylized logos and very small print are the hardest, and a closer photo of part of the shelf reads more. Spines read sideways by default; **Also read text that isn't sideways** adds box fronts and a glass case (twice as long). On a phone, one photo takes about 10 to 30 seconds.
 
-**A vision model** (optional, Settings > Features): with it on and a connection to Squirrelcade, pieces of the photo also go to the model you chose (any service that takes images, or one at home), and the titles it reads are matched the same way, so it finds more spines and never decides what you have. Settings > Sources > Vision model sets which, its key, and how many pieces a day (each piece is one paid request on most services).
+**A vision model** (optional, Settings > Features): with it on and a connection to Squirrelcade, pieces of the photo also go to the model you chose (any service that takes images, or one at home), and the titles it reads are matched the same way, so it finds more spines and never decides what you have. Settings > Sources > Vision model sets which, its key, and how many pieces a day (each piece is one paid request on most services). Or a **helper** of your own: a program that asks Squirrelcade for photos to read and answers, such as the one in the repository's `tools/shelf-helper`, which reads them with Claude Code signed in on your server, on your own Claude plan (no API key).
 
 What it says comes from the same answers as Store Mode, so it's only as current as your collection: buy something, and **I bought it** keeps it right.
 

@@ -25,6 +25,16 @@ import {
   type ShelfFound,
 } from '../shelfCheck';
 
+/** A photo's pieces being read by the vision model (POST /api/v1/shelf/read, then GET /api/v1/shelf/read/:id). */
+interface ModelJob {
+  id: string;
+  state: 'waiting' | 'reading' | 'done' | 'failed';
+  titles: string[];
+  error: string | null;
+  sent: number;
+  left: number | null;
+}
+
 const LAST_CONSOLE = 'squirrelcade.shelfConsole';
 const UPRIGHT_TOO = 'squirrelcade.shelfUpright';
 
@@ -113,7 +123,7 @@ export function ShelfCheckPage() {
   const canEdit = useCanEdit();
   const queryClient = useQueryClient();
   const copy = useQuery({ queryKey: ['shelf', 'copy'], queryFn: loadCopy, staleTime: 60_000, networkMode: 'always' });
-  const model = useQuery({ queryKey: ['shelf', 'model'], queryFn: () => api<{ available: boolean; left: number | null; pieces: number }>('/shelf/model'), retry: false });
+  const model = useQuery({ queryKey: ['shelf', 'model'], queryFn: () => api<{ available: boolean; left: number | null; pieces: number; helper: boolean | null }>('/shelf/model'), retry: false });
   const consoles = useMemo(() => (copy.data ? shelfConsoles(copy.data) : []), [copy.data]);
   const [consoleKey, setConsoleKey] = useState<string | null>(remembered(LAST_CONSOLE));
   const chosen = consoles.find((c) => c.key === consoleKey) ?? null;
@@ -149,14 +159,20 @@ export function ShelfCheckPage() {
       if (mine !== run.current) return;
       setPhoto({ url: URL.createObjectURL(file), width: read.width, height: read.height, lines: read.lines });
       // The vision model, when it's on and Squirrelcade answers: pieces of the photo, read there, matched here.
-      if (model.data?.available && model.data.left !== 0) {
+      // (A helper that isn't asking for work just now would leave the photo waiting: then the phone's reading is all.)
+      if (model.data?.available && model.data.left !== 0 && model.data.helper !== false) {
         setBusy('model');
         try {
-          const answer = await api<{ titles: string[]; sent: number; left: number | null }>('/shelf/read', {
-            method: 'POST',
-            json: { pieces: reader.photoPieces(canvas, model.data.pieces), console: chosen.name },
-          });
+          // A job: started at once, then asked about every two seconds until it's read (a helper may take a minute).
+          const started = await api<ModelJob>('/shelf/read', { method: 'POST', json: { pieces: reader.photoPieces(canvas, model.data.pieces), console: chosen.name } });
+          let answer = started;
+          const until = Date.now() + 11 * 60_000;
+          while ((answer.state === 'waiting' || answer.state === 'reading') && Date.now() < until && mine === run.current) {
+            await new Promise((r) => setTimeout(r, 2000));
+            answer = await api<ModelJob>(`/shelf/read/${started.id}`);
+          }
           if (mine !== run.current) return;
+          if (answer.state !== 'done') throw new Error(answer.error ?? 'it took too long');
           setModelTitles(answer.titles);
           setModelNote(`Your vision model read ${answer.titles.length} ${answer.titles.length === 1 ? 'title' : 'titles'} in ${answer.sent} ${answer.sent === 1 ? 'piece' : 'pieces'} of the photo${answer.left !== null ? ` (${answer.left} pieces left today)` : ''}.`);
           void queryClient.invalidateQueries({ queryKey: ['shelf', 'model'] });
@@ -271,7 +287,7 @@ export function ShelfCheckPage() {
         <Stack gap={4}>
           <Progress value={busy === 'model' ? 100 : progressValue(progress)} animated striped />
           <Text size="sm" c="dimmed">
-            {busy === 'model' ? 'Asking your vision model about the photo…' : progressText(progress)}
+            {busy === 'model' ? 'Your vision model is reading the photo too (up to a minute)…' : progressText(progress)}
           </Text>
         </Stack>
       )}

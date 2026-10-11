@@ -2150,11 +2150,12 @@ export const settingDefinitions = {
     section: 'Vision model (Check a shelf)',
     label: 'Kind of API',
     description:
-      "How the service is asked. Almost every service and home model takes OpenAI's chat format; Anthropic's own API takes its Messages format. The buttons above fill this in for the usual ones.",
+      "How the model is asked. Almost every service and home model takes OpenAI's chat format; Anthropic's own API takes its Messages format. A helper is a program of your own that asks Squirrelcade for photos to read and answers (on your server, Claude Code signed in with your own Claude plan, say: Help > Store Mode has one); it needs no address or key here. The buttons below fill this in for the usual ones.",
     default: 'openai',
     options: [
       { value: 'openai', label: 'OpenAI-style chat (OpenAI, Gemini, OpenRouter, Ollama, LM Studio and most others)' },
       { value: 'anthropic', label: "Anthropic's Messages API (Claude)" },
+      { value: 'helper', label: 'A helper of your own, which asks Squirrelcade for work' },
     ],
   }),
   'sources.visionUrl': url({

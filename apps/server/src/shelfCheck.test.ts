@@ -86,10 +86,16 @@ describe('checking a shelf without signing in', () => {
     expect(asked).toHaveLength(0);
     g.settings.update({ 'security.publicShelf': 'model' });
     expect((await g.app.inject({ url: '/api/v1/check/consoles' })).json().model).toBe(true);
-    const res = (await shelf({ platformKey: 'playstation-3', reads: [], pieces: [PIECE] })).json();
+    const first = (await shelf({ platformKey: 'playstation-3', reads: [{ text: 'DARKSIDERS', score: 0.9 }], pieces: [PIECE] })).json();
+    // The phone's reading answers at once (Darksiders unsure: it could be II, cut off); the model's comes after.
+    expect(first.games).toEqual([]);
+    expect(first.model).toMatchObject({ state: 'reading', sent: 1 });
+    let res = first;
+    for (let i = 0; i < 50 && res.model.state === 'reading'; i++) res = (await g.app.inject({ url: `/api/v1/check/shelf/${first.model.id}` })).json();
     // A model reads whole spines: its Darksiders is Darksiders, not the cut-off start of Darksiders II.
     expect(res.games).toEqual([{ title: 'Darksiders', answer: 'own', ownedOn: [], wishlist: null, read: 'Darksiders' }]);
-    expect(res.model).toEqual({ sent: 1, titles: 2 });
+    expect(res.model).toMatchObject({ state: 'done', sent: 1, titles: 2 });
+    expect((await g.app.inject({ url: '/api/v1/check/shelf/00000000-0000-0000-0000-000000000000' })).statusCode).toBe(404);
     expect(asked[0]!.url).toBe('https://api.example.com/v1/chat/completions');
     expect(asked[0]!.headers.authorization).toBe('Bearer k');
     expect(asked[0]!.body.model).toBe('reader-1');
@@ -97,13 +103,23 @@ describe('checking a shelf without signing in', () => {
 });
 
 describe('the vision model, signed in', () => {
-  const read = (payload: unknown) => g.app.inject({ method: 'POST', url: '/api/v1/shelf/read', cookies, payload: payload as object });
+  /** Starts a job and asks for it until it's done, as the phone does. */
+  const read = async (payload: unknown) => {
+    const started = await g.app.inject({ method: 'POST', url: '/api/v1/shelf/read', cookies, payload: payload as object });
+    if (started.statusCode !== 200) return started;
+    let job = started;
+    for (let i = 0; i < 50 && ['waiting', 'reading'].includes(job.json().state); i++) {
+      await new Promise((r) => setTimeout(r, 20));
+      job = await g.app.inject({ url: `/api/v1/shelf/read/${started.json().id}`, cookies });
+    }
+    return job;
+  };
 
   it('reads pieces through OpenAI-style or Anthropic APIs, within the daily limit', async () => {
-    expect((await g.app.inject({ url: '/api/v1/shelf/model', cookies })).json()).toEqual({ available: false, left: 100, pieces: 4 });
+    expect((await g.app.inject({ url: '/api/v1/shelf/model', cookies })).json()).toEqual({ available: false, left: 100, pieces: 4, helper: null });
     expect((await read({ pieces: [PIECE] })).statusCode).toBe(502);
     g.settings.update({ 'features.vision': true, 'sources.visionApi': 'anthropic', 'sources.visionUrl': 'https://api.anthropic.com/v1/', 'sources.visionModel': 'claude-x', 'sources.visionKey': 'sk', 'sources.visionDailyLimit': 3 });
-    expect((await read({ pieces: [PIECE, PIECE], console: 'Wii' })).json()).toEqual({ titles: ['Darksiders', 'Okami', 'Darksiders', 'Okami'], sent: 2, left: 1 });
+    expect((await read({ pieces: [PIECE, PIECE], console: 'Wii' })).json()).toMatchObject({ state: 'done', titles: ['Darksiders', 'Okami', 'Darksiders', 'Okami'], sent: 2, left: 1 });
     expect(asked[0]!.url).toBe('https://api.anthropic.com/v1/messages');
     expect(asked[0]!.headers['x-api-key']).toBe('sk');
     expect(asked[0]!.body.messages[0]!.content[0]).toMatchObject({ type: 'image', source: { type: 'base64', media_type: 'image/jpeg' } });
@@ -118,10 +134,30 @@ describe('the vision model, signed in', () => {
     const refusing = await testApp({ visionFetch: async () => new Response(JSON.stringify({ error: { message: 'model not found' } }), { status: 404 }) });
     const c = await setUp(refusing);
     refusing.settings.update({ 'features.vision': true, 'sources.visionUrl': 'http://localhost:11434/v1', 'sources.visionModel': 'qwen2.5vl' });
-    const res = await refusing.app.inject({ method: 'POST', url: '/api/v1/shelf/read', cookies: c, payload: { pieces: [PIECE] } });
-    expect(res.statusCode).toBe(502);
-    expect(res.json().message).toBe('The vision model refused (404): model not found');
+    const res = await refusing.app.inject({ method: 'POST', url: '/api/v1/shelf/test', cookies: c });
+    expect(res.json()).toEqual({ ok: false, message: 'The vision model refused (404): model not found' });
     await refusing.cleanup();
+  });
+
+  it("hands photos to a helper of the owner's own, which answers with what it read", async () => {
+    g.settings.update({ 'features.vision': true, 'sources.visionApi': 'helper' });
+    // No helper asking for work: said at once.
+    expect((await g.app.inject({ method: 'POST', url: '/api/v1/shelf/read', cookies, payload: { pieces: [PIECE] } })).json().message).toMatch(/helper isn't asking/);
+    const key = (await g.app.inject({ url: '/api/v1/auth/apikey', cookies })).json().apiKey as string;
+    // A helper asks (and waits); a photo comes; the helper gets it, with the prompt.
+    const asking = g.app.inject({ url: '/api/v1/helper/next?wait=2000', headers: { 'x-api-key': key } });
+    await new Promise((r) => setTimeout(r, 50));
+    const started = (await g.app.inject({ method: 'POST', url: '/api/v1/shelf/read', cookies, payload: { pieces: [PIECE], console: 'Wii' } })).json();
+    expect(started.state).toBe('reading');
+    const work = (await asking).json();
+    expect(work).toMatchObject({ id: started.id, kind: 'shelf', console: 'Wii', pieces: [PIECE] });
+    expect(work.prompt).toContain('mostly Wii games');
+    expect((await g.app.inject({ method: 'POST', url: '/api/v1/helper/answer', headers: { 'x-api-key': key }, payload: { id: work.id, titles: ['Okami', '1. Halo 3'] } })).json()).toEqual({ ok: true });
+    expect((await g.app.inject({ url: `/api/v1/shelf/read/${started.id}`, cookies })).json()).toMatchObject({ state: 'done', titles: ['Okami', 'Halo 3'] });
+    // Nothing waiting: the helper's ask ends empty; a second answer to the same photo is refused; viewers can't help.
+    expect((await g.app.inject({ url: '/api/v1/helper/next?wait=10', headers: { 'x-api-key': key } })).statusCode).toBe(204);
+    expect((await g.app.inject({ method: 'POST', url: '/api/v1/helper/answer', headers: { 'x-api-key': key }, payload: { id: work.id, titles: [] } })).statusCode).toBe(404);
+    expect((await g.app.inject({ url: '/api/v1/helper/next?wait=10' })).statusCode).toBe(401);
   });
 });
 

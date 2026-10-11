@@ -336,6 +336,9 @@ const PUBLIC_ROUTES = new Set(['GET /api/v1/health', 'GET /api/v1/auth/session',
 /** An invite link's page and its answer (GET /api/v1/join/<token>, POST to use it): public too, the token being the key. */
 const JOIN = /^\/api\/v1\/join\/[A-Za-z0-9_-]{16,64}$/;
 
+/** A visitor's shelf being read by the vision model (GET /api/v1/check/shelf/<job id>): public, the job's id being the key. */
+const SHELF_JOB = /^\/api\/v1\/check\/shelf\/[0-9a-f-]{36}$/;
+
 /** A share link's page (GET /api/v1/share/<token>): the wishlist or the games for sale, for anyone with the link. */
 const SHARE = /^\/api\/v1\/share\/[A-Za-z0-9_-]{16,64}$/;
 
@@ -385,7 +388,7 @@ export function registerAuth(app: FastifyInstance, auth: AuthService, settings: 
     }
     request.sees = sees(request, settings);
     if (PUBLIC_ROUTES.has(`${request.method} ${path}`) || ((request.method === 'GET' || request.method === 'POST') && JOIN.test(path))) return;
-    if (request.method === 'GET' && SHARE.test(path)) return;
+    if (request.method === 'GET' && (SHARE.test(path) || SHELF_JOB.test(path))) return;
     if (!auth.hasUsers()) return reply.code(409).send({ error: 'setup-required', message: 'Create the first account first.' });
     if (!request.auth) return reply.code(401).send({ error: 'unauthorized', message: 'Sign in first.' });
     // Viewers look; everything else is the owner's (see access.ts).
