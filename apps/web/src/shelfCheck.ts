@@ -93,6 +93,8 @@ export interface ShelfUnsure {
   read: string;
   doubt: ShelfDoubt;
   other: string | null;
+  /** Store Mode's answer if the guess is right (the page's own list only). */
+  answer?: Answer;
 }
 
 /** The checklist: games you need (the wishlist's first), have, have elsewhere or might have, the rest, and the unsure. */
@@ -124,7 +126,7 @@ export function checklist(result: ShelfResult, games: Map<string, OfflineGame>):
   }
   // The wishlist's order first (its rank, then its acorns), then the rest by title.
   out.need.sort((a, b) => (a.game.w?.rank ?? 1e9) - (b.game.w?.rank ?? 1e9) || (b.game.w?.score ?? -1) - (a.game.w?.score ?? -1) || a.title.localeCompare(b.title));
-  out.unsure = result.unsure.map((m) => ({ title: m.title, read: m.read, doubt: m.doubt!, other: m.other ?? null }));
+  out.unsure = result.unsure.map((m) => ({ title: m.title, read: m.read, doubt: m.doubt!, other: m.other ?? null, ...(games.get(m.key) ? { answer: games.get(m.key)!.a } : {}) }));
   return out;
 }
 

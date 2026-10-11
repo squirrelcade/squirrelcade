@@ -324,6 +324,12 @@ export function ShelfCheckPage() {
                     <Text span size="xs" c="dimmed">
                       ({doubtText(u)}; read “{u.read}”)
                     </Text>
+                    {u.answer && (
+                      <Text span size="xs" fw={600}>
+                        {' '}
+                        If it is: {ANSWERS[u.answer].label}
+                      </Text>
+                    )}
                   </Text>
                 ))}
               </Stack>
