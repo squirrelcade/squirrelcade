@@ -150,7 +150,7 @@ describe('the vision model, signed in', () => {
     const started = (await g.app.inject({ method: 'POST', url: '/api/v1/shelf/read', cookies, payload: { pieces: [PIECE], console: 'Wii' } })).json();
     expect(started.state).toBe('reading');
     const work = (await asking).json();
-    expect(work).toMatchObject({ id: started.id, kind: 'shelf', console: 'Wii', pieces: [PIECE] });
+    expect(work).toMatchObject({ kind: 'shelf', console: 'Wii', pieces: [PIECE] });
     expect(work.prompt).toContain('mostly Wii games');
     expect((await g.app.inject({ method: 'POST', url: '/api/v1/helper/answer', headers: { 'x-api-key': key }, payload: { id: work.id, titles: ['Okami', '1. Halo 3'] } })).json()).toEqual({ ok: true });
     expect((await g.app.inject({ url: `/api/v1/shelf/read/${started.id}`, cookies })).json()).toMatchObject({ state: 'done', titles: ['Okami', 'Halo 3'] });

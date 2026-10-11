@@ -171,7 +171,7 @@ const PUSHOVER_PRIORITIES = [
 ] as const;
 
 /** The optional parts of Squirrelcade (Settings > Features): each needs something outside Squirrelcade, or can simply be left out. */
-export type FeatureKey = 'igdb' | 'history' | 'pc' | 'romm' | 'itad' | 'mail' | 'retroachievements' | 'xbox' | 'playstation' | 'steam' | 'vision';
+export type FeatureKey = 'igdb' | 'history' | 'pc' | 'romm' | 'itad' | 'mail' | 'retroachievements' | 'xbox' | 'playstation' | 'steam' | 'vision' | 'talk';
 
 /** Each optional part's switch. */
 export const FEATURE_SETTINGS = {
@@ -186,13 +186,14 @@ export const FEATURE_SETTINGS = {
   playstation: 'features.playstation',
   steam: 'features.steam',
   vision: 'features.vision',
+  talk: 'features.talk',
 } as const satisfies Record<FeatureKey, string>;
 
 /**
  * Whether each optional part is on in a new install: the ones that work with nothing to set up, and IGDB (which
  * does nothing until it has its keys); the ones that need another program (Playnite, RomM) start off.
  */
-export const FEATURE_DEFAULTS: Readonly<Record<FeatureKey, boolean>> = { igdb: true, history: true, pc: false, romm: false, itad: false, mail: false, retroachievements: false, xbox: false, playstation: false, steam: false, vision: false };
+export const FEATURE_DEFAULTS: Readonly<Record<FeatureKey, boolean>> = { igdb: true, history: true, pc: false, romm: false, itad: false, mail: false, retroachievements: false, xbox: false, playstation: false, steam: false, vision: false, talk: false };
 
 /** Every setting Squirrelcade has, by key: the one list the settings pages, validation, defaults and exports are built from. */
 export const settingDefinitions = {
@@ -539,6 +540,14 @@ export const settingDefinitions = {
     description:
       "Check a shelf (Store Mode) reads a photo of game spines on the phone, free and with no account. With this on, Squirrelcade also sends the photo, in a few pieces, to a vision model you choose and matches what it reads the same way: it finds more spines (stylized logos, small print). Any service that takes images works (OpenAI, Google Gemini, Anthropic's Claude, OpenRouter) and so does a model on your own computer (Ollama, LM Studio). The model only reads; your collection decides. Needs a connection to Squirrelcade, and the service's key if it has one: turn this on, then fill in the model right below.",
     default: FEATURE_DEFAULTS.vision,
+  }),
+  'features.talk': bool({
+    page: 'features',
+    section: 'Optional features',
+    label: 'Talk to Squirrelcade',
+    description:
+      "A Talk button at the top of every page: ask about your collection in plain words (\"do I have Pac-Man?\", \"what's top of my wishlist for the PS3?\") and tell it what happened (\"I just bought Halo 3\", \"note on Okami: the case is cracked\"). It answers from your collection, does small changes at once with Undo, and asks before a big one. It uses the AI model set up for Check a shelf (turn that on too), with Talk's own model if you name one there. Viewers can ask, not change.",
+    default: FEATURE_DEFAULTS.talk,
   }),
 
   // Collection
@@ -2188,6 +2197,14 @@ export const settingDefinitions = {
     min: 0,
     max: 100000,
   }),
+  'sources.talkModel': text({
+    page: 'sources',
+    section: 'Vision model (Check a shelf)',
+    label: 'Model for Talk',
+    description: "Talk (Settings > Features) uses this service too; name a model here to use another one for it (a cheaper text model, say). Empty uses the model above. A helper answers Talk itself.",
+    default: '',
+    maxLength: 120,
+  }),
   'sources.visionPieces': num({
     page: 'sources',
     section: 'Vision model (Check a shelf)',
@@ -3117,6 +3134,7 @@ export const FEATURE_SETUP: Readonly<Record<FeatureKey, readonly SettingKey[]>> 
   playstation: ['sources.psnToken'],
   steam: ['sources.steamApiKey', 'sources.steamId'],
   vision: ['sources.visionApi', 'sources.visionUrl', 'sources.visionModel', 'sources.visionKey', 'sources.visionDailyLimit'],
+  talk: [],
 };
 
 /**
@@ -3135,6 +3153,7 @@ export const FEATURE_HOME: Readonly<Record<FeatureKey, SettingsPageId | null>> =
   playstation: 'sources',
   steam: 'sources',
   vision: 'sources',
+  talk: null,
 };
 
 /** The part a Settings > Features switch turns on or off ("features.pc" is the PC library's), or null. */
@@ -3157,7 +3176,7 @@ export function settingFeature(key: string): FeatureKey | null {
   if (key.startsWith('sources.xbox')) return 'xbox';
   if (key.startsWith('sources.psn')) return 'playstation';
   if (key.startsWith('sources.steam')) return 'steam';
-  if (key.startsWith('sources.vision')) return 'vision';
+  if (key.startsWith('sources.vision') || key === 'sources.talkModel') return 'vision';
   if (key === 'interface.timelineGames') return 'history';
   return null;
 }

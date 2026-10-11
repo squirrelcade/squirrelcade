@@ -10,6 +10,7 @@ import { Brand } from './Brand';
 import { ErrorBoundary } from './ErrorBoundary';
 import { GameDrawer } from './GameDrawer';
 import { HeaderSearch } from './Search';
+import { TalkButton } from './Talk';
 import { api } from './api';
 import { clearCopy } from './offline';
 import { PasswordModal } from './Password';
@@ -160,6 +161,7 @@ export function Layout({ children }: { children: ReactNode }) {
               Store Mode
             </Button>
             <HeaderSearch />
+            <TalkButton />
             {owner && <ActivityIndicator />}
             <Menu position="bottom-end" withinPortal>
               <Menu.Target>

@@ -54,6 +54,7 @@ const VIEWER_READS: RegExp[] = [
   /^\/api\/v1\/auth\/session$/,
   /^\/api\/v1\/shelf\/model$/,
   /^\/api\/v1\/shelf\/read\/[0-9a-f-]{36}$/,
+  /^\/api\/v1\/talk\/(status|[0-9a-f-]{36})$/,
   /^\/api\/v1\/health$/,
   /^\/api\/v1\/settings$/,
   /^\/api\/v1\/platforms$/,
@@ -101,7 +102,7 @@ const VIEWER_DETAIL_READS: RegExp[] = [/^\/api\/v1\/copy$/, /^\/api\/v1\/tags$/,
 const VIEWER_PAID_READS: RegExp[] = [/^\/api\/v1\/collection\/spending$/];
 
 /** The changes a viewer may make: their own sign-out and password, a question about ownership, and a page's error report. */
-const VIEWER_WRITES = new Set(['POST /api/v1/auth/logout', 'POST /api/v1/auth/password', 'POST /api/v1/owned', 'POST /api/v1/system/client-error', 'POST /api/v1/shelf/read']);
+const VIEWER_WRITES = new Set(['POST /api/v1/auth/logout', 'POST /api/v1/auth/password', 'POST /api/v1/owned', 'POST /api/v1/system/client-error', 'POST /api/v1/shelf/read', 'POST /api/v1/talk']);
 
 /** Whether a viewer may make this call. */
 export function viewerMay(method: string, path: string, settings: SettingsService): boolean {

@@ -1,10 +1,9 @@
 import { ShelfMatcher, type ShelfDoubt, type ShelfRead } from '@squirrelcade/core';
-import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
-import { roleOf } from './access.js';
+import type { FastifyInstance } from 'fastify';
 import { CHECK_ANSWERS, type CheckAnswer } from './check.js';
 import type { LookupService, OfflineGame } from './lookup.js';
 import type { SettingsService } from './settings.js';
-import { MAX_PIECE_CHARS, MAX_PIECES, VisionError, visionPrompt, type VisionClient, type VisionJob } from './vision.js';
+import { MAX_PIECE_CHARS, MAX_PIECES, VisionError, type VisionClient, type VisionJob } from './vision.js';
 
 /**
  * Check a shelf (D147). Signed in, the phone reads the photo and matches it against Store Mode's copy itself; the
@@ -22,8 +21,6 @@ const MAX_READS = 800;
 const HOUR_MS = 60 * 60_000;
 /** Pieces of a photo with everything else in the request: up to nine pieces of a few megabytes. */
 const BODY_LIMIT = MAX_PIECES * MAX_PIECE_CHARS + 1_000_000;
-/** How long a helper's request for work waits for one, at most (under proxies' time limits). */
-const HELPER_WAIT_MS = 25_000;
 /** A 64-pixel white square: what the test sends. */
 const BLANK =
   'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAEAAAABACAIAAAAlC+aJAAAAXklEQVR4nO3PMQ0AMAzAsPInvYLYYVWKESTzjhsd8KsBrQGtAa0BrQGtAa0BrQGtAa0BrQGtAa0BrQGtAa0BrQGtAa0BrQGtAa0BrQGtAa0BrQGtAa0BrQGtAa0BbQHKU9LC7/CP1AAAAABJRU5ErkJggg==';
@@ -107,29 +104,6 @@ export function registerShelfRoutes(app: FastifyInstance, lookup: LookupService,
       if (err instanceof VisionError) return { ok: false, message: err.message };
       throw err;
     }
-  });
-
-  // A helper of the owner's own (Settings > Sources > Vision model > "A helper"): asks for a photo to read (waiting
-  // up to 25 seconds for one), and answers with the titles it read. Only the owner's key or sign-in.
-  const ownerOnly = (request: FastifyRequest, reply: FastifyReply) => {
-    if (roleOf(request) !== 'owner') {
-      void reply.code(403).send({ error: 'owner-only', message: 'Only the owner’s key can read photos for Squirrelcade.' });
-      return false;
-    }
-    return true;
-  };
-  app.get('/api/v1/helper/next', async (request, reply) => {
-    if (!ownerOnly(request, reply)) return reply;
-    const asked = Number((request.query as { wait?: string }).wait ?? HELPER_WAIT_MS);
-    const job = await vision.next(Number.isFinite(asked) ? Math.min(HELPER_WAIT_MS, Math.max(0, asked)) : HELPER_WAIT_MS);
-    if (!job) return reply.code(204).send();
-    return { id: job.id, kind: 'shelf', prompt: visionPrompt(job.consoleName), console: job.consoleName, pieces: job.pieces };
-  });
-  app.post('/api/v1/helper/answer', { bodyLimit: 1_000_000 }, async (request, reply) => {
-    if (!ownerOnly(request, reply)) return reply;
-    const body = (request.body ?? {}) as { id?: unknown; titles?: unknown; text?: unknown; error?: unknown };
-    if (typeof body.id !== 'string' || !vision.answer(body.id, body)) return reply.code(404).send({ error: 'not-found', message: 'No photo is waiting for that answer.' });
-    return { ok: true };
   });
 
   // Each address's shelf checks in the last hour (not signed in).

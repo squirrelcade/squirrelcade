@@ -1,11 +1,13 @@
 #!/usr/bin/env python3
-"""A helper for Check a shelf (Squirrelcade, D147): asks Squirrelcade for shelf photos to read and answers with the
-game titles on them, using Claude Code signed in on this computer, so the reading runs on that account's own Claude
-plan (no API key). Squirrelcade's Settings > Sources > Vision model > Kind of API: "A helper of your own".
+"""A helper for Squirrelcade's AI model (D147, D148): asks Squirrelcade for work and answers it with Claude Code signed
+in on this computer, so it runs on that account's own Claude plan (no API key). Two kinds of work: a shelf photo's
+pieces to read (Check a shelf: the game titles on them), and a turn of Talk to Squirrelcade (its answer, as JSON).
+Squirrelcade's Settings > Sources > Vision model > Kind of API: "A helper of your own".
 
 Any program can be a helper the same way (this one is only an example): GET /api/v1/helper/next with the API key waits
-up to 25 seconds and answers 204 when there's nothing, or {id, prompt, console, pieces: [data URLs]}; the answer is
-POST /api/v1/helper/answer {id, titles: [...]} (or {id, error}).
+up to 25 seconds and answers 204 when there's nothing, or {id, kind: "shelf", prompt, console, pieces: [data URLs]}
+or {id, kind: "talk", prompt, schema}; the answer is POST /api/v1/helper/answer {id, titles: [...]} for a shelf,
+{id, answer: {...}} for Talk (the JSON the schema describes), or {id, error}.
 
 Settings, from the environment:
   SQUIRRELCADE_URL   Squirrelcade's address from here (default http://127.0.0.1:7575)
@@ -60,8 +62,8 @@ def call(method, path, key, body=None, timeout=40):
         return r.status, (json.loads(raw) if raw else None)
 
 
-def answer_of(out):
-    """The titles from `claude -p --output-format json` (its structured_output, or JSON in its result)."""
+def structured(out):
+    """The answer object from `claude -p --output-format json` (its structured_output, or JSON in its result)."""
     outer = json.loads(out)
     if outer.get("is_error"):
         raise RuntimeError(f"Claude stopped: {outer.get('subtype') or 'error'}")
@@ -69,6 +71,27 @@ def answer_of(out):
     if not isinstance(inner, dict):
         text = str(outer.get("result") or "").strip().removeprefix("```json").removeprefix("```").removesuffix("```").strip()
         inner = json.loads(text)
+    if not isinstance(inner, dict):
+        raise RuntimeError("Claude's answer wasn't an object")
+    return inner
+
+
+def claude(prompt, schema, tools, cwd):
+    """Claude Code, headless: no connectors, only the tools given, the answer in the schema's shape."""
+    env = {**os.environ, "ENABLE_CLAUDEAI_MCP_SERVERS": "0"}
+    run = subprocess.run(
+        [CLAUDE, "-p", prompt, "--output-format", "json", "--json-schema", json.dumps(schema), "--model", MODEL,
+         "--permission-mode", "dontAsk", "--permission-prompts", "none", "--no-session-persistence",
+         "--tools", tools, *(["--allowedTools", tools] if tools else [])],
+        cwd=cwd, env=env, capture_output=True, text=True, timeout=540, stdin=subprocess.DEVNULL,
+    )
+    if run.returncode != 0:
+        raise RuntimeError(f"Claude Code exited {run.returncode}: {(run.stderr or run.stdout)[-300:].strip()}")
+    return structured(run.stdout)
+
+
+def answer_of(inner):
+    """The titles in Claude's answer to a shelf photo."""
     titles = inner.get("titles")
     if not isinstance(titles, list):
         raise RuntimeError("Claude's answer had no titles")
@@ -95,22 +118,23 @@ def read(job):
             f"{job.get('prompt')}\n\nThe photo is in {len(names)} overlapping pieces, the image files {', '.join(names)} in this folder: "
             "read each one with the Read tool. Answer with every title you can read on any of them, each once, in titles."
         )
-        env = {**os.environ, "ENABLE_CLAUDEAI_MCP_SERVERS": "0"}
-        run = subprocess.run(
-            [CLAUDE, "-p", prompt, "--output-format", "json", "--json-schema", json.dumps(SCHEMA), "--model", MODEL,
-             "--permission-mode", "dontAsk", "--permission-prompts", "none", "--no-session-persistence", "--tools", "Read", "--allowedTools", "Read"],
-            cwd=work, env=env, capture_output=True, text=True, timeout=540, stdin=subprocess.DEVNULL,
-        )
-        if run.returncode != 0:
-            raise RuntimeError(f"Claude Code exited {run.returncode}: {(run.stderr or run.stdout)[-300:].strip()}")
-        return answer_of(run.stdout)
+        return answer_of(claude(prompt, SCHEMA, "Read", work))
+    finally:
+        shutil.rmtree(work, ignore_errors=True)
+
+
+def talk(job):
+    """A turn of Talk: Claude Code answers in the schema's shape, with no tools (Squirrelcade does the lookups)."""
+    work = tempfile.mkdtemp(prefix="talk-")
+    try:
+        return claude(str(job.get("prompt") or ""), job.get("schema") or {"type": "object"}, "", work)
     finally:
         shutil.rmtree(work, ignore_errors=True)
 
 
 def main():
     key = api_key()
-    log(f"asking {URL} for shelf photos to read, with {MODEL}")
+    log(f"asking {URL} for work (shelf photos, Talk), with {MODEL}")
     pause = 0
     while True:
         if pause:
@@ -132,6 +156,10 @@ def main():
             continue
         started = time.time()
         try:
+            if job.get("kind") == "talk":
+                call("POST", "/api/v1/helper/answer", key, {"id": job["id"], "answer": talk(job)})
+                log(f"answered a turn of Talk in {round(time.time() - started)} s")
+                continue
             titles = read(job)
             call("POST", "/api/v1/helper/answer", key, {"id": job["id"], "titles": titles})
             log(f"read {len(job.get('pieces') or [])} piece(s): {len(titles)} titles in {round(time.time() - started)} s")

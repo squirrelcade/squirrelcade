@@ -34,6 +34,8 @@ import { SettingsError, SettingsService } from './settings.js';
 import { registerCheckRoutes } from './check.js';
 import { registerShelfRoutes } from './shelfCheck.js';
 import { VisionClient } from './vision.js';
+import { HelperQueue, registerHelperRoutes } from './helper.js';
+import { registerTalkRoutes, TalkService } from './talk.js';
 import { CopiesService, registerCopiesRoutes } from './copies.js';
 import { CopyDetailsService, registerCopyDetailRoutes } from './copyDetails.js';
 import { catalogTarget, registerGameRoutes } from './games.js';
@@ -418,7 +420,10 @@ export async function buildApp(options: BuildOptions = {}): Promise<Squirrelcade
   registerWishlistRoutes(app, wishlist, () => notes.index());
   registerLookupRoutes(app, lookup);
   registerCheckRoutes(app, lookup, settings);
-  registerShelfRoutes(app, lookup, settings, new VisionClient(settings, options.visionFetch));
+  const helpers = new HelperQueue();
+  registerHelperRoutes(app, helpers);
+  const vision = new VisionClient(settings, helpers, options.visionFetch);
+  registerShelfRoutes(app, lookup, settings, vision);
   registerNotificationRoutes(app, notifications, settings, options.transports?.post);
   registerIgdbRoutes(app, igdb);
   registerPcRoutes(app, pc, tasks, settings);
@@ -524,6 +529,8 @@ export async function buildApp(options: BuildOptions = {}): Promise<Squirrelcade
   const aiAuth = new AiAuthService(db, settings, auth, notifications, log, options.aiFetch);
   auth.passwordChanged.add((userId) => aiAuth.endAccount(userId));
   const aiTools = new AiTools({ db, settings, pc, details, wishlist, igdb, history, notes });
+  // Talk to Squirrelcade (D148): the connector's read-only tools, with the AI model set up for Check a shelf.
+  registerTalkRoutes(app, new TalkService({ settings, vision, helpers, tools: aiTools, lookup, notes }));
   collection.events.on('changed', () => aiTools.invalidate());
   collection.events.on('remapped', () => aiTools.invalidate());
   pc.events.on('changed', () => aiTools.invalidate());

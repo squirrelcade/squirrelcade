@@ -1,4 +1,5 @@
 import { randomUUID } from 'node:crypto';
+import { HelperError, type HelperQueue } from './helper.js';
 import type { FetchLike } from './igdb.js';
 import type { SettingsService } from './settings.js';
 
@@ -24,13 +25,9 @@ export const MAX_PIECES = 9;
 export const MAX_PIECE_CHARS = 6_000_000;
 /** Two pieces at a time: a home model works one at a time anyway, and a service's rate limit stays clear. */
 const AT_ONCE = 2;
-/** How long a job waits for a helper to take it, and then for its answer. */
-const HELPER_TAKE_MS = 60_000;
-const HELPER_ANSWER_MS = 10 * 60_000;
-/** A finished job is kept this long for its asker to collect. */
+/** A finished job is kept this long for its asker to collect; one not finished by then has failed. */
 const KEEP_MS = 15 * 60_000;
-/** A helper that asked for work this recently is there. */
-const HELPER_SEEN_MS = 90_000;
+const LONGEST_MS = 12 * 60_000;
 
 /** What the model is asked, for each piece (and what a helper is given to ask). */
 export function visionPrompt(consoleName: string | null): string {
@@ -74,12 +71,10 @@ export class VisionClient {
   private day = '';
   private used = 0;
   private readonly jobs = new Map<string, VisionJob>();
-  /** Helpers waiting for work, oldest first. */
-  private readonly helpers: ((job: VisionJob | null) => void)[] = [];
-  private helperSeenAt = 0;
 
   constructor(
     private readonly settings: SettingsService,
+    private readonly helpers: HelperQueue,
     private readonly fetcher: FetchLike = (url, init) => fetch(url, init),
   ) {}
 
@@ -95,7 +90,7 @@ export class VisionClient {
 
   /** Whether a helper asked for work lately (helper mode). */
   helperThere(): boolean {
-    return Date.now() - this.helperSeenAt < HELPER_SEEN_MS || this.helpers.length > 0;
+    return this.helpers.there();
   }
 
   /** Pieces left today (null: no limit). */
@@ -118,8 +113,7 @@ export class VisionClient {
     const now = Date.now();
     for (const [id, job] of this.jobs) {
       if (job.finishedAt !== null && now - job.finishedAt > KEEP_MS) this.jobs.delete(id);
-      else if (job.state === 'waiting' && this.helperMode() && now - job.createdAt > HELPER_TAKE_MS) this.finish(job, null, 'No helper took the photo: is it running? (Settings > Sources > Vision model)');
-      else if (job.state === 'reading' && now - job.createdAt > HELPER_ANSWER_MS) this.finish(job, null, "The helper didn't answer in time.");
+      else if (job.finishedAt === null && now - job.createdAt > LONGEST_MS) this.finish(job, null, 'It took too long.');
     }
   }
 
@@ -145,16 +139,8 @@ export class VisionClient {
     this.used += sending.length;
     const job: VisionJob = { id: randomUUID(), pieces: sending, consoleName, state: 'waiting', titles: [], error: null, sent: sending.length, createdAt: Date.now(), finishedAt: null };
     this.jobs.set(job.id, job);
-    if (this.helperMode()) {
-      const helper = this.helpers.shift();
-      if (helper) {
-        job.state = 'reading';
-        helper(job);
-      }
-    } else {
-      job.state = 'reading';
-      void this.readWithService(job);
-    }
+    job.state = 'reading';
+    void (this.helperMode() ? this.readWithHelper(job) : this.readWithService(job));
     return job;
   }
 
@@ -165,7 +151,7 @@ export class VisionClient {
   }
 
   /** A job's end: its titles, or its error. */
-  async wait(job: VisionJob, timeoutMs = HELPER_TAKE_MS + HELPER_ANSWER_MS): Promise<VisionJob> {
+  async wait(job: VisionJob, timeoutMs = LONGEST_MS): Promise<VisionJob> {
     const until = Date.now() + timeoutMs;
     while (job.state === 'waiting' || job.state === 'reading') {
       if (Date.now() > until) break;
@@ -182,40 +168,16 @@ export class VisionClient {
     return { titles: job.titles, sent: job.sent };
   }
 
-  /** A helper asking for work: the oldest waiting job, or null after waitMs with none. */
-  next(waitMs: number): Promise<VisionJob | null> {
-    this.sweep();
-    this.helperSeenAt = Date.now();
-    const waiting = [...this.jobs.values()].find((j) => j.state === 'waiting');
-    if (waiting) {
-      waiting.state = 'reading';
-      return Promise.resolve(waiting);
+  /** Has the owner's helper read a job's pieces. */
+  private async readWithHelper(job: VisionJob): Promise<void> {
+    try {
+      const a = await this.helpers.ask('shelf', { prompt: visionPrompt(job.consoleName), console: job.consoleName, pieces: job.pieces });
+      if (Array.isArray(a.titles)) this.finish(job, titlesOf(a.titles.filter((t): t is string => typeof t === 'string').join('\n')), null);
+      else if (typeof a.text === 'string') this.finish(job, titlesOf(a.text), null);
+      else this.finish(job, null, "The helper's answer had no titles.");
+    } catch (err) {
+      this.finish(job, null, err instanceof HelperError ? `${err.message} (Settings > Sources > Vision model)` : String((err as Error)?.message ?? err));
     }
-    return new Promise((resolve) => {
-      const give = (job: VisionJob | null) => {
-        clearTimeout(timer);
-        this.helperSeenAt = Date.now();
-        resolve(job);
-      };
-      const timer = setTimeout(() => {
-        const i = this.helpers.indexOf(give);
-        if (i >= 0) this.helpers.splice(i, 1);
-        this.helperSeenAt = Date.now();
-        resolve(null);
-      }, waitMs);
-      this.helpers.push(give);
-    });
-  }
-
-  /** A helper's answer for a job: the text it read (one title a line, or a list), or what went wrong. */
-  answer(id: string, answer: { titles?: unknown; text?: unknown; error?: unknown }): boolean {
-    const job = this.jobs.get(id);
-    if (!job || job.state !== 'reading') return false;
-    if (typeof answer.error === 'string' && answer.error) this.finish(job, null, `The helper couldn't read it: ${answer.error.slice(0, 300)}`);
-    else if (Array.isArray(answer.titles)) this.finish(job, titlesOf(answer.titles.filter((t): t is string => typeof t === 'string').join('\n')), null);
-    else if (typeof answer.text === 'string') this.finish(job, titlesOf(answer.text), null);
-    else return false;
-    return true;
   }
 
   /** Reads a job's pieces with the service, two at a time. */
@@ -233,6 +195,34 @@ export class VisionClient {
     // Some pieces read is an answer; none read is the service's error.
     if (titles.length === 0 && failure) this.finish(job, null, failure instanceof VisionError ? failure.message : `The vision model didn't answer: ${String((failure as Error)?.message ?? failure)}`);
     else this.finish(job, titles, null);
+  }
+
+  /** A text-only question to the same service (Talk, D148), with another model if given; returns its answer's text. */
+  async chat(prompt: string, model: string | null): Promise<string> {
+    const base = this.settings.get('sources.visionUrl').replace(/\/+$/, '');
+    const key = this.settings.get('sources.visionKey');
+    const anthropic = this.settings.get('sources.visionApi') === 'anthropic';
+    const name = model || this.settings.get('sources.visionModel');
+    const headers: Record<string, string> = { 'content-type': 'application/json' };
+    if (anthropic) {
+      headers['anthropic-version'] = '2023-06-01';
+      if (key) headers['x-api-key'] = key;
+    } else if (key) headers.authorization = `Bearer ${key}`;
+    const body = anthropic
+      ? { model: name, max_tokens: 2000, messages: [{ role: 'user', content: prompt }] }
+      : { model: name, max_tokens: 2000, temperature: 0.2, messages: [{ role: 'user', content: prompt }] };
+    let res: Response;
+    try {
+      res = await this.fetcher(`${base}${anthropic ? '/messages' : '/chat/completions'}`, { method: 'POST', headers, body: JSON.stringify(body), signal: AbortSignal.timeout(90_000) });
+    } catch (err) {
+      throw new VisionError(`Couldn't reach the AI model at ${base}: ${String((err as Error)?.message ?? err)}`);
+    }
+    const data = (await res.json().catch(() => null)) as { error?: { message?: string } | string; content?: { type: string; text?: string }[]; choices?: { message?: { content?: string } }[] } | null;
+    if (!res.ok) {
+      const said = typeof data?.error === 'string' ? data.error : data?.error?.message;
+      throw new VisionError(`The AI model refused (${res.status})${said ? `: ${said.slice(0, 300)}` : ''}`);
+    }
+    return anthropic ? (data?.content ?? []).map((c) => (c.type === 'text' ? (c.text ?? '') : '')).join('\n') : (data?.choices?.[0]?.message?.content ?? '');
   }
 
   /** Asks the model about one piece; returns its answer's text. */

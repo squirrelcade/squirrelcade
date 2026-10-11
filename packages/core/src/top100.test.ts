@@ -54,7 +54,7 @@ describe('features', () => {
       expect(settingDefinitions[key].default).toBe(FEATURE_DEFAULTS[feature as keyof typeof FEATURE_DEFAULTS]);
       expect(settingDefinitions[key].page).toBe('features');
     }
-    expect(FEATURE_DEFAULTS).toEqual({ igdb: true, history: true, pc: false, romm: false, itad: false, mail: false, retroachievements: false, xbox: false, playstation: false, steam: false, vision: false });
+    expect(FEATURE_DEFAULTS).toEqual({ igdb: true, history: true, pc: false, romm: false, itad: false, mail: false, retroachievements: false, xbox: false, playstation: false, steam: false, vision: false, talk: false });
   });
 
   it("hides a part's settings while it's off, and never the switches themselves", () => {
