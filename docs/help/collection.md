@@ -33,14 +33,17 @@ A game's drawer has **Add a copy**: its condition, and what you paid, when and a
 
 ## Sending to PriceCharting
 
-PriceCharting keeps the prices, so a copy added in Squirrelcade gets its value once it's on PriceCharting too:
+PriceCharting keeps the prices, so a copy added in Squirrelcade gets its value once it's on PriceCharting too. **Stash updates > Send to PriceCharting** sends the copies added here two ways:
 
-1. **Stash updates > Send to PriceCharting** lists the copies added here as lines for PriceCharting's importer ("Okami Playstation 2 CIB"). Click **Copy the list**.
-2. Click **Open PriceCharting's importer**, paste the list there and add the games.
-3. Back in Squirrelcade, click **I've added them there**.
-4. Export from PriceCharting as usual, and bring the export in. It brings each copy's value to the same copy here (not a second one); what you paid, the day and your notes stay Squirrelcade's.
+**With their details (a CSV),** for the games PriceCharting knows: any game an export of yours ever brought (another copy of it, or one you've sold), or one you gave its PriceCharting ID. They go with everything PriceCharting's CSV importer takes: the condition, what you paid, the day you bought it and your notes (up to 300 characters).
 
-PriceCharting's importer reads CIB and Sealed. A copy in another condition comes in as loose, so set its condition there after pasting (the card says which). A free PriceCharting account takes one import and one export a week.
+1. Check the list on the card (each game with its condition, what you paid, the day bought and your notes).
+2. Click **Download the CSV**, then **Open PriceCharting's CSV importer** and upload the file there. Upload it once: PriceCharting adds every row as a new copy.
+3. Back in Squirrelcade, click **I've uploaded it**.
+
+**By title (the paste list),** for the games PriceCharting doesn't know yet: lines for its paste importer ("Okami Playstation 2 CIB"). It reads CIB and Sealed, not what you paid (that stays here); a copy in another condition comes in as loose, so set its condition there after pasting (the card says which). Click **Copy the list**, **Open PriceCharting's importer**, paste and add them, then **I've added them there**. To send one with its details instead, give it its **PriceCharting ID** on the card: **Find it on PriceCharting**, open the game, and copy the number under Item Details, PriceCharting ID.
+
+Then export from PriceCharting as usual, and bring the export in. It brings each copy's value to the same copy here (not a second one); what you paid, the day and your notes stay Squirrelcade's. A free PriceCharting account takes one import and one export a week.
 
 A copy you sold or removed here that PriceCharting still lists is on the same card (**Sold or removed here, still on PriceCharting**) until you remove it there: the next export doesn't bring it back, and once an export no longer has it, it's off the list.
 

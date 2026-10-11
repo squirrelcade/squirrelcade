@@ -574,13 +574,20 @@ export async function uiTest(target, account, check) {
     await addCopy.waitFor({ state: 'detached', timeout: 10000 });
     await drawer.getByText('Added in Squirrelcade: not on PriceCharting yet').waitFor({ timeout: 10000 });
     await page.goto(`${base}/updates`);
+    // Okami came in an export, so PriceCharting's product is known: the copy goes in the CSV, with what was paid (D150).
     const sendCard = page.locator('#send');
-    await sendCard.getByText('Okami Playstation 3', { exact: false }).first().waitFor({ timeout: 10000 });
-    const lines = await sendCard.getByRole('textbox', { name: "Lines for PriceCharting's importer" }).inputValue();
-    await sendCard.getByRole('button', { name: "I've added them there" }).click();
+    const csvTable = sendCard.getByRole('table', { name: 'What the CSV has' });
+    await csvTable.getByText('Okami').first().waitFor({ timeout: 10000 });
+    const csvRow = await csvTable.innerText();
+    const csvFile = await (await page.request.get(`${base}/api/v1/send/pricecharting.csv`)).text();
+    await sendCard.getByRole('button', { name: "I've uploaded it" }).click();
     await sendCard.getByText(/Sent, waiting for an export/).waitFor({ timeout: 10000 });
     found = await pageProblems();
-    check('ui: a copy added in the drawer is listed for PriceCharting, and marked sent', found.length === 0 && lines.includes('Okami Playstation 3'), found.join(' | ') || lines);
+    check(
+      'ui: a copy added in the drawer goes to PriceCharting in a CSV with what was paid, and is marked sent',
+      found.length === 0 && /\$12\.50/.test(csvRow) && /^id,condition-id,quantity,cost-basis-in-pennies,date-purchased,notes\r\n\d+,1,1,1250,/.test(csvFile),
+      found.join(' | ') || `${csvRow} | ${csvFile}`,
+    );
 
     // "Add to a set" from the drawer: the game then says it's in the set.
     await page.goto(`${base}/platforms/playstation-3?game=${encodeURIComponent('playstation-3|Uncharted')}`);

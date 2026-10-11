@@ -169,6 +169,28 @@ export function registerOwnCopyRoutes(
 
   app.get('/api/v1/send/pricecharting', async () => collection.forPriceCharting());
 
+  // The file for PriceCharting's CSV importer: the copies added here whose PriceCharting product is known, with what you
+  // paid, the day bought and your notes.
+  app.get('/api/v1/send/pricecharting.csv', async (_request, reply) => {
+    const day = new Date().toISOString().slice(0, 10);
+    return reply
+      .header('content-type', 'text/csv; charset=utf-8')
+      .header('content-disposition', `attachment; filename="squirrelcade-for-pricecharting-${day}.csv"`)
+      .send(collection.forPriceCharting().csv);
+  });
+
+  // A copy added here gets its PriceCharting ID (from the game's page there), so it goes in the CSV with its details.
+  app.put('/api/v1/send/pricecharting/:id/product', async (request, reply) => {
+    const pcId = String((request.body as { pcId?: unknown } | null)?.pcId ?? '').trim();
+    try {
+      if (!collection.setPriceChartingId(Number((request.params as { id: string }).id), pcId)) return reply.code(404).send({ error: 'not-found', message: 'No copy added here and not sent yet has that id.' });
+    } catch (err) {
+      if (err instanceof CopyError) return reply.code(400).send({ error: 'invalid', message: err.message });
+      throw err;
+    }
+    return { ok: true };
+  });
+
   app.post('/api/v1/send/pricecharting/sent', async (request, reply) => {
     const list = ids(request.body);
     return list ? { marked: collection.markSent(list) } : reply.code(400).send({ error: 'invalid', message: 'Send ids: the copies you pasted.' });

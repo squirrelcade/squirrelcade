@@ -170,6 +170,55 @@ export interface SendCopy {
   sentAt: string | null;
   goneAt: string | null;
   goneReason: string | null;
+  /**
+   * Its PriceCharting product id, when Squirrelcade knows it (its own, or one an export brought for the same game on
+   * the same console): then it can go in PriceCharting's CSV importer with its details. Null: the paste list only.
+   */
+  pcId: string | null;
+  /** What goes in PriceCharting's CSV with it: what you paid, the day bought, your notes. */
+  costCents: number | null;
+  datePurchased: string | null;
+  notes: string;
+}
+
+/**
+ * Squirrelcade's conditions as PriceCharting's CSV importer numbers them for games (its documentation's Condition Id
+ * List): 1 loose, 2 sealed, 3 complete in box, 5 graded, 6 box only, 7 manual only, 8 item and box, 9 item and manual.
+ * An unknown condition is left out (PriceCharting takes it as loose).
+ */
+export const PC_CONDITION_ID: Partial<Record<Completeness, number>> = {
+  loose: 1,
+  sealed: 2,
+  complete: 3,
+  graded: 5,
+  'box-only': 6,
+  'manual-only': 7,
+  'item-box': 8,
+  'item-manual': 9,
+};
+
+/** A PriceCharting product id: digits (Squirrelcade's own ids start "g-" or "s-"). */
+export const PC_ID = /^\d{1,12}$/;
+
+/** One field of a CSV row, quoted when it needs to be. */
+function csvField(value: string | number | null | undefined): string {
+  const s = value === null || value === undefined ? '' : String(value);
+  return /[",\r\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
+}
+
+/**
+ * The file for PriceCharting's CSV importer (pricecharting.com/collection-import-csv): one row a copy, by product id,
+ * with its condition, what you paid (in pennies), the day bought and your notes (at most 300 characters).
+ */
+export function priceChartingCsv(list: { pcId: string | null; completeness: string; costCents: number | null; datePurchased: string | null; notes: string }[]): string {
+  const rows = list
+    .filter((c) => c.pcId !== null)
+    .map((c) =>
+      [c.pcId, PC_CONDITION_ID[c.completeness as Completeness] ?? '', 1, c.costCents ?? '', c.datePurchased && DAY.test(c.datePurchased) ? c.datePurchased : '', c.notes.trim().slice(0, 300)]
+        .map(csvField)
+        .join(','),
+    );
+  return ['id,condition-id,quantity,cost-basis-in-pennies,date-purchased,notes', ...rows].join('\r\n') + '\r\n';
 }
 
 const DAY = /^\d{4}-\d{2}-\d{2}$/;
@@ -761,7 +810,20 @@ export class CollectionService {
    * PriceCharting's side of the hub (D83): the copies of Squirrelcade's own not on PriceCharting yet, as lines for its paste
    * importer (to send, and sent but not in an export yet), and the copies sold or removed here that its export still lists.
    */
-  forPriceCharting(): { toSend: SendCopy[]; waiting: SendCopy[]; toRemove: SendCopy[]; text: string } {
+  forPriceCharting(): { toSend: SendCopy[]; waiting: SendCopy[]; toRemove: SendCopy[]; text: string; csv: string } {
+    // PriceCharting's product for each game an export ever brought (live copies first, then sold or removed ones), by
+    // console and game: a copy added here of such a game can go in PriceCharting's CSV importer with its details.
+    const known = new Map<string, string>();
+    for (const c of this.db
+      .select({ productId: copies.productId, title: copies.title, platformId: copies.platformId, goneAt: copies.goneAt })
+      .from(copies)
+      .where(isNotNull(copies.platformId))
+      .orderBy(sql`${copies.goneAt} is not null`, asc(copies.id))
+      .all()) {
+      if (!PC_ID.test(c.productId)) continue;
+      const k = `${c.platformId}|${gameKey(c.title)}`;
+      if (!known.has(k)) known.set(k, c.productId);
+    }
     const item = (c: CopyRow, platformKey: string | null, platform: string | null): SendCopy => {
       const word = PASTE_WORD[c.completeness as Completeness];
       return {
@@ -777,9 +839,14 @@ export class CollectionService {
         sentAt: c.sentAt,
         goneAt: c.goneAt,
         goneReason: c.goneReason,
+        pcId: PC_ID.test(c.productId) ? c.productId : (known.get(`${c.platformId}|${gameKey(c.title)}`) ?? null),
+        costCents: c.costCents,
+        datePurchased: c.datePurchased,
+        notes: c.notes,
       };
     };
-    const own = this.ownCopies().map((c) => item(c, c.platformKey, c.platform));
+    const rows = this.ownCopies();
+    const own = rows.map((c) => item(c, c.platformKey, c.platform));
     const toRemove = this.db
       .select({ copy: copies, platformKey: platforms.key, platform: platforms.name })
       .from(copies)
@@ -789,7 +856,35 @@ export class CollectionService {
       .all()
       .map((r) => item(r.copy, r.platformKey, r.platform));
     const toSend = own.filter((c) => c.sentAt === null);
-    return { toSend, waiting: own.filter((c) => c.sentAt !== null), toRemove, text: toSend.map((c) => c.line).join('\n') };
+    const completeness = new Map(rows.map((c) => [c.id, c.completeness]));
+    return {
+      toSend,
+      waiting: own.filter((c) => c.sentAt !== null),
+      toRemove,
+      // The paste importer's lines: the copies whose PriceCharting product isn't known (it matches them by title).
+      text: toSend
+        .filter((c) => c.pcId === null)
+        .map((c) => c.line)
+        .join('\n'),
+      // The CSV importer's file: the copies whose product is known, with their details.
+      csv: priceChartingCsv(toSend.map((c) => ({ ...c, completeness: completeness.get(c.id) ?? 'unknown' }))),
+    };
+  }
+
+  /**
+   * Gives a copy added here its PriceCharting product id (the "PriceCharting ID" on the game's page there), so it can
+   * go in the CSV importer with its details. Only a copy of Squirrelcade's own that isn't sent yet; false otherwise.
+   */
+  setPriceChartingId(id: number, pcId: string): boolean {
+    if (!PC_ID.test(pcId)) throw new CopyError("A PriceCharting ID is a number (on the game's page there, under Item Details).");
+    const at = new Date().toISOString();
+    return (
+      this.db
+        .update(copies)
+        .set({ productId: pcId, updatedAt: at })
+        .where(and(eq(copies.id, id), isNull(copies.goneAt), isNull(copies.sentAt), eq(copies.source, 'squirrelcade')))
+        .run().changes > 0
+    );
   }
 
   /** Notes the copies as pasted into PriceCharting's importer (they wait for the export that has them); returns how many. */

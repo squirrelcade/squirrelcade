@@ -92,6 +92,42 @@ describe('copies of Squirrelcade\'s own', () => {
     expect((await edit(journey.id, { completeness: 'mint' })).statusCode).toBe(400);
   });
 
+  it("sends copies whose PriceCharting product is known as a CSV with their details, the rest as the paste list", async () => {
+    update(...BASE);
+    // Sold since: its product is still known, from that export.
+    const flower = items('Flower')[0]!;
+    await remove(flower.id, 'sold');
+    const second = (await add({ platformKey: 'playstation-3', title: 'Uncharted', completeness: 'complete', costCents: 1997, datePurchased: '2026-10-02', notes: 'From the flea market, "mint", sealed manual' })).json().copy;
+    const again = (await add({ platformKey: 'playstation-3', title: 'Flower', completeness: 'sealed' })).json().copy;
+    const fresh = (await add({ platformKey: 'playstation-3', title: 'Puppeteer', completeness: 'item-box', costCents: 800 })).json().copy;
+    const list = (await g.app.inject({ url: '/api/v1/send/pricecharting', cookies })).json();
+    expect(list.toSend.map((c: { title: string; pcId: string | null }) => [c.title, c.pcId])).toEqual([
+      ['Uncharted', '1'],
+      ['Flower', '3'],
+      ['Puppeteer', null],
+    ]);
+    // The paste list has only the game PriceCharting has to find by its title.
+    expect(list.text).toBe('Puppeteer Playstation 3');
+    const csv = await g.app.inject({ url: '/api/v1/send/pricecharting.csv', cookies });
+    expect(csv.headers['content-type']).toContain('text/csv');
+    expect(csv.headers['content-disposition']).toMatch(/attachment; filename="squirrelcade-for-pricecharting-\d{4}-\d{2}-\d{2}\.csv"/);
+    expect(csv.body).toBe('id,condition-id,quantity,cost-basis-in-pennies,date-purchased,notes\r\n1,3,1,1997,2026-10-02,"From the flea market, ""mint"", sealed manual"\r\n3,2,1,,,\r\n');
+    // Given its PriceCharting ID, Puppeteer moves to the CSV, with what was paid and its condition (item and box: 8).
+    expect((await g.app.inject({ method: 'PUT', url: `/api/v1/send/pricecharting/${fresh.id}/product`, cookies, payload: { pcId: 'abc' } })).statusCode).toBe(400);
+    expect((await g.app.inject({ method: 'PUT', url: `/api/v1/send/pricecharting/${fresh.id}/product`, cookies, payload: { pcId: '45678' } })).json()).toEqual({ ok: true });
+    const after = (await g.app.inject({ url: '/api/v1/send/pricecharting', cookies })).json();
+    expect(after.text).toBe('');
+    expect(after.csv).toContain('45678,8,1,800,,');
+    // Once sent, a copy can't be given another id; an export copy never.
+    await g.app.inject({ method: 'POST', url: '/api/v1/send/pricecharting/sent', cookies, payload: { ids: [second.id, again.id, fresh.id] } });
+    expect((await g.app.inject({ method: 'PUT', url: `/api/v1/send/pricecharting/${fresh.id}/product`, cookies, payload: { pcId: '1' } })).statusCode).toBe(404);
+    expect((await g.app.inject({ method: 'PUT', url: `/api/v1/send/pricecharting/${items('Journey')[0]!.id}/product`, cookies, payload: { pcId: '1' } })).statusCode).toBe(404);
+    // The export that has them (with PriceCharting's own price paid, from the CSV) matches them; what was paid here stays.
+    const outcome = update(row('1', 'Uncharted', 'Playstation 3', 1000), row('1', 'Uncharted', 'Playstation 3', 1000, 'Item, Box, and Manual', '19.97'), BASE[1]!, row('3', 'Flower', 'Playstation 3', 2500, 'New'), row('45678', 'Puppeteer', 'Playstation 3', 1100, 'Item and Box'));
+    expect(outcome.report.copies).toMatchObject({ added: 0 });
+    expect(items('Puppeteer')).toMatchObject([{ id: fresh.id, source: 'pricecharting', costCents: 800, valueCents: 1100 }]);
+  });
+
   it('lists the copies to add to PriceCharting, and the export that has them takes them over', async () => {
     update(...BASE);
     const complete = (await add({ platformKey: 'playstation-3', title: 'Puppeteer', completeness: 'complete', costCents: 2500 })).json().copy;
