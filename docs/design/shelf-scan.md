@@ -55,6 +55,8 @@ Six phone photos of a used-game store's PS3 shelves and glass case (sent shrunk 
 
 Against Claude reading the same photos (the owner's run through the connector): of the 11 PS3 games on those shelves that the owner doesn't have, Claude named all 11; the reader named 1 for sure (Class of Heroes 2G) and 3 more as unsure with the right guess, and missed 7, mostly thin spines and stylized logos. Claude also added what reading can't: prices against PriceCharting, editions (a collector's edition of a game owned), notes.
 
+A second photo, of the owner's own Switch 2 shelf at about 5 megapixels (2576 × 1932): of roughly 80 Switch 2 spines, 36 identified for sure, all right (all owned, as they had to be), 7 unsure, 6 of them with the right guess. A first version of the matcher called a bare "NINTENDO" Nintendo Switch Sports Resort, a game not owned: the start of a title now counts only when it's most of the title, with no number left unread. Matching also drops a title's console edition and bundle ("- Nintendo Switch 2 Edition + Star-Crossed World"), which spines often leave out. Missed: stylized logos (NBA 2K26, EA FC 26, WWE 2K25), Japanese-language spines (the checklist has English titles only), the smallest print.
+
 What it showed:
 
 - Tesseract is out; a photo-text model like PaddleOCR is the one to build on.
