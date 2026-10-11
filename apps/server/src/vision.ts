@@ -20,9 +20,10 @@ export class VisionError extends Error {}
 
 /** A piece of a photo: a JPEG or PNG as a data URL. */
 const DATA_URL = /^data:(image\/(?:jpeg|png|webp));base64,([A-Za-z0-9+/=]+)$/;
-/** At most this many pieces in one request to Squirrelcade, and this large each (base64 characters). */
+/** At most this many pieces in one request to Squirrelcade, and this large each (base64 characters: a piece 1,568
+ * pixels long as a JPEG is well under a megabyte). */
 export const MAX_PIECES = 9;
-export const MAX_PIECE_CHARS = 6_000_000;
+export const MAX_PIECE_CHARS = 2_000_000;
 /** Two pieces at a time: a home model works one at a time anyway, and a service's rate limit stays clear. */
 const AT_ONCE = 2;
 /** A finished job is kept this long for its asker to collect; one not finished by then has failed. */
@@ -70,6 +71,8 @@ export class VisionClient {
   /** Pieces sent today (the server's day), for the daily limit; starts again after a restart. */
   private day = '';
   private used = 0;
+  /** Of them, the pieces of visitors not signed in (their own limit, Settings > Security). */
+  private visitorsUsed = 0;
   private readonly jobs = new Map<string, VisionJob>();
 
   constructor(
@@ -93,12 +96,15 @@ export class VisionClient {
     return this.helpers.there();
   }
 
-  /** Pieces left today (null: no limit). */
-  left(): number | null {
-    const limit = this.settings.get('sources.visionDailyLimit');
-    if (limit === 0) return null;
+  /** Pieces left today (null: no limit); for a visitor, also within the visitors' own limit. */
+  left(visitor = false): number | null {
     this.rollDay();
-    return Math.max(0, limit - this.used);
+    const limit = this.settings.get('sources.visionDailyLimit');
+    const all = limit === 0 ? null : Math.max(0, limit - this.used);
+    if (!visitor) return all;
+    const theirs = this.settings.get('security.publicShelfPieces');
+    const visitors = theirs === 0 ? null : Math.max(0, theirs - this.visitorsUsed);
+    return all === null ? visitors : visitors === null ? all : Math.min(all, visitors);
   }
 
   private rollDay() {
@@ -106,6 +112,7 @@ export class VisionClient {
     if (today !== this.day) {
       this.day = today;
       this.used = 0;
+      this.visitorsUsed = 0;
     }
   }
 
@@ -128,15 +135,16 @@ export class VisionClient {
   }
 
   /** Starts reading a photo's pieces (the ones past today's limit aren't sent); the job says when it's done. */
-  start(pieces: string[], consoleName: string | null): VisionJob {
+  start(pieces: string[], consoleName: string | null, visitor = false): VisionJob {
     this.sweep();
     if (!this.ready()) throw new VisionError('The vision model is off or not set up (Settings > Features).');
     if (this.helperMode() && !this.helperThere()) throw new VisionError("The helper isn't asking for work: is it running? (Settings > Sources > Vision model)");
-    const left = this.left();
+    const left = this.left(visitor);
     const sending = left === null ? pieces : pieces.slice(0, left);
     if (sending.length === 0) throw new VisionError("Today's pieces for the vision model are used up (Settings > Sources > Vision model).");
     for (const p of sending) if (!DATA_URL.test(p)) throw new VisionError('A piece of the photo isn’t an image.');
     this.used += sending.length;
+    if (visitor) this.visitorsUsed += sending.length;
     const job: VisionJob = { id: randomUUID(), pieces: sending, consoleName, state: 'waiting', titles: [], error: null, sent: sending.length, createdAt: Date.now(), finishedAt: null };
     this.jobs.set(job.id, job);
     job.state = 'reading';

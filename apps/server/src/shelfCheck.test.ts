@@ -62,11 +62,14 @@ describe('checking a shelf without signing in', () => {
   });
 
   it('turns away bad requests, and too many from one address', async () => {
-    g.settings.update({ 'security.publicCheck': 'everywhere', 'security.publicShelfLimit': 2 });
+    // Bad requests count against the hour too.
+    g.settings.update({ 'security.publicCheck': 'everywhere', 'security.publicShelfLimit': 5 });
     expect((await shelf({ platformKey: 'nes', reads: [] })).statusCode).toBe(400);
     expect((await shelf({ platformKey: 'wii', reads: [{ text: 5, score: 1 }] })).statusCode).toBe(400);
     expect((await shelf({ platformKey: 'wii', reads: [], pieces: ['https://example.com/x.jpg'] })).statusCode).toBe(400);
-    expect((await shelf({ platformKey: 'wii', reads: [] })).statusCode).toBe(200);
+    // A visitor sends at most 300 lines, and no photo pieces when the model isn't theirs to use.
+    expect((await shelf({ platformKey: 'wii', reads: Array.from({ length: 301 }, () => ({ text: 'OKAMI', score: 0.9 })) })).statusCode).toBe(400);
+    expect((await shelf({ platformKey: 'wii', reads: [], pieces: [`data:image/jpeg;base64,${'A'.repeat(300_000)}`] })).statusCode).toBe(413);
     expect((await shelf({ platformKey: 'wii', reads: [] })).statusCode).toBe(200);
     expect((await shelf({ platformKey: 'wii', reads: [] })).statusCode).toBe(429);
     // Signed in (or with the owner's key, as a start page passing checks on has it): no limit.
@@ -99,6 +102,25 @@ describe('checking a shelf without signing in', () => {
     expect(asked[0]!.url).toBe('https://api.example.com/v1/chat/completions');
     expect(asked[0]!.headers.authorization).toBe('Bearer k');
     expect(asked[0]!.body.model).toBe('reader-1');
+  });
+});
+
+describe("a visitor's games an hour", () => {
+  it('stops made-up shelves from reading the collection', async () => {
+    g.settings.update({ 'security.publicCheck': 'everywhere', 'security.publicShelfGames': 20 });
+    // One read of each game in the catalog, as a list of titles would be: the games answered count.
+    const reads = ['OKAMI', 'XENOBLADE CHRONICLES'].map((text) => ({ text, score: 0.9 }));
+    for (let i = 0; i < 10; i++) expect((await shelf({ platformKey: 'wii', reads })).statusCode).toBe(200);
+    expect((await shelf({ platformKey: 'wii', reads })).json().message).toMatch(/a lot of games/);
+    // Signed in: no such limit.
+    expect((await shelf({ platformKey: 'wii', reads }, true)).statusCode).toBe(200);
+  });
+
+  it('counts a visitor by address, and an IPv6 home by its /64', async () => {
+    const { visitorOf } = await import('./shelfCheck.js');
+    expect(visitorOf('203.0.113.9')).toBe('203.0.113.9');
+    expect(visitorOf('::ffff:203.0.113.9')).toBe('203.0.113.9');
+    expect(visitorOf('2001:db8:1:2:aaaa:bbbb:cccc:dddd')).toBe('2001:db8:1:2');
   });
 });
 

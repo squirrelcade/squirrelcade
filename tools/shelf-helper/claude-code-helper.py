@@ -26,6 +26,7 @@ import sqlite3
 import subprocess
 import sys
 import tempfile
+import threading
 import time
 import urllib.error
 import urllib.request
@@ -80,11 +81,15 @@ def claude(prompt, schema, tools, cwd):
     """Claude Code, headless: no connectors, only the tools given, the answer in the schema's shape."""
     env = {**os.environ, "ENABLE_CLAUDEAI_MCP_SERVERS": "0"}
     run = subprocess.run(
-        [CLAUDE, "-p", prompt, "--output-format", "json", "--json-schema", json.dumps(schema), "--model", MODEL,
+        [CLAUDE, "-p", "--output-format", "json", "--json-schema", json.dumps(schema), "--model", MODEL,
          "--permission-mode", "dontAsk", "--permission-prompts", "none", "--no-session-persistence",
+         # No MCP servers and none of this account's own settings (their allow rules), whatever they hold.
+         "--strict-mcp-config", "--mcp-config", '{"mcpServers": {}}', "--setting-sources", "project",
          # Only the job's own folder may be read (a photo's text can't send it elsewhere): Read(./**), not Read.
          "--tools", tools, *(["--allowedTools", f"{tools}(./**)"] if tools else [])],
-        cwd=cwd, env=env, capture_output=True, text=True, timeout=540, stdin=subprocess.DEVNULL,
+        # The prompt on stdin: a long conversation would pass a command line's limit.
+        cwd=cwd, env=env, input=prompt, capture_output=True, text=True, timeout=540,
+        **({"creationflags": subprocess.CREATE_NO_WINDOW} if os.name == "nt" else {}),
     )
     if run.returncode != 0:
         raise RuntimeError(f"Claude Code exited {run.returncode}: {(run.stderr or run.stdout)[-300:].strip()}")
@@ -133,43 +138,64 @@ def talk(job):
         shutil.rmtree(work, ignore_errors=True)
 
 
+def work_on(job, key):
+    """Does one job and sends its answer (or what went wrong)."""
+    started = time.time()
+    try:
+        if job.get("kind") == "talk":
+            call("POST", "/api/v1/helper/answer", key, {"id": job["id"], "answer": talk(job)})
+            log(f"answered a turn of Talk in {round(time.time() - started)} s")
+            return
+        titles = read(job)
+        call("POST", "/api/v1/helper/answer", key, {"id": job["id"], "titles": titles})
+        log(f"read {len(job.get('pieces') or [])} piece(s): {len(titles)} titles in {round(time.time() - started)} s")
+    except Exception as e:
+        log(f"couldn't do a {job.get('kind')} job: {e}")
+        try:
+            call("POST", "/api/v1/helper/answer", key, {"id": job["id"], "error": str(e)[:300]})
+        except Exception:
+            pass
+
+
+# Jobs at once: a photo takes a minute or more, and a turn of Talk shouldn't wait behind it.
+AT_ONCE = int(os.environ.get("HELPER_AT_ONCE", "2"))
+
+
 def main():
     key = api_key()
-    log(f"asking {URL} for work (shelf photos, Talk), with {MODEL}")
+    log(f"asking {URL} for work (shelf photos, Talk), with {MODEL}, {AT_ONCE} at a time")
+    slots = threading.Semaphore(AT_ONCE)
     pause = 0
     while True:
         if pause:
             time.sleep(pause)
+        slots.acquire()
         try:
             status, job = call("GET", "/api/v1/helper/next?wait=25000", key)
             pause = 0
         except urllib.error.HTTPError as e:
+            slots.release()
             if e.code in (401, 403) and os.environ.get("SQUIRRELCADE_DB"):
                 key = api_key()  # the key was changed in Squirrelcade: read it again
             log(f"Squirrelcade said {e.code}")
             pause = 30
             continue
         except Exception as e:
+            slots.release()
             log(f"Squirrelcade didn't answer ({e.__class__.__name__}); trying again in a while")
             pause = min(300, max(15, pause * 2))
             continue
         if status == 204 or not job:
+            slots.release()
             continue
-        started = time.time()
-        try:
-            if job.get("kind") == "talk":
-                call("POST", "/api/v1/helper/answer", key, {"id": job["id"], "answer": talk(job)})
-                log(f"answered a turn of Talk in {round(time.time() - started)} s")
-                continue
-            titles = read(job)
-            call("POST", "/api/v1/helper/answer", key, {"id": job["id"], "titles": titles})
-            log(f"read {len(job.get('pieces') or [])} piece(s): {len(titles)} titles in {round(time.time() - started)} s")
-        except Exception as e:
-            log(f"couldn't read a photo: {e}")
+
+        def run(job=job, key=key):
             try:
-                call("POST", "/api/v1/helper/answer", key, {"id": job["id"], "error": str(e)[:300]})
-            except Exception:
-                pass
+                work_on(job, key)
+            finally:
+                slots.release()
+
+        threading.Thread(target=run, daemon=True).start()
 
 
 if __name__ == "__main__":

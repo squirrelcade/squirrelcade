@@ -820,7 +820,8 @@ export async function buildApp(options: BuildOptions = {}): Promise<Squirrelcade
       },
     });
     app.setNotFoundHandler((request, reply) => {
-      if (request.method === 'GET' && !request.url.startsWith('/api/')) return reply.sendFile('index.html');
+      // The page for the app's own addresses; a missing file of the photo reader is missing (a phone mustn't keep the page as one).
+      if (request.method === 'GET' && !request.url.startsWith('/api/') && !request.url.startsWith('/reader/')) return reply.sendFile('index.html');
       return reply.code(404).send({ error: 'not-found', message: 'Not found.' });
     });
   } else {

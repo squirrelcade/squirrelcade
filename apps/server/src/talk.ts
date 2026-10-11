@@ -85,7 +85,7 @@ function promptOf(turns: TalkTurn[], results: string[], owner: boolean, last: bo
     'Answer in a few friendly sentences, plainly, in the words a person would use. Never guess about the collection: look it up first. Say when something is unsure.',
     last
       ? 'Answer now with reply: no more lookups.'
-      : `To look things up, give lookups (at most ${MAX_LOOKUPS}); Squirrelcade runs them and asks you again with their results. When you know enough, give reply.`,
+      : `To look things up, give lookups (at most ${MAX_LOOKUPS}) and no reply yet; Squirrelcade runs them and asks you again with their results. When you know enough, give reply.`,
     `The lookups:\n${TOOLS}`,
     owner
       ? 'When the owner asks for a change, give actions too, only for games you looked up, with platform and title exactly as a lookup gave them: bought (they bought it: a copy is added), note (their note on the game becomes text), exclude (a game they don\'t want to collect leaves its console\'s checklist), target (an excluded game goes back on it), open (shows the game). Say in reply what will happen; Squirrelcade asks before excluding or bringing back.'
@@ -160,9 +160,11 @@ export class TalkService {
     try {
       for (let round = 1; round <= MAX_ROUNDS; round++) {
         const answer = await this.ask(promptOf(turns, results, owner, round === MAX_ROUNDS, today));
-        const lookups = Array.isArray(answer.lookups) ? (answer.lookups as { tool?: unknown; input?: unknown }[]).slice(0, MAX_LOOKUPS) : [];
+        // Entries that aren't objects (a sloppy answer) are passed over, not fatal.
+        const lookups = Array.isArray(answer.lookups) ? answer.lookups.filter(isObject).slice(0, MAX_LOOKUPS) : [];
         const reply = typeof answer.reply === 'string' ? answer.reply.trim() : '';
-        if (lookups.length > 0 && round < MAX_ROUNDS && !reply) {
+        // Lookups first, even with a reply beside them ("Let me check!"): the answer comes once they're done.
+        if (lookups.length > 0 && round < MAX_ROUNDS) {
           for (const l of lookups) {
             const tool = typeof l.tool === 'string' ? l.tool : '';
             const input = l.input && typeof l.input === 'object' ? (l.input as Record<string, unknown>) : {};
@@ -172,7 +174,7 @@ export class TalkService {
           continue;
         }
         job.reply = reply || "Sorry, I couldn't put an answer together. Try asking another way.";
-        job.actions = owner ? this.actions(answer.actions) : [];
+        job.actions = owner ? this.actions(answer.actions, results.join('\n')) : [];
         job.state = 'done';
         break;
       }
@@ -217,23 +219,30 @@ export class TalkService {
     }
   }
 
-  /** The model's actions, each checked: a known kind, a game Squirrelcade knows on that console. */
-  private actions(value: unknown): TalkAction[] {
+  /**
+   * The model's actions, each checked: a known kind, a game Squirrelcade knows on that console. Only a game named
+   * exactly, and found by this turn's lookups, is changed without asking; anything else waits for a tap.
+   */
+  private actions(value: unknown, lookedUp: string): TalkAction[] {
     if (!Array.isArray(value)) return [];
     const { copy } = this.d.lookup.offlineCopy(false);
+    // What the lookups said, as plain words (JSON's escapes, quotes and brackets gone) for finding a title in it.
+    const seen = normalizeTitle(lookedUp.replace(/\\u[0-9a-f]{4}/gi, ' '));
     const out: TalkAction[] = [];
-    for (const a of value.slice(0, 5) as { kind?: unknown; platform?: unknown; title?: unknown; text?: unknown }[]) {
+    for (const a of value.filter(isObject).slice(0, 5) as { kind?: unknown; platform?: unknown; title?: unknown; text?: unknown }[]) {
       const kind = a.kind as TalkAction['kind'];
       if (!['bought', 'note', 'exclude', 'target', 'open'].includes(kind) || typeof a.platform !== 'string' || typeof a.title !== 'string') continue;
       const p = normalizeTitle(a.platform);
       const platform = copy.platforms.find((x) => normalizeTitle(x.key) === p || normalizeTitle(x.name) === p);
       if (!platform) continue;
       const found = this.d.lookup.search(a.title, { platformKey: platform.key, limit: 5 });
-      const game = found.find((r) => normalizeTitle(r.title) === normalizeTitle(a.title as string)) ?? found[0];
+      const exact = found.find((r) => normalizeTitle(r.title) === normalizeTitle(a.title as string));
+      const game = exact ?? found[0];
       if (!game) continue;
+      const sure = exact !== undefined && seen.includes(normalizeTitle(game.title));
       const entryId = game.entryId ?? null;
       if ((kind === 'bought' || kind === 'exclude' || kind === 'target') && entryId === null) continue;
-      const action: TalkAction = { kind, platformKey: game.platformKey, platform: game.platform, title: game.title, entryId, major: kind === 'exclude' || kind === 'target' };
+      const action: TalkAction = { kind, platformKey: game.platformKey, platform: game.platform, title: game.title, entryId, major: kind === 'exclude' || kind === 'target' || (kind !== 'open' && !sure) };
       if (kind === 'note') {
         if (typeof a.text !== 'string' || !a.text.trim()) continue;
         action.text = a.text.trim().slice(0, 2000);
@@ -244,6 +253,12 @@ export class TalkService {
     return out;
   }
 }
+
+/** A JSON object (not null, not a list). */
+const isObject = (x: unknown): x is Record<string, unknown> => Boolean(x) && typeof x === 'object' && !Array.isArray(x);
+
+/** At most this many turns of Talk an hour per person (each can be a few model calls). */
+const TURNS_AN_HOUR = 60;
 
 function turnsOf(value: unknown): TalkTurn[] | null {
   if (!Array.isArray(value) || value.length === 0 || value.length > 40) return null;
@@ -257,9 +272,15 @@ function turnsOf(value: unknown): TalkTurn[] | null {
 }
 
 export function registerTalkRoutes(app: FastifyInstance, talk: TalkService): void {
+  const recent = new Map<string, number[]>();
   app.get('/api/v1/talk/status', async () => ({ available: talk.ready() }));
   app.post('/api/v1/talk', async (request, reply) => {
     if (!talk.ready()) return reply.code(409).send({ error: 'off', message: 'Talk is off, or its AI model isn’t set up (Settings > Features).' });
+    const who = request.auth?.kind === 'session' ? `u${request.auth.userId}` : request.auth?.kind ?? request.ip;
+    const now = Date.now();
+    const times = (recent.get(who) ?? []).filter((t) => now - t < 60 * 60_000);
+    if (times.length >= TURNS_AN_HOUR) return reply.code(429).send({ error: 'too-many', message: 'That was a lot of talking for one hour. Try again a bit later.' });
+    recent.set(who, [...times, now]);
     const turns = turnsOf((request.body as { turns?: unknown } | null)?.turns);
     if (!turns) return reply.code(400).send({ error: 'invalid', message: 'Send the conversation, ending with what you said.' });
     const role = roleOf(request);

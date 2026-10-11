@@ -10,6 +10,11 @@ const VERSION_KEY = '/__squirrelcade-files-version';
 // and models (about 30 MB) are in folders named for their versions, so a kept one is never out of date.
 const READER = 'squirrelcade-reader';
 
+/** A reader file worth keeping: Squirrelcade's own answer, and never a page (a sign-in gate's, say) in its place. */
+function keepable(response) {
+  return response.ok && response.type === 'basic' && !(response.headers.get('content-type') || '').includes('text/html');
+}
+
 self.addEventListener('install', () => self.skipWaiting());
 // Any other cache of this site's (one kept under an earlier name) goes, so a device keeps a single copy of the files.
 self.addEventListener('activate', (event) =>
@@ -80,7 +85,7 @@ self.addEventListener('fetch', (event) => {
         const cached = await cache.match(request);
         if (cached) return cached;
         const response = await fetch(request);
-        if (response.ok && response.type === 'basic') await cache.put(request, response.clone());
+        if (keepable(response)) await cache.put(request, response.clone());
         return response;
       })(),
     );
@@ -94,7 +99,7 @@ self.addEventListener('fetch', (event) => {
         const cache = await caches.open(READER);
         try {
           const response = await fetch(request);
-          if (response.ok && response.type === 'basic') {
+          if (keepable(response)) {
             await cache.put(request, response.clone());
             if (url.pathname === '/reader/lib/paths.json') {
               const paths = await response.clone().json();

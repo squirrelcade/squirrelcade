@@ -40,15 +40,23 @@ export class HelperQueue {
   private readonly waiting: ((work: Work | null) => void)[] = [];
   private seenAt = 0;
 
-  /** Whether a helper asked for work lately. */
+  /** Whether a helper asked for work lately, or is working on some now. */
   there(): boolean {
-    return Date.now() - this.seenAt < SEEN_MS || this.waiting.length > 0;
+    return Date.now() - this.seenAt < SEEN_MS || this.waiting.length > 0 || this.busy();
+  }
+
+  /** Whether a helper has work in hand (it asks again when it's done: a photo takes it a minute or more). */
+  private busy(): boolean {
+    return this.work.some((w) => w.takenAt !== null);
   }
 
   private sweep() {
     const now = Date.now();
+    // Work waits while a helper is busy; it fails when no helper has asked for a minute since it came (or since the
+    // helper was last seen).
+    const busy = this.busy();
     for (const w of [...this.work]) {
-      if (w.takenAt === null && now - w.createdAt > TAKE_MS) this.end(w, null, 'No helper took it: is the helper running?');
+      if (w.takenAt === null && !busy && now - Math.max(w.createdAt, this.seenAt) > TAKE_MS) this.end(w, null, 'No helper took it: is the helper running?');
       else if (w.takenAt !== null && now - w.takenAt > ANSWER_MS) this.end(w, null, "The helper didn't answer in time.");
     }
   }
@@ -135,6 +143,7 @@ export class HelperQueue {
   answer(id: string, answer: HelperAnswer): boolean {
     const w = this.work.find((x) => x.id === id && x.takenAt !== null);
     if (!w) return false;
+    this.seenAt = Date.now();
     if (typeof answer.error === 'string' && answer.error) this.end(w, null, `The helper couldn't do it: ${answer.error.slice(0, 300)}`);
     else this.end(w, answer, null);
     return true;

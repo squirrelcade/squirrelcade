@@ -49,6 +49,8 @@ describe('Talk to Squirrelcade', () => {
 
   it("proposes the owner's changes, checked against the collection: small ones done by the page, big ones asked", async () => {
     answers = [
+      // Looked up first (with a "let me check" beside it, which isn't the answer), a null entry passed over.
+      JSON.stringify({ reply: 'Let me check!', lookups: [null, { tool: 'search_games', input: { query: 'xenoblade' } }, { tool: 'check_ownership', input: { titles: ['Xenoblade Chronicles', 'Okami'] } }] }),
       JSON.stringify({
         reply: 'Marked bought, and noted.',
         actions: [
@@ -57,6 +59,7 @@ describe('Talk to Squirrelcade', () => {
           { kind: 'exclude', platform: 'Wii', title: 'Pac-Man Party' },
           { kind: 'bought', platform: 'Wii', title: 'Not A Real Game Anywhere' },
           { kind: 'launch', platform: 'Wii', title: 'Okami' },
+          null,
         ],
       }),
     ];
@@ -65,6 +68,16 @@ describe('Talk to Squirrelcade', () => {
       expect.objectContaining({ kind: 'bought', platformKey: 'wii', title: 'Xenoblade Chronicles', major: false, entryId: expect.any(Number) }),
       expect.objectContaining({ kind: 'note', title: 'Okami', text: 'Case cracked', before: null, major: false }),
       expect.objectContaining({ kind: 'exclude', title: 'Pac-Man Party', major: true }),
+    ]);
+    expect(job.reply).toBe('Marked bought, and noted.');
+  });
+
+  it("asks before changing a game it didn't look up, or named only nearly", async () => {
+    answers = [JSON.stringify({ reply: 'Done.', actions: [{ kind: 'bought', platform: 'Wii', title: 'Xenoblade Chronicles' }, { kind: 'note', platform: 'Wii', title: 'Okam', text: 'x' }] })];
+    const job = await talk([{ role: 'you', text: 'I bought Xenoblade' }]);
+    expect(job.actions.map((a: { title: string; major: boolean }) => [a.title, a.major])).toEqual([
+      ['Xenoblade Chronicles', true],
+      ['Okami', true],
     ]);
   });
 

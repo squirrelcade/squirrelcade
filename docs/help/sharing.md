@@ -34,7 +34,7 @@ For family shopping for you, who have no account: **Settings > Security > "Check
 
 Nothing private is shown (no notes, no prices paid), and each address can check a limited number of games in 10 minutes (a setting), so nobody can read your whole collection that way.
 
-Under it, **Or check a whole shelf** (Settings > Security > "Check a shelf without signing in", on with the check unless you turn it off): they pick a console and take a photo of a shelf; their phone reads the spines (nothing to install; the reader's files download the first time) and sends the text it read, and Squirrelcade answers for the games read, as above, never with the rest of your collection. Each address can check a limited number of shelves an hour (a setting). **On, with your vision model too** also sends pieces of their photo to the vision model you set up (Settings > Features), counted in its daily limit.
+Under it, **Or check a whole shelf** (Settings > Security > "Check a shelf without signing in", on with the check unless you turn it off): they pick a console and take a photo of a shelf; their phone reads the spines (nothing to install; the reader's files download the first time) and sends the text it read, and Squirrelcade answers for the games read, as above, never with the rest of your collection. Each address can check a limited number of shelves an hour, and be answered for a limited number of games (both settings, under Show advanced), so nobody can read your collection by sending made-up shelves; visitors' pieces for the vision model have a daily limit of their own. **On, with your vision model too** also sends pieces of their photo to the vision model you set up (Settings > Features), counted in its daily limit.
 
 ## If Squirrelcade is on the internet
 

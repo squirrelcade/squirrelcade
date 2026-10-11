@@ -53,8 +53,10 @@ function actionText(a: TalkAction): string {
   const game = `${a.title} (${a.platform})`;
   switch (a.kind) {
     case 'bought':
+      if (a.state === 'asking') return `Add ${game} to your collection as bought today?`;
       return a.state === 'undone' ? `${game}: not bought after all` : `${game} added to your collection as bought today`;
     case 'note':
+      if (a.state === 'asking') return `Your note on ${game} to be “${a.text}”?`;
       return a.state === 'undone' ? `${game}: the note is as it was` : `Your note on ${game}: “${a.text}”`;
     case 'exclude':
       return a.state === 'done' ? `${game} excluded from its checklist` : `Exclude ${game} from its checklist? It moves to the Excluded tab and stops counting, so the console can show 100%.`;
@@ -194,7 +196,7 @@ function TalkPanel() {
                 {actionText(a)}
                 {a.state === 'failed' ? ` (not done: ${a.error})` : ''}
                 {a.state === 'declined' ? ' (not done)' : ''}{' '}
-                {a.state === 'done' && !a.major && a.kind !== 'open' && (
+                {a.state === 'done' && (a.kind === 'bought' || a.kind === 'note') && (
                   <Anchor component="button" type="button" size="xs" onClick={() => void change(i, j, undo)}>
                     Undo
                   </Anchor>
@@ -210,7 +212,7 @@ function TalkPanel() {
               {a.state === 'asking' && (
                 <Group gap="xs">
                   <Button size="compact-sm" color={a.kind === 'exclude' ? 'red' : 'green'} onClick={() => void change(i, j, run)}>
-                    {a.kind === 'exclude' ? 'Exclude it' : 'Make it a target'}
+                    {{ exclude: 'Exclude it', target: 'Make it a target', bought: 'Yes, I bought it', note: 'Save the note', open: 'Open' }[a.kind]}
                   </Button>
                   <Button size="compact-sm" variant="default" onClick={() => void change(i, j, (x) => ({ ...x, state: 'declined' }))}>
                     Not now
