@@ -31,6 +31,10 @@ Squirrelcade already has much of what they're known for: barcode scanning (and o
 8. **Photos of your copies** (CLZ): a few pictures per copy, for condition and insurance, kept in the config folder and in backups.
 9. **An insurance or sale report** (PriceCharting's lots): a printable page or PDF of the collection (or a chosen part) with values and photos.
 
+## Planned, not built yet
+
+- **Shelf Scan** (the owner's idea, 2026-10-10; [design](design/shelf-scan.md)): a photo of a store shelf in, a checklist out (have it, have it on another console, on the wishlist, missing, unsure). Reading the spines on the phone against the console's own list of games (no AI, no signal needed), the title matcher Claude's connector already uses deciding ownership, and AI only for the spines left unsure, if turned on. First step: measure two text readers on real shelf photos.
+
 ## Not recommended now
 
 - **Time to beat** (HowLongToBeat): no official API; the community libraries scrape the site, which breaks and may break its terms.

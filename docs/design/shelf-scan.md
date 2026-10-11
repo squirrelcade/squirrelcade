@@ -1,0 +1,65 @@
+# Shelf Scan: the plan
+
+Proposed 2026-10-10 from the owner's own use: in a store, a photo of a shelf of games, which Claude read through the Squirrelcade connector, checking each spine against the collection. Not built; this is the design to start from.
+
+## What it's for
+
+A photo of a store shelf (spines facing out, usually one console) in, a checklist out: each game marked **have it**, **have it on another console**, **on your wishlist** (with its acorns), **missing**, or **unsure**. Any time, from a phone, ideally with no signal and no paid service. A game is never marked missing on a poor read: an unsure read is **unsure**, since a wrong "missing" is how a duplicate gets bought.
+
+## What's already there
+
+- **Store Mode** answers one game, by barcode or by title, and works with no signal from the browser's copy of every answer (`/api/v1/lookup/offline`, D45).
+- **Scan my shelf** (0.33.0) takes the barcodes of your own games at home, so Store Mode knows them at once later.
+- **Check a list** answers a pasted list of titles, line by line.
+- **The title matcher** (`packages/core/src/titleMatch.ts`, 0.55.0, D127) was written for exactly this kind of text: titles from a photo, a list or a conversation. It gives each match a confidence (0.85 and up is the same game, 0.6 to 0.85 a near miss that's listed and never counted), reads editions, subtitles, franchise names and spellings, and treats a different number as a different game. The Claude connector's `check_ownership` (`apps/server/src/aiTools.ts`, behind `mcp.ts`) uses it, and since it's in `packages/core`, the phone can run the same code.
+- **Claude with the connector or plugin** (Help > Claude and AI apps) already does Shelf Scan today, with AI: the photo goes to Claude, which reads the spines and asks `check_ownership`.
+
+## Can it work without AI?
+
+Partly, and the honest answer shapes the design.
+
+- **The phone's own text recognition isn't open to web pages.** iPhone's Live Text and Android's ML Kit work in apps, not in a browser. Chrome has a `TextDetector`, but it's still experimental and depends on the platform. A web app (and Squirrelcade's phone app is one) has to bring its own text reader.
+- **Tesseract.js** (the classic OCR, in the browser) is made for documents: dark horizontal text on a light page. Spines are the opposite: vertical, stylized logos, coloured bands, glare, thin, often far from the camera. Expect it to miss many spines and misread others. It would still settle some, because of the closed list (below).
+- **Scene-text models** (PaddleOCR's PP-OCRv5 mobile models, run in the browser through ONNX Runtime Web; community packages exist) are made for text in photos, at any angle, and do markedly better on signs and labels. It's machine learning, but it runs on the phone, costs nothing per scan, sends nothing anywhere, and works with no signal once its model files (tens of megabytes) are downloaded and cached. Stylized logos (a franchise's wordmark) and distant thin spines still defeat it.
+- **The closed list is what makes it work.** On one console's shelf, a read only has to pick among that console's known games (one to three thousand, from its checklist, other names and your own copies' titles), so a partial read like "NCHARTED 2 AMONG TH" is enough. Store Mode's offline copy already keeps that list on the phone.
+- **Precision before recall.** Only a match at 0.85 or more counts; a number has to be read (Halo 2 against Halo 3: an unread or doubtful digit makes it unsure); everything else is unsure, with its best guesses offered.
+- **What to expect** (to be measured, not promised): on a well-lit photo of one console's shelf, a scene-text model with the closed list might settle half to three quarters of the spines, the rest unsure; Tesseract noticeably fewer. Phase 1 measures it on real photos before anything is chosen.
+
+So the answer is a **hybrid**: on-device reading and the closed list by default (free, private, offline); the barcode for one game in hand (exact; Store Mode already does it); and AI only for the spines left unsure, only if the owner turns it on, only with signal.
+
+## How it would work
+
+1. **Capture (phone).** Store Mode > **Shelf Scan**: pick the console (the last one by default), then take a photo or choose one (a file input with the camera as its source works in every phone browser and in the installed app). The photo stays on the phone.
+2. **Read (phone, in a background worker).** Find the text boxes; read each one upright and turned (spines are mostly vertical); group the boxes into spines by where they sit; make a few candidate strings per spine (each line, and neighbouring lines joined).
+3. **Match (phone, `packages/core`).** Against the console's closed list from the offline copy, with the title matcher plus a layer for reading mistakes (O and 0, I and 1 and l, S and 5, rn and m, a dropped letter). Each spine gets the offline copy's answer: have it, have it on another console, on the wishlist with its acorns, missing, not a target. Online, the server can run the same code; it's one matcher either way.
+4. **Show.** A checklist: **Need it** (wishlist games first, by acorns), **Have it**, **Have it on another console**, **Unsure**. Later, the photo itself with each spine's box coloured by its answer; tap one to fix it (search the console's games, or "not a game"). A fix is remembered (this spine's text is that game) for the next scan, in the offline copy, as Scan my shelf remembers barcodes. **I bought it** works from the list.
+5. **AI fallback (optional, off by default).** With signal and a key the owner adds, only the unsure spines' crops (never the whole photo) go to a vision model, which returns the text it reads; Squirrelcade matches that as in step 3, so the model never decides ownership. A cap on crops per scan and per day keeps the cost known.
+
+## Title data needed per console
+
+- **The console's game list:** its checklist (Wikipedia and the owner's lists), its games' other names, and your copies' titles. All there already, and in the offline copy.
+- **Short names as spines print them:** many spines show only the main title or a logo ("UNCHARTED 2", no subtitle). The matcher's base-title and subtitle handling covers part; IGDB's alternative names (the optional IGDB layer) would cover more.
+- **Learned spine texts** from fixes, per install.
+- Nothing from a photo is kept unless the owner saves the scan.
+
+## Phases
+
+0. **Today, nothing to build:** the Claude app with the connector or plugin does this with AI. Write it up in Help > Store Mode as the way to do it now.
+1. **Measure:** 20 to 30 real shelf photos (the owner's, kept out of the repository), a test page running Tesseract.js and PaddleOCR on them; count spines read right, wrong and unsure; time and download size on a phone. Choose the engine on those numbers.
+2. **MVP:** Store Mode > Shelf Scan: one photo, one console, on-device reading, the checklist (no overlay yet), working offline after first use, I bought it from the list.
+3. **Overlay and fixes:** the boxes on the photo, tap to fix, fixes remembered.
+4. **AI fallback:** opt-in, unsure crops only, the owner's own key, with caps.
+
+## Settings (every decision is a setting)
+
+- Shelf Scan on or off (on with Store Mode).
+- How sure a match must be to count (0.85).
+- When to download the reading model: on first use, or only on Wi-Fi.
+- AI fallback: off; which service and its key; at most so many crops per scan and per day.
+- Keep scans: off.
+
+## Open questions
+
+- Which engine: phase 1 decides.
+- Mixed shelves: the first version asks for the console; later the spine's console band (PlayStation's blue, Switch's red, Xbox's green) could tell.
+- Shelves shot at an angle, or two rows in one photo: guidance on the capture screen first, correction later if the measurements call for it.
