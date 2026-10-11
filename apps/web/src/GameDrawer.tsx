@@ -2,7 +2,7 @@ import { DrawerHistory, type HistoryText } from './pages/History';
 import { COMPLETENESS_LABELS, priceChartingUrl, shopLinksFor, shopUrl, type Completeness, type SettingsValues, type ShopLink, SHOPS_IN_LISTS } from '@squirrelcade/core';
 import { Anchor, Badge, Box, Button, Divider, Drawer, Group, Loader, Menu, Modal, Spoiler, Stack, Table, Text, Textarea, Tooltip } from '@mantine/core';
 import { useMediaQuery } from '@mantine/hooks';
-import { IconCheck, IconClock, IconEyeOff, IconNotes, IconPlus, IconRestore, IconShoppingCart, IconX } from '@tabler/icons-react';
+import { IconCheck, IconChevronDown, IconClock, IconEyeOff, IconNotes, IconPencil, IconPlus, IconRestore, IconShoppingCart, IconX } from '@tabler/icons-react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Fragment, useEffect, useState, type ReactNode } from 'react';
 import { Link, useSearchParams } from 'react-router';
@@ -94,6 +94,27 @@ interface GameView {
 }
 
 /** A game's progress on Xbox or PlayStation (GET /api/v1/game). */
+type DrawerCopy = GameView['copies'][number];
+
+/**
+ * A copy as the "Edit a copy" list names it, numbered as Your copies lists them: its title if it differs, condition,
+ * where it's kept, what it's worth and what you paid, when added (two loose copies added the same day still differ by
+ * their number).
+ */
+function copyLabel(x: DrawerCopy, n: number, gameTitle: string, currency: string, dateFormat: Parameters<typeof date>[1]): string {
+  return [
+    `Copy ${n}`,
+    x.title !== gameTitle ? x.title : null,
+    COMPLETENESS_LABELS[x.completeness as Completeness] ?? x.completeness,
+    x.details?.location ? `in ${x.details.location}` : null,
+    x.valueCents ? `worth ${money(x.valueCents, currency)}` : null,
+    x.costCents ? `paid ${money(x.costCents, currency)}` : null,
+    x.dateEntered ? `added ${date(x.dateEntered, dateFormat)}` : null,
+  ]
+    .filter(Boolean)
+    .join(' · ');
+}
+
 interface AchievementView {
   source: 'xbox' | 'playstation';
   earned: number;
@@ -534,6 +555,14 @@ export function GameDrawer() {
   // What the owner played, and their copies' details, show to viewers only when the owner shares them.
   const seesPlay = useSetting('security.viewersSeePlay', true) || canEdit;
   const [editing, setEditing] = useState<CopyRef | null>(null);
+  /** A copy's window: its condition, what you paid, when, notes, photos, where it is, lending. */
+  const editRef = (x: DrawerCopy): CopyRef => ({
+    copyKey: x.copyKey,
+    title: x.title,
+    platform: g!.platform,
+    condition: COMPLETENESS_LABELS[x.completeness as Completeness] ?? x.completeness,
+    copy: { id: x.id, completeness: x.completeness, costCents: x.costCents, datePurchased: x.datePurchased, notes: x.notes, slots: x.slots, estimatedCents: x.estimatedCents, platformKey: g!.platformKey },
+  });
   // The windows opened from the drawer keep what they were opened for, and live outside its content: a refresh that
   // redraws the content (WebKit showed one) must not close a window or lose what was typed in it.
   const [adding, setAdding] = useState<{ platformKey: string; platform: string; title: string } | null>(null);
@@ -567,6 +596,30 @@ export function GameDrawer() {
                       {t.tone === 'have' ? <Have>{t.label}</Have> : t.label}
                     </span>
                   ))}
+                  {/* Your copy's window (condition, what you paid, photos, where it is...) right beside "Have it"; with
+                      several copies, a list to pick which (the owner, 2026-10-11). */}
+                  {canEdit && g.copies.length === 1 && (
+                    <button type="button" className="sc-tag" data-tone="edit" onClick={() => setEditing(editRef(g.copies[0]!))}>
+                      <IconPencil size={13} aria-hidden /> Edit my copy
+                    </button>
+                  )}
+                  {canEdit && g.copies.length > 1 && (
+                    <Menu position="bottom-start" withinPortal>
+                      <Menu.Target>
+                        <button type="button" className="sc-tag" data-tone="edit">
+                          <IconPencil size={13} aria-hidden /> Edit a copy <IconChevronDown size={12} aria-hidden />
+                        </button>
+                      </Menu.Target>
+                      <Menu.Dropdown>
+                        <Menu.Label>Which copy?</Menu.Label>
+                        {g.copies.map((x, i) => (
+                          <Menu.Item key={x.copyKey || `${x.productId}|${i}`} onClick={() => setEditing(editRef(x))}>
+                            {copyLabel(x, i + 1, g.title, currency, dateFormat)}
+                          </Menu.Item>
+                        ))}
+                      </Menu.Dropdown>
+                    </Menu>
+                  )}
                 </Group>
               )}
               <Text size="sm" c="dimmed">
@@ -707,7 +760,15 @@ export function GameDrawer() {
                     <Table.Tr key={x.copyKey || `${x.productId}|${i}`}>
                       <Table.Td>
                         <Group gap={6} wrap="nowrap">
-                          <Text size="sm">{x.title}</Text>
+                          <Text size="sm">
+                            {/* Numbered as the "Edit a copy" list names them, when there are several. */}
+                            {g.copies.length > 1 && (
+                              <Text span size="xs" c="dimmed">
+                                Copy {i + 1} ·{' '}
+                              </Text>
+                            )}
+                            {x.title}
+                          </Text>
                           <RegionBadge region={x.region} consoleLabel={x.consoleLabel} platformKey={g.platformKey} />
                         </Group>
                         <Text size="xs" c="dimmed">
@@ -769,20 +830,7 @@ export function GameDrawer() {
                           </Group>
                         )}
                         {canEdit && (
-                          <Anchor
-                            component="button"
-                            type="button"
-                            size="xs"
-                            onClick={() =>
-                              setEditing({
-                                copyKey: x.copyKey,
-                                title: x.title,
-                                platform: g.platform,
-                                condition: COMPLETENESS_LABELS[x.completeness as Completeness] ?? x.completeness,
-                                copy: { id: x.id, completeness: x.completeness, costCents: x.costCents, datePurchased: x.datePurchased, notes: x.notes, slots: x.slots, estimatedCents: x.estimatedCents, platformKey: g.platformKey },
-                              })
-                            }
-                          >
+                          <Anchor component="button" type="button" size="xs" onClick={() => setEditing(editRef(x))}>
                             Change it, where it is, lending, photos...
                           </Anchor>
                         )}

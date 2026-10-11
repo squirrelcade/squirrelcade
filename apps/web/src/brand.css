@@ -114,6 +114,27 @@
   background: var(--sc-have-bg);
   color: var(--sc-have);
 }
+/* A tag that's a button: "Edit my copy" beside "Have it" in a game's drawer, as easy to see and filled in. */
+.sc-tag[data-tone='edit'] {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  border: 0;
+  cursor: pointer;
+  font-family: inherit;
+  background: var(--sc-pill-bg);
+  color: #ffffff;
+}
+[data-mantine-color-scheme='dark'] .sc-tag[data-tone='edit'] {
+  background: #1e7546;
+}
+.sc-tag[data-tone='edit']:hover {
+  filter: brightness(1.12);
+}
+.sc-tag[data-tone='edit']:focus-visible {
+  outline: 2px solid var(--sc-cade);
+  outline-offset: 2px;
+}
 .sc-tag[data-tone='want'] {
   background: var(--sc-gold-bg);
   color: var(--sc-gold);

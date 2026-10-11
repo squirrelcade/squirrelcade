@@ -880,6 +880,15 @@ export async function uiTest(target, account, check) {
     found = await pageProblems();
     check('ui: the search opens a game', found.length === 0 && new URL(page.url()).searchParams.get('game') === 'playstation-3|Demons Souls', `${page.url()} ${found.join(' | ')}`);
 
+    // Edit my copy beside Have it (the owner's ask, 2026-10-11): one copy opens its window; several, a list to pick from.
+    await page.goto(`${base}/collection?game=${encodeURIComponent('playstation-3|Tearaway')}`);
+    await page.getByRole('button', { name: /^Edit (my|a) copy/ }).click();
+    if (await page.getByRole('menuitem').first().isVisible().catch(() => false)) await page.getByRole('menuitem').first().click();
+    await page.getByRole('button', { name: 'Save the copy' }).waitFor({ timeout: 10000 });
+    found = await pageProblems();
+    check('ui: Edit my copy, beside Have it, opens the copy', found.length === 0, found.join(' | '));
+    await page.keyboard.press('Escape');
+
     // Check a list: several games at once, with and without their console, and a barcode Store Mode knows
     // (saved for Okami here), as a handheld scanner types it.
     const saved = await page.request.post(`${base}/api/v1/barcodes`, { data: { code: '012345678905', platformKey: 'playstation-3', title: 'Okami' } });

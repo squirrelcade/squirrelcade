@@ -29,7 +29,7 @@ The form stays on the console for the next game, and **Added just now** lists wh
 
 A game's drawer has **Add a copy**: its condition, and what you paid, when and a note if you like. **I bought it** (in the drawer and in Store Mode) adds one in one tap, bought today, in the condition Settings > Collection > Adding copies gives a game just bought. The copy counts at once; its value comes with the export that has it (or from another copy of the same game in that condition, if you have one from PriceCharting). Under **Your copies**, a copy added here says **Added in Squirrelcade: not on PriceCharting yet**, with **send it** and, while nothing is kept on it, **take back**.
 
-**Change it** (under each copy, with where it is, lending and photos): its condition, what you paid, the day you bought it and notes, for any copy, one from PriceCharting's export too. What you change here stays yours: no export overwrites it, and the export still finds the copy. **Sold** or **Remove** takes it out of your collection (it stays in the history).
+**Edit my copy**, beside **Have it** at the top of a game's drawer, opens your copy's window; with several copies it's **Edit a copy**, a list to pick which (numbered as **Your copies** numbers them). The same window opens from **Change it** under each copy (with where it is, lending and photos): its condition, what you paid, the day you bought it and notes, for any copy, one from PriceCharting's export too. What you change here stays yours: no export overwrites it, and the export still finds the copy. **Sold** or **Remove** takes it out of your collection (it stays in the history).
 
 ## Sending to PriceCharting
 
