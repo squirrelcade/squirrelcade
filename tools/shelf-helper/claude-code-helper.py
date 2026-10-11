@@ -82,7 +82,8 @@ def claude(prompt, schema, tools, cwd):
     run = subprocess.run(
         [CLAUDE, "-p", prompt, "--output-format", "json", "--json-schema", json.dumps(schema), "--model", MODEL,
          "--permission-mode", "dontAsk", "--permission-prompts", "none", "--no-session-persistence",
-         "--tools", tools, *(["--allowedTools", tools] if tools else [])],
+         # Only the job's own folder may be read (a photo's text can't send it elsewhere): Read(./**), not Read.
+         "--tools", tools, *(["--allowedTools", f"{tools}(./**)"] if tools else [])],
         cwd=cwd, env=env, capture_output=True, text=True, timeout=540, stdin=subprocess.DEVNULL,
     )
     if run.returncode != 0:

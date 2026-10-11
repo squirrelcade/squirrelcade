@@ -84,8 +84,8 @@ export class HelperQueue {
     });
   }
 
-  /** A helper asking for work: the oldest waiting, or null after waitMs with none. */
-  next(waitMs: number): Promise<{ id: string; kind: string } & Record<string, unknown> | null> {
+  /** A helper asking for work: the oldest waiting, or null after waitMs with none (or once the helper hangs up). */
+  next(waitMs: number, gone?: AbortSignal): Promise<{ id: string; kind: string } & Record<string, unknown> | null> {
     this.sweep();
     this.seenAt = Date.now();
     const give = (w: Work | null) => {
@@ -106,8 +106,29 @@ export class HelperQueue {
         if (i >= 0) this.waiting.splice(i, 1);
         resolve(give(null));
       }, waitMs);
+      // A helper that hung up (stopped, restarted) gets no work: it would never answer.
+      gone?.addEventListener(
+        'abort',
+        () => {
+          const i = this.waiting.indexOf(hand);
+          if (i < 0) return;
+          this.waiting.splice(i, 1);
+          clearTimeout(timer);
+          resolve(null);
+        },
+        { once: true },
+      );
       this.waiting.push(hand);
     });
+  }
+
+  /** Work given to a helper that hung up before it got it: back in the queue, for the next helper. */
+  release(id: string): void {
+    const w = this.work.find((x) => x.id === id);
+    if (!w) return;
+    w.takenAt = null;
+    const helper = this.waiting.shift();
+    if (helper) helper(w);
   }
 
   /** A helper's answer to taken work; false when no such work is waiting for one. */
@@ -135,8 +156,16 @@ export function registerHelperRoutes(app: FastifyInstance, helpers: HelperQueue)
   app.get('/api/v1/helper/next', async (request, reply) => {
     if (!ownerOnly(request, reply)) return reply;
     const asked = Number((request.query as { wait?: string }).wait ?? WAIT_MS);
-    const work = await helpers.next(Number.isFinite(asked) ? Math.min(WAIT_MS, Math.max(0, asked)) : WAIT_MS);
-    if (!work) return reply.code(204).send();
+    const gone = new AbortController();
+    reply.raw.on('close', () => {
+      if (!reply.raw.writableFinished) gone.abort();
+    });
+    const work = await helpers.next(Number.isFinite(asked) ? Math.min(WAIT_MS, Math.max(0, asked)) : WAIT_MS, gone.signal);
+    if (!work) return gone.signal.aborted ? reply : reply.code(204).send();
+    if (gone.signal.aborted || request.raw.socket?.destroyed) {
+      helpers.release(work.id);
+      return reply;
+    }
     return work;
   });
   app.post('/api/v1/helper/answer', { bodyLimit: 1_000_000 }, async (request, reply) => {
