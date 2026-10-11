@@ -34,6 +34,8 @@ For family shopping for you, who have no account: **Settings > Security > "Check
 
 Nothing private is shown (no notes, no prices paid), and each address can check a limited number of games in 10 minutes (a setting), so nobody can read your whole collection that way.
 
+Under it, **Or check a whole shelf** (Settings > Security > "Check a shelf without signing in", on with the check unless you turn it off): they pick a console and take a photo of a shelf; their phone reads the spines (nothing to install; the reader's files download the first time) and sends the text it read, and Squirrelcade answers for the games read, as above, never with the rest of your collection. Each address can check a limited number of shelves an hour (a setting). **On, with your vision model too** also sends pieces of their photo to the vision model you set up (Settings > Features), counted in its daily limit.
+
 ## If Squirrelcade is on the internet
 
 Anyone who can reach the sign-in page can use the check, and try passwords. Keep Squirrelcade behind a sign-in of its own when it's reachable from the internet: a VPN, or a tunnel with an access gate such as Cloudflare Access (add each person's email to it). Store Mode's camera needs HTTPS anyway, which a tunnel gives you.

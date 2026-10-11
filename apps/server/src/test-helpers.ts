@@ -123,6 +123,7 @@ export async function testApp(
     steamFetch?: FetchLike;
     itadFetch?: FetchLike;
     ggdealsFetch?: FetchLike;
+    visionFetch?: FetchLike;
     mailbox?: MailboxOpener;
     exportDownload?: ExportDownloader;
     /** AI apps' sign-in: client metadata documents and Cloudflare Access's keys. */
@@ -168,6 +169,7 @@ export async function testApp(
       steamFetch: options.steamFetch ?? noNetwork,
       itadFetch: options.itadFetch ?? noNetwork,
       ggdealsFetch: options.ggdealsFetch ?? noNetwork,
+      visionFetch: options.visionFetch ?? noNetwork,
       mailbox: options.mailbox ?? (async () => {
         throw new Error('No mailbox in tests');
       }),

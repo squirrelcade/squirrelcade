@@ -171,7 +171,7 @@ const PUSHOVER_PRIORITIES = [
 ] as const;
 
 /** The optional parts of Squirrelcade (Settings > Features): each needs something outside Squirrelcade, or can simply be left out. */
-export type FeatureKey = 'igdb' | 'history' | 'pc' | 'romm' | 'itad' | 'mail' | 'retroachievements' | 'xbox' | 'playstation' | 'steam';
+export type FeatureKey = 'igdb' | 'history' | 'pc' | 'romm' | 'itad' | 'mail' | 'retroachievements' | 'xbox' | 'playstation' | 'steam' | 'vision';
 
 /** Each optional part's switch. */
 export const FEATURE_SETTINGS = {
@@ -185,13 +185,14 @@ export const FEATURE_SETTINGS = {
   xbox: 'features.xbox',
   playstation: 'features.playstation',
   steam: 'features.steam',
+  vision: 'features.vision',
 } as const satisfies Record<FeatureKey, string>;
 
 /**
  * Whether each optional part is on in a new install: the ones that work with nothing to set up, and IGDB (which
  * does nothing until it has its keys); the ones that need another program (Playnite, RomM) start off.
  */
-export const FEATURE_DEFAULTS: Readonly<Record<FeatureKey, boolean>> = { igdb: true, history: true, pc: false, romm: false, itad: false, mail: false, retroachievements: false, xbox: false, playstation: false, steam: false };
+export const FEATURE_DEFAULTS: Readonly<Record<FeatureKey, boolean>> = { igdb: true, history: true, pc: false, romm: false, itad: false, mail: false, retroachievements: false, xbox: false, playstation: false, steam: false, vision: false };
 
 /** Every setting Squirrelcade has, by key: the one list the settings pages, validation, defaults and exports are built from. */
 export const settingDefinitions = {
@@ -530,6 +531,14 @@ export const settingDefinitions = {
     description:
       "Your achievements in the PC library's Steam games: how many of each game's you have, and a filter for the games you completed on Steam. Read through Steam's own Web API with a free key, once a day (only the games you played since). Needs the PC library, and your Steam profile's game details set to public: turn this on, then enter the key and your profile right below. Squirrelcade only reads.",
     default: FEATURE_DEFAULTS.steam,
+  }),
+  'features.vision': bool({
+    page: 'features',
+    section: 'Optional features',
+    label: 'A vision model for Check a shelf',
+    description:
+      "Check a shelf (Store Mode) reads a photo of game spines on the phone, free and with no account. With this on, Squirrelcade also sends the photo, in a few pieces, to a vision model you choose and matches what it reads the same way: it finds more spines (stylized logos, small print). Any service that takes images works (OpenAI, Google Gemini, Anthropic's Claude, OpenRouter) and so does a model on your own computer (Ollama, LM Studio). The model only reads; your collection decides. Needs a connection to Squirrelcade, and the service's key if it has one: turn this on, then fill in the model right below.",
+    default: FEATURE_DEFAULTS.vision,
   }),
 
   // Collection
@@ -2136,7 +2145,59 @@ export const settingDefinitions = {
     description: 'The store country prices are for, as two letters (US, GB, DE, CA, AU, JP...).',
     default: 'US',
     maxLength: 2,
-  }),  'sources.ggdealsKey': secret({
+  }),  'sources.visionApi': select({
+    page: 'sources',
+    section: 'Vision model (Check a shelf)',
+    label: 'Kind of API',
+    description:
+      "How the service is asked. Almost every service and home model takes OpenAI's chat format; Anthropic's own API takes its Messages format. The buttons above fill this in for the usual ones.",
+    default: 'openai',
+    options: [
+      { value: 'openai', label: 'OpenAI-style chat (OpenAI, Gemini, OpenRouter, Ollama, LM Studio and most others)' },
+      { value: 'anthropic', label: "Anthropic's Messages API (Claude)" },
+    ],
+  }),
+  'sources.visionUrl': url({
+    page: 'sources',
+    section: 'Vision model (Check a shelf)',
+    label: 'Address',
+    description: "The API's address, up to the version (https://api.openai.com/v1, say, or http://host.docker.internal:11434/v1 for Ollama on the computer Docker runs on).",
+    default: '',
+  }),
+  'sources.visionModel': text({
+    page: 'sources',
+    section: 'Vision model (Check a shelf)',
+    label: 'Model',
+    description: "The model's name as the service writes it. It must take images.",
+    default: '',
+    maxLength: 120,
+  }),
+  'sources.visionKey': secret({
+    page: 'sources',
+    section: 'Vision model (Check a shelf)',
+    label: 'API key',
+    description: "The service's key (a model at home usually needs none). The service charges for what it reads: each piece of a photo is one request.",
+  }),
+  'sources.visionDailyLimit': num({
+    page: 'sources',
+    section: 'Vision model (Check a shelf)',
+    label: 'Pieces a day',
+    description: 'At most this many pieces of photos go to the model in a day, everyone counted (a photo is a few pieces), so its cost stays known. 0 sets no limit.',
+    default: 100,
+    min: 0,
+    max: 100000,
+  }),
+  'sources.visionPieces': num({
+    page: 'sources',
+    section: 'Vision model (Check a shelf)',
+    label: 'Pieces per photo',
+    description: 'A photo is cut into this many overlapping pieces, each sent at its full sharpness: models shrink a whole photo, and spines are small. More finds more, and costs more.',
+    default: 4,
+    min: 1,
+    max: 9,
+    advanced: true,
+  }),
+  'sources.ggdealsKey': secret({
     page: 'sources',
     section: 'GG.deals (PC game prices)',
     label: 'GG.deals API key',
@@ -2994,6 +3055,29 @@ export const settingDefinitions = {
     description: "Off answers only whether you have a game; on also shows what your copy is worth (PriceCharting's value in your last export).",
     default: false,
   }),
+  'security.publicShelf': select({
+    page: 'security',
+    section: 'Checking a game without signing in',
+    label: 'Check a shelf without signing in',
+    description:
+      "With checking a game on, someone who isn't signed in can also check a photo of a shelf. Their phone reads the photo (nothing to install), and Squirrelcade answers for the games it read, as for a game they typed. With your vision model too, pieces of their photo also go to the vision model you set up (Settings > Features), counted in its daily limit.",
+    default: 'reader',
+    options: [
+      { value: 'off', label: 'Off' },
+      { value: 'reader', label: 'On, read on their phone' },
+      { value: 'model', label: 'On, with your vision model too' },
+    ],
+  }),
+  'security.publicShelfLimit': num({
+    page: 'security',
+    section: 'Checking a game without signing in',
+    label: 'Shelf checks per hour',
+    description: 'How many shelf photos one address can check without signing in in an hour.',
+    default: 20,
+    min: 1,
+    max: 1000,
+    advanced: true,
+  }),
   'security.publicCheckLimit': num({
     page: 'security',
     section: 'Checking a game without signing in',
@@ -3031,6 +3115,7 @@ export const FEATURE_SETUP: Readonly<Record<FeatureKey, readonly SettingKey[]>> 
   xbox: ['sources.xboxApiKey'],
   playstation: ['sources.psnToken'],
   steam: ['sources.steamApiKey', 'sources.steamId'],
+  vision: ['sources.visionApi', 'sources.visionUrl', 'sources.visionModel', 'sources.visionKey', 'sources.visionDailyLimit'],
 };
 
 /**
@@ -3048,6 +3133,7 @@ export const FEATURE_HOME: Readonly<Record<FeatureKey, SettingsPageId | null>> =
   xbox: 'sources',
   playstation: 'sources',
   steam: 'sources',
+  vision: 'sources',
 };
 
 /** The part a Settings > Features switch turns on or off ("features.pc" is the PC library's), or null. */
@@ -3070,6 +3156,7 @@ export function settingFeature(key: string): FeatureKey | null {
   if (key.startsWith('sources.xbox')) return 'xbox';
   if (key.startsWith('sources.psn')) return 'playstation';
   if (key.startsWith('sources.steam')) return 'steam';
+  if (key.startsWith('sources.vision')) return 'vision';
   if (key === 'interface.timelineGames') return 'history';
   return null;
 }

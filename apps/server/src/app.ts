@@ -32,6 +32,8 @@ import { computeHealth, importFolder, registerSettingsRoutes, registerSystemRout
 import { registerAiSetupRoutes } from './aiSetup.js';
 import { SettingsError, SettingsService } from './settings.js';
 import { registerCheckRoutes } from './check.js';
+import { registerShelfRoutes } from './shelfCheck.js';
+import { VisionClient } from './vision.js';
 import { CopiesService, registerCopiesRoutes } from './copies.js';
 import { CopyDetailsService, registerCopyDetailRoutes } from './copyDetails.js';
 import { catalogTarget, registerGameRoutes } from './games.js';
@@ -109,6 +111,8 @@ export interface BuildOptions {
   steamFetch?: FetchLike;
   /** Replaces the network for IsThereAnyDeal (tests use a fake). */
   itadFetch?: FetchLike;
+  /** The vision model's HTTP calls (Check a shelf), replaced in tests. */
+  visionFetch?: FetchLike;
   /** Replaces the network for GG.deals (tests use a fake). */
   ggdealsFetch?: FetchLike;
   /** Replace the mailbox and the export download of collection updates from email (tests use fakes). */
@@ -414,6 +418,7 @@ export async function buildApp(options: BuildOptions = {}): Promise<Squirrelcade
   registerWishlistRoutes(app, wishlist, () => notes.index());
   registerLookupRoutes(app, lookup);
   registerCheckRoutes(app, lookup, settings);
+  registerShelfRoutes(app, lookup, settings, new VisionClient(settings, options.visionFetch));
   registerNotificationRoutes(app, notifications, settings, options.transports?.post);
   registerIgdbRoutes(app, igdb);
   registerPcRoutes(app, pc, tasks, settings);
@@ -798,7 +803,15 @@ export async function buildApp(options: BuildOptions = {}): Promise<Squirrelcade
 
   if (env.webDir && existsSync(join(env.webDir, 'index.html'))) {
     // The build keeps Brotli and gzip copies of the interface's files (apps/web/scripts/compress.mjs); browsers that accept them get those.
-    await app.register(fastifyStatic, { root: env.webDir, wildcard: true, preCompressed: true });
+    await app.register(fastifyStatic, {
+      root: env.webDir,
+      wildcard: true,
+      preCompressed: true,
+      // The photo reader's runtime and models are in folders named for their versions: kept by browsers for good.
+      setHeaders: (reply, path) => {
+        if (/[\\/]reader[\\/]lib[\\/][^\\/]+-[\d.]+[\\/]/.test(path)) reply.header('cache-control', 'public, max-age=31536000, immutable');
+      },
+    });
     app.setNotFoundHandler((request, reply) => {
       if (request.method === 'GET' && !request.url.startsWith('/api/')) return reply.sendFile('index.html');
       return reply.code(404).send({ error: 'not-found', message: 'Not found.' });

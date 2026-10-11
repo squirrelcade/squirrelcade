@@ -2,10 +2,11 @@
 
 What changed in each version of Squirrelcade (called Gamefolio before 0.35.0). The decisions behind these (D01, D02...) are in [docs/DECISIONS.md](docs/DECISIONS.md), each with a tag to roll it back.
 
-## 1.1.0 (coming): ARM, and the Stash's chest
+## 1.1.0 (coming): ARM, the Stash's chest, and Check a shelf
 
 ### Added
 
+- **Check a shelf** (D147): Store Mode > Check a shelf takes a photo of a shelf of one console's games and gives a checklist: Need it (the wishlist's first, with I bought it), Have it, Have it on another console, Not on your list, and Unsure, with the photo boxed where each game was read. The phone reads the spines itself, with open text models that come with Squirrelcade (about 30 MB the first time, then kept, so it works with no signal), and a game is never called Need it on a doubtful read. Optional: a vision model of your choosing (Settings > Features: OpenAI, Google Gemini, Anthropic's Claude, OpenRouter, or one at home with Ollama or LM Studio) reads pieces of the photo too, from your server, and its titles are matched the same way. Family on the sign-in page can check a shelf too ("Or check a whole shelf"), with their own phone reading it.
 - **The search finds PC games, and numbers either way** (D146): with the PC library on, the search at the top lists your PC games too (Mafia II: Definitive Edition, a download with no disc of its own, was missing), and one opens in the PC library. "Mafia 2" finds "Mafia II" and "Final Fantasy VII" finds "Final Fantasy 7", there, in Store Mode and in the PC library's search.
 - **Exclude it, with a warning** (D145): a game that isn't something to collect (a store kiosk, a demo disc) can leave a console's checklist from the bottom of its drawer: Exclude it says what will happen first, then the game moves to the Excluded tab and stops counting, so the console can show 100%. Opening it there, Make it a target brings it back, after a warning too. Neither is in a console page's row menu any more, where a slip of the mouse did it.
 - **Tables sort by their headings** (D144): click a column's heading to sort by it, click again for the other way (words A to Z first, numbers and dates most or newest first: one click on the Stash's Added shows your newest games). Across the Stash, Copies, the wishlists, Coming soon and Past releases, sales, loans, notes, upgrades, sets, series, the Top 100 lists, a friend's comparison, Check a list, Stash updates, the report and System's pages. The choice stays in the address, so the back button keeps it.

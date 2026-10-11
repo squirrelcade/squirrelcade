@@ -112,6 +112,23 @@ const guides = {
     ],
     note: 'Free for personal use. Squirrelcade credits GG.deals, with a link, wherever its prices show.',
   },
+  vision: {
+    steps: [
+      { text: 'Pick a service with the buttons under Kind of API: they fill in the address and a model that reads images (change the model if you like).' },
+      {
+        text: 'Make an API key on the service’s site, signed in: OpenAI, Google AI Studio (Gemini), Anthropic’s console (Claude) or OpenRouter. Each charges by use, on its own account (a Claude or ChatGPT subscription doesn’t cover apps).',
+        link: { label: 'Anthropic API keys', url: 'https://console.anthropic.com/settings/keys' },
+        search: 'OpenAI API key, Google AI Studio API key or Anthropic API key',
+      },
+      {
+        text: 'Or run a model at home, free and private: install Ollama on a computer with a good graphics card, then run “ollama pull qwen2.5vl:7b”. It needs no key.',
+        link: { label: 'ollama.com', url: 'https://ollama.com' },
+        search: 'Ollama qwen2.5vl vision model',
+      },
+      { text: 'Paste the key below (yourself: it’s a secret), then Save and test. Pieces a day keeps the cost known.' },
+    ],
+    note: 'The model only reads what’s on the photo; your collection decides what you have. Each piece of a photo is one request (a few tenths of a cent to a cent or two on most services).',
+  },
   barcodes: {
     steps: [
       { text: 'UPCitemdb needs nothing: about 100 lookups a day, free.', link: { label: 'upcitemdb.com', url: 'https://www.upcitemdb.com' } },

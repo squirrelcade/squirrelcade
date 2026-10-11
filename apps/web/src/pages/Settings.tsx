@@ -65,6 +65,7 @@ import { AiExtras } from './AiExtras';
 import { SecurityExtras } from './SecurityExtras';
 import { FeatureExtras } from './FeatureExtras';
 import { ItadButtons } from './ItadExtras';
+import { VisionPresets, VisionTest } from './VisionExtras';
 import { EmailTest } from './EmailExtras';
 import { RaButtons } from './RaExtras';
 import { AchievementButtons } from './AchievementExtras';
@@ -272,6 +273,10 @@ export function SettingsPage({ pageId: fixedPage }: { pageId?: string } = {}) {
       <RommButtons unsaved={changedKeys.length > 0} save={save} />
     ) : k === 'sources.itadKey' ? (
       <ItadButtons unsaved={changedKeys.length > 0} save={save} />
+    ) : k === 'sources.visionApi' ? (
+      <VisionPresets onPick={(values) => Object.entries(values).forEach(([key, v]) => update(key as SettingKey, v))} />
+    ) : k === 'sources.visionKey' ? (
+      <VisionTest unsaved={changedKeys.length > 0} save={save} />
     ) : k === 'notifications.smtpPassword' ? (
       <EmailTest unsaved={changedKeys.length > 0} save={save} />
     ) : k === 'sources.raApiKey' ? (

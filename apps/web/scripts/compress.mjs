@@ -6,7 +6,8 @@ import { join } from 'node:path';
 import { brotliCompressSync, constants, gzipSync } from 'node:zlib';
 
 const dist = new URL('../dist/', import.meta.url);
-const TEXT = /\.(js|css|html|svg|json|webmanifest|txt)$/;
+// The photo reader's runtime (.mjs, .wasm) shrinks to a quarter; its models (.onnx, numbers) hardly at all.
+const TEXT = /\.(js|mjs|css|html|svg|json|webmanifest|txt|wasm)$/;
 let files = 0;
 let before = 0;
 let after = 0;

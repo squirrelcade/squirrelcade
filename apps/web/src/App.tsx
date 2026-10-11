@@ -85,6 +85,7 @@ const SharePage = lazy(() => import('./pages/Share').then((m) => ({ default: m.S
 const HelpPage = page(() => import('./pages/Help').then((m) => m.HelpPage));
 const ListCheckPage = page(() => import('./pages/ListCheck').then((m) => m.ListCheckPage));
 const ShelfPage = page(() => import('./pages/Shelf').then((m) => m.ShelfPage));
+const ShelfCheckPage = page(() => import('./pages/ShelfCheck').then((m) => m.ShelfCheckPage));
 const FriendsPage = page(() => import('./pages/Friends').then((m) => m.FriendsPage));
 const FriendPage = page(() => import('./pages/Friends').then((m) => m.FriendPage));
 // After an update, what's new (loaded on its own, after the page).
@@ -330,6 +331,7 @@ function Shell({ noConnection = false }: { noConnection?: boolean }) {
             <Route path="/today" element={<TodayPage />} />
             <Route path="/store" element={<StorePage />} />
             <Route path="/store/list" element={<ListCheckPage />} />
+            <Route path="/store/photo" element={<ShelfCheckPage />} />
             <Route path="/store/shelf" element={<OwnerOnly><ShelfPage /></OwnerOnly>} />
             <Route path="/friends" element={<OwnerOnly><FriendsPage /></OwnerOnly>} />
             <Route path="/friends/:id" element={<OwnerOnly><FriendPage /></OwnerOnly>} />

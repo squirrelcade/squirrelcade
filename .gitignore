@@ -35,3 +35,6 @@ coverage/
 *.tsbuildinfo
 # Local development data (database, logs, backups)
 .dev-config/
+
+# The photo reader's runtime and models, copied from node_modules (apps/web/scripts/reader-files.mjs)
+apps/web/public/reader/lib/

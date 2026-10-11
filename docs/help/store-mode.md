@@ -42,6 +42,20 @@ Squirrelcade itself opens with no signal too, even when the phone has closed the
 
 Signing out removes the copy (and then Squirrelcade no longer opens without a connection). Settings > Interface > "Answer without a connection" turns all of it off, and removes the files from the phone.
 
+## Check a shelf
+
+**Store Mode > Check a shelf:** a photo of a shelf of one console's games (a store's, a friend's, your own) in, a checklist out. Pick the console (it's remembered), then **Take a photo** or **Choose a photo**. The phone reads the spines itself, with open text models that come with Squirrelcade (about 30 MB, downloaded the first time and kept: after that it reads with no signal), and checks each against your collection:
+
+- **Need it**: your wishlist's games first, with their place and acorns, and **I bought it** right there;
+- **Have it**, **Have it on another console, or maybe**, and **Not on your list**;
+- **Unsure**: spines read only partly, with the best guess and why (its number wasn't read clearly, or it could be another game). A game is never called **Need it** on a doubtful read: Assassin's Creed II read without its last letter could be III, so it's unsure.
+
+Under the list, the photo shows a box around each spine read as a game. Spines with no box weren't read well enough: stylized logos and very small print are the hardest, and a closer photo of part of the shelf reads more. Spines read sideways by default; **Also read text that isn't sideways** adds box fronts and a glass case (twice as long). On a phone, one photo takes about 10 to 30 seconds.
+
+**A vision model** (optional, Settings > Features): with it on and a connection to Squirrelcade, pieces of the photo also go to the model you chose (any service that takes images, or one at home), and the titles it reads are matched the same way, so it finds more spines and never decides what you have. Settings > Sources > Vision model sets which, its key, and how many pieces a day (each piece is one paid request on most services).
+
+What it says comes from the same answers as Store Mode, so it's only as current as your collection: buy something, and **I bought it** keeps it right.
+
 ## Check a list
 
 **Store Mode > Check a list:** paste a list of games (a store's list, a lot for sale), one per line, with the console if you like ("Chrono Trigger (SNES)"), and see which you own, which you need, and which you have on another console. Barcodes work too, one per line, as a handheld scanner types them.

@@ -32,7 +32,8 @@ export interface CheckAnswer {
   links: { name: string; url: string }[];
 }
 
-const ANSWERS: Record<LookupResult['answer'], CheckAnswer['answer']> = {
+/** Store Mode's answers as someone not signed in is told them. */
+export const CHECK_ANSWERS: Record<LookupResult['answer'], CheckAnswer['answer']> = {
   own: 'own',
   'own-not-in-catalog': 'own',
   'own-elsewhere': 'elsewhere',
@@ -64,7 +65,7 @@ export function registerCheckRoutes(app: FastifyInstance, lookup: LookupService,
   };
 
   const answer = (r: LookupResult, barcode?: string): CheckAnswer => {
-    const kind = ANSWERS[r.answer];
+    const kind = CHECK_ANSWERS[r.answer];
     const wanted = kind === 'need' || kind === 'elsewhere';
     const shops = settings.get('interface.shopLinks');
     return {

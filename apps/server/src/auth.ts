@@ -331,7 +331,7 @@ export class AuthService {
 }
 
 /** Routes anyone may call, signed in or not. */
-const PUBLIC_ROUTES = new Set(['GET /api/v1/health', 'GET /api/v1/auth/session', 'POST /api/v1/auth/login', 'POST /api/v1/setup', 'GET /api/v1/check']);
+const PUBLIC_ROUTES = new Set(['GET /api/v1/health', 'GET /api/v1/auth/session', 'POST /api/v1/auth/login', 'POST /api/v1/setup', 'GET /api/v1/check', 'GET /api/v1/check/consoles', 'POST /api/v1/check/shelf']);
 
 /** An invite link's page and its answer (GET /api/v1/join/<token>, POST to use it): public too, the token being the key. */
 const JOIN = /^\/api\/v1\/join\/[A-Za-z0-9_-]{16,64}$/;

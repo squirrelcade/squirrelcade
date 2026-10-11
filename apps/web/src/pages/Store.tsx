@@ -422,6 +422,9 @@ export function StorePage() {
               Scan my shelf
             </Anchor>
           )}
+          <Anchor component={Link} to="/store/photo" size="sm">
+            Check a shelf
+          </Anchor>
           <Anchor component={Link} to="/store/list" size="sm">
             Check a list
           </Anchor>

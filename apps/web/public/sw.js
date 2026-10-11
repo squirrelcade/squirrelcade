@@ -6,13 +6,16 @@
 const CACHE = 'squirrelcade-files';
 const LIST = '/offline-files.json';
 const VERSION_KEY = '/__squirrelcade-files-version';
+// Check a shelf's photo reader (public/reader): kept once it's been used, so it reads with no signal; its runtime
+// and models (about 30 MB) are in folders named for their versions, so a kept one is never out of date.
+const READER = 'squirrelcade-reader';
 
 self.addEventListener('install', () => self.skipWaiting());
 // Any other cache of this site's (one kept under an earlier name) goes, so a device keeps a single copy of the files.
 self.addEventListener('activate', (event) =>
   event.waitUntil(
     (async () => {
-      for (const name of await caches.keys()) if (name !== CACHE) await caches.delete(name);
+      for (const name of await caches.keys()) if (name !== CACHE && name !== READER) await caches.delete(name);
       await self.clients.claim();
     })(),
   ),
@@ -63,6 +66,47 @@ self.addEventListener('fetch', (event) => {
           return response;
         } catch {
           return (await caches.match('/')) || Response.error();
+        }
+      })(),
+    );
+    return;
+  }
+
+  // The reader's runtime and models: the kept copy at once (their folders change with their versions).
+  if (/^\/reader\/lib\/[^/]+-[\d.]+\//.test(url.pathname)) {
+    event.respondWith(
+      (async () => {
+        const cache = await caches.open(READER);
+        const cached = await cache.match(request);
+        if (cached) return cached;
+        const response = await fetch(request);
+        if (response.ok && response.type === 'basic') await cache.put(request, response.clone());
+        return response;
+      })(),
+    );
+    return;
+  }
+  // The reader itself and the list of its files: fresh while there's a connection, the kept copy without one. A new
+  // list drops the kept files of older versions.
+  if (url.pathname.startsWith('/reader/')) {
+    event.respondWith(
+      (async () => {
+        const cache = await caches.open(READER);
+        try {
+          const response = await fetch(request);
+          if (response.ok && response.type === 'basic') {
+            await cache.put(request, response.clone());
+            if (url.pathname === '/reader/lib/paths.json') {
+              const paths = await response.clone().json();
+              for (const kept of await cache.keys()) {
+                const path = new URL(kept.url).pathname;
+                if (/^\/reader\/lib\/[^/]+-[\d.]+\//.test(path) && !path.startsWith(`/reader/lib/${paths.ort}`) && !path.startsWith(`/reader/lib/${paths.models}`)) await cache.delete(kept);
+              }
+            }
+          }
+          return response;
+        } catch {
+          return (await cache.match(request, { ignoreSearch: true })) || Response.error();
         }
       })(),
     );

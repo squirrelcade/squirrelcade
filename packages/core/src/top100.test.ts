@@ -54,7 +54,7 @@ describe('features', () => {
       expect(settingDefinitions[key].default).toBe(FEATURE_DEFAULTS[feature as keyof typeof FEATURE_DEFAULTS]);
       expect(settingDefinitions[key].page).toBe('features');
     }
-    expect(FEATURE_DEFAULTS).toEqual({ igdb: true, history: true, pc: false, romm: false, itad: false, mail: false, retroachievements: false, xbox: false, playstation: false, steam: false });
+    expect(FEATURE_DEFAULTS).toEqual({ igdb: true, history: true, pc: false, romm: false, itad: false, mail: false, retroachievements: false, xbox: false, playstation: false, steam: false, vision: false });
   });
 
   it("hides a part's settings while it's off, and never the switches themselves", () => {
@@ -66,6 +66,7 @@ describe('features', () => {
     expect(settingFeature('mail.password')).toBe('mail');
     expect(settingFeature('sources.xboxApiKey')).toBe('xbox');
     expect(settingFeature('sources.psnMarkPlayed')).toBe('playstation');
+    expect(settingFeature('sources.visionKey')).toBe('vision');
     expect(settingFeature('features.pc')).toBeNull();
     expect(settingFeature('general.currency')).toBeNull();
     // PC game prices are a part of their own, inside the PC library's settings.

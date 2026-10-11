@@ -21,6 +21,11 @@ Every outside service, program and tool Squirrelcade works with or recommends: w
 - [UPCitemdb](https://www.upcitemdb.com): names a barcode Squirrelcade has never seen, in Store Mode. **You need:** nothing (about 100 lookups a day). **Cost:** free. **Where:** Settings > Sources > Barcodes.
 - [UPC Database](https://upcdatabase.org): the same, alone or after UPCitemdb. **You need:** a free account's key (100 lookups a day). **Cost:** free, or a paid plan for more. **Where:** Settings > Sources > Barcodes.
 
+## Reading shelf photos
+
+- The photo reader of **Check a shelf** (Store Mode) comes with Squirrelcade: [PaddleOCR](https://github.com/PaddlePaddle/PaddleOCR)'s open text models (PP-OCRv4, as [Guten OCR](https://github.com/gutenye/ocr) packages them) run on the phone by [ONNX Runtime Web](https://onnxruntime.ai). **You need:** nothing. **Cost:** free; about 30 MB downloaded to the phone the first time.
+- A vision model, if you want one: any service that takes images through OpenAI's chat format ([OpenAI](https://platform.openai.com), [Google Gemini](https://aistudio.google.com), [OpenRouter](https://openrouter.ai)) or Anthropic's ([Claude](https://console.anthropic.com)), or one at home with [Ollama](https://ollama.com) or [LM Studio](https://lmstudio.ai). It reads the spines the phone can't (stylized logos, small print). **You need:** the service's API key (none at home). **Cost:** each piece of a photo is one request, billed by the service (a fraction of a cent to a cent or two; free at home); Pieces a day caps it. **Where:** Settings > Features, then Settings > Sources > Vision model.
+
 ## What you play
 
 - [RetroAchievements](https://retroachievements.org): what you've beaten and mastered in classic games (emulators, RomM), in each game's drawer. **You need:** your username and web API key. **Cost:** free. **Where:** Settings > Features.

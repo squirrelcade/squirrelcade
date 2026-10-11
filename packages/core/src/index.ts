@@ -33,4 +33,5 @@ export * from './copyCare.js';
 export * from './selling.js';
 export * from './achievements.js';
 export * from './titleMatch.js';
+export * from './shelf.js';
 export * from './friends.js';
