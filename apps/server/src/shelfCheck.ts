@@ -75,7 +75,15 @@ function jobView(job: VisionJob, left: number | null) {
 /** Who a visitor is for the limits: their address, or for IPv6 its /64 (one home's whole range). */
 export function visitorOf(ip: string): string {
   if (ip.includes('.')) return ip.slice(ip.lastIndexOf(':') + 1);
-  return ip.split(':').slice(0, 4).join(':');
+  // Written out in full first ("2001:db8::1" has its zeros back), so every address of a /64 is the same visitor.
+  const [head = '', tail] = ip.toLowerCase().split('::');
+  const front = head ? head.split(':') : [];
+  const back = tail === undefined ? [] : tail ? tail.split(':') : [];
+  const groups = tail === undefined ? front : [...front, ...Array<string>(Math.max(0, 8 - front.length - back.length)).fill('0'), ...back];
+  return groups
+    .slice(0, 4)
+    .map((g) => g.replace(/^0+(?=.)/, ''))
+    .join(':');
 }
 
 /** Amounts in a sliding hour, per visitor: an amount is allowed while the hour's total stays within the limit. */
@@ -205,7 +213,10 @@ export function registerShelfRoutes(app: FastifyInstance, lookup: LookupService,
         if (request.auth) return;
         if (!shelfOn()) return reply.code(404).send({ error: 'off', message: 'Checking a shelf without signing in is off.' });
         const most = (modelForVisitors() ? settings.get('sources.visionPieces') * MAX_PIECE_CHARS : 0) + 200_000;
-        if (Number(request.headers['content-length'] ?? 0) > most) return reply.code(413).send({ error: 'too-big', message: 'That photo is too big to check.' });
+        // A visitor's request says its length (a browser's always does), so it's known before it's read in.
+        const length = request.headers['content-length'];
+        if (length === undefined) return reply.code(411).send({ error: 'length-required', message: 'Send the request with its length.' });
+        if (Number(length) > most) return reply.code(413).send({ error: 'too-big', message: 'That photo is too big to check.' });
         if (!shelves.spend(visitorOf(request.ip), 1, settings.get('security.publicShelfLimit'))) return reply.code(429).send({ error: 'too-many', message: 'That was a lot of shelves. Try again in an hour.' });
       },
     },
@@ -219,6 +230,13 @@ export function registerShelfRoutes(app: FastifyInstance, lookup: LookupService,
       if (!matcherFor(platformKey)) return reply.code(400).send({ error: 'invalid', message: 'Pick one of the consoles.' });
       // As many pieces as Squirrelcade cuts a photo into, no more.
       const pieces = sent.slice(0, settings.get('sources.visionPieces'));
+      // Each game answered counts against the visitor's hour, so made-up shelves can't read the collection: checked
+      // before the model is asked (its own games count when it's done).
+      const fromPhone = answerFor(platformKey, reads, null, null);
+      const counted = fromPhone.games.length + fromPhone.unsure.length;
+      if (visitor && !answered.spend(visitor, counted, settings.get('security.publicShelfGames'))) {
+        return reply.code(429).send({ error: 'too-many', message: 'That was a lot of games. Try again in an hour.' });
+      }
       let job: VisionJob | null = null;
       let modelError: string | null = null;
       if (pieces.length > 0 && modelForVisitors()) {
@@ -229,12 +247,7 @@ export function registerShelfRoutes(app: FastifyInstance, lookup: LookupService,
           modelError = err.message;
         }
       }
-      const answer = answerFor(platformKey, reads, job, modelError);
-      // Each game answered counts against the visitor's hour, so made-up shelves can't read the collection.
-      const counted = answer.games.length + answer.unsure.length;
-      if (visitor && !answered.spend(visitor, counted, settings.get('security.publicShelfGames'))) {
-        return reply.code(429).send({ error: 'too-many', message: 'That was a lot of games. Try again in an hour.' });
-      }
+      const answer = job || modelError ? answerFor(platformKey, reads, job, modelError) : fromPhone;
       if (job) {
         for (const [id, v] of visits) if (Date.now() - v.at > 20 * 60_000) visits.delete(id);
         visits.set(job.id, { platformKey, reads, at: Date.now(), visitor, counted, state: job.state, answer });

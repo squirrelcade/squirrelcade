@@ -74,6 +74,8 @@ export class VisionClient {
   /** Of them, the pieces of visitors not signed in (their own limit, Settings > Security). */
   private visitorsUsed = 0;
   private readonly jobs = new Map<string, VisionJob>();
+  /** Each job's way to take back its work from the helper's queue, when it ends before a helper took it. */
+  private readonly takeBack = new Map<string, AbortController>();
 
   constructor(
     private readonly settings: SettingsService,
@@ -127,6 +129,8 @@ export class VisionClient {
   private finish(job: VisionJob, titles: string[] | null, error: string | null) {
     if (job.state === 'done' || job.state === 'failed') return;
     job.state = titles ? 'done' : 'failed';
+    this.takeBack.get(job.id)?.abort();
+    this.takeBack.delete(job.id);
     job.titles = titles ?? [];
     job.error = error;
     job.finishedAt = Date.now();
@@ -179,7 +183,9 @@ export class VisionClient {
   /** Has the owner's helper read a job's pieces. */
   private async readWithHelper(job: VisionJob): Promise<void> {
     try {
-      const a = await this.helpers.ask('shelf', { prompt: visionPrompt(job.consoleName), console: job.consoleName, pieces: job.pieces });
+      const takeBack = new AbortController();
+      this.takeBack.set(job.id, takeBack);
+      const a = await this.helpers.ask('shelf', { prompt: visionPrompt(job.consoleName), console: job.consoleName, pieces: job.pieces }, takeBack.signal);
       if (Array.isArray(a.titles)) this.finish(job, titlesOf(a.titles.filter((t): t is string => typeof t === 'string').join('\n')), null);
       else if (typeof a.text === 'string') this.finish(job, titlesOf(a.text), null);
       else this.finish(job, null, "The helper's answer had no titles.");

@@ -116,11 +116,24 @@ describe("a visitor's games an hour", () => {
     expect((await shelf({ platformKey: 'wii', reads }, true)).statusCode).toBe(200);
   });
 
+  it('turns a visitor over the limit away before their photo goes to the model', async () => {
+    g.settings.update({ 'security.publicCheck': 'everywhere', 'security.publicShelf': 'model', 'security.publicShelfGames': 20, 'features.vision': true, 'sources.visionUrl': 'https://api.example.com/v1', 'sources.visionModel': 'm' });
+    const reads = ['OKAMI', 'XENOBLADE CHRONICLES'].map((text) => ({ text, score: 0.9 }));
+    for (let i = 0; i < 10; i++) await shelf({ platformKey: 'wii', reads });
+    asked = [];
+    expect((await shelf({ platformKey: 'wii', reads, pieces: [PIECE] })).statusCode).toBe(429);
+    expect(asked).toHaveLength(0);
+  });
+
   it('counts a visitor by address, and an IPv6 home by its /64', async () => {
     const { visitorOf } = await import('./shelfCheck.js');
     expect(visitorOf('203.0.113.9')).toBe('203.0.113.9');
     expect(visitorOf('::ffff:203.0.113.9')).toBe('203.0.113.9');
     expect(visitorOf('2001:db8:1:2:aaaa:bbbb:cccc:dddd')).toBe('2001:db8:1:2');
+    // Written short or long, one /64 is one visitor.
+    expect(visitorOf('2001:db8::1:2:3:4')).toBe('2001:db8:0:0');
+    expect(visitorOf('2001:0db8:0000:0000:0005::9')).toBe('2001:db8:0:0');
+    expect(visitorOf('::1')).toBe('0:0:0:0');
   });
 });
 

@@ -13,8 +13,11 @@ import { roleOf } from './access.js';
 /** How long work waits for a helper to take it, and then for its answer. */
 const TAKE_MS = 60_000;
 const ANSWER_MS = 10 * 60_000;
-/** A helper that asked for work this recently is there. */
+/** A helper that asked for work this recently is there; one with work it took this recently is busy with it. */
 const SEEN_MS = 90_000;
+const BUSY_MS = 3 * 60_000;
+/** At most this much work waits for a helper; more is turned away until it catches up. */
+const MAX_WAITING = 20;
 
 export class HelperError extends Error {}
 
@@ -47,7 +50,8 @@ export class HelperQueue {
 
   /** Whether a helper has work in hand (it asks again when it's done: a photo takes it a minute or more). */
   private busy(): boolean {
-    return this.work.some((w) => w.takenAt !== null);
+    const now = Date.now();
+    return this.work.some((w) => w.takenAt !== null && now - w.takenAt < BUSY_MS);
   }
 
   private sweep() {
@@ -67,10 +71,11 @@ export class HelperQueue {
     w.done(answer, error);
   }
 
-  /** Hands work to a helper and waits for its answer (a HelperError when none comes). */
-  ask(kind: Work['kind'], payload: Record<string, unknown>): Promise<HelperAnswer> {
+  /** Hands work to a helper and waits for its answer (a HelperError when none comes); gone takes back work not yet taken. */
+  ask(kind: Work['kind'], payload: Record<string, unknown>, gone?: AbortSignal): Promise<HelperAnswer> {
     this.sweep();
     if (!this.there()) return Promise.reject(new HelperError("The helper isn't asking for work: is it running?"));
+    if (this.work.filter((w) => w.takenAt === null).length >= MAX_WAITING) return Promise.reject(new HelperError('The helper has a lot waiting: try again in a few minutes.'));
     return new Promise((resolve, reject) => {
       const w: Work = {
         id: randomUUID(),
@@ -86,6 +91,8 @@ export class HelperQueue {
       };
       const check = setInterval(() => this.sweep(), 5_000);
       check.unref?.();
+      // Given up on before a helper took it: out of the queue (a helper never reads a photo nobody waits for).
+      gone?.addEventListener('abort', () => w.takenAt === null && this.end(w, null, 'Given up.'), { once: true });
       this.work.push(w);
       const helper = this.waiting.shift();
       if (helper) helper(w);

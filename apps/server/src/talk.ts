@@ -156,6 +156,8 @@ export class TalkService {
   private async run(job: TalkJob, turns: TalkTurn[], owner: boolean, person: Parameters<typeof aiViewOf>[0]) {
     const view = aiViewOf(person, this.d.settings);
     const results: string[] = [];
+    // What the lookups answered (not what was asked), for which games an action may change without asking.
+    const answers: string[] = [];
     const today = new Date().toISOString().slice(0, 10);
     try {
       for (let round = 1; round <= MAX_ROUNDS; round++) {
@@ -169,12 +171,14 @@ export class TalkService {
             const tool = typeof l.tool === 'string' ? l.tool : '';
             const input = l.input && typeof l.input === 'object' ? (l.input as Record<string, unknown>) : {};
             job.lookups.push(tool);
-            results.push(`${tool} ${JSON.stringify(input).slice(0, 300)} → ${this.lookup(tool, input, view).slice(0, MAX_RESULT)}`);
+            const found = this.lookup(tool, input, view).slice(0, MAX_RESULT);
+            answers.push(found);
+            results.push(`${tool} ${JSON.stringify(input).slice(0, 300)} → ${found}`);
           }
           continue;
         }
         job.reply = reply || "Sorry, I couldn't put an answer together. Try asking another way.";
-        job.actions = owner ? this.actions(answer.actions, results.join('\n')) : [];
+        job.actions = owner ? this.actions(answer.actions, answers.join('\n')) : [];
         job.state = 'done';
         break;
       }
@@ -239,7 +243,8 @@ export class TalkService {
       const exact = found.find((r) => normalizeTitle(r.title) === normalizeTitle(a.title as string));
       const game = exact ?? found[0];
       if (!game) continue;
-      const sure = exact !== undefined && seen.includes(normalizeTitle(game.title));
+      // The whole title among what the lookups answered ("Halo" isn't "Halo 3").
+      const sure = exact !== undefined && ` ${seen} `.includes(` ${normalizeTitle(game.title)} `);
       const entryId = game.entryId ?? null;
       if ((kind === 'bought' || kind === 'exclude' || kind === 'target') && entryId === null) continue;
       const action: TalkAction = { kind, platformKey: game.platformKey, platform: game.platform, title: game.title, entryId, major: kind === 'exclude' || kind === 'target' || (kind !== 'open' && !sure) };
