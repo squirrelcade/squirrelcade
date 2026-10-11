@@ -1,10 +1,11 @@
 import { ActionIcon, Anchor, Button, Card, Drawer, Group, Loader, Stack, Text, Textarea, Tooltip } from '@mantine/core';
-import { IconMessageCircle, IconSend } from '@tabler/icons-react';
+import { IconMessageCircle, IconMicrophone, IconPlayerStopFilled, IconSend } from '@tabler/icons-react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useEffect, useRef, useState } from 'react';
 import { useSearchParams } from 'react-router';
 import { api, errorMessage } from './api';
-import { useCanEdit } from './hooks';
+import { useDictation } from './dictation';
+import { useCanEdit, useFeature } from './hooks';
 
 /** A change Talk proposes (see TalkAction in apps/server/src/talk.ts), and what became of it here. */
 interface TalkAction {
@@ -74,9 +75,13 @@ function actionText(a: TalkAction): string {
  * game, or bringing it back) waits for a yes. The conversation stays in this browser tab.
  */
 export function TalkButton() {
-  const status = useQuery({ queryKey: ['talk', 'status'], queryFn: () => api<{ available: boolean }>('/talk/status'), staleTime: 5 * 60_000, retry: false });
+  // Talk needs an AI model: with Talk or the model turned off in Settings > Features, the button goes at once.
+  const talkOn = useFeature('talk');
+  const modelOn = useFeature('vision');
+  const on = talkOn && modelOn;
+  const status = useQuery({ queryKey: ['talk', 'status', on], queryFn: () => api<{ available: boolean }>('/talk/status'), staleTime: 5 * 60_000, retry: false, enabled: on });
   const [opened, setOpened] = useState(false);
-  if (!status.data?.available) return null;
+  if (!on || !status.data?.available) return null;
   return (
     <>
       <Tooltip label="Talk to Squirrelcade">
@@ -97,6 +102,8 @@ function TalkPanel() {
   const [, setParams] = useSearchParams();
   const [turns, setTurns] = useState<Turn[]>(keptTurns);
   const [text, setText] = useState('');
+  // The microphone (D149): the browser's own speech service writes into the box as you talk.
+  const dictation = useDictation(text, setText);
   const [waiting, setWaiting] = useState(false);
   const [failure, setFailure] = useState<string | null>(null);
   const bottom = useRef<HTMLDivElement>(null);
@@ -152,6 +159,7 @@ function TalkPanel() {
   const send = async () => {
     const said = text.trim();
     if (!said || waiting) return;
+    dictation.halt();
     const asked: Turn[] = [...turns, { role: 'you', text: said }];
     setTurns(asked);
     setText('');
@@ -245,7 +253,11 @@ function TalkPanel() {
         maxRows={6}
         maxLength={2000}
         value={text}
-        onChange={(e) => setText(e.currentTarget.value)}
+        onChange={(e) => {
+          // Typing while it listens stops it, keeping every letter.
+          dictation.halt();
+          setText(e.currentTarget.value);
+        }}
         onKeyDown={(e) => {
           if (e.key === 'Enter' && !e.shiftKey) {
             e.preventDefault();
@@ -253,6 +265,11 @@ function TalkPanel() {
           }
         }}
       />
+      {dictation.status && (
+        <Text size="xs" c="dimmed" aria-live="polite">
+          {dictation.status}
+        </Text>
+      )}
       <Group justify="space-between">
         {turns.length > 0 ? (
           <Anchor component="button" type="button" size="xs" c="dimmed" onClick={() => setTurns([])}>
@@ -261,9 +278,24 @@ function TalkPanel() {
         ) : (
           <span />
         )}
-        <Button leftSection={<IconSend size={16} />} onClick={() => void send()} loading={waiting} disabled={!text.trim()}>
-          Send
-        </Button>
+        <Group gap="xs">
+          <Tooltip label={dictation.listening ? 'Stop dictating' : 'Dictate'}>
+            <ActionIcon
+              size="lg"
+              radius="xl"
+              variant={dictation.listening ? 'filled' : 'light'}
+              color={dictation.listening ? 'red' : undefined}
+              aria-label={dictation.listening ? 'Stop dictating' : 'Dictate'}
+              aria-pressed={dictation.listening}
+              onClick={dictation.toggle}
+            >
+              {dictation.listening ? <IconPlayerStopFilled size={18} /> : <IconMicrophone size={20} />}
+            </ActionIcon>
+          </Tooltip>
+          <Button leftSection={<IconSend size={16} />} onClick={() => void send()} loading={waiting} disabled={!text.trim()}>
+            Send
+          </Button>
+        </Group>
       </Group>
     </Stack>
   );
