@@ -12,7 +12,16 @@ A photo of a store shelf (spines facing out, usually one console) in, a checklis
 - **Scan my shelf** (0.33.0) takes the barcodes of your own games at home, so Store Mode knows them at once later.
 - **Check a list** answers a pasted list of titles, line by line.
 - **The title matcher** (`packages/core/src/titleMatch.ts`, 0.55.0, D127) was written for exactly this kind of text: titles from a photo, a list or a conversation. It gives each match a confidence (0.85 and up is the same game, 0.6 to 0.85 a near miss that's listed and never counted), reads editions, subtitles, franchise names and spellings, and treats a different number as a different game. The Claude connector's `check_ownership` (`apps/server/src/aiTools.ts`, behind `mcp.ts`) uses it, and since it's in `packages/core`, the phone can run the same code.
-- **Claude with the connector or plugin** (Help > Claude and AI apps) already does Shelf Scan today, with AI: the photo goes to Claude, which reads the spines and asks `check_ownership`.
+- **An AI app with the connector** (Help > Claude and AI apps; the connector speaks MCP, an open standard) already does a Shelf Scan of sorts: the photo goes to the AI app, which reads the spines and asks `check_ownership`.
+
+## For everyone, tied to no one
+
+Shelf Scan is for anyone who installs Squirrelcade, so nothing in it needs a particular company or an account:
+
+- **It starts with nothing.** The base layer reads spines on the phone with open-source parts (PaddleOCR's models and ONNX Runtime, both under permissive licenses), offline, free, with nothing to sign up for. A new install has Shelf Scan working on its first day.
+- **The optional step takes any vision model.** Almost every AI service accepts the same chat request with an image (the one OpenAI's API made common): OpenAI, Google Gemini, Anthropic's Claude and OpenRouter among them, and the tools that run models at home, Ollama and LM Studio. One setting covers all of them: the address, a key if the service needs one, and the model. Presets fill these in for the common ones, a home model included (Qwen2.5-VL or Gemma 3 through Ollama: private and free per scan).
+- **Squirrelcade decides, whatever reads.** A model only returns the text it reads, which goes through the same matcher with the same number rule, so a model that invents a title gains nothing: what doesn't match stays unsure.
+- An owner who likes one service can make it theirs in a click; the design doesn't lean on it.
 
 ## Can it work without AI?
 
@@ -25,7 +34,7 @@ Partly, and the honest answer shapes the design.
 - **Precision before recall.** Only a match at 0.85 or more counts; a number has to be read (Halo 2 against Halo 3: an unread or doubtful digit makes it unsure); everything else is unsure, with its best guesses offered.
 - **What to expect** (to be measured, not promised): on a well-lit photo of one console's shelf, a scene-text model with the closed list might settle half to three quarters of the spines, the rest unsure; Tesseract noticeably fewer. Phase 1 measures it on real photos before anything is chosen.
 
-So the answer is a **hybrid**: on-device reading and the closed list by default (free, private, offline); the barcode for one game in hand (exact; Store Mode already does it); and AI only for the spines left unsure, only if the owner turns it on, only with signal.
+So the answer is a **hybrid**: on-device reading and the closed list by default (free, private, offline); the barcode for one game in hand (exact; Store Mode already does it); and a vision model of the owner's choosing for the spines left unsure, only if they turn it on, only with signal (or none needed, for a model at home).
 
 ## How it would work
 
@@ -33,7 +42,7 @@ So the answer is a **hybrid**: on-device reading and the closed list by default 
 2. **Read (phone, in a background worker).** Find the text boxes; read each one upright and turned (spines are mostly vertical); group the boxes into spines by where they sit; make a few candidate strings per spine (each line, and neighbouring lines joined).
 3. **Match (phone, `packages/core`).** Against the console's closed list from the offline copy, with the title matcher plus a layer for reading mistakes (O and 0, I and 1 and l, S and 5, rn and m, a dropped letter). Each spine gets the offline copy's answer: have it, have it on another console, on the wishlist with its acorns, missing, not a target. Online, the server can run the same code; it's one matcher either way.
 4. **Show.** A checklist: **Need it** (wishlist games first, by acorns), **Have it**, **Have it on another console**, **Unsure**. Later, the photo itself with each spine's box coloured by its answer; tap one to fix it (search the console's games, or "not a game"). A fix is remembered (this spine's text is that game) for the next scan, in the offline copy, as Scan my shelf remembers barcodes. **I bought it** works from the list.
-5. **AI fallback (optional, off by default).** With signal and a key the owner adds, only the unsure spines' crops (never the whole photo) go to a vision model, which returns the text it reads; Squirrelcade matches that as in step 3, so the model never decides ownership. A cap on crops per scan and per day keeps the cost known. It runs inside Squirrelcade, from its server: a phone that reaches Squirrelcade (at home, or through whatever remote access its owner set up) gets it, against the live collection, with nothing more opened to the internet. Claude in its own app can't do that from a store when the connector only answers at home (its remote sign-in is off by default, D130): the owner's store test ran on an export weeks old, and four of its "not in your collection" games had been bought since.
+5. **A vision model (optional, off by default).** The owner picks one (a service, or a model at home; see "For everyone, tied to no one"). With signal, only the unsure spines' crops (never the whole photo) go to it, and it returns the text it reads; Squirrelcade matches that as in step 3, so the model never decides ownership. A cap on crops per scan and per day keeps the cost known. It runs inside Squirrelcade, from its server: a phone that reaches Squirrelcade (at home, or through whatever remote access its owner set up) gets it, against the live collection, with nothing more opened to the internet. An AI app on the phone can't do that from a store when the connector only answers at home (its remote sign-in is off by default, D130): the owner's store test, with Claude, ran on an export weeks old, and four of its "not in your collection" games had been bought since.
 
 ## Title data needed per console
 
@@ -66,18 +75,18 @@ What it showed:
 
 ## Phases
 
-0. **Today, nothing to build:** the Claude app with the connector or plugin does this with AI. Write it up in Help > Store Mode as the way to do it now.
+0. **Today, nothing to build:** an AI app with the connector (Claude's, or another that speaks MCP) does this at home. Write it up in Help > Store Mode as the way to do it now.
 1. **Measure:** 20 to 30 real shelf photos (the owner's, kept out of the repository), a test page running Tesseract.js and PaddleOCR on them; count spines read right, wrong and unsure; time and download size on a phone. Choose the engine on those numbers.
 2. **MVP:** Store Mode > Shelf Scan: one photo, one console, on-device reading, the checklist (no overlay yet), working offline after first use, I bought it from the list.
 3. **Overlay and fixes:** the boxes on the photo, tap to fix, fixes remembered.
-4. **AI fallback:** opt-in, unsure crops only, the owner's own key, with caps.
+4. **The vision-model step:** opt-in, unsure crops only, any service or home model through the common chat API, presets for the usual ones, with caps. Measure a home model (Qwen2.5-VL) and a cloud one on the same photos first.
 
 ## Settings (every decision is a setting)
 
 - Shelf Scan on or off (on with Store Mode).
 - How sure a match must be to count (0.85).
 - When to download the reading model: on first use, or only on Wi-Fi.
-- AI fallback: off; which service and its key; at most so many crops per scan and per day.
+- Vision model: off; its address (a service, or a model at home), its key if it needs one, which model; at most so many crops per scan and per day.
 - Keep scans: off.
 
 ## Open questions
