@@ -10,7 +10,9 @@ import { MAX_PIECE_CHARS, MAX_PIECES, VisionError, type VisionClient } from './v
  * server only passes pieces of the photo to the vision model when it's on (POST /api/v1/shelf/read). Not signed in
  * (Settings > Security, with checking a game), the visitor's phone reads the photo and sends the text it read: the
  * server matches it here and answers only for the games read, as the one-game check does, so the collection itself
- * never leaves; and, if the owner allows it, the pieces go to the vision model too.
+ * never leaves; and, if the owner allows it, the pieces go to the vision model too. With the owner's key (a start page
+ * of their own passing friends' checks on) it answers the same way whatever the sign-in page shows, without the
+ * hourly limit; the vision model still goes by "Check a shelf without signing in".
  */
 
 /** A 64-pixel white square: what the test sends. */
@@ -121,8 +123,8 @@ export function registerShelfRoutes(app: FastifyInstance, lookup: LookupService,
   };
 
   // The consoles a visitor can pick: those with a catalog or copies.
-  app.get('/api/v1/check/consoles', async (_request, reply) => {
-    if (!shelfOn()) return reply.code(404).send({ error: 'off', message: 'Checking a shelf without signing in is off.' });
+  app.get('/api/v1/check/consoles', async (request, reply) => {
+    if (!request.auth && !shelfOn()) return reply.code(404).send({ error: 'off', message: 'Checking a shelf without signing in is off.' });
     const { copy } = lookup.offlineCopy(false);
     const used = new Set(copy.games.filter((g) => g.a !== 'not-tracked').map((g) => g.p));
     const consoles = copy.platforms.filter((_, i) => used.has(i)).sort((a, b) => a.name.localeCompare(b.name));
@@ -130,7 +132,7 @@ export function registerShelfRoutes(app: FastifyInstance, lookup: LookupService,
   });
 
   app.post('/api/v1/check/shelf', { bodyLimit: BODY_LIMIT }, async (request, reply) => {
-    if (!shelfOn()) return reply.code(404).send({ error: 'off', message: 'Checking a shelf without signing in is off.' });
+    if (!request.auth && !shelfOn()) return reply.code(404).send({ error: 'off', message: 'Checking a shelf without signing in is off.' });
     const body = request.body as { platformKey?: unknown; reads?: unknown; pieces?: unknown } | null;
     const reads = readsOf(body?.reads ?? []);
     const pieces = piecesOf(body?.pieces);

@@ -73,6 +73,11 @@ describe('checking a shelf without signing in', () => {
     expect((await shelf({ platformKey: 'wii', reads: [] }, true)).statusCode).toBe(200);
     g.settings.update({ 'security.publicShelf': 'off' });
     expect((await g.app.inject({ url: '/api/v1/check/consoles' })).statusCode).toBe(404);
+    // The owner's own start page still checks shelves for friends with the key, the sign-in page's check off or on.
+    g.settings.update({ 'security.publicCheck': 'off' });
+    const key = (await g.app.inject({ url: '/api/v1/auth/apikey', cookies })).json().apiKey as string;
+    expect((await g.app.inject({ url: '/api/v1/check/consoles', headers: { 'x-api-key': key } })).statusCode).toBe(200);
+    expect((await g.app.inject({ method: 'POST', url: '/api/v1/check/shelf', headers: { 'x-api-key': key }, payload: { platformKey: 'wii', reads: [{ text: 'OKAMI', score: 0.9 }] } })).json().games[0].title).toBe('Okami');
   });
 
   it("sends a visitor's pieces to the vision model only when the owner allows it", async () => {
