@@ -216,6 +216,7 @@ export async function uiTest(target, account, check) {
       '/store',
       '/store/list',
       '/store/shelf',
+      '/store/photo',
       '/updates',
       '/welcome',
       '/help',
@@ -892,6 +893,41 @@ export async function uiTest(target, account, check) {
     const answered = /You own it/.test(listed) && /Not in your catalogs/.test(listed) && /barcode 012345678905/.test(listed);
     check('ui: Check a list answers each line', found.length === 0 && answered, found.join(' | ') || (answered ? '' : listed.slice(0, 200)));
 
+    // Check a shelf (D147): a made-up photo of three spines, read on the page by the photo reader (its models come
+    // from the server the first time), matched against Store Mode's copy: three games the collection has by now.
+    await page.goto(`${base}/store/photo`);
+    await page.getByPlaceholder('Pick the shelf’s console').waitFor({ timeout: 20000 });
+    await page.getByRole('combobox', { name: 'Console' }).click();
+    await page.getByRole('option', { name: 'PlayStation 3', exact: true }).click();
+    const shelfPhoto = await page.evaluate(() => {
+      const c = document.createElement('canvas');
+      c.width = 900;
+      c.height = 1000;
+      const ctx = c.getContext('2d');
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(0, 0, c.width, c.height);
+      ctx.fillStyle = '#111111';
+      ctx.font = 'bold 64px Arial, sans-serif';
+      // Spines read from top to bottom, as North American spines do.
+      ['TEARAWAY', 'PUPPETEER', 'DEMONS SOULS'].forEach((title, i) => {
+        ctx.save();
+        ctx.translate(200 + i * 250, 80);
+        ctx.rotate(Math.PI / 2);
+        ctx.fillText(title, 0, 0);
+        ctx.restore();
+      });
+      return c.toDataURL('image/png').split(',')[1];
+    });
+    const shelfChooser = page.waitForEvent('filechooser');
+    await page.getByRole('button', { name: 'Choose a photo' }).click();
+    await (await shelfChooser).setFiles({ name: 'shelf.png', mimeType: 'image/png', buffer: Buffer.from(shelfPhoto, 'base64') });
+    await page.getByText(/games for sure/).waitFor({ timeout: 180000 });
+    const shelfText = await page.locator('main').innerText();
+    found = await pageProblems();
+    const shelfList = shelfText.slice(shelfText.indexOf('games for sure'));
+    const shelfRight = /3 games for sure/.test(shelfText) && ['Demons Souls', 'Puppeteer', 'Tearaway'].every((t) => shelfList.includes(t)) && /Have it\s*3/.test(shelfList);
+    check('ui: Check a shelf reads a photo on the page and checks each spine', found.length === 0 && shelfRight, found.join(' | ') || shelfList.slice(0, 500));
+
     // Store Mode answers a typed title.
     await page.goto(`${base}/store`);
     await page.getByPlaceholder('Barcode or title').fill('okami');
@@ -1412,6 +1448,12 @@ export async function uiTest(target, account, check) {
     await phone.getByRole('button', { name: 'Check', exact: true }).click();
     await phone.getByText('They have it').first().waitFor({ timeout: 10000 });
     const answerShown = await phone.locator('body').innerText();
+    // Under it, a whole shelf (D147): the consoles to pick from are there.
+    await phone.getByText('Or check a whole shelf').waitFor({ timeout: 10000 });
+    await phone.getByRole('combobox', { name: "The shelf's console" }).click();
+    const shelfConsoles = await phone.getByRole('option').allInnerTexts();
+    await phone.keyboard.press('Escape');
+    check('ui: the sign-in page checks a whole shelf too', shelfConsoles.includes('PlayStation 3'), shelfConsoles.join(', '));
     // A field's text on a touch screen is at least 16px, so an iPhone doesn't zoom into it when it's tapped.
     const fieldSizes = await phone.evaluate(() => [...document.querySelectorAll('input:not([type=checkbox]):not([type=radio]), textarea')].map((el) => parseFloat(getComputedStyle(el).fontSize)));
     await phoneContext.close();

@@ -1,6 +1,8 @@
 # Shelf Scan: the plan
 
-Proposed 2026-10-10 from the owner's own use: in a store, a photo of a shelf of games, which Claude read through the Squirrelcade connector, checking each spine against the collection. Not built; this is the design to start from.
+Proposed 2026-10-10 from the owner's own use: in a store, a photo of a shelf of games, which Claude read through the Squirrelcade connector, checking each spine against the collection.
+
+**Built 2026-10-11 as Check a shelf** (D147; "Scan my shelf" was already Store Mode's name for teaching your own barcodes): phases 2 and 4 below, the photo boxed by answer (part of phase 3; tap-to-fix and remembered fixes are still to come), and a shelf check on the sign-in page for family. What was built differs from this plan in places: the PP-OCRv4 models (as @gutenye/ocr-models packages them) rather than v5; one sideways pass by default (the angle model handles both directions), a second for upright text on request; matching against Store Mode's copy of the console's games (checklist and owned copies), so "not on your checklist" (IGDB's or PriceCharting's full lists) is still to come; and the vision model reads pieces of the whole photo, not only the unsure spines' crops, since the spines the phone misses entirely are the ones a model finds.
 
 ## What it's for
 

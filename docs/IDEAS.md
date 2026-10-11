@@ -33,7 +33,7 @@ Squirrelcade already has much of what they're known for: barcode scanning (and o
 
 ## Planned, not built yet
 
-- **Shelf Scan** (the owner's idea, 2026-10-10; [design](design/shelf-scan.md)): a photo of a store shelf in, a checklist out (have it, have it on another console, on the wishlist, missing, unsure). Reading the spines on the phone against the console's own list of games (no AI, no signal needed), the title matcher Claude's connector already uses deciding ownership, and a vision model of the owner's choosing (any service, or one at home) only for the spines left unsure, if turned on: nothing tied to one AI company. Measured 2026-10-10 on real shelf photos: the on-phone reader finds a third to half of a shelf, never wrong.
+- **Shelf Scan**, built 2026-10-11 as **Check a shelf** (D147; still to come: tap a box to fix it, fixes remembered, the full known list of a console's games) (the owner's idea, 2026-10-10; [design](design/shelf-scan.md)): a photo of a store shelf in, a checklist out (have it, have it on another console, on the wishlist, missing, unsure). Reading the spines on the phone against the console's own list of games (no AI, no signal needed), the title matcher Claude's connector already uses deciding ownership, and a vision model of the owner's choosing (any service, or one at home) only for the spines left unsure, if turned on: nothing tied to one AI company. Measured 2026-10-10 on real shelf photos: the on-phone reader finds a third to half of a shelf, never wrong.
 
 ## Not recommended now
 
