@@ -75,6 +75,10 @@ What it showed:
 - The closed list has holes: three PS3 games on the shelf (Captain Morgane and the Golden Turtle, World of Outlaws: Sprint Cars, Rock Band Track Pack: Classic Rock) aren't on the owner's checklist, so no reader could call them missing. Shelf Scan should match against the console's full known list (the checklist plus IGDB's or PriceCharting's names), and say "not on your checklist" when that's the case.
 - After a game is identified, much of Claude's extra is Squirrelcade's own data: the copy you have and its condition, your note, the edition you own, its acorns. Prices of games you don't have are the gap (Squirrelcade only has values for copies you own and deals).
 
+## Third measurement: the built version (2026-10-11)
+
+The browser reader (public/reader, PP-OCRv4, one sideways pass) on the owner's Switch shelf (5 MP): 94 lines, 25 to 26 games for sure, about 10 seconds in Chrome and in WebKit on a PC, none wrong. The same photo in 4 pieces, read by the owner's helper (Claude Code with Sonnet, on their own plan, through Squirrelcade's helper queue): 58 titles in 73 seconds; matched with the phone's reads, 57 games for sure, none wrong (every one owned, as it had to be). Through the hub's Game Shelf (a friend's view): 56 games, one of them "needs it" (Kamiwaza: Way of the Thief, on the shelf but not in the collection: the collection's gap, not the reader's).
+
 ## Phases
 
 0. **Today, nothing to build:** an AI app with the connector (Claude's, or another that speaks MCP) does this at home. Write it up in Help > Store Mode as the way to do it now.
