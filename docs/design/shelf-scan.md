@@ -42,6 +42,26 @@ So the answer is a **hybrid**: on-device reading and the closed list by default 
 - **Learned spine texts** from fixes, per install.
 - Nothing from a photo is kept unless the owner saves the scan.
 
+## First measurement (2026-10-10)
+
+Six phone photos of a used-game store's PS3 shelves and glass case (sent shrunk to about 1.2 megapixels; the phone's originals are about 12), each read upright and turned both ways, at its size and doubled, then matched against the owner's PS3 checklist (1,156 games) with tolerant matching: spaces ignored (readers run words together), small letter slips forgiven, a title's number read exactly or the read is unsure (II is never III), a read that could be the cut-off start of another game unsure (DARKSIDERS could be Darksiders II). Scripts in the owner's `.work/ocr`.
+
+| | Tesseract.js | PaddleOCR (PP-OCR models through ONNX Runtime) |
+| --- | --- | --- |
+| Games identified for sure | 5 | 50 |
+| Wrong "for sure" | 0 | 0 (each checked against the photos) |
+| More, unsure with a close guess | 2 | 28 |
+| Reading time, six photos, every pass (PC) | 84 s | 35 s |
+
+Against Claude reading the same photos (the owner's run through the connector): of the 11 PS3 games on those shelves that the owner doesn't have, Claude named all 11; the reader named 1 for sure (Class of Heroes 2G) and 3 more as unsure with the right guess, and missed 7, mostly thin spines and stylized logos. Claude also added what reading can't: prices against PriceCharting, editions (a collector's edition of a game owned), notes.
+
+What it showed:
+
+- Tesseract is out; a photo-text model like PaddleOCR is the one to build on.
+- With no false answers and about a third of a shelf at this size, on-device reading is useful but not complete. Full-size photos are the next test (text three times taller).
+- The closed list has holes: three PS3 games on the shelf (Captain Morgane and the Golden Turtle, World of Outlaws: Sprint Cars, Rock Band Track Pack: Classic Rock) aren't on the owner's checklist, so no reader could call them missing. Shelf Scan should match against the console's full known list (the checklist plus IGDB's or PriceCharting's names), and say "not on your checklist" when that's the case.
+- After a game is identified, much of Claude's extra is Squirrelcade's own data: the copy you have and its condition, your note, the edition you own, its acorns. Prices of games you don't have are the gap (Squirrelcade only has values for copies you own and deals).
+
 ## Phases
 
 0. **Today, nothing to build:** the Claude app with the connector or plugin does this with AI. Write it up in Help > Store Mode as the way to do it now.
