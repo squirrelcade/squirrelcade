@@ -166,6 +166,7 @@ function TalkPanel() {
       // Small changes at once (with Undo); big ones wait for a yes.
       const actions = canEdit ? await Promise.all(job.actions.map((a) => (a.major ? { ...a, state: 'asking' as const } : a.kind === 'open' ? a : run(a)))) : [];
       setTurns((all) => [...all, { role: 'squirrelcade', text: job.reply, actions }]);
+      setWaiting(false);
       if (actions.some((a) => a.state === 'done')) await refresh();
     } catch (err) {
       setFailure(errorMessage(err));
