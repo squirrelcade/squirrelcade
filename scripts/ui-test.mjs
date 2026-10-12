@@ -585,7 +585,7 @@ export async function uiTest(target, account, check) {
     found = await pageProblems();
     check(
       'ui: a copy added in the drawer goes to PriceCharting in a CSV with what was paid, and is marked sent',
-      found.length === 0 && /\$12\.50/.test(csvRow) && /^id,condition-id,quantity,cost-basis-in-pennies,date-purchased,notes\r\n\d+,1,1,1250,/.test(csvFile),
+      found.length === 0 && /\$12\.50/.test(csvRow) && /^id,condition-id,quantity,cost-basis-in-pennies,date-purchased,notes,grading-company,grading-cert-id,folder\r\n\d+,1,1,1250,/.test(csvFile),
       found.join(' | ') || `${csvRow} | ${csvFile}`,
     );
 

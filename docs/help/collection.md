@@ -35,7 +35,7 @@ A game's drawer has **Add a copy**: its condition, and what you paid, when and a
 
 PriceCharting keeps the prices, so a copy added in Squirrelcade gets its value once it's on PriceCharting too. **Stash updates > Send to PriceCharting** sends the copies added here two ways:
 
-**With their details (a CSV),** for the games PriceCharting knows: any game an export of yours ever brought (another copy of it, or one you've sold), or one you gave its PriceCharting ID. They go with everything PriceCharting's CSV importer takes: the condition, what you paid, the day you bought it and your notes (up to 300 characters).
+**With their details (a CSV),** for the games PriceCharting knows: any game an export of yours ever brought (another copy of it, or one you've sold), or one you gave its PriceCharting ID. They go with everything PriceCharting's CSV importer takes: the condition, what you paid, the day you bought it, your notes (up to 300 characters), and, if you filled them in, who graded a graded copy and its certificate number (in the copy's window, when its condition is Graded) and a folder on PriceCharting for all of them (the card's **Folder on PriceCharting** box; PriceCharting makes the folder if it doesn't exist).
 
 1. Check the list on the card (each game with its condition, what you paid, the day bought and your notes).
 2. Click **Download the CSV**, then **Open PriceCharting's CSV importer** and upload the file there. Upload it once: PriceCharting adds every row as a new copy.

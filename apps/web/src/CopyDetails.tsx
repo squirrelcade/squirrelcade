@@ -1,5 +1,5 @@
 import { Anchor, Autocomplete, Badge, Button, CloseButton, Divider, FileButton, Group, Image, Loader, Modal, NumberInput, SegmentedControl, Select, SimpleGrid, Stack, TagsInput, Text, TextInput, Tooltip } from '@mantine/core';
-import { COMPLETENESS_LABELS, RIP_RESULTS, TEST_RESULTS, type Completeness, type TestKind, type TestResult } from '@squirrelcade/core';
+import { COMPLETENESS_LABELS, GRADERS, RIP_RESULTS, TEST_RESULTS, type Completeness, type TestKind, type TestResult } from '@squirrelcade/core';
 import { SellHelper } from './SellHelper';
 import { IconCamera, IconCheck, IconMapPin, IconUserShare } from '@tabler/icons-react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
@@ -67,6 +67,9 @@ export interface CopyFields {
   estimatedCents?: number | null;
   /** Its console, for what can be done with it here (a rip, on the consoles whose games are ripped). */
   platformKey?: string;
+  /** Who graded a graded copy, and its certificate (D151). */
+  gradingCompany?: string;
+  gradingCertId?: string;
 }
 
 /** Squirrelcade's suggestion for a copy's estimated price (GET /api/v1/collection/copies/<id>/suggestion). */
@@ -288,6 +291,8 @@ export function CopyDetailsModal({
   const [bought, setBought] = useState('');
   const [notes, setNotes] = useState('');
   const [estimated, setEstimated] = useState<number | string>('');
+  const [grader, setGrader] = useState('');
+  const [cert, setCert] = useState('');
   // What Suggest proposed, said beside the field (why that amount).
   const [suggested, setSuggested] = useState<CostGuess | null>(null);
   const suggestionsOn = useSetting('collection.estimates', true);
@@ -299,6 +304,8 @@ export function CopyDetailsModal({
     setBought(own.datePurchased ?? '');
     setNotes(own.notes);
     setEstimated(own.estimatedCents != null ? own.estimatedCents / 100 : '');
+    setGrader(own.gradingCompany ?? '');
+    setCert(own.gradingCertId ?? '');
     setSuggested(null);
   }, [own]);
   const suggest = useMutation({
@@ -422,6 +429,8 @@ export function CopyDetailsModal({
         estimatedCents: estimated === '' ? null : Math.round(Number(estimated) * 100),
         datePurchased: bought || null,
         notes: notes.trim(),
+        // A graded copy's grader and certificate (they go to PriceCharting's CSV with it).
+        ...(completeness === 'graded' ? { gradingCompany: grader, gradingCertId: cert.trim() } : {}),
       },
       done: 'Saved. What you change here stays, whatever the next export says.',
     });
@@ -480,6 +489,20 @@ export function CopyDetailsModal({
                       Yours alone, for what you've spent: never a price paid, never sent to PriceCharting or put in a download.
                     </Text>
                   </Stack>
+                )}
+                {completeness === 'graded' && (
+                  <Group grow align="flex-start">
+                    <Select
+                      label="Graded by"
+                      data={[...new Set([...GRADERS, ...(grader ? [grader] : [])])]}
+                      value={grader || null}
+                      onChange={(v) => setGrader(v ?? '')}
+                      placeholder="Who graded it"
+                      clearable
+                      comboboxProps={{ zIndex: 400 }}
+                    />
+                    <TextInput label="Certificate number" value={cert} onChange={(e) => setCert(e.currentTarget.value)} maxLength={40} placeholder="On the case's label" />
+                  </Group>
                 )}
                 <TextInput label="Notes" value={notes} onChange={(e) => setNotes(e.currentTarget.value)} maxLength={500} />
                 <Group justify="space-between">

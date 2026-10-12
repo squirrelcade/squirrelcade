@@ -171,12 +171,17 @@ export function registerOwnCopyRoutes(
 
   // The file for PriceCharting's CSV importer: the copies added here whose PriceCharting product is known, with what you
   // paid, the day bought and your notes.
-  app.get('/api/v1/send/pricecharting.csv', async (_request, reply) => {
+  app.get('/api/v1/send/pricecharting.csv', async (request, reply) => {
     const day = new Date().toISOString().slice(0, 10);
+    // A folder on PriceCharting for every row, if one is given (D151): PriceCharting makes it if it doesn't exist.
+    const folder = String((request.query as { folder?: unknown }).folder ?? '')
+      .replace(/[\u0000-\u001f\u007f]/g, '')
+      .trim()
+      .slice(0, 60);
     return reply
       .header('content-type', 'text/csv; charset=utf-8')
       .header('content-disposition', `attachment; filename="squirrelcade-for-pricecharting-${day}.csv"`)
-      .send(collection.forPriceCharting().csv);
+      .send(collection.forPriceCharting(folder).csv);
   });
 
   // A copy added here gets its PriceCharting ID (from the game's page there), so it goes in the CSV with its details.

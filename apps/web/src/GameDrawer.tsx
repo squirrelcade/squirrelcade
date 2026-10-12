@@ -59,6 +59,9 @@ interface GameView {
     id: number;
     datePurchased: string | null;
     notes: string;
+    /** Who graded a graded copy, and its certificate (D151). */
+    gradingCompany: string;
+    gradingCertId: string;
     /** When a copy of Squirrelcade's own went into the list for PriceCharting's importer (null: not yet). */
     sentAt: string | null;
     /** Whose files keep it up to date: PriceCharting's export, a spreadsheet, or none (Squirrelcade's own). */
@@ -561,7 +564,7 @@ export function GameDrawer() {
     title: x.title,
     platform: g!.platform,
     condition: COMPLETENESS_LABELS[x.completeness as Completeness] ?? x.completeness,
-    copy: { id: x.id, completeness: x.completeness, costCents: x.costCents, datePurchased: x.datePurchased, notes: x.notes, slots: x.slots, estimatedCents: x.estimatedCents, platformKey: g!.platformKey },
+    copy: { id: x.id, completeness: x.completeness, costCents: x.costCents, datePurchased: x.datePurchased, notes: x.notes, slots: x.slots, estimatedCents: x.estimatedCents, platformKey: g!.platformKey, gradingCompany: x.gradingCompany, gradingCertId: x.gradingCertId },
   });
   // The windows opened from the drawer keep what they were opened for, and live outside its content: a refresh that
   // redraws the content (WebKit showed one) must not close a window or lose what was typed in it.

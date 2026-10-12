@@ -24,6 +24,20 @@ interface SendCopy {
   costCents: number | null;
   datePurchased: string | null;
   notes: string;
+  /** Who graded a graded copy and its certificate, and its own PriceCharting folder (D151). */
+  gradingCompany: string;
+  gradingCertId: string;
+  folder: string;
+}
+
+/** The folder the CSV puts every game in on PriceCharting, remembered on this browser (D151). */
+const FOLDER_KEY = 'squirrelcade.pricechartingFolder';
+function rememberedFolder(): string {
+  try {
+    return localStorage.getItem(FOLDER_KEY) ?? '';
+  } catch {
+    return '';
+  }
 }
 
 interface ForPriceCharting {
@@ -93,6 +107,15 @@ export function SendToPriceCharting() {
   const dateFormat = useSetting('general.dateFormat', 'us');
   const currency = useSetting('general.currency', 'USD');
   const data = useQuery({ queryKey: ['send', 'pricecharting'], queryFn: () => api<ForPriceCharting>('/send/pricecharting') });
+  const [folder, setFolder] = useState(rememberedFolder);
+  const keepFolder = (v: string) => {
+    setFolder(v);
+    try {
+      localStorage.setItem(FOLDER_KEY, v);
+    } catch {
+      // Storage is off: the folder lasts as long as the page.
+    }
+  };
   const refresh = () => Promise.all([queryClient.invalidateQueries({ queryKey: ['send'] }), queryClient.invalidateQueries({ queryKey: ['game'] }), queryClient.invalidateQueries({ queryKey: ['purchases'] })]);
   const mark = useMutation({
     mutationFn: (v: { path: 'sent' | 'removed'; ids: number[] }) => api(`/send/pricecharting/${v.path}`, { method: 'POST', json: { ids: v.ids } }),
@@ -154,7 +177,15 @@ export function SendToPriceCharting() {
                           {c.platform ?? '?'} · #{c.pcId}
                         </Text>
                       </Table.Td>
-                      <Table.Td>{c.condition}</Table.Td>
+                      <Table.Td>
+                        {c.condition}
+                        {c.gradingCompany && c.condition === 'Graded' && (
+                          <Text size="xs" c="dimmed">
+                            {c.gradingCompany}
+                            {c.gradingCertId ? ` #${c.gradingCertId}` : ''}
+                          </Text>
+                        )}
+                      </Table.Td>
                       <Table.Td>{c.costCents ? money(c.costCents, currency) : '—'}</Table.Td>
                       <Table.Td>{c.datePurchased ? date(c.datePurchased, dateFormat) : '—'}</Table.Td>
                       <Table.Td style={{ maxWidth: 220 }}>
@@ -167,8 +198,25 @@ export function SendToPriceCharting() {
                 </Table.Tbody>
               </Table>
             </div>
+            <TextInput
+              size="xs"
+              maw={320}
+              label="Folder on PriceCharting (optional)"
+              description="Every game in the file goes in this folder there; PriceCharting makes it if it doesn't exist (free accounts can have only a few folders)."
+              placeholder="No folder"
+              maxLength={60}
+              value={folder}
+              onChange={(e) => keepFolder(e.currentTarget.value)}
+            />
             <Group gap="xs">
-              <Button size="compact-sm" variant="light" leftSection={<IconDownload size={14} />} component="a" href="/api/v1/send/pricecharting.csv" download>
+              <Button
+                size="compact-sm"
+                variant="light"
+                leftSection={<IconDownload size={14} />}
+                component="a"
+                href={`/api/v1/send/pricecharting.csv${folder.trim() ? `?folder=${encodeURIComponent(folder.trim())}` : ''}`}
+                download
+              >
                 Download the CSV
               </Button>
               <Button size="compact-sm" variant="default" component="a" href={PRICECHARTING_CSV_IMPORTER} target="_blank" rel="noreferrer" rightSection={<IconExternalLink size={14} />}>

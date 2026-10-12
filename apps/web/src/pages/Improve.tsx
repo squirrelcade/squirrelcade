@@ -28,6 +28,9 @@ interface ImproveItem {
   lastTest: Pick<CopyTest, 'kind' | 'result' | 'testedAt'> | null;
   location: string | null;
   estimatedCents: number | null;
+  /** Who graded a graded copy, and its certificate (D151). */
+  gradingCompany: string;
+  gradingCertId: string;
 }
 
 interface ImproveList {
@@ -66,7 +69,7 @@ export function ImprovePage() {
             title: current.title,
             platform: current.platform ?? '',
             condition: current.condition,
-            copy: { id: current.id, completeness: current.completeness, costCents: current.costCents, datePurchased: current.datePurchased, notes: current.notes, slots: current.slots, estimatedCents: current.estimatedCents, platformKey: current.platformKey ?? undefined },
+            copy: { id: current.id, completeness: current.completeness, costCents: current.costCents, datePurchased: current.datePurchased, notes: current.notes, slots: current.slots, estimatedCents: current.estimatedCents, platformKey: current.platformKey ?? undefined, gradingCompany: current.gradingCompany, gradingCertId: current.gradingCertId },
           }
         : null,
     [current],

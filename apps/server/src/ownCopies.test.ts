@@ -111,13 +111,25 @@ describe('copies of Squirrelcade\'s own', () => {
     const csv = await g.app.inject({ url: '/api/v1/send/pricecharting.csv', cookies });
     expect(csv.headers['content-type']).toContain('text/csv');
     expect(csv.headers['content-disposition']).toMatch(/attachment; filename="squirrelcade-for-pricecharting-\d{4}-\d{2}-\d{2}\.csv"/);
-    expect(csv.body).toBe('id,condition-id,quantity,cost-basis-in-pennies,date-purchased,notes\r\n1,3,1,1997,2026-10-02,"From the flea market, ""mint"", sealed manual"\r\n3,2,1,,,\r\n');
+    expect(csv.body).toBe(
+      'id,condition-id,quantity,cost-basis-in-pennies,date-purchased,notes,grading-company,grading-cert-id,folder\r\n1,3,1,1997,2026-10-02,"From the flea market, ""mint"", sealed manual",,,\r\n3,2,1,,,,,,\r\n',
+    );
+    // A folder for every row, when one is given (D151).
+    const foldered = (await g.app.inject({ url: `/api/v1/send/pricecharting.csv?folder=${encodeURIComponent('Flea market, Oct')}`, cookies })).body;
+    expect(foldered.split('\r\n')[2]).toBe('3,2,1,,,,,,"Flea market, Oct"');
     // Given its PriceCharting ID, Puppeteer moves to the CSV, with what was paid and its condition (item and box: 8).
     expect((await g.app.inject({ method: 'PUT', url: `/api/v1/send/pricecharting/${fresh.id}/product`, cookies, payload: { pcId: 'abc' } })).statusCode).toBe(400);
     expect((await g.app.inject({ method: 'PUT', url: `/api/v1/send/pricecharting/${fresh.id}/product`, cookies, payload: { pcId: '45678' } })).json()).toEqual({ ok: true });
     const after = (await g.app.inject({ url: '/api/v1/send/pricecharting', cookies })).json();
     expect(after.text).toBe('');
     expect(after.csv).toContain('45678,8,1,800,,');
+    // A graded copy goes with who graded it and its certificate; grading on a copy that isn't graded doesn't go.
+    expect((await edit(fresh.id, { completeness: 'graded', gradingCompany: 'WATA', gradingCertId: '123456-001' })).statusCode).toBe(200);
+    expect((await edit(again.id, { gradingCompany: 'PSA' })).statusCode).toBe(200);
+    expect((await edit(again.id, { gradingCertId: 'x'.repeat(41) })).statusCode).toBe(400);
+    const graded = (await g.app.inject({ url: '/api/v1/send/pricecharting', cookies })).json().csv as string;
+    expect(graded).toContain('45678,5,1,800,,,WATA,123456-001,');
+    expect(graded).toContain('3,2,1,,,,,,');
     // Once sent, a copy can't be given another id; an export copy never.
     await g.app.inject({ method: 'POST', url: '/api/v1/send/pricecharting/sent', cookies, payload: { ids: [second.id, again.id, fresh.id] } });
     expect((await g.app.inject({ method: 'PUT', url: `/api/v1/send/pricecharting/${fresh.id}/product`, cookies, payload: { pcId: '1' } })).statusCode).toBe(404);

@@ -6,6 +6,7 @@ What changed in each version of Squirrelcade (called Gamefolio before 0.35.0). T
 
 ### Added
 
+- **Grading and a folder, for PriceCharting's CSV** (D151): a graded copy's window takes who graded it and its certificate number, and the Send to PriceCharting card a folder on PriceCharting; both go in the CSV, both optional.
 - **Send to PriceCharting with what you paid** (D150, the owner's plan): the copies added here whose PriceCharting product is known (any game an export of yours ever brought, or one you give its PriceCharting ID) go in a CSV for PriceCharting's CSV importer, with their condition, what you paid, the day bought and your notes, after a look at the list. The rest go by title, as before.
 - **Edit my copy, beside Have it** (the owner's ask): at the top of a game's drawer, as easy to find as Have it, it opens your copy's window (condition, what you paid, photos, where it is); with several copies, a list to pick which.
 - **Talk to Squirrelcade** (D148): with an AI model set up (the one Check a shelf uses) and Talk on in Settings > Features, a speech bubble at the top of every page opens a conversation about your collection: "Do I have Pac-Man?", "What's top of my wishlist for the PS3?", "I just bought Halo 3". It looks things up before it answers. Small changes (I bought it, a note) happen at once with Undo; excluding a game or making it a target again waits for you to tap the button. Viewers can ask, not change. A microphone beside Send dictates (D149).

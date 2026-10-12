@@ -34,6 +34,9 @@ export interface ImproveItem {
   costCents: number | null;
   datePurchased: string | null;
   notes: string;
+  /** Who graded a graded copy, and its certificate (D151). */
+  gradingCompany: string;
+  gradingCertId: string;
   gaps: Gap[];
   /** Its standard photos, and the ones it doesn't have yet. */
   slots: string[];
@@ -168,6 +171,8 @@ export class CopyCareService {
         costCents: c.costCents,
         datePurchased: c.datePurchased,
         notes: c.notes,
+        gradingCompany: c.gradingCompany,
+        gradingCertId: c.gradingCertId,
         gaps,
         slots,
         missingPhotos,

@@ -120,6 +120,7 @@ const OWN_FIELDS: Record<string, (keyof ReturnType<typeof itemFields>)[]> = {
   costCents: ['costCents'],
   datePurchased: ['datePurchased'],
   notes: ['notes'],
+  grading: ['gradingCompany', 'gradingCertId'],
 };
 
 /** A new copy's key: made once, never a product and condition like the keys of copies from before 0.19.0. */
@@ -179,6 +180,10 @@ export interface SendCopy {
   costCents: number | null;
   datePurchased: string | null;
   notes: string;
+  /** Who graded it and its certificate (a graded copy), and its PriceCharting folder (from an export), for the CSV. */
+  gradingCompany: string;
+  gradingCertId: string;
+  folder: string;
 }
 
 /**
@@ -208,17 +213,32 @@ function csvField(value: string | number | null | undefined): string {
 
 /**
  * The file for PriceCharting's CSV importer (pricecharting.com/collection-import-csv): one row a copy, by product id,
- * with its condition, what you paid (in pennies), the day bought and your notes (at most 300 characters).
+ * with its condition, what you paid (in pennies), the day bought, your notes (at most 300 characters), who graded a
+ * graded copy and its certificate (D151), and a folder: the one given for this file, or the copy's own.
  */
-export function priceChartingCsv(list: { pcId: string | null; completeness: string; costCents: number | null; datePurchased: string | null; notes: string }[]): string {
+export function priceChartingCsv(
+  list: { pcId: string | null; completeness: string; costCents: number | null; datePurchased: string | null; notes: string; gradingCompany: string; gradingCertId: string; folder: string }[],
+  folder = '',
+): string {
   const rows = list
     .filter((c) => c.pcId !== null)
-    .map((c) =>
-      [c.pcId, PC_CONDITION_ID[c.completeness as Completeness] ?? '', 1, c.costCents ?? '', c.datePurchased && DAY.test(c.datePurchased) ? c.datePurchased : '', c.notes.trim().slice(0, 300)]
+    .map((c) => {
+      const graded = c.completeness === 'graded' && c.gradingCompany !== '';
+      return [
+        c.pcId,
+        PC_CONDITION_ID[c.completeness as Completeness] ?? '',
+        1,
+        c.costCents ?? '',
+        c.datePurchased && DAY.test(c.datePurchased) ? c.datePurchased : '',
+        c.notes.trim().slice(0, 300),
+        graded ? c.gradingCompany : '',
+        graded ? c.gradingCertId : '',
+        folder || c.folder,
+      ]
         .map(csvField)
-        .join(','),
-    );
-  return ['id,condition-id,quantity,cost-basis-in-pennies,date-purchased,notes', ...rows].join('\r\n') + '\r\n';
+        .join(',');
+    });
+  return ['id,condition-id,quantity,cost-basis-in-pennies,date-purchased,notes,grading-company,grading-cert-id,folder', ...rows].join('\r\n') + '\r\n';
 }
 
 const DAY = /^\d{4}-\d{2}-\d{2}$/;
@@ -620,8 +640,18 @@ export class CollectionService {
     return label ? { consoleLabel: label.label, region: label.region } : { consoleLabel: platform.name, region: home };
   }
 
-  private checked(input: { costCents?: unknown; estimatedCents?: unknown; datePurchased?: unknown; notes?: unknown; completeness?: unknown }) {
-    const out: { costCents?: number | null; estimatedCents?: number | null; datePurchased?: string | null; notes?: string; completeness?: Exclude<Completeness, 'unknown'> } = {};
+  private checked(input: { costCents?: unknown; estimatedCents?: unknown; datePurchased?: unknown; notes?: unknown; completeness?: unknown; gradingCompany?: unknown; gradingCertId?: unknown }) {
+    const out: { costCents?: number | null; estimatedCents?: number | null; datePurchased?: string | null; notes?: string; completeness?: Exclude<Completeness, 'unknown'>; gradingCompany?: string; gradingCertId?: string } = {};
+    // Who graded a graded copy, and its certificate (D151): free text up to 40 characters (the window offers
+    // PriceCharting's list; an export may have written another name).
+    for (const field of ['gradingCompany', 'gradingCertId'] as const) {
+      const v = input[field];
+      if (v === undefined) continue;
+      if (v !== null && typeof v !== 'string') throw new CopyError('Grading is text.');
+      const t = ((v as string | null) ?? '').trim();
+      if (t.length > 40) throw new CopyError('Grading details hold up to 40 characters.');
+      out[field] = t;
+    }
     if (input.estimatedCents !== undefined) {
       const c = input.estimatedCents;
       if (c !== null && (typeof c !== 'number' || !Number.isInteger(c) || c < 0 || c > 100_000_000)) throw new CopyError('An estimate is an amount in cents.');
@@ -729,7 +759,7 @@ export class CollectionService {
    * Changes a copy's condition, price paid, day bought or notes (any copy, from an export too): what's changed here is
    * the owner's, and no file overwrites it afterwards. Null when there's no such copy in the collection.
    */
-  editCopy(id: number, change: { completeness?: unknown; costCents?: unknown; estimatedCents?: unknown; datePurchased?: unknown; notes?: unknown }): CopyRow | null {
+  editCopy(id: number, change: { completeness?: unknown; costCents?: unknown; estimatedCents?: unknown; datePurchased?: unknown; notes?: unknown; gradingCompany?: unknown; gradingCertId?: unknown }): CopyRow | null {
     const c = this.copy(id);
     if (!c) return null;
     const given = this.checked(change);
@@ -743,6 +773,8 @@ export class CollectionService {
     if (given.costCents !== undefined) (set.costCents = given.costCents), own.add('costCents');
     if (given.datePurchased !== undefined) (set.datePurchased = given.datePurchased), own.add('datePurchased');
     if (given.notes !== undefined) (set.notes = given.notes), own.add('notes');
+    if (given.gradingCompany !== undefined) (set.gradingCompany = given.gradingCompany), own.add('grading');
+    if (given.gradingCertId !== undefined) (set.gradingCertId = given.gradingCertId), own.add('grading');
     // The owner's estimate is Squirrelcade's alone (no file has one), so it needs no protecting from files.
     if (given.estimatedCents !== undefined) set.estimatedCents = given.estimatedCents;
     if (Object.keys(set).length === 0) return c;
@@ -810,7 +842,7 @@ export class CollectionService {
    * PriceCharting's side of the hub (D83): the copies of Squirrelcade's own not on PriceCharting yet, as lines for its paste
    * importer (to send, and sent but not in an export yet), and the copies sold or removed here that its export still lists.
    */
-  forPriceCharting(): { toSend: SendCopy[]; waiting: SendCopy[]; toRemove: SendCopy[]; text: string; csv: string } {
+  forPriceCharting(folder = ''): { toSend: SendCopy[]; waiting: SendCopy[]; toRemove: SendCopy[]; text: string; csv: string } {
     // PriceCharting's product for each game an export ever brought (live copies first, then sold or removed ones), by
     // console and game: a copy added here of such a game can go in PriceCharting's CSV importer with its details.
     const known = new Map<string, string>();
@@ -843,6 +875,9 @@ export class CollectionService {
         costCents: c.costCents,
         datePurchased: c.datePurchased,
         notes: c.notes,
+        gradingCompany: c.gradingCompany,
+        gradingCertId: c.gradingCertId,
+        folder: c.folder,
       };
     };
     const rows = this.ownCopies();
@@ -867,7 +902,10 @@ export class CollectionService {
         .map((c) => c.line)
         .join('\n'),
       // The CSV importer's file: the copies whose product is known, with their details.
-      csv: priceChartingCsv(toSend.map((c) => ({ ...c, completeness: completeness.get(c.id) ?? 'unknown' }))),
+      csv: priceChartingCsv(
+        toSend.map((c) => ({ ...c, completeness: completeness.get(c.id) ?? 'unknown' })),
+        folder,
+      ),
     };
   }
 

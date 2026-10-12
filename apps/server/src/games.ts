@@ -208,6 +208,9 @@ export function registerGameRoutes(
         sentAt: i.sentAt,
         datePurchased: i.datePurchased,
         notes: i.notes,
+        // Who graded a graded copy, and its certificate (D151).
+        gradingCompany: i.gradingCompany ?? '',
+        gradingCertId: i.gradingCertId ?? '',
         details: details?.get(i.key) ?? null,
         loans: details ? deps.details.of(i.key).loans.filter((l) => l.returnedAt === null) : [],
         photos: details ? deps.details.photos(i.key) : [],

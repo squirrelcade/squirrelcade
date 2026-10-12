@@ -28,6 +28,12 @@ export const COMPLETENESS_LABELS: Record<Completeness, string> = {
   unknown: 'Unknown',
 };
 
+/**
+ * The grading companies PriceCharting's CSV importer knows (its Grading Company List), by the name it takes: what a
+ * graded copy's window offers (D151).
+ */
+export const GRADERS = ['PSA', 'Beckett', 'VGA', 'WATA', 'CGC', 'CBCS', 'SGC', 'NGC', 'PCGS', 'TAG', 'ACE', 'Other'] as const;
+
 /** Short forms for badges and narrow columns. */
 export const COMPLETENESS_SHORT: Record<Completeness, string> = {
   sealed: 'Sealed',
