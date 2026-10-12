@@ -14,7 +14,7 @@ Prefer to be walked through it? Paste [the setup prompt](../ai/setup-prompt.md) 
 
 ## Before you start
 
-- **A machine that runs Docker all the time:** a NAS (Synology, QNAP, Unraid, TrueNAS), a mini PC, or any Linux server. Squirrelcade is built for 64-bit Intel and AMD processors (x86-64); ARM machines (a Raspberry Pi, NAS models with ARM processors) aren't supported yet. To check: on Linux, `uname -m` says `x86_64` (fine) or `aarch64` (not yet); on a Synology, **Control Panel > Info Center** names the processor (Intel or AMD is fine).
+- **A machine that runs Docker all the time:** a NAS (Synology, QNAP, Unraid, TrueNAS), a mini PC, or any Linux server. Squirrelcade runs on 64-bit processors: Intel and AMD (x86-64), and ARM (a Raspberry Pi 4 or 5 with a 64-bit system, NAS models with ARM processors, a Mac with Apple silicon). To check on Linux: `uname -m` says `x86_64` or `aarch64` (both fine); `armv7l` is a 32-bit system, which isn't supported.
 - **Your games.** Bring them in from an export (PriceCharting, CLZ Games, GAMEYE, VGCollect, or a spreadsheet of your own), or type them in one at a time. Values come from a PriceCharting export, or from a Value column in a spreadsheet of your own; games you type in have none until then, and everything else works the same. See [Your collection](../help/collection.md).
 - **About 30 minutes** for steps 1 and 2. The rest can wait for another day.
 

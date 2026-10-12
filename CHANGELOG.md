@@ -2,7 +2,7 @@
 
 What changed in each version of Squirrelcade (called Gamefolio before 0.35.0). The decisions behind these (D01, D02...) are in [docs/DECISIONS.md](docs/DECISIONS.md), each with a tag to roll it back.
 
-## 1.1.0 (coming): ARM, the Stash's chest, Check a shelf and Talk
+## 1.1.0 (2026-10-12): Check a shelf, Talk, PriceCharting with what you paid, and ARM
 
 ### Added
 

@@ -13,14 +13,15 @@ Squirrelcade is a free web app for video game collectors. You run it yourself, i
 - **Your collection, console by console:** every copy with its condition, what you paid and what it's worth, as a list or a wall of covers, with statistics, a printable report and a spreadsheet download.
 - **Every console's checklist:** what you have, what's missing and how complete you are, from Wikipedia's lists of each console's games (or a list of your own).
 - **What to get next:** your Acorns wishlist ranks the games you don't have by your own rules (the consoles, genres and series you like, reviews, your own picks), with games coming soon and deals.
-- **Store Mode on your phone:** scan a game's barcode in a shop and see at once whether you have it. It works with no signal.
+- **Store Mode on your phone:** scan a game's barcode in a shop and see at once whether you have it, or photograph a whole shelf and get a checklist of what you need. It works with no signal.
 - **Selling and trading:** a ready listing for eBay or Mercari, a record of what you sold, and trades that come out even with friends who run Squirrelcade too.
 - **Sharing:** let family look without changing anything, or send a wishlist link for birthdays.
+- **Talk to it (optional):** with an AI model of your choosing (any service, one at home, or none), ask about your collection in plain words and tell it what you bought.
 - **And more:** what you've played, loans, photos of your copies, each console's Top 100 and history, your PC games from Playnite, messages to your phone, automatic backups, and an API for other tools.
 
 ## Install it
 
-You need a computer that's always on and runs Docker, with an Intel or AMD processor (ARM, such as a Raspberry Pi, isn't supported yet). A NAS, a mini PC or a home server is ideal.
+You need a computer that's always on and runs Docker, with a 64-bit processor: Intel or AMD, or ARM (a Raspberry Pi 4 or 5 with a 64-bit system, an ARM NAS, a Mac with Apple silicon). A NAS, a mini PC or a home server is ideal.
 
 Pick one of three ways:
 
@@ -77,7 +78,7 @@ With **Settings > Claude and AI apps** turned on, Claude can read your collectio
 
 ## Privacy
 
-Your collection stays on your server. Squirrelcade has no tracking of any kind and no account with anyone. It contacts Wikipedia (for catalogs), and only the services you turn on: IGDB, IsThereAnyDeal, RetroAchievements, your RomM, the ways to send you messages, and so on. When you connect Claude, the answers to its questions go to Claude; what you paid and your notes only if you allow it. [What leaves your server](docs/help/features.md#what-leaves-your-server) has the full list.
+Your collection stays on your server. Squirrelcade has no tracking of any kind and no account with anyone. It contacts Wikipedia (for catalogs), and only the services you turn on: IGDB, IsThereAnyDeal, RetroAchievements, your RomM, the AI model you choose for Check a shelf and Talk, the ways to send you messages, and so on. When you connect Claude, the answers to its questions go to Claude; what you paid and your notes only if you allow it. [What leaves your server](docs/help/features.md#what-leaves-your-server) has the full list.
 
 ## Credits
 

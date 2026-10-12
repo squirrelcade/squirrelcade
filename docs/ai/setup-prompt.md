@@ -36,7 +36,7 @@ I'm setting up **Squirrelcade**, a free, self-hosted web app for my video game c
 
 - **One Docker container.** Docker runs apps in sealed boxes called containers. Squirrelcade's image (its download) is `ghcr.io/squirrelcade/squirrelcade:latest`; it answers on port **7575** (the number after the server's address).
 - **Two folders:** `/config` (the database, settings, logs and automatic backups) and `/imports` (a watched folder for collection exports).
-- **Processor:** 64-bit Intel or AMD only (x86-64, also called x86_64 or amd64). ARM isn't supported yet: not a Raspberry Pi, an ARM NAS, or a Mac with Apple silicon (M1 or later).
+- **Processor:** 64-bit: Intel or AMD (x86-64, also called x86_64 or amd64), or ARM (arm64, also called aarch64: a Raspberry Pi 4 or 5 with a 64-bit system, an ARM NAS, a Mac with Apple silicon). A 32-bit system (armv7l) isn't supported.
 - **It works on its own:** no AI, no PriceCharting, no outside account. Games can be typed in by hand; each outside service is an optional extra.
 - **Accounts:** the first is the **owner's**. Others can be invited as **viewers**, who look and change nothing.
 - **The menu:** Today (the home page: the squirrel at the top left comes back to it); Stash (Stash, Copies, Upgrades, Improve, Backlog, Loans, Stash updates); Acorns (Add a game, Acorns wishlist, Coming soon, Past releases, Deals, For sale, Sales, Acorns ranking); Almanac (Platforms, Sets, Statistics, Report); Friends; PC library (when it's on); Settings; System (Review, Status, Tasks, Backups, Logs, Users); Help.
@@ -86,18 +86,18 @@ Check these before installing anything: ask me to look, or give me the read-only
 
 | Check | How | Fine | Not supported |
 | --- | --- | --- | --- |
-| Processor | Linux, Unraid, TrueNAS, or a NAS over SSH: `uname -m`. Synology: **Control Panel > Info Center**, the CPU line. Windows: Start, Settings, System, About, "System type". Mac: Apple menu > About This Mac. | `x86_64`; Intel or AMD; "x64-based processor" | `aarch64`, `arm64`, `armv7l`; Realtek, Marvell or Annapurna Labs; a Raspberry Pi; "ARM-based processor"; Apple M1 or later |
-| Docker | Synology: **Container Manager** in the Package Center. Linux: `docker --version` and `docker compose version`. Unraid: the Docker tab. TrueNAS SCALE 24.10 or later: Apps. QNAP: Container Station. Windows, or an Intel Mac: Docker Desktop. | Installed, or can be | Not offered for that model (a Synology without Container Manager); TrueNAS CORE |
+| Processor | Linux, Unraid, TrueNAS, or a NAS over SSH: `uname -m`. Synology: **Control Panel > Info Center**, the CPU line. Windows: Start, Settings, System, About, "System type". Mac: Apple menu > About This Mac. | `x86_64`, `aarch64` or `arm64`; Intel, AMD, or 64-bit ARM (Realtek, Annapurna Labs, a Raspberry Pi 4 or 5 on a 64-bit system); "x64-based" or "ARM-based processor"; Apple M1 or later | `armv7l` or another 32-bit system (a Raspberry Pi on the 32-bit Raspberry Pi OS: the 64-bit one fixes it); an older 32-bit ARM NAS (Marvell Armada, for example) |
+| Docker | Synology: **Container Manager** in the Package Center. Linux: `docker --version` and `docker compose version`. Unraid: the Docker tab. TrueNAS SCALE 24.10 or later: Apps. QNAP: Container Station. Windows or a Mac: Docker Desktop. | Installed, or can be | Not offered for that model (a Synology without Container Manager); TrueNAS CORE |
 | Memory and disk | Synology: **Control Panel > Info Center** (Physical Memory) and **Storage Manager** (free space). Linux: `free -h` and `df -h`. Windows: Settings, System, About. Others: the system page. | 1 GB of memory or more in all (Squirrelcade itself usually uses a few hundred MB), and a few GB of free disk | Less |
 | Always on | My answer to question 2 | A NAS or a server | A computer that sleeps: fine to try, not to keep |
 
-**Synology models:** most with a **+** in the name (DS224+, DS923+) have Intel or AMD processors; many **j**, **play** and value models (DS223j, DS218play, DS223) have ARM ones. The CPU line decides.
+**Synology models:** the Package Center decides. If it offers **Container Manager** for the model, Squirrelcade runs there, whether the processor is Intel, AMD or ARM; if it doesn't, the NAS can't run containers.
 
 **If it can't run here,** say so plainly, offer these, then STOP and wait:
 
-- Another machine with an Intel or AMD processor that stays on: a mini PC, an Intel or AMD NAS, an old PC with Linux.
-- To try it today: Docker Desktop on a Windows PC (x64) or an Intel Mac. Moving to a server later means copying the config folder.
-- ARM isn't supported yet. On a Mac with Apple silicon, Docker Desktop's emulation may start it, but that's unsupported: don't rely on it, and suggest no other workaround.
+- Another machine that stays on: a mini PC, a NAS that runs containers, a Raspberry Pi 4 or 5 with a 64-bit system, an old PC with Linux.
+- To try it today: Docker Desktop on a Windows PC or a Mac. Moving to a server later means copying the config folder.
+- A 32-bit system isn't supported. On a Raspberry Pi, the 64-bit Raspberry Pi OS fixes it; suggest no other workaround.
 
 **If Docker is missing,** install it before Phase 3 (ask first, rule 5): on a Synology, **Container Manager** from the Package Center; on Linux, Docker's official guide, with the Compose plugin (https://docs.docker.com/engine/install/); on Windows or a Mac, Docker Desktop (https://www.docker.com/products/docker-desktop/).
 
@@ -118,7 +118,7 @@ Only the steps for my platform, one at a time.
 | Unraid | No compose file: `--user 99:100` in the form | `/mnt/user/appdata/squirrelcade/config` and `.../imports` |
 | TrueNAS SCALE | `"568:568"` (its apps user), with write access to the dataset | Full paths in my dataset, such as `/mnt/tank/apps/squirrelcade/config` |
 | Portainer | The user that owns the two folders | Full paths; the folders must exist |
-| Docker Desktop (Windows, Intel Mac) | Remove the `user:` line: nothing to ask me | `./config` and `./imports` |
+| Docker Desktop (Windows, Mac) | Remove the `user:` line: nothing to ask me | `./config` and `./imports` |
 
 **Step 2: the compose file** (`docker-compose.yml`, a short text file that tells Docker what to run). Write it for me with my values in the three marked lines:
 
@@ -151,7 +151,7 @@ services:
 - **Unraid:** **Docker > Add Container** (it's not in Community Applications yet). **Repository** `ghcr.io/squirrelcade/squirrelcade:latest`; **Network type** bridge; a **Port** 7575 to 7575; a **Path** from container `/config` to `/mnt/user/appdata/squirrelcade/config`, and one from `/imports` to `/mnt/user/appdata/squirrelcade/imports`; a **Variable** `TZ` with my time zone; **Extra Parameters** (Advanced view): `--user 99:100`. Then **Apply**.
 - **TrueNAS SCALE (24.10 or later):** **Apps > Discover Apps**, the ⋮ menu, **Install via YAML**. Name it `squirrelcade`, and paste the file with full paths to my dataset and `user: "568:568"`.
 - **Portainer:** **Stacks > Add stack**, name it `squirrelcade`, paste the file into the **Web editor** with full paths, then **Deploy the stack**.
-- **Docker Desktop (Windows, or an Intel Mac; to try it):** first, Docker Desktop installed (https://www.docker.com/products/docker-desktop/) and started: it says it's running. Then a folder `squirrelcade` with `config` and `imports` folders inside, and the file saved there as `docker-compose.yml`, without the `user:` line (in Notepad, **Save as type: All files**, or it saves `docker-compose.yml.txt`; in TextEdit, **Format > Make Plain Text** first). Open a terminal in that folder (Windows 11: right-click an empty spot in the folder, **Open in Terminal**; a Mac: type `cd ` with the space in Terminal, drag the folder onto the window, press Return) and run `docker compose up -d`. The address is then `http://localhost:7575`.
+- **Docker Desktop (Windows, or a Mac; to try it):** first, Docker Desktop installed (https://www.docker.com/products/docker-desktop/) and started: it says it's running. Then a folder `squirrelcade` with `config` and `imports` folders inside, and the file saved there as `docker-compose.yml`, without the `user:` line (in Notepad, **Save as type: All files**, or it saves `docker-compose.yml.txt`; in TextEdit, **Format > Make Plain Text** first). Open a terminal in that folder (Windows 11: right-click an empty spot in the folder, **Open in Terminal**; a Mac: type `cd ` with the space in Terminal, drag the folder onto the window, press Return) and run `docker compose up -d`. The address is then `http://localhost:7575`.
 - **QNAP, or anything else:** the guides don't cover it. Use the same compose file in its Docker app (QNAP: Container Station), following that app's own guide.
 
 **Step 4: check that it runs.**
@@ -338,7 +338,7 @@ First: **System > Status** (health problems, with what to do), **System > Tasks*
 | --- | --- |
 | "permission denied" on /config | The `user:` can't write to the folders: change its numbers, or the folders' owner (`sudo chown -R 1000:1000 config imports`, with the `user:` numbers). |
 | "port is already allocated" or "address already in use" | Port 7575 is taken: change the left number (`"7580:7575"`) and open that port. |
-| "no matching manifest for linux/arm64" | The processor is ARM: not supported yet (Phase 2). |
+| "no matching manifest for linux/arm/v7" | A 32-bit system: not supported. On a Raspberry Pi, the 64-bit Raspberry Pi OS fixes it. |
 | "manifest unknown" or "not found" | The image name is mistyped: `ghcr.io/squirrelcade/squirrelcade:latest`. |
 | The page doesn't load after an update | It may still be starting (a database change can take a minute): wait, then read the log. |
 | **Update held** ("Waiting for confirmation: this would remove...") | It would remove more than 10% of the collection: **See what changes** on Stash updates, then apply or discard it. |

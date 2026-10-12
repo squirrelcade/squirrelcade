@@ -42,7 +42,7 @@ docker compose up -d
 
 ## On a Synology NAS (DSM 7.2, Container Manager)
 
-1. Check the processor: **Control Panel > Info Center** names it. Intel or AMD is fine; an ARM processor (Realtek, for example) isn't supported yet. Then install **Container Manager** from the Package Center, if it isn't already.
+1. Install **Container Manager** from the Package Center, if it isn't already. Synology offers it for some models only: if the Package Center doesn't have it, this NAS can't run containers. Intel, AMD and ARM models alike run Squirrelcade with it.
 2. In **File Station**, make a folder `docker/squirrelcade`, with `config` and `imports` folders inside it.
 3. Let Squirrelcade save files there. The easy way: in **File Station**, right-click the `squirrelcade` folder, choose **Properties**, and on **Permission** click **Create**: pick **Everyone**, tick read and write, and apply it to the folders and files inside too. Then keep `"1000:1000"` in the compose file. (Or use your own account's numbers: turn on SSH in **Control Panel > Terminal & SNMP**, sign in with `ssh you@your-nas` and run `id`. Synology accounts start at 1026 and the group is usually `100`, so `"1026:100"`.)
 4. **Container Manager > Project > Create:** name `squirrelcade`, path `docker/squirrelcade`, source **Create docker-compose.yml**; paste the file, then **Next** (the web portal page needs nothing: **Next** again) and **Done**. It downloads the image and starts it.
@@ -96,7 +96,7 @@ A computer that sleeps isn't a good home for Squirrelcade for good, but it's a f
 - Nothing there? The container's log says why: `docker logs squirrelcade`, or the log in your NAS app. The usual causes:
   - **"permission denied" on /config:** the user in `user:` can't write to the config folder. Change the numbers, or the folder's owner (`sudo chown -R 1000:1000 config imports`).
   - **Port 7575 taken** by something else: change the left number (`"7580:7575"`) and open that port instead.
-  - **"no matching manifest for linux/arm64"** when it downloads the image: the processor is ARM, which isn't supported yet (`uname -m` says `aarch64`).
+  - **"no matching manifest for linux/arm/v7"** (or another 32-bit `arm`) when it downloads the image: the system is 32-bit, which isn't supported (`uname -m` says `armv7l`). On a Raspberry Pi, the 64-bit Raspberry Pi OS fixes it.
   - **"manifest unknown"** or **"not found":** the image name is mistyped. It's `ghcr.io/squirrelcade/squirrelcade:latest`.
 
 ## Updating later
