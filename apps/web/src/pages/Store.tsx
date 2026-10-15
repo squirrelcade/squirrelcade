@@ -1,7 +1,7 @@
 import { Alert, Anchor, Button, Card, Group, Loader, NumberInput, Stack, Text, TextInput, Title } from '@mantine/core';
 import { useDebouncedValue, useMediaQuery } from '@mantine/hooks';
 import { COMPLETENESS_LABELS, priceChartingBarcodeUrl, priceChartingUrl, shopLinksFor, shopUrl, SHOPS_IN_LISTS, type Completeness } from '@squirrelcade/core';
-import { IconCurrencyDollar, IconSearch, IconVideoFilled } from '@tabler/icons-react';
+import { IconCurrencyDollar, IconPlus, IconSearch, IconVideoFilled } from '@tabler/icons-react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { api, errorMessage } from '../api';
@@ -29,6 +29,7 @@ import {
   type SavedCopy,
 } from '../offline';
 import { ScannerModal } from '../ScannerModal';
+import { CopyDetailsModal, type CopyRef } from '../CopyDetails';
 import { isBarcode } from '../lines';
 import { GameCover, GameTitle } from '../GameDrawer';
 import { type Answer } from '../choices';
@@ -67,9 +68,28 @@ interface Result {
   reviews?: ReviewsOf;
 }
 
-/** A copy added in Squirrelcade that no export has yet ("I bought it", Add a copy): GET /api/v1/purchases. */
+/** The fields of a game's copy that its window needs (GET /api/v1/game). */
+interface GameCopy {
+  id: number;
+  copyKey: string;
+  title: string;
+  completeness: string;
+  costCents: number | null;
+  datePurchased: string | null;
+  notes: string;
+  slots: string[];
+  estimatedCents: number | null;
+  gradingCompany: string;
+  gradingCertId: string;
+}
+
+/** The answers a game can be added from (a game you have on another console, or one to check, may be bought here too). */
+const ADDABLE: readonly Answer[] = ['need', 'unconfirmed', 'own-elsewhere', 'check'];
+
+/** A copy added in Squirrelcade that no export has yet (Add it, Add a copy): GET /api/v1/purchases. */
 interface Purchase {
   id: number;
+  key: string;
   entryId: number | null;
   title: string;
   platform: string;
@@ -251,10 +271,46 @@ export function StorePage() {
     onError: (err) => notifyError(err),
   });
   const shops = useSetting('interface.shopLinks', []);
-  // What "I bought it" records a game as (Settings > Collection > Adding copies).
-  const boughtAs = (COMPLETENESS_LABELS[useSetting('collection.boughtCondition', 'complete') as Completeness] ?? 'complete in box').toLowerCase();
+  // What Add it records a game as at first (Settings > Collection > Adding copies), until its window says otherwise.
+  const boughtCondition = useSetting('collection.boughtCondition', 'complete');
+  // The window of the copy just added (D153): what was paid, the day, notes and photos, all at once.
+  const [editing, setEditing] = useState<CopyRef | null>(null);
+  const openCopy = async (r: Result, added: { id: number; key: string }) => {
+    let found: GameCopy | undefined;
+    try {
+      const view = await api<{ copies: GameCopy[] }>(`/game?platform=${encodeURIComponent(r.platformKey)}&title=${encodeURIComponent(r.title)}`);
+      found = view.copies.find((c) => c.id === added.id);
+    } catch {
+      // Its window opens anyway, with what Add it gave it (only its standard photos are missing).
+    }
+    const completeness = found?.completeness ?? boughtCondition;
+    setEditing({
+      copyKey: found?.copyKey ?? added.key,
+      title: r.title,
+      platform: r.platform,
+      condition: COMPLETENESS_LABELS[completeness as Completeness] ?? completeness,
+      copy: {
+        id: added.id,
+        completeness,
+        costCents: found?.costCents ?? null,
+        datePurchased: found?.datePurchased ?? null,
+        notes: found?.notes ?? '',
+        slots: found?.slots ?? [],
+        estimatedCents: found?.estimatedCents ?? null,
+        platformKey: r.platformKey,
+        gradingCompany: found?.gradingCompany ?? '',
+        gradingCertId: found?.gradingCertId ?? '',
+      },
+    });
+  };
 
   const purchases = useQuery({ queryKey: ['purchases'], queryFn: () => api<Purchase[]>('/purchases') });
+  // How many of the copies added here still miss something Collection › Improve counts (a price, the day, photos, a test).
+  const toFill = useQuery({
+    queryKey: ['improve', 'added-here'],
+    queryFn: () => api<{ total: number }>('/collection/improve?added=here&pageSize=1'),
+    enabled: canEdit && (purchases.data?.length ?? 0) > 0,
+  });
   const currency = useSetting('general.currency', 'USD');
   const dateFormat = useSetting('general.dateFormat', 'us');
   const summary = useQuery({ queryKey: ['collection', 'summary'], queryFn: () => api<{ currentImport: { appliedAt: string | null } | null }>('/collection/summary') });
@@ -263,6 +319,7 @@ export function StorePage() {
   const afterPurchase = () =>
     Promise.all([
       queryClient.invalidateQueries({ queryKey: ['purchases'] }),
+      queryClient.invalidateQueries({ queryKey: ['improve'] }),
       queryClient.invalidateQueries({ queryKey: ['lookup'] }),
       queryClient.invalidateQueries({ queryKey: ['catalogs'] }),
       queryClient.invalidateQueries({ queryKey: ['wishlist'] }),
@@ -319,11 +376,20 @@ export function StorePage() {
         notifySuccess(`Squirrelcade can't be reached, so ${r.title} is kept in this browser and counts as bought as soon as it answers.`, 'Bought, without a connection');
         return;
       }
-      notifySuccess(`${r.title} is in your collection, as ${boughtAs}. Its condition and price can be changed in its drawer.${overGoalNote(answer)}`, 'Bought');
+      // Over the spending goal says so; then the copy's window, to put in what was paid, the day, notes and photos.
+      const over = overGoalNote(answer);
+      if (over) notifySuccess(`${r.title} is in your collection.${over}`, 'Bought');
       await afterPurchase();
+      const added = answer as { id?: number; key?: string } | undefined;
+      if (added?.id !== undefined && added.key) await openCopy(r, { id: added.id, key: added.key });
     },
     onError: (err) => notifyError(err),
   });
+  /** Add it: the copy in hand is this game, so a new barcode waiting to be linked is linked to it too. */
+  const addIt = (r: Result) => {
+    if (linking && !offlineAt) link.mutate(r);
+    buy.mutate(r);
+  };
   // A copy on the shelf proves the physical release: confirming makes the game count.
   const confirm = useMutation({
     mutationFn: (r: Result) => api(`/catalogs/entries/${r.entryId}`, { method: 'PATCH', json: { targetStatus: 'required' } }),
@@ -388,7 +454,9 @@ export function StorePage() {
         return { text: "Squirrelcade doesn't collect this console.", said: null };
     }
   };
-  // A viewer gets the answers, not the buttons that change the collection.
+  // A viewer gets the answers, not the buttons that change the collection. Adding a game is the big Add it beside the
+  // verdict (D153); these are the smaller answers about it.
+  const hasActions = (r: Result) => canEdit && ((linking && !offlineAt) || (r.entryId !== undefined && r.answer === 'unconfirmed' && !offlineAt));
   const actions = (r: Result) => !canEdit ? null : (
     <>
       {linking && !offlineAt && (
@@ -401,13 +469,9 @@ export function StorePage() {
           It's physical
         </Button>
       )}
-      {r.entryId !== undefined && !queuedIds.has(r.entryId) && (r.answer === 'need' || r.answer === 'unconfirmed' || r.answer === 'own-elsewhere' || r.answer === 'check') && (
-        <Button size="compact-xs" variant="default" onClick={() => buy.mutate(r)} loading={buy.isPending && buy.variables?.entryId === r.entryId}>
-          I bought it
-        </Button>
-      )}
     </>
   );
+  const addable = (r: Result) => canEdit && r.entryId !== undefined && !queuedIds.has(r.entryId) && ADDABLE.includes(r.answer);
 
   return (
     <Stack maw={640} mx="auto" gap="sm">
@@ -530,7 +594,16 @@ export function StorePage() {
         const reason = reasonOf(r);
         return (
         <Card key={`${r.platformKey}|${r.title}`} withBorder padding="sm">
-          <Verdict answer={r.answer} reason={reason.text} />
+          {/* The verdict, and beside it, as tall as it, Add it for a game you can buy here (D153). */}
+          <div className="sc-verdict-row">
+            <Verdict answer={r.answer} reason={reason.text} />
+            {addable(r) && (
+              <button type="button" className="sc-verdict-add" onClick={() => addIt(r)} disabled={buy.isPending}>
+                {buy.isPending && buy.variables?.entryId === r.entryId ? <Loader size={22} color="currentColor" /> : <IconPlus size={24} stroke={3} aria-hidden="true" />}
+                <span>Add it</span>
+              </button>
+            )}
+          </div>
           <Group justify="space-between" align="flex-start" wrap="nowrap" mt="sm">
             <Group gap="sm" align="flex-start" wrap="nowrap" style={{ minWidth: 0, flex: 1 }}>
             {r.coverId && <GameCover platformKey={r.platformKey} title={r.title} id={r.coverId} width={48} />}
@@ -550,7 +623,7 @@ export function StorePage() {
                   {r.note}
                 </Text>
               )}
-              {narrow && canEdit && (
+              {narrow && hasActions(r) && (
                 <Group gap="xs" my={4}>
                   {actions(r)}
                 </Group>
@@ -558,7 +631,7 @@ export function StorePage() {
               {r.entryId !== undefined && queuedIds.has(r.entryId) ? (
                 <Text size="xs">Bought without a connection: it's added to your collection as soon as Squirrelcade answers.</Text>
               ) : r.pending || (r.entryId !== undefined && purchaseOf.has(r.entryId)) ? (
-                // Bought here (I bought it, now a copy of its own): undo, and what was paid, right where it was tapped.
+                // Bought here (Add it, now a copy of its own): undo, what was paid, and its window again, right where it was tapped.
                 <Text size="xs" component="div">
                   Bought here, not on PriceCharting yet.{' '}
                   {canEdit && r.entryId !== undefined && purchaseOf.has(r.entryId) && (
@@ -568,6 +641,10 @@ export function StorePage() {
                       </Anchor>
                       {' · '}
                       <PaidInStore purchase={purchaseOf.get(r.entryId!)!} currency={currency} />
+                      {' · '}
+                      <Anchor size="xs" onClick={() => void openCopy(r, { id: purchaseOf.get(r.entryId!)!.id, key: purchaseOf.get(r.entryId!)!.key })}>
+                        photos and notes
+                      </Anchor>
                     </>
                   )}
                 </Text>
@@ -614,7 +691,7 @@ export function StorePage() {
               )}
             </Stack>
             </Group>
-            {!narrow && canEdit && (
+            {!narrow && hasActions(r) && (
               <Stack gap={6} align="flex-end">
                 {actions(r)}
               </Stack>
@@ -637,6 +714,12 @@ export function StorePage() {
           <Text size="xs" c="dimmed" mb={6}>
             They're in your collection. Stash updates › Send to PriceCharting has them as lines for PriceCharting's importer.
           </Text>
+          {/* Games added one after another in a store get their details in one sitting later: Improve walks them (D153). */}
+          {canEdit && (toFill.data?.total ?? 0) > 0 && (
+            <Button component={Link} to="/collection/improve?added=here" size="compact-sm" variant="light" mb={6}>
+              Fill in their details ({count(toFill.data!.total)})
+            </Button>
+          )}
           <Stack gap={2}>
             {purchases.data!.map((p) => (
               <Text key={p.id} size="sm" component="div">
@@ -673,6 +756,15 @@ export function StorePage() {
           Ready without a connection: this browser's copy of {count(saved.copy.games.length)} answers was updated {timeAgo(saved.savedAt)}.
         </Text>
       )}
+      <CopyDetailsModal
+        copy={editing}
+        added
+        onClose={() => setEditing(null)}
+        onScanNext={() => {
+          setEditing(null);
+          setScanning(true);
+        }}
+      />
       <ScannerModal
         opened={scanning}
         onClose={() => setScanning(false)}

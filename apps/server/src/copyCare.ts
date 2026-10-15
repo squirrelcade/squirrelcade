@@ -117,8 +117,12 @@ export class CopyCareService {
     return { cents, copies: n };
   }
 
-  /** Collection > Improve: each gap's count, and the copies missing what's asked (or anything counted), a page at a time. */
-  improve(query: { gap?: string; platform?: string; page?: number; pageSize?: number }): { counts: Record<Gap, number>; checked: Gap[]; total: number; items: ImproveItem[] } {
+  /**
+   * Collection > Improve: each gap's count, and the copies missing what's asked (or anything counted), a page at a time.
+   * `added: 'here'` keeps only the copies added in Squirrelcade (Store Mode's Add it, Add a copy) that no export has
+   * brought back yet: a store's haul, filled in one after another later (D153).
+   */
+  improve(query: { gap?: string; platform?: string; added?: string; page?: number; pageSize?: number }): { counts: Record<Gap, number>; checked: Gap[]; total: number; items: ImproveItem[] } {
     const s = this.settings;
     const checked = GAPS.filter((g) => s.get(`collection.improve${g[0]!.toUpperCase()}${g.slice(1)}` as 'collection.improvePaid'));
     const retestMonths = s.get('collection.retestMonths');
@@ -133,7 +137,7 @@ export class CopyCareService {
       .select({ copy: copies, platformKey: platforms.key, platform: platforms.name })
       .from(copies)
       .leftJoin(platforms, eq(platforms.id, copies.platformId))
-      .where(and(isNull(copies.goneAt), ...(query.platform ? [eq(platforms.key, query.platform)] : [])))
+      .where(and(isNull(copies.goneAt), ...(query.platform ? [eq(platforms.key, query.platform)] : []), ...(query.added === 'here' ? [eq(copies.source, 'squirrelcade')] : [])))
       .all()
       .sort((a, b) => a.copy.title.localeCompare(b.copy.title) || (a.platform ?? '').localeCompare(b.platform ?? '') || a.copy.id - b.copy.id);
     const counts: Record<Gap, number> = { paid: 0, date: 0, photos: 0, tested: 0, location: 0 };
@@ -190,7 +194,7 @@ export function registerCopyCareRoutes(app: FastifyInstance, care: CopyCareServi
   app.get('/api/v1/collection/copies/:id/suggestion', async (request) => ({ suggestion: care.suggest(Number((request.params as { id: string }).id)) }));
   app.get('/api/v1/collection/improve', async (request) => {
     const q = request.query as Record<string, string | undefined>;
-    return care.improve({ gap: q.gap || undefined, platform: q.platform || undefined, page: q.page ? Number(q.page) : undefined, pageSize: q.pageSize ? Number(q.pageSize) : undefined });
+    return care.improve({ gap: q.gap || undefined, platform: q.platform || undefined, added: q.added || undefined, page: q.page ? Number(q.page) : undefined, pageSize: q.pageSize ? Number(q.pageSize) : undefined });
   });
   app.get('/api/v1/collection/estimates', async () => care.estimatedTotal());
 }

@@ -957,7 +957,7 @@ export async function uiTest(target, account, check) {
     const price = page.getByRole('link', { name: 'Price on PriceCharting' }).first();
     await price.waitFor({ timeout: 10000 });
     const priceHref = (await price.getAttribute('href')) ?? '';
-    const cameraHref = await page.getByRole('link', { name: 'Store Mode: scan a game' }).getAttribute('href');
+    const cameraHref = await page.getByRole('link', { name: 'Scan a game' }).getAttribute('href');
     // Each answer is a verdict on its tone (0.50.0), in the answer's own words.
     const verdict = await page.locator('.sc-verdict').first().innerText().catch(() => '');
     found = await pageProblems();
@@ -980,9 +980,9 @@ export async function uiTest(target, account, check) {
     const offlineAnswer = await page.locator('main').innerText();
     found = await pageProblems();
     check('ui: Store Mode answers without a connection', found.length === 0 && /You own this/i.test(offlineAnswer), found.join(' | ') || offlineAnswer.slice(0, 300));
-    // "I bought it" without a connection is kept in the browser, and counts once the connection is back.
+    // Add it without a connection is kept in the browser, and counts once the connection is back.
     await page.getByPlaceholder('Barcode or title').fill('smoke test adv');
-    await page.locator('.mantine-Card-root', { hasText: 'Smoke Test Adventure' }).getByRole('button', { name: 'I bought it' }).click();
+    await page.locator('.mantine-Card-root', { hasText: 'Smoke Test Adventure' }).getByRole('button', { name: 'Add it' }).click();
     await page.getByText(/^Bought without a connection \(1\)$/).waitFor({ timeout: 10000 });
     await page.context().setOffline(false);
     await page.getByText(/is in your collection now/).first().waitFor({ timeout: 15000 });
@@ -990,7 +990,7 @@ export async function uiTest(target, account, check) {
     const offlinePurchase = purchases.find((x) => x.title === 'Smoke Test Adventure');
     if (!offlinePurchase) console.log('purchases after the offline buy:', JSON.stringify(purchases), await page.locator('main').innerText());
     found = await pageProblems();
-    check('ui: "I bought it" without a connection counts once it\'s back', found.length === 0 && Boolean(offlinePurchase), found.join(' | ') || (offlinePurchase ? '' : 'not among the purchases'));
+    check('ui: Add it without a connection counts once it\'s back', found.length === 0 && Boolean(offlinePurchase), found.join(' | ') || (offlinePurchase ? '' : 'not among the purchases'));
     // What you paid, right in the store: beside undo, saved on the copy (0.32.0).
     const boughtRow = page.locator('.mantine-Card-root', { hasText: 'Smoke Test Adventure' }).first();
     await boughtRow.getByRole('button', { name: 'what you paid?' }).click();
@@ -999,8 +999,56 @@ export async function uiTest(target, account, check) {
     await boughtRow.getByRole('button', { name: /^paid \$12\.50$/ }).waitFor({ timeout: 10000 });
     const paidPurchase = (await (await page.request.get(`${base}/api/v1/purchases`)).json()).find((x) => x.title === 'Smoke Test Adventure');
     found = await pageProblems();
-    check('ui: what you paid, asked in Store Mode right after I bought it', found.length === 0 && paidPurchase?.costCents === 1250, found.join(' | ') || JSON.stringify(paidPurchase));
+    check('ui: what you paid, asked in Store Mode right after Add it', found.length === 0 && paidPurchase?.costCents === 1250, found.join(' | ') || JSON.stringify(paidPurchase));
     if (offlinePurchase) await page.request.delete(`${base}/api/v1/purchases/${offlinePurchase.id}`);
+    // Add it (D153), on a phone: the big button beside the verdict adds the game and opens its copy's window over the
+    // whole screen, where one Done saves what was paid and the notes.
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.goto(`${base}/store`);
+    await page.getByPlaceholder('Barcode or title').fill('smoke test adv');
+    const addCard = page.locator('.mantine-Card-root', { hasText: 'Smoke Test Adventure' }).first();
+    await addCard.getByRole('button', { name: 'Add it' }).waitFor({ timeout: 10000 });
+    // Pictures of it in both themes, for a look by eye (UI_SHOTS=folder).
+    if (process.env.UI_SHOTS) {
+      for (const scheme of ['dark', 'light']) {
+        await page.emulateMedia({ colorScheme: scheme });
+        await addCard.screenshot({ path: `${process.env.UI_SHOTS}/add-it-${scheme}.png` }).catch(() => {});
+      }
+      await page.emulateMedia({ colorScheme: null });
+    }
+    await addCard.getByRole('button', { name: 'Add it' }).click();
+    const addedWindow = page.locator('.mantine-Modal-content');
+    await addedWindow.getByText("It's in your collection.").waitFor({ timeout: 15000 });
+    if (process.env.UI_SHOTS) {
+      // Once the window has finished opening.
+      await page.waitForTimeout(600);
+      await page.screenshot({ path: `${process.env.UI_SHOTS}/add-it-window.png` }).catch(() => {});
+    }
+    const addedBox = await addedWindow.boundingBox();
+    const addedFullScreen = Boolean(addedBox && addedBox.width >= 380 && addedBox.height >= 800);
+    await addedWindow.getByLabel(/^Price paid/).fill('19.99');
+    await addedWindow.getByLabel('Notes', { exact: true }).fill('From the walkthrough');
+    await addedWindow.getByRole('button', { name: 'Done', exact: true }).click();
+    await addedWindow.waitFor({ state: 'detached', timeout: 10000 }).catch(() => {});
+    const addedCopy = (await (await page.request.get(`${base}/api/v1/purchases`)).json()).find((x) => x.title === 'Smoke Test Adventure');
+    found = await pageProblems();
+    check(
+      'ui: Add it opens the copy window on the whole phone screen, and Done saves what was paid',
+      found.length === 0 && addedFullScreen && addedCopy?.costCents === 1999,
+      found.join(' | ') || `full screen ${addedFullScreen} ${JSON.stringify(addedBox)} ${JSON.stringify(addedCopy)}`,
+    );
+    // A haul's details later: the card of copies added here opens Improve on them, which goes through them one by one.
+    await page.getByRole('link', { name: /^Fill in their details/ }).click();
+    await page.waitForURL(/\/collection\/improve\?added=here/, { timeout: 10000 });
+    await page.getByRole('button', { name: 'Go through them' }).click();
+    const walkWindow = page.locator('.mantine-Modal-content');
+    const walkNext = await walkWindow.getByRole('button', { name: 'Next copy' }).waitFor({ timeout: 10000 }).then(() => true, () => false);
+    const walkPosition = await walkWindow.getByText(/^1 of \d+$/).count();
+    await page.keyboard.press('Escape');
+    found = await pageProblems();
+    await page.setViewportSize({ width: 1280, height: 800 });
+    check("ui: the copies added here, gone through one by one from Store Mode's card", found.length === 0 && walkNext && walkPosition === 1, found.join(' | ') || `next ${walkNext}, position ${walkPosition}`);
+    if (addedCopy) await page.request.delete(`${base}/api/v1/purchases/${addedCopy.id}`);
     // Scan my shelf: a barcode typed (a phone would scan it), matched to one of your games by a few letters, then known.
     await page.goto(`${base}/store/shelf`);
     await page.getByRole('combobox', { name: 'The console on the shelf' }).click();
@@ -1525,7 +1573,7 @@ export async function uiTest(target, account, check) {
       await sw.getByRole('button', { name: 'Sign in' }).click();
       // Signed in once the header's camera button shows; the worker is registered then, and in charge of the page
       // once it's active. The next page load goes through it (it keeps the page, then the build's files).
-      await sw.getByRole('link', { name: 'Store Mode: scan a game' }).waitFor({ timeout: 15000 });
+      await sw.getByRole('link', { name: 'Scan a game' }).waitFor({ timeout: 15000 });
       offlineStep = 'waiting for the worker';
       await sw.waitForFunction(() => navigator.serviceWorker?.controller != null, null, { timeout: 15000 });
       offlineStep = 'keeping the page';

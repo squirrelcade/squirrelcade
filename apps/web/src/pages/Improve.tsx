@@ -1,6 +1,7 @@
-import { Badge, Button, Group, Loader, Pagination, SegmentedControl, Select, Stack, Table, Text } from '@mantine/core';
+import { Badge, Button, Chip, Group, Loader, Pagination, SegmentedControl, Select, Stack, Table, Text } from '@mantine/core';
 import { useQuery } from '@tanstack/react-query';
 import { useMemo, useState } from 'react';
+import { useSearchParams } from 'react-router';
 import { api } from '../api';
 import { PageHeader } from '../components';
 import { CopyDetailsModal, TestBadge, type CopyRef, type CopyTest } from '../CopyDetails';
@@ -53,10 +54,13 @@ export function ImprovePage() {
   const [gap, setGap] = useState<string>('all');
   const [platform, setPlatform] = useState<string | null>(null);
   const [page, setPage] = useState(1);
+  // Only the copies added here (?added=here, Store Mode's link after a haul, D153), kept in the address.
+  const [params, setParams] = useSearchParams();
+  const addedHere = params.get('added') === 'here';
   // The copy open in its window, as the list had it (it stays while the list refreshes), and where it was.
   const [open, setOpen] = useState<{ item: ImproveItem; index: number } | null>(null);
-  const query = new URLSearchParams({ page: String(page), pageSize: String(PAGE), ...(gap !== 'all' ? { gap } : {}), ...(platform ? { platform } : {}) });
-  const list = useQuery({ queryKey: ['improve', gap, platform, page], queryFn: () => api<ImproveList>(`/collection/improve?${query}`) });
+  const query = new URLSearchParams({ page: String(page), pageSize: String(PAGE), ...(gap !== 'all' ? { gap } : {}), ...(platform ? { platform } : {}), ...(addedHere ? { added: 'here' } : {}) });
+  const list = useQuery({ queryKey: ['improve', gap, platform, addedHere, page], queryFn: () => api<ImproveList>(`/collection/improve?${query}`) });
   const platforms = useQuery({ queryKey: ['platforms'], queryFn: () => api<{ key: string; name: string; copies: number }[]>('/platforms') });
   const d = list.data;
   const items = d?.items ?? [];
@@ -91,7 +95,7 @@ export function ImprovePage() {
       <PageHeader
         help="collection"
         title="Improve your collection"
-        description="What your copies are missing: what you paid (or, when you don't know, your estimate) and when, their standard photos, a test, where each is kept. Open a copy to fill it in, then Next copy for the one after it."
+        description="What your copies are missing: what you paid (or, when you don't know, your estimate) and when, their standard photos, a test or a rip, where each is kept. Go through them, or open one: Next copy saves what you typed and opens the one after it. Added here keeps the copies you added in Squirrelcade, a store's haul say."
       />
       {!d ? (
         <Loader />
@@ -106,18 +110,32 @@ export function ImprovePage() {
               }}
               data={[{ value: 'all', label: 'Everything' }, ...d.checked.map((g) => ({ value: g, label: `${GAP_NAMES[g]} (${count(d.counts[g])})` }))]}
             />
-            <Select
-              placeholder="All consoles"
-              data={(platforms.data ?? []).filter((p) => p.copies > 0).map((p) => ({ value: p.key, label: p.name }))}
-              value={platform}
-              onChange={(v) => {
-                setPlatform(v);
-                setPage(1);
-              }}
-              clearable
-              searchable
-              w={220}
-            />
+            <Group gap="xs" wrap="wrap">
+              <Chip
+                checked={addedHere}
+                onChange={(on) => {
+                  const next = new URLSearchParams(params);
+                  if (on) next.set('added', 'here');
+                  else next.delete('added');
+                  setParams(next, { replace: true });
+                  setPage(1);
+                }}
+              >
+                Added here
+              </Chip>
+              <Select
+                placeholder="All consoles"
+                data={(platforms.data ?? []).filter((p) => p.copies > 0).map((p) => ({ value: p.key, label: p.name }))}
+                value={platform}
+                onChange={(v) => {
+                  setPlatform(v);
+                  setPage(1);
+                }}
+                clearable
+                searchable
+                w={220}
+              />
+            </Group>
           </Group>
           {d.checked.length === 0 ? (
             <Text c="dimmed">Nothing is counted: Settings › Collection › Improve your collection chooses what is.</Text>
@@ -127,9 +145,18 @@ export function ImprovePage() {
             </Text>
           ) : (
             <>
-              <Text size="sm" c="dimmed">
-                {count(d.total)} cop{d.total === 1 ? 'y' : 'ies'}
-              </Text>
+              {/* One after another from the first: each copy's window, Next copy saving what was typed (D153). */}
+              <Group justify="space-between" wrap="wrap" gap="xs">
+                <Text size="sm" c="dimmed">
+                  {count(d.total)} cop{d.total === 1 ? 'y' : 'ies'}
+                  {addedHere ? ' added here' : ''}
+                </Text>
+                {items.length > 0 && (
+                  <Button size="compact-sm" onClick={() => setOpen({ item: items[0]!, index: 0 })}>
+                    Go through them
+                  </Button>
+                )}
+              </Group>
               <Table.ScrollContainer minWidth={320}>
                 <Table verticalSpacing={6} striped highlightOnHover>
                   <Table.Tbody>

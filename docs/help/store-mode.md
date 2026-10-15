@@ -1,13 +1,15 @@
 # Store Mode
 
-Store Mode is for your phone in a store (or a friend's list of games for sale): type a title or scan a barcode, and it tells you at once, in large type on a color you can read at a glance (green when you need it, a green tint when it's yours, gold when it needs a look, blue when it's on another console), with the one thing that matters most under it. The camera button at the top of every page (**Store Mode** on a computer) opens it with the camera on.
+Store Mode is for your phone in a store (or a friend's list of games for sale): type a title or scan a barcode, and it tells you at once, in large type on a color you can read at a glance (green when you need it, a green tint when it's yours, gold when it needs a look, blue when it's on another console), with the one thing that matters most under it. **Scan**, in the bar at the bottom of a phone, opens it with the camera on, and so does the camera button at the top of every page (**Scan** on a computer).
 
 - **You own this** (and, for a copy you have, its value);
 - **Owned on another console**, or **You have it on PC**;
 - **Need it**, with its place on your wishlist and its acorns, or **Need it if physical** for a game not confirmed as a physical release;
 - the [sets](sets.md) it's in, and your note on it.
 
-A game you don't have has **Price on PriceCharting** (what it sells for, in your browser; for a scanned game, the page of that very edition) and your shop links. **I bought it** adds a copy of the game to your collection right away, in the condition Settings > Collection > Adding copies gives a game just bought (complete in box unless you change it), bought today. **what you paid?** beside **undo** takes the price there and then (its condition, and anything else, can be changed in its drawer). Under the answers, **Added here, not on PriceCharting yet** lists those copies, each with **undo** and what you paid. **Scan another** opens the camera again.
+A game you don't have has **Price on PriceCharting** (what it sells for, in your browser; for a scanned game, the page of that very edition) and your shop links. **Add it**, the big button beside the answer, adds a copy of the game to your collection right away, bought today, in the condition Settings > Collection > Adding copies gives a game just bought (complete in box unless you change it), and opens the copy's window (the whole screen on a phone): its condition, what you paid, the day, notes, where it's kept, tags and photos, all on one screen. **Done** saves it all (closing the window does too); **Undo: I didn't buy it** takes the copy back. A new barcode you scanned is linked to the game you add, as **This is it** would. After that the answer says **Bought here**, with **undo**, **what you paid?** and **photos and notes** (the window again). Under the answers, **Added here, not on PriceCharting yet** lists those copies, each with **undo** and what you paid. **Scan another** opens the camera again.
+
+**Many games at once.** Bringing home a pile? Scan each one and tap **Add it**: at the top of its window, **Scan the next one** saves what you typed and opens the camera again, and **Later** closes it. When you sit down with them, **Fill in their details** (on the **Added here** card) opens Stash > Improve on the copies you added here: **Go through them** opens each one's window in turn, for what you paid, the day, photos, a test or a rip, and **Next copy** saves it and goes on to the next.
 
 ## Scanning barcodes
 
@@ -36,7 +38,7 @@ This page never asks the barcode service (UPCitemdb or UPC Database), so their d
 
 ## With no signal
 
-Stores often have none. Store Mode keeps a copy of its answers in your phone's browser, updated each time it opens (and downloaded again only when something changed), and answers from that copy when Squirrelcade can't be reached, saying so. **I bought it** works there too: the purchase waits on the phone and is added to your collection as soon as Squirrelcade answers again (once, even if it's sent twice). Open Store Mode once while you're connected; after that it works offline.
+Stores often have none. Store Mode keeps a copy of its answers in your phone's browser, updated each time it opens (and downloaded again only when something changed), and answers from that copy when Squirrelcade can't be reached, saying so. **Add it** works there too: the purchase waits on the phone (its window, for what you paid and photos, is in its drawer later) and is added to your collection as soon as Squirrelcade answers again (once, even if it's sent twice). Open Store Mode once while you're connected; after that it works offline.
 
 Squirrelcade itself opens with no signal too, even when the phone has closed the tab: its own files stay on the phone after a visit with a connection (a service worker, which only Squirrelcade's HTTPS address can use), and it opens with a note that only Store Mode works until Squirrelcade answers again. After an update, the first visit with a connection brings the new files.
 
@@ -54,7 +56,7 @@ Under the list, the photo shows a box around each spine read as a game. Spines w
 
 **A vision model** (optional, Settings > Features): with it on and a connection to Squirrelcade, pieces of the photo also go to the model you chose (any service that takes images, or one at home), and the titles it reads are matched the same way, so it finds more spines and never decides what you have. Settings > Sources > Vision model sets which, its key, and how many pieces a day (each piece is one paid request on most services). Or a **helper** of your own: a program that asks Squirrelcade for photos to read and answers, such as the one in the repository's `tools/shelf-helper`, which reads them with Claude Code signed in on your server, on your own Claude plan (no API key).
 
-What it says comes from the same answers as Store Mode, so it's only as current as your collection: buy something, and **I bought it** keeps it right.
+What it says comes from the same answers as Store Mode, so it's only as current as your collection: buy something, and **Add it** keeps it right.
 
 ## Talk to Squirrelcade
 

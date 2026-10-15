@@ -31,7 +31,7 @@ An estimate is yours alone: it's never a price paid, never sent to PriceCharting
 
 ## Improve your collection
 
-**Stash > Improve** lists what your copies are missing: a price paid (or, when you don't know it, your estimate), the day bought, a standard photo, a test, where it's kept. Each has its tab with its count, and the console filter narrows it. **Fill in** opens the copy's window; **Next copy** goes on to the one after it, so you can work through them one at a time (a copy with nothing left leaves the list). Settings > Collection > Improve your collection chooses what counts; **Test a copy again after** (Your copies) brings a copy tested long ago back onto the list.
+**Stash > Improve** lists what your copies are missing: a price paid (or, when you don't know it, your estimate), the day bought, a standard photo, a test, where it's kept. Each has its tab with its count, and the console filter narrows it. **Fill in** opens the copy's window (the whole screen on a phone), or **Go through them** starts at the first; **Next copy** saves what you typed and goes on to the one after it, so you can work through them one at a time, rips and tests included (a copy with nothing left leaves the list). **Added here** keeps only the copies you added in Squirrelcade, a store's haul say: Store Mode's **Fill in their details** opens Improve that way. Settings > Collection > Improve your collection chooses what counts; **Test a copy again after** (Your copies) brings a copy tested long ago back onto the list.
 
 ## Lending a game
 

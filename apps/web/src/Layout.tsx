@@ -80,7 +80,7 @@ function pageTitle(path: string): string | null {
 /** The frame around every page: the header (activity indicator, account menu) and the navigation, which folds away on phones. */
 export function Layout({ children }: { children: ReactNode }) {
   const [opened, { toggle, close }] = useDisclosure();
-  // On a phone, the redesign's bar at the bottom (0.51.0): Today, Collection, Store Mode, Wishlist, and More (the menu).
+  // On a phone, the redesign's bar at the bottom (0.51.0): Today, Collection, Scan (Store Mode, D153), Wishlist, and More (the menu).
   const phone = useMediaQuery('(max-width: 47.99em)') ?? false;
   const location = useLocation();
   const navigate = useNavigate();
@@ -150,15 +150,15 @@ export function Layout({ children }: { children: ReactNode }) {
             </Link>
           </Group>
           <Group gap="xs" wrap="nowrap">
-            {/* Store Mode in one tap, the camera already on: how it's used in a shop, on a phone (an icon there; a
-                deep green button with its name on a wider screen, as the redesign draws it). */}
-            <Tooltip label="Store Mode: scan a game">
-              <ActionIcon component={Link} to="/store?scan=1" variant="subtle" color="gray" size="lg" aria-label="Store Mode: scan a game" hiddenFrom="sm">
+            {/* Scan in one tap, Store Mode with the camera already on: how it's used in a shop, on a phone (an icon there; a
+                deep green button with its name on a wider screen, as the redesign draws it). Called Scan, what it does (D153). */}
+            <Tooltip label="Scan a game">
+              <ActionIcon component={Link} to="/store?scan=1" variant="subtle" color="gray" size="lg" aria-label="Scan a game" hiddenFrom="sm">
                 <IconVideoFilled size={20} />
               </ActionIcon>
             </Tooltip>
-            <Button component={Link} to="/store?scan=1" visibleFrom="sm" radius={10} style={DEEP_BUTTON} leftSection={<IconVideoFilled size={18} />} aria-label="Store Mode: scan a game">
-              Store Mode
+            <Button component={Link} to="/store?scan=1" visibleFrom="sm" radius={10} style={DEEP_BUTTON} leftSection={<IconVideoFilled size={18} />} aria-label="Scan a game">
+              Scan
             </Button>
             <HeaderSearch />
             <TalkButton />
@@ -310,7 +310,7 @@ export function Layout({ children }: { children: ReactNode }) {
             <span className="sc-tab-store" aria-hidden="true">
               <IconVideoFilled size={18} />
             </span>
-            Store Mode
+            Scan
           </Link>
           <Link to="/wishlist" className="sc-tab" aria-current={inAcorns ? 'page' : undefined} onClick={close}>
             <Acorn size={22} />

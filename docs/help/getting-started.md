@@ -58,7 +58,7 @@ Click any game's title (or its cover) to open everything about it in one panel, 
 
 ## Keeping it up to date
 
-- **A game you buy:** add it in Squirrelcade, with **Add a game**, **I bought it** (in Store Mode or a game's drawer) or **Add a copy** (on a game you have).
+- **A game you buy:** add it in Squirrelcade, with **Add a game**, **Add it** (in Store Mode), **I bought it** (in a game's drawer) or **Add a copy** (on a game you have).
 - **A game you sell:** mark it **Sold**. **Ready to sell** writes its listing first.
 - **With PriceCharting too:** **Stash updates > Send to PriceCharting** gives the copies added here as lines for PriceCharting's importer. Its next export then updates Squirrelcade: add it on **Stash updates**, save it into the watched folder, or let Squirrelcade pick it up from your email. Squirrelcade shows what each update added and removed.
 

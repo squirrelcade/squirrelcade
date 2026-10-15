@@ -7,6 +7,13 @@ What changed in each version of Squirrelcade (called Gamefolio before 0.35.0). T
 ### Added
 
 - **Sets: release numbers, their own consoles, and what they're worth** (D152, the owner's ask, looking at Super Rare Games): a set's games carry their release numbers from its list (Wikipedia's "Release No.", Limited Run's "Limited run #", or a No. column in your CSV; Read again brings them to a set made before), and a numbered set opens on **All**, every game in number order with Have it or Need it and the value of your copies (the summary adds them up; a missing game links to its PriceCharting prices). **Consoles** on a set's page chooses which consoles count: Switch and Switch 2 only for one collector, PlayStation for another. The CSV download gains Number and Value.
+- **Add it, and the whole copy at once** (D153, the owner's ask): in Store Mode, a game you can buy has a big **Add it** beside its answer, as tall as it, in place of the small "I bought it". It adds the copy and opens its window (the whole screen on a phone) for what you paid, the day, notes, where it's kept and photos, saved together with one **Done**, or taken back with **Undo**. A new barcode you scanned is linked to the game you add. Check a shelf keeps its quick "I bought it" for lists.
+- **A haul, filled in later** (D153, the owner's way: twenty games scanned in a row, then the prices, photos and rips in one sitting): the new copy's window has **Scan the next one** and **Later** at its top, and Store Mode's **Added here** card has **Fill in their details**, which opens Stash › Improve on just the copies added here (its new **Added here** filter); **Go through them** opens each one in turn, and **Next copy** now saves what was typed before going on.
+
+### Changed
+
+- **Scan** (D153): the phone's bar at the bottom, and the camera button at the top on a computer, say Scan instead of Store Mode: they open the camera. The page and its menu entry are still Store Mode, with Check a shelf and Check a list.
+- **A copy's window fills a phone's screen**, wherever it opens.
 
 ## 1.1.0 (2026-10-12): Check a shelf, Talk, PriceCharting with what you paid, and ARM
 

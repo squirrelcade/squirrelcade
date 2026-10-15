@@ -1,7 +1,8 @@
 import { Anchor, Autocomplete, Badge, Button, CloseButton, Divider, FileButton, Group, Image, Loader, Modal, NumberInput, SegmentedControl, Select, SimpleGrid, Stack, TagsInput, Text, TextInput, Tooltip } from '@mantine/core';
 import { COMPLETENESS_LABELS, GRADERS, RIP_RESULTS, TEST_RESULTS, type Completeness, type TestKind, type TestResult } from '@squirrelcade/core';
 import { SellHelper } from './SellHelper';
-import { IconCamera, IconCheck, IconMapPin, IconUserShare } from '@tabler/icons-react';
+import { IconCamera, IconCheck, IconMapPin, IconUserShare, IconVideoFilled } from '@tabler/icons-react';
+import { useMediaQuery } from '@mantine/hooks';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useEffect, useLayoutEffect, useState } from 'react';
 import { api } from './api';
@@ -244,21 +245,30 @@ export function CopyDetailLine({ details, loans, photos, currency, dateFormat }:
 
 /**
  * A copy's details, for the owner: where it's kept, tags, for sale or trade (and the asking price), lending it and
- * getting it back, and its photos (made smaller in the browser before they're sent).
+ * getting it back, and its photos (made smaller in the browser before they're sent). The whole screen on a phone.
+ * Opened for a copy just added (Store Mode's Add it, D153), it asks only what a new copy needs (what was paid, the
+ * day, notes, where it's kept, photos) and saves it all with one Done, or takes the copy back.
  */
 export function CopyDetailsModal({
   copy,
   onClose,
   onNext,
   position,
+  added = false,
+  onScanNext,
 }: {
   copy: CopyRef | null;
   onClose: () => void;
-  /** Collection > Improve's walk through its list: the next copy, and where this one is in it. */
+  /** Collection > Improve's walk through its list: the next copy (what was typed is saved first), and where this one is in it. */
   onNext?: () => void;
   position?: string;
+  /** The copy was just added (Store Mode's Add it): one Done saves everything, and Undo takes it back. */
+  added?: boolean;
+  /** For a copy just added in Store Mode: save what was typed and open the camera for the next game. */
+  onScanNext?: () => void;
 }) {
   const queryClient = useQueryClient();
+  const phone = useMediaQuery('(max-width: 36em)') ?? false;
   const currency = useSetting('general.currency', 'USD');
   const dateFormat = useSetting('general.dateFormat', 'us');
   const loanDays = useSetting('collection.loanDays', 30);
@@ -356,23 +366,18 @@ export function CopyDetailsModal({
     onError: (err) => notifyError(err),
   });
 
-  const saveDetails = () =>
-    change.mutate({
-      path: '/copy',
-      method: 'PUT',
-      json: {
-        key,
-        location: location.trim() || null,
-        tags,
-        sale: sale === 'none' ? null : sale,
-        askingCents: sale !== 'none' && asking !== '' ? Math.round(Number(asking) * 100) : null,
-        saleNote: sale !== 'none' ? saleNote.trim() || null : null,
-        digitalClaim: digitalClaim || null,
-        digitalClaimedAt: digitalClaim === 'claimed' && digitalClaimedAt ? digitalClaimedAt : null,
-        digitalStore: digitalClaim ? digitalStore.trim() || null : null,
-      },
-      done: 'Saved.',
-    });
+  const detailsJson = () => ({
+    key,
+    location: location.trim() || null,
+    tags,
+    sale: sale === 'none' ? null : sale,
+    askingCents: sale !== 'none' && asking !== '' ? Math.round(Number(asking) * 100) : null,
+    saleNote: sale !== 'none' ? saleNote.trim() || null : null,
+    digitalClaim: digitalClaim || null,
+    digitalClaimedAt: digitalClaim === 'claimed' && digitalClaimedAt ? digitalClaimedAt : null,
+    digitalStore: digitalClaim ? digitalStore.trim() || null : null,
+  });
+  const saveDetails = () => change.mutate({ path: '/copy', method: 'PUT', json: detailsJson(), done: 'Saved.' });
 
   /** A standard photo (its slot), taking the place of the one it had. */
   async function addSlotPhoto(slot: string, file: File) {
@@ -419,21 +424,80 @@ export function CopyDetailsModal({
     }
   }
 
-  const saveCopy = () =>
-    change.mutate({
-      path: `/collection/copies/${own!.id}`,
-      method: 'PUT',
-      json: {
-        ...(completeness !== 'unknown' ? { completeness } : {}),
-        costCents: paid === '' ? null : Math.round(Number(paid) * 100),
-        estimatedCents: estimated === '' ? null : Math.round(Number(estimated) * 100),
-        datePurchased: bought || null,
-        notes: notes.trim(),
-        // A graded copy's grader and certificate (they go to PriceCharting's CSV with it).
-        ...(completeness === 'graded' ? { gradingCompany: grader, gradingCertId: cert.trim() } : {}),
-      },
-      done: 'Saved. What you change here stays, whatever the next export says.',
-    });
+  const copyJson = () => ({
+    ...(completeness !== 'unknown' ? { completeness } : {}),
+    costCents: paid === '' ? null : Math.round(Number(paid) * 100),
+    estimatedCents: estimated === '' ? null : Math.round(Number(estimated) * 100),
+    datePurchased: bought || null,
+    notes: notes.trim(),
+    // A graded copy's grader and certificate (they go to PriceCharting's CSV with it).
+    ...(completeness === 'graded' ? { gradingCompany: grader, gradingCertId: cert.trim() } : {}),
+  });
+  const saveCopy = () => change.mutate({ path: `/collection/copies/${own!.id}`, method: 'PUT', json: copyJson(), done: 'Saved. What you change here stays, whatever the next export says.' });
+
+  /**
+   * The copy's own fields that changed since it was opened. Only those are sent: a field sent is kept as the owner's
+   * whatever an export says later, so one left alone (a price paid typed on PriceCharting instead) still comes from it.
+   */
+  const changedCopy = (): Record<string, unknown> => {
+    if (!own) return {};
+    const was: Record<string, unknown> = {
+      completeness: own.completeness,
+      costCents: own.costCents || null,
+      estimatedCents: own.estimatedCents ?? null,
+      datePurchased: own.datePurchased || null,
+      notes: own.notes.trim(),
+      gradingCompany: own.gradingCompany ?? '',
+      gradingCertId: (own.gradingCertId ?? '').trim(),
+    };
+    return Object.fromEntries(Object.entries(copyJson()).filter(([k, v]) => JSON.stringify(v) !== JSON.stringify(was[k])));
+  };
+  const detailsChanged = () =>
+    !waiting &&
+    d !== undefined &&
+    JSON.stringify(detailsJson()) !==
+      JSON.stringify({
+        key,
+        location: d.location || null,
+        tags: d.tags,
+        sale: d.sale ?? null,
+        askingCents: d.sale ? d.askingCents : null,
+        saleNote: d.sale ? d.saleNote || null : null,
+        digitalClaim: d.digitalClaim || null,
+        digitalClaimedAt: d.digitalClaim === 'claimed' && d.digitalClaimedAt ? d.digitalClaimedAt : null,
+        digitalStore: d.digitalClaim ? d.digitalStore || null : null,
+      });
+  // Done, Later and Scan the next one (a copy just added), and Next copy (a walk through copies), save what was typed
+  // first, the copy and its details together, so nothing is lost on the way to the next one.
+  const finish = useMutation({
+    mutationFn: async (_then: 'close' | 'scan' | 'next') => {
+      const fields = changedCopy();
+      const copyChanged = own !== undefined && Object.keys(fields).length > 0;
+      if (copyChanged) await api(`/collection/copies/${own!.id}`, { method: 'PUT', json: fields });
+      const detailChanged = detailsChanged();
+      if (detailChanged) await api('/copy', { method: 'PUT', json: detailsJson() });
+      return copyChanged || detailChanged;
+    },
+    onSuccess: async (saved, then) => {
+      if (saved) {
+        notifySuccess(`${copy?.title ?? 'The copy'}: saved.`);
+        await refresh();
+      }
+      if (then === 'next') onNext?.();
+      else if (then === 'scan') onScanNext?.();
+      else onClose();
+    },
+    onError: (err) => notifyError(err),
+  });
+  const undo = useMutation({
+    mutationFn: () => api(`/purchases/${own!.id}`, { method: 'DELETE' }),
+    onSuccess: async () => {
+      notifySuccess(`${copy?.title ?? 'The copy'} is out of your collection again.`, 'Taken back');
+      await refresh();
+      onClose();
+    },
+    onError: (err) => notifyError(err),
+  });
   const takeOut = (reason: 'sold' | 'removed') => {
     if (!own || !window.confirm(`${reason === 'sold' ? 'Sold' : 'Remove'} this copy of ${copy?.title}? It leaves your collection (its details stay in the history).`)) return;
     change.mutate({ path: `/collection/copies/${own.id}/remove`, method: 'POST', json: { reason }, done: `${copy?.title}: ${reason === 'sold' ? 'sold' : 'removed'}.` });
@@ -445,24 +509,52 @@ export function CopyDetailsModal({
   const others = (current.data?.photos ?? []).filter((p) => !p.slot || !slots.includes(p.slot));
   const open = (current.data?.loans ?? []).filter((l) => l.returnedAt === null);
   const history = (current.data?.loans ?? []).filter((l) => l.returnedAt !== null);
-  const busy = change.isPending;
+  const busy = change.isPending || finish.isPending || undo.isPending;
 
   return (
     // Above the game drawer it opens from (a drawer is 200), with its lists above it in turn.
-    <Modal opened={Boolean(copy)} onClose={onClose} title={copy ? `${copy.title} · ${copy.platform} · ${copy.condition}` : ''} size="lg" zIndex={350}>
+    <Modal
+      opened={Boolean(copy)}
+      onClose={added ? () => !busy && finish.mutate('close') : onClose}
+      title={copy ? (added ? `Added: ${copy.title} · ${copy.platform}` : `${copy.title} · ${copy.platform} · ${copy.condition}`) : ''}
+      size="lg"
+      zIndex={350}
+      fullScreen={phone}
+    >
       {!current.data ? (
         <Loader />
       ) : (
         <Stack gap="md">
+          {/* Many games are added in one sitting: the way out (and on to the next) is at the top, details can wait for
+              Collection › Improve, which walks the copies added here one after another. */}
+          {added && (
+            <Stack gap={6}>
+              <Text size="sm" c="dimmed">
+                It's in your collection. Put in what you paid, the day, notes and photos now, or later: Stash › Improve goes through the copies added here.
+              </Text>
+              <Group gap="xs">
+                {onScanNext && (
+                  <Button variant="light" leftSection={<IconVideoFilled size={16} />} onClick={() => finish.mutate('scan')} disabled={busy}>
+                    Scan the next one
+                  </Button>
+                )}
+                <Button variant="default" onClick={() => finish.mutate('close')} disabled={busy}>
+                  Later
+                </Button>
+              </Group>
+            </Stack>
+          )}
           {own && (
             <>
               <Stack gap="xs">
-                <Group grow align="flex-start">
+                {/* One under another on a phone: side by side, the day bought didn't fit. */}
+                <SimpleGrid cols={{ base: 1, xs: 3 }} spacing="xs">
                   <Select label="Condition" data={CONDITIONS} value={completeness === 'unknown' ? null : completeness} onChange={(v) => v && setCompleteness(v)} allowDeselect={false} placeholder="Unknown" comboboxProps={{ zIndex: 400 }} />
-                  <NumberInput label={`Price paid (${currency})`} value={paid} onChange={setPaid} min={0} decimalScale={2} allowNegative={false} placeholder="Not known" />
+                  <NumberInput label={`Price paid (${currency})`} value={paid} onChange={setPaid} min={0} decimalScale={2} allowNegative={false} placeholder="Not known" inputMode="decimal" />
                   <TextInput label="Bought on" type="date" value={bought} onChange={(e) => setBought(e.currentTarget.value)} />
-                </Group>
-                {paid === '' && (
+                </SimpleGrid>
+                {/* An estimate is for a copy whose price was forgotten, not one just bought. */}
+                {paid === '' && !added && (
                   <Stack gap={2}>
                     <Group align="flex-end" gap="xs" wrap="nowrap">
                       <NumberInput
@@ -505,6 +597,7 @@ export function CopyDetailsModal({
                   </Group>
                 )}
                 <TextInput label="Notes" value={notes} onChange={(e) => setNotes(e.currentTarget.value)} maxLength={500} />
+                {!added && (
                 <Group justify="space-between">
                   <Button onClick={saveCopy} loading={busy}>
                     Save the copy
@@ -521,7 +614,11 @@ export function CopyDetailsModal({
                     </Button>
                   </Group>
                 </Group>
+                )}
               </Stack>
+              {/* A copy just bought hasn't been tested or lent yet: those wait for its window from the drawer. */}
+              {!added && (
+              <>
               <Divider label="Tested" labelPosition="left" />
               <Stack gap={6}>
                 <Group gap="xs" align="flex-end" wrap="wrap">
@@ -562,6 +659,8 @@ export function CopyDetailsModal({
                   </Group>
                 ))}
               </Stack>
+              </>
+              )}
               <Divider label="Where it is, tags, selling and its digital copy" labelPosition="left" />
             </>
           )}
@@ -601,13 +700,17 @@ export function CopyDetailsModal({
                 <Autocomplete label="Store" placeholder="Xbox" value={digitalStore} onChange={setDigitalStore} data={['Xbox', 'PlayStation', 'Nintendo', 'Steam']} maxLength={40} disabled={waiting} comboboxProps={{ zIndex: 400 }} />
               )}
             </Group>
-            <Group>
-              <Button onClick={saveDetails} loading={busy} disabled={waiting}>
-                Save
-              </Button>
-            </Group>
+            {!added && (
+              <Group>
+                <Button onClick={saveDetails} loading={busy} disabled={waiting}>
+                  Save
+                </Button>
+              </Group>
+            )}
           </Stack>
 
+          {!added && (
+          <>
           <Divider label="Lending" labelPosition="left" />
           {open.map((l) => (
             <Group key={l.id} justify="space-between" wrap="wrap" gap="xs">
@@ -640,6 +743,8 @@ export function CopyDetailsModal({
             <Text size="xs" c="dimmed">
               Lent before: {history.map((l) => `${l.lentTo} (${date(l.lentAt, dateFormat)} to ${date(l.returnedAt, dateFormat)})`).join('; ')}
             </Text>
+          )}
+          </>
           )}
 
           <Divider label="Photos" labelPosition="left" />
@@ -731,8 +836,20 @@ export function CopyDetailsModal({
                   {position}
                 </Text>
               )}
-              <Button onClick={onNext}>Next copy</Button>
+              <Button onClick={() => finish.mutate('next')} loading={finish.isPending && finish.variables === 'next'} disabled={busy && !finish.isPending}>
+                Next copy
+              </Button>
             </Group>
+          )}
+          {added && own && (
+            <Stack gap="xs" mt="xs">
+              <Button size="lg" fullWidth onClick={() => finish.mutate('close')} loading={finish.isPending && finish.variables === 'close'} disabled={busy && !finish.isPending}>
+                Done
+              </Button>
+              <Button variant="subtle" color="gray" onClick={() => undo.mutate()} loading={undo.isPending} disabled={busy && !undo.isPending}>
+                Undo: I didn't buy it
+              </Button>
+            </Stack>
           )}
         </Stack>
       )}

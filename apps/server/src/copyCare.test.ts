@@ -135,4 +135,16 @@ describe('looking after copies', () => {
     await g.app.inject({ method: 'POST', url: '/api/v1/copy/tests', cookies, payload: { key: keyOf('Uncharted'), result: 'works', testedAt: '2020-01-01T00:00:00Z' } });
     expect((await improve('?gap=tested')).items.map((i: { title: string }) => i.title)).toEqual(['Flower', 'Mario Kart 8 Deluxe', 'Uncharted']);
   });
+
+  it("lists only the copies added here, for a store's haul filled in later (D153)", async () => {
+    load();
+    const added = await g.app.inject({ method: 'POST', url: '/api/v1/collection/copies', cookies, payload: { platformKey: 'playstation-3', title: 'Flower', completeness: 'complete' } });
+    expect(added.statusCode).toBe(201);
+    const here = await improve('?added=here');
+    expect(here.items.map((i: { title: string; id: number }) => [i.title, i.id])).toEqual([['Flower', added.json().copy.id]]);
+    expect(here.total).toBe(1);
+    // The counts are the list's; without the filter, every copy missing something.
+    expect(here.counts.paid).toBe(1);
+    expect((await improve()).total).toBe(5);
+  });
 });

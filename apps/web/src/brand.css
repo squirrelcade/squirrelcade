@@ -795,6 +795,60 @@
   --v-line: var(--sc-info-line);
 }
 
+/* Add it (D153): beside the verdict and as tall as it, dark with the arcade green, so it reads as the one thing to tap. */
+.sc-verdict-row {
+  display: flex;
+  gap: 8px;
+  align-items: stretch;
+}
+.sc-verdict-row > .sc-verdict {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+.sc-verdict-add {
+  flex: none;
+  min-width: 96px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  padding: 10px 14px;
+  border-radius: 14px;
+  border: 2px solid var(--sc-cade);
+  background: var(--sc-cade-ink);
+  color: var(--sc-cade);
+  font-family: Silkscreen, ui-monospace, 'Cascadia Mono', Consolas, monospace;
+  font-size: 20px;
+  line-height: 1.1;
+  text-transform: uppercase;
+  white-space: nowrap;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+.sc-verdict-add:hover {
+  filter: brightness(1.25);
+}
+.sc-verdict-add:active {
+  transform: scale(0.97);
+  filter: brightness(1.4);
+}
+.sc-verdict-add:focus-visible {
+  outline: 3px solid var(--sc-cade);
+  outline-offset: 2px;
+}
+.sc-verdict-add:disabled {
+  cursor: progress;
+  opacity: 0.75;
+}
+@media (max-width: 40em) {
+  .sc-verdict-add {
+    min-width: 84px;
+    padding: 8px 10px;
+    font-size: 17px;
+  }
+}
+
 /* The phone's bar at the bottom (0.51.0): five places, the current one in green, Store Mode's camera on a green tile. */
 .sc-tabbar {
   display: flex;
