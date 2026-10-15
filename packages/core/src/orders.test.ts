@@ -93,7 +93,7 @@ describe('order emails', () => {
   it("reads a Shopify store's order: its items, discount, shipping and taxes", () => {
     const order = readOrderEmail(mail('Order #LRG123456 confirmed', 'store@limitedrungames.com', SHOPIFY_HTML), 'Wild Guns Reloaded')!;
     expect(order).toMatchObject({ store: 'Limited Run Games', orderNumber: 'LRG123456', discountCents: 950, shippingCents: 1200, taxCents: 760, totalCents: 10508 });
-    expect(order.items).toEqual([{ title: 'Wild Guns Reloaded Classic Edition × 1', priceCents: 5999, quantity: 1 }, { title: 'Shantae Advance: Risky Revolution (Switch) × 1', priceCents: 3499, quantity: 1 }]);
+    expect(order.items).toEqual([{ title: 'Wild Guns Reloaded Classic Edition', priceCents: 5999, quantity: 1 }, { title: 'Shantae Advance: Risky Revolution (Switch)', priceCents: 3499, quantity: 1 }]);
   });
 
   it("isn't fooled by an ad that names the game", () => {
@@ -178,5 +178,240 @@ describe('order emails', () => {
     expect(purchaseSubject('Order confirmed: Watch Dogs PS4', yes, no)).toBe(true);
     expect(purchaseSubject('You purchased Returnal PS5', yes, no)).toBe(true);
     expect(purchaseSubject('Order confirmed: Toy Soldiers', yes, no)).toBe(true);
+  });
+});
+
+// Made-up emails in the shapes the stores sent in 2026 (and Limited Run Games in 2023): their HTML breaks its lines
+// inside a cell, as the real ones do. No one's real order, name, address or number.
+const EBAY_2026 = `<div>ETA: Mon, Oct 5 - Fri, Oct 9. Look out for an update with the shipping confirmation.</div>
+<div>&zwnj; &zwnj; &shy; &zwnj;</div>
+<h3>Your order will ship to:</h3>
+<p>Pat Example<br>1 Example Way<br>Springfield, 00000 ST<br>United States</p>
+<h2>Your order details</h2>
+<p><a href="https://www.ebay.com/itm/123456789012">Chrono Trigger (Nintendo DS, 2008) Complete CIB Tested</a></p>
+<table><tr><td>
+<h4>
+Price:
+</h4>
+<p><b>$21.50</b></p></td><td><p><b>$21.50</b></p></td></tr>
+<tr><td><h4>Item ID:</h4><p>123456789012</p></td></tr>
+<tr><td><h4>Order number:</h4><p>01-23456-78901</p></td></tr></table>
+<h2>Popular in your interests</h2>
+<div>Chrono Cross (Pla…</div><div>$40.00</div><div>Or Best Offer</div>
+<div>Lot Of 5 (Nin…</div><div>$25.00</div><div>Buy it now</div><div>Free shipping</div>
+<h2>Sponsored items to complement your purchase</h2>
+<div>Chrono Trigger (S…</div><div>$90.00</div><div>Buy it now</div>
+<h3>Order total:</h3>
+<table>
+<tr>
+<th>
+Subtotal
+</th>
+<td>
+$21.50
+</td>
+</tr>
+<tr><th>
+Shipping
+</th><td>
+$5.00
+</td></tr>
+<tr><th>
+Sales tax
+</th><td>
+$1.60
+</td></tr>
+<tr><th>
+Total charged to
+<img alt="card">
+</th><td>
+$28.10
+</td></tr>
+</table>
+<p>&copy; 1995-2026 eBay Inc. or its affiliates</p>`;
+
+const MERCARI_2026 = `<p>Your order is confirmed.</p>
+<p>The seller has confirmed your order for Okami HD Nintendo Switch Game ! Expect a shipping confirmation email soon.</p>
+<h3>Item details</h3>
+<p>Okami HD Nintendo Switch Game</p>
+<p>ID: m12345678901</p>
+<table><tr><td>
+<p>Item price</p><div></div><p>Buyer protection fee</p><div></div><p>Tax</p>
+</td><td align="right">
+<p>$30.00</p><div></div><p>$1.20</p><div></div><p>$2.40</p>
+</td></tr></table>
+<table><tr><td>Total amount paid</td><td>$33.60</td></tr></table>
+<p>Shipping from</p><p>Example City, ST</p>`;
+
+const AMAZON_2026 = `<div>Ordered 1 item: Video Games</div>
+<p>Thanks for your order!</p>
+<p>Arriving October 25</p>
+<p>1 item: Video Games</p>
+<p>Pat - Springfield, ST</p>
+<p>Order # &#8235;123-4567890-1234567</p>
+<table><tr><td>Grand Total:</td><td>$31.82</td></tr></table>`;
+
+const gameStopItem = (title: string, price: string) => `<table><tr><td><img></td><td>
+<p>
+${title}
+</p>
+<table><tr><td><p></p></td></tr><tr><td><p>
+QTY: 1
+</p></td><td><p><strong>${price}</strong></p></td></tr></table></td></tr></table>`;
+const GAMESTOP_2026 = `<p>Thank you for your order, Pat</p>
+<p>Order Number: 1100000000000001</p>
+<p>Order Date: 10/1/26</p>
+<div><p>Order Total</p><p>$43.20</p></div>
+<p>Total Savings <span>$10.00</span></p>
+<p>SHIP TO HOME</p><p>Shipping to</p><p>1 EXAMPLE WAY,</p><p>SPRINGFIELD, ST, 00000</p>
+${gameStopItem('Okami HD - Nintendo Switch', '$20.00')}
+${gameStopItem('Call of Duty: World at War - Wii', '$12.00')}
+${gameStopItem('Ghost Trick: Phantom Detective - PlayStation 4', '$18.00')}
+<p>We will send you tracking information when your order has shipped.</p>
+<p>ORDER SUMMARY</p>
+<table><tr><td><p>Subtotal</p></td><td><p>$50.00</p></td></tr>
+<tr><td><p>Total Discount</p></td><td><p>$10.00</p></td></tr>
+<tr><td><p>Shipping &amp; Handling</p></td><td><p>$0.00</p></td></tr>
+<tr><td><p>Total Fees</p></td><td><p>$0.00</p></td></tr>
+<tr><td><p>Estimated Tax</p></td><td><p>$3.20</p></td></tr></table>
+<table><tr><td><p>Estimated Total</p></td><td><p>$43.20</p></td></tr></table>
+<p>Total Savings <span>$10.00</span></p>
+<p>Payment Method</p><p>Other</p><p>Amount: $43.20</p>`;
+
+const LRG_2023 = `<p>Your order is CONFIRMED!</p>
+<p>Order No. #1234567</p><p>October 1, 2023</p>
+<h3>Items ordered</h3>
+<table><tr><td>
+<p>Switch Limited Run #88: River City Girls</p>
+<p>esrb_rating: esrb-t.svg</p>
+<p>esrb_list: Violence|Language|</p>
+<p>upsell_id: 40000000000000</p>
+<p>upsell_title: Protective Case</p>
+<p>upsell_price: 1999</p>
+</td><td><p>x 1</p></td><td><p>$34.99</p></td></tr></table>
+<table><tr><td>Subtotal</td><td>$34.99</td></tr>
+<tr><td>Calculated Shipping Rate</td><td>$6.00</td></tr>
+<tr><td>Example County Tax (0.5%)</td><td>$0.17</td></tr>
+<tr><td>Example State Tax (5.6%)</td><td>$1.96</td></tr>
+<tr><td>Total</td><td>$43.12</td></tr></table>
+<p>Payment Info</p><p>Mastercard (••••0000)</p><p>$43.12</p>
+<p>Shipping Address</p><p>Pat Example</p><p>1 Example Way</p><p>Springfield, ST 00000</p><p>United States</p><p>Tel. +15550000000</p>
+<p>Customer</p><p>Pat Example</p><p>1 Example Way</p><p>Springfield, ST 00000</p><p>United States</p>
+<p>Copyright © 2023</p><p>$34.99</p><p>Shipping</p><p>$6.00</p><p>Example County Tax</p><p>$0.17</p><p>Example State Tax</p><p>$1.96</p><p>Total</p><p>$43.12 USD</p>
+<p>Payment Method</p><p>Ending in 0000 — $43.12</p>`;
+
+const LRG_2025 = `<h3>Items ordered</h3>
+<table><tr><th><img alt="Blaster Master Zero Trilogy - Switch"></th><th><table><tbody><tr><th>
+<p> <a href="https://limitedrungames.example/item"> Blaster Master Zero Trilogy (Switch, PS5) </a> <br/>
+<span>Switch</span> <br/>
+<span>🟣 Estimated ship date Jan 1 – Mar 31, 2027</span> </p></th>
+<th><p>x 1</p></th>
+<th><p> $29.99 </p></th></tr></tbody></table></th></tr>
+<tr><th><table><tbody><tr><th>Subtotal</th><th>$29.99</th></tr>
+<tr><th>Calculated Shipping Rate</th><th>$7.00</th></tr>
+<tr><th>Example State Tax (5.6%)</th><th>$1.68</th></tr>
+<tr><th>Example County Tax (0.5%)</th><th>$0.15</th></tr>
+<tr><th>Total</th><th>$38.82</th></tr></tbody></table></th></tr></table>
+<p>Payment Info</p><p>Example payments</p><p>$38.82</p>`;
+
+const SRG_2026 = `<span class="order-number__text">
+Order #100001
+</span>
+<h2>Thank you for your purchase! </h2>
+<h3>Order summary</h3>
+<table><tr><td><img></td><td>
+<span>[CLUB] PB#12: Lone Ruin, Game #120 (Switch) - Exclusive Slipcover! × 1</span><br/>
+</td><td>
+<p>
+£40.00
+</p>
+</td></tr></table>
+<table><tr><td><p><span>Subtotal</span></p></td><td><strong>£40.00</strong></td></tr>
+<tr><td><p><span>Shipping</span></p></td><td><strong>£9.99</strong></td></tr>
+<tr><td><p><span>Duties</span></p></td><td><strong>£4.00</strong></td></tr>
+<tr><td><p><span>Taxes</span></p></td><td><strong>£0.00</strong></td></tr></table>
+<table><tr><td><p><span>Total</span></p></td><td><strong>£53.99 GBP</strong></td></tr></table>`;
+
+describe("the stores' real emails, as they're shaped", () => {
+  it("reads eBay's: the whole title the subject cuts short, its line breaks inside a cell, and not its suggestions", () => {
+    const text = orderText(EBAY_2026);
+    expect(text).toContain('Subtotal\t$21.50');
+    expect(text).not.toMatch(/&zwnj;|&shy;/);
+    const m = { subject: 'Order confirmed: Chrono Trigger (Nintendo DS, 2...', from: 'ebay@ebay.com', day: '2026-10-03', text, links: 'https://www.ebay.com/itm/123456789012' };
+    expect(readOrderEmail(m)).toMatchObject({
+      store: 'eBay',
+      orderNumber: '01-23456-78901',
+      items: [{ title: 'Chrono Trigger (Nintendo DS, 2008) Complete CIB Tested', priceCents: 2150, quantity: 1 }],
+      taxCents: 160,
+      shippingCents: 500,
+      totalCents: 2810,
+      link: 'https://www.ebay.com/itm/123456789012',
+    });
+    // Its suggestions' prices aren't other items of the order (they'd take a share of its tax and shipping).
+    expect(readOrderEmail(m, 'Chrono Trigger')!.items).toEqual([{ title: 'Chrono Trigger (Nintendo DS, 2008) Complete CIB Tested', priceCents: 2150, quantity: 1 }]);
+    expect(purchaseSubject(m.subject, PURCHASE_SUBJECTS_DEFAULT, NOT_PURCHASE_SUBJECTS_DEFAULT)).toBe(true);
+  });
+
+  it("reads Mercari's labels and amounts in two columns, and its listing by its ID", () => {
+    const order = readOrderEmail(mail('You purchased: Okami HD Nintendo Switch Game', 'no-reply@alerts.us.mercari.com', MERCARI_2026), 'Okami HD')!;
+    expect(order).toMatchObject({ store: 'Mercari', items: [{ title: 'Okami HD Nintendo Switch Game', priceCents: 3000, quantity: 1 }], taxCents: 240, totalCents: 3360, link: 'https://www.mercari.com/us/item/m12345678901/' });
+    expect(readOrderEmail(mail('You purchased: Okami HD Nintendo Switch Game', 'no-reply@alerts.us.mercari.com', MERCARI_2026))!.items[0]!.priceCents).toBe(3000);
+  });
+
+  it("finds nothing in Amazon's confirmation that names only a department", () => {
+    const m = mail('Ordered 1 item: Video Games', 'auto-confirm@amazon.com', AMAZON_2026);
+    // Its order number has a writing direction's mark before it, taken out.
+    expect(m.text).toContain('Order # 123-4567890-1234567');
+    expect(readOrderEmail(m)).toBeNull();
+    expect(readOrderEmail(m, 'Okami HD')).toBeNull();
+  });
+
+  it("reads GameStop's items, each with its count on a line between it and its price", () => {
+    const m = mail('Thank you for your order!', 'notifications@info.gamestop.com', GAMESTOP_2026);
+    const order = readOrderEmail(m)!;
+    expect(order).toMatchObject({ store: 'GameStop', orderNumber: '1100000000000001', taxCents: 320, shippingCents: 0, discountCents: 1000, totalCents: 4320 });
+    // "Call of Duty" is a game, not a duty.
+    expect(order.items.map((i) => [i.title, i.priceCents, i.quantity])).toEqual([
+      ['Okami HD - Nintendo Switch', 2000, 1],
+      ['Call of Duty: World at War - Wii', 1200, 1],
+      ['Ghost Trick: Phantom Detective - PlayStation 4', 1800, 1],
+    ]);
+    const ghost = readOrderEmail(m, 'Ghost Trick: Phantom Detective')!;
+    expect(ghost.items.map((i) => i.priceCents)).toEqual([1800, 2000, 1200]);
+    // 1800 of the 5000: its share of the tax and of the discount.
+    expect(itemCost(ghost, 0, 'all')).toMatchObject({ taxCents: 115, discountCents: 360, paidCents: 1800 + 115 - 360 });
+    // What goes to a model keeps the item after the two lines of the address.
+    const forModel = orderTextForModel(m.text);
+    expect(forModel).toContain('Okami HD - Nintendo Switch');
+    expect(forModel).not.toMatch(/EXAMPLE WAY|SPRINGFIELD/);
+  });
+
+  it("reads Limited Run Games' older emails: an item's properties left out, its taxes added up, not its footer's repeat", () => {
+    const m = mail('Limited Run Games - Order #1234567 Confirmed', 'orders@limitedrungames.com', LRG_2023);
+    const plain = readOrderEmail(m)!;
+    expect(plain).toMatchObject({ store: 'Limited Run Games', orderNumber: '1234567', items: [{ title: 'Switch Limited Run #88: River City Girls', priceCents: 3499, quantity: 1 }], taxCents: 213, shippingCents: 600, totalCents: 4312 });
+    // A release's number isn't a sequel's ("#88").
+    expect(readOrderEmail(m, 'River City Girls')!.items).toEqual([{ title: 'Switch Limited Run #88: River City Girls', priceCents: 3499, quantity: 1 }]);
+    expect(purchaseSubject(m.subject, PURCHASE_SUBJECTS_DEFAULT, NOT_PURCHASE_SUBJECTS_DEFAULT)).toBe(true);
+    const forModel = orderTextForModel(m.text);
+    expect(forModel).not.toMatch(/Pat Example|Example Way|Springfield|5550000000/);
+    expect(forModel).toContain('Copyright © 2023');
+  });
+
+  it("reads a Shopify store's newer emails: past an item's console and its ship date, from Shopify's own address", () => {
+    const m = { ...mail('Limited Run Games - Order #7654321 Confirmed', 'store+00000@t.shopifyemail.com', LRG_2025), fromName: 'Limited Run Games' };
+    const order = readOrderEmail(m)!;
+    expect(order).toMatchObject({ store: 'Limited Run Games', items: [{ title: 'Blaster Master Zero Trilogy (Switch, PS5)', priceCents: 2999, quantity: 1 }], taxCents: 183, shippingCents: 700, totalCents: 3882 });
+    expect(readOrderEmail(m, 'Blaster Master Zero Trilogy')!.items).toEqual([{ title: 'Blaster Master Zero Trilogy (Switch, PS5)', priceCents: 2999, quantity: 1 }]);
+  });
+
+  it("reads Super Rare Games': its price on a line of its own, duties as a tax, a total in pounds", () => {
+    const m = mail('Order #100001 confirmed', 'help@superraregames.com', SRG_2026);
+    const order = readOrderEmail(m, 'Lone Ruin')!;
+    expect(order).toMatchObject({ store: 'Super Rare Games', orderNumber: '100001', currency: 'GBP', items: [{ title: '[CLUB] PB#12: Lone Ruin, Game #120 (Switch) - Exclusive Slipcover!', priceCents: 4000, quantity: 1 }], taxCents: 400, shippingCents: 999, totalCents: 5399 });
+    expect(readOrderEmail(m)!.items).toEqual(order.items);
+    expect(purchaseSubject(m.subject, PURCHASE_SUBJECTS_DEFAULT, NOT_PURCHASE_SUBJECTS_DEFAULT)).toBe(true);
+    // A listing's year isn't a sequel's number either.
+    expect(orderItemScore('Okami PS2 2006 CIB Complete', 'Okami')).toBe(1);
   });
 });

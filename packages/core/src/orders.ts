@@ -1,4 +1,4 @@
-import { cleanProductTitle } from './lookup.js';
+import { cleanProductTitle, productPlatform } from './lookup.js';
 import { matchTokens, normalizeTitle } from './text.js';
 
 /**
@@ -75,7 +75,7 @@ export function orderStore(address: string, name = ''): string {
   return (parts.length >= 2 ? parts[parts.length - 2]! : domain).slice(0, 60) || 'A store';
 }
 
-const ENTITIES: Record<string, string> = { amp: '&', lt: '<', gt: '>', quot: '"', apos: "'", nbsp: ' ', dollar: '$', euro: '€', pound: '£', yen: '¥', times: '×', ndash: '–', mdash: '—', rsquo: '’', lsquo: '‘', rdquo: '”', ldquo: '“', hellip: '…', reg: '®', trade: '™', copy: '©' };
+const ENTITIES: Record<string, string> = { amp: '&', lt: '<', gt: '>', quot: '"', apos: "'", nbsp: ' ', dollar: '$', euro: '€', pound: '£', yen: '¥', times: '×', ndash: '–', mdash: '—', rsquo: '’', lsquo: '‘', rdquo: '”', ldquo: '“', hellip: '…', reg: '®', trade: '™', copy: '©', zwnj: '', zwj: '', shy: '', lrm: '', rlm: '' };
 
 /** Text with its HTML entities written out ("&amp;" is "&", "&#36;" "$"). */
 function htmlEntities(text: string): string {
@@ -90,20 +90,24 @@ function htmlEntities(text: string): string {
 
 /**
  * An order email's HTML as lines of text: a table's row on one line with its cells apart (a tab between them), so a
- * label and its amount ("Subtotal | $19.99") stay together; styles, scripts and hidden previews left out.
+ * label and its amount ("Subtotal | $19.99") stay together; the source's own line breaks are only spaces (a store's
+ * HTML breaks its lines anywhere, inside a cell too); styles, scripts and hidden previews left out, and the characters
+ * that show nothing (zero-width spaces, soft hyphens, the marks of a writing direction) taken out.
  */
 export function orderText(html: string): string {
   return htmlEntities(
     html
       .replace(/<(style|script|head|title)\b[\s\S]*?<\/\1>/gi, ' ')
       .replace(/<!--[\s\S]*?-->/g, ' ')
+      .replace(/\s+/g, ' ')
       .replace(/<br\s*\/?>/gi, '\n')
       .replace(/<\/(td|th)>/gi, '\t')
       .replace(/<\/(tr|p|div|li|h[1-6]|table|ul|ol|section|article|header|footer)>/gi, '\n')
       .replace(/<(p|div|li|h[1-6]|tr|table)\b[^>]*>/gi, '\n')
       .replace(/<[^>]+>/g, ' '),
   )
-    .replace(/[ ​-‍⁠﻿͏]/g, ' ')
+    .replace(/\u00a0/g, ' ')
+    .replace(/[\u00ad\u034f\u200b-\u200f\u202a-\u202e\u2060-\u2064\u2066-\u2069\ufeff]/g, '')
     .split('\n')
     .map((l) => l.replace(/[ \f\r\v]+/g, ' ').replace(/\s*\t[\s\t]*/g, '\t').replace(/^\t|\t$/g, '').trim())
     .filter((l) => l !== '')
@@ -120,6 +124,8 @@ const AMOUNT = new RegExp(
   String.raw`(\(|-|−)?\s*(?:(?<![\p{L}\p{N}])(US|USD|C|CA|CAD|A|AU|AUD|NZ)\s?)?([$€£¥￥])\s?(\d{1,3}(?:[,.\s]\d{3})*|\d+)(?:([.,])(\d{2}))?(?!\d)|(\(|-|−)?\b(${CODES})\s?(\d{1,3}(?:,\d{3})*|\d+)(?:\.(\d{2}))?(?!\d)|(\d{1,3}(?:,\d{3})*|\d+)\.(\d{2})\s?(${CODES})\b`,
   'gu',
 );
+/** A currency's code standing alone ("£116.79 GBP"). */
+const CODE_WORDS = new RegExp(String.raw`\b(?:${CODES})\b`, 'g');
 
 /** An amount found in a line of text: in cents (negative for money off), its currency, and where it is. */
 interface Amount {
@@ -167,7 +173,8 @@ function labelOf(text: string): Label {
   // Amazon's "Total before tax" and "Items:" are the items' total, not a tax or an item.
   if (/sub-?\s?total|items?\s*\(?s?\)?\s*total|merchandise|item\(s\)|before tax|pre-?tax|excluding tax|^\W*items?\W*$/.test(t)) return 'subtotal';
   if (/\b(shipping|delivery|postage|handling|s\s?&\s?h)\b/.test(t)) return 'shipping';
-  if (/\b(tax|taxes|vat|gst|hst|pst|qst)\b/.test(t)) return 'tax';
+  // Import duties (Super Rare Games' "Duties") are a tax on the order; "Call of Duty" is a game.
+  if (/\b(tax|taxes|vat|gst|hst|pst|qst|duties|(import|customs) duty)\b|^\W*duty\W*$/.test(t)) return 'tax';
   if (/\b(discount|coupon|promo(tion)?|savings|you saved|voucher)\b/.test(t)) return 'discount';
   if (/\bfees?\b/.test(t)) return 'fee';
   if (/\b(order total|grand total|total paid|amount paid|total charged|payment total|you paid|paid|total|amount)\b/.test(t)) return 'total';
@@ -196,7 +203,8 @@ export function orderLink(store: string, text: string): string | null {
     return id ? `https://www.ebay.com/itm/${id}` : null;
   }
   if (store === 'Mercari') {
-    const id = /mercari\.com\/(?:[a-z]{2}\/)?item\/(m\d{6,15})\b/i.exec(all)?.[1];
+    // Mercari's links go through a tracker that hides them; the email says the listing's "ID: m123...".
+    const id = /mercari\.com\/(?:[a-z]{2}\/)?item\/(m\d{6,15})\b/i.exec(all)?.[1] ?? /\bID:?\s*(m\d{6,15})\b/.exec(all)?.[1];
     return id ? `https://www.mercari.com/us/item/${id}/` : null;
   }
   if (store === 'Amazon') {
@@ -214,7 +222,8 @@ const NOT_A_SEQUEL = /^(19\d\d|20\d\d|\d{3,}|1)$/;
 /**
  * How well an order's item names a game, 0 to 1: the share of the game title's words in the item's title (as catalogs
  * compare words: "II" is "2"), less when the item has a sequel's number the title doesn't ("Halo 3" isn't "Halo").
- * A listing's packaging and console words don't count ("Okami PS2 CIB Complete Tested" names Okami well).
+ * A listing's packaging and console words don't count ("Okami PS2 CIB Complete Tested" names Okami well), nor its year
+ * or a release's own number ("Okami PS2 2006", "Limited Run #214", "PB#49").
  */
 export function orderItemScore(line: string, gameTitle: string): number {
   // An email's line may have the price and quantity beside the title.
@@ -225,7 +234,7 @@ export function orderItemScore(line: string, gameTitle: string): number {
   const item = new Set([...words(itemTitle), ...words(cleanProductTitle(itemTitle))]);
   const hit = game.filter((w) => item.has(w)).length;
   let score = hit / game.length;
-  const cleaned = words(cleanProductTitle(itemTitle));
+  const cleaned = words(cleanProductTitle(itemTitle.replace(/#\s?\d+\b/g, ' ').replace(/\b(?:19[7-9]\d|20[0-3]\d)\b/g, ' ')));
   const extra = cleaned.filter((w) => /^\d+$/.test(w) && !NOT_A_SEQUEL.test(w) && !game.includes(w));
   if (extra.length > 0) score -= 0.4;
   return Math.max(0, Math.min(1, score));
@@ -234,14 +243,28 @@ export function orderItemScore(line: string, gameTitle: string): number {
 /** An item's score at least this names the game. */
 export const ITEM_MATCH = 0.75;
 
-/** A line that's only labels for the whole order, or about delivery, or the store's own words: never an item. */
-const NOT_ITEM = /\b(sub-?total|total|shipping|delivery|tax|discount|coupon|promo|fee|refund|payment|paid|balance|savings|you saved|gift card|reward|points?|estimated|arriv|track|order\s*(#|number|date|id)|ship to|billing|address)\b/i;
+/**
+ * A line that's only labels for the whole order, or about delivery, or the store's own words (its copyright, the card
+ * paid with): never an item.
+ */
+const NOT_ITEM = /\b(sub-?total|total|shipping|delivery|tax|discount|coupon|promo|fee|refund|payment|paid|balance|savings|you saved|gift card|reward|points?|estimated|arriv|track|order\s*(#|number|date|id)|ship to|billing|address|copyright|ending in)\b|©/i;
 
 /** A line's "Qty: 2" (or "Quantity 2"), left out of an item's title. */
 const QTY_WORDS = /\b(?:qty|quantity)\s*[:x]?\s*\d{1,2}\b/gi;
 const HAS_QTY = /\b(?:qty|quantity)\s*[:x]?\s*\d{1,2}\b/i;
 /** A count written "× 2", "x2" or "2x", standing alone: a small x or the times sign ("Mega Man X4" is a title). */
 const TIMES = /(?:^|\s)[x×]\s?\d{1,2}(?=\s|$)|(?:^|\s)\d{1,2}\s?[x×](?=\s|$)/g;
+/** A line that's only an item's count (GameStop's "QTY: 1", a Shopify store's "x 1"). */
+const QTY_LINE = /^(?:(?:qty|quantity)\s*[:x]?\s*\d{1,2}|[x×]\s?\d{1,2}|\d{1,2}\s?[x×])$/i;
+/** A property of an item that an older Shopify email shows as its key ("esrb_rating: m", "upsell_price: 1999"): left out. */
+const PROPERTY_LINE = /^[a-z]+(?:_[a-z]+)+\s*:/;
+/** The heading of the store's own suggestions (eBay's "Popular in your interests"): their prices aren't the order's. */
+const AD_HEADING = /^(?:popular in your interests|sponsored\b|recommended for you|(?:items )?you (?:may|might) (?:also )?like|similar (?:items|sponsored)|inspired by your|explore (?:more|related)|more (?:items )?(?:like this|to explore|from this seller)|customers (?:who|also)\b)/i;
+
+/** A line under an item's title that's only its console or edition (a Shopify store's "Switch", "Standard Edition"). */
+function variantLine(line: string): boolean {
+  return (productPlatform(line) !== null && cleanProductTitle(line) === '') || /^(?:standard|limited|deluxe|collector['’]?s|special|classic|premium|signature|launch|day one)(?: edition)?$/i.test(line);
+}
 
 /** The label of an amount: the last cell of the line before it ("Subtotal" in "Subtotal\t$19.99"). */
 function labelBefore(line: string, index: number): string {
@@ -258,16 +281,22 @@ function labelBefore(line: string, index: number): string {
 /** The words in a purchase email's subject before the item ("Order confirmed: X", "You purchased X", "Your order of "X""). */
 const SUBJECT_ITEM = /^(?:re:\s*|fwd?:\s*)?(?:order confirmed|order confirmation|you(?:['’]ve| have)? (?:purchased|bought|won)|your purchase(?: of)?|thanks for (?:your )?(?:purchasing|buying|purchase of)|purchase confirmed|you['’]re all set|ordered|your [\w.]+ order of)\s*[:\-–—]?\s*(.+)$/i;
 
-/** The item a subject names, quotes and "and 2 more items" left out; null when it names none. */
+/**
+ * The item a subject names, quotes and "and 2 more items" left out; null when it names none (Amazon's "Ordered 1 item:
+ * Video Games" names a department).
+ */
 function subjectItem(subject: string): string | null {
   const m = SUBJECT_ITEM.exec(subject.trim());
   // "... and 2 more items": the email's lines have them all.
   if (!m || /\band \d+ more items?\b/i.test(subject)) return null;
   let t = m[1]!.trim().replace(/^["“'‘]|["”'’]?\s*(?:and \d+ more items?|\.\.\.|…)?\s*["”'’]?[!.]*$/gi, '').trim();
   t = t.replace(/^["“]|["”]$/g, '').trim();
-  if (t.length < 2 || /^(is |has |was |#?\d+$)/i.test(t)) return null;
+  if (t.length < 2 || /^(is |has |was |#?\d+$|\d+ items?\b)/i.test(t)) return null;
   return t.slice(0, 200);
 }
+
+/** A subject cut short ("Order confirmed: Chrono Trigger (Nintendo DS, 2..."): eBay's are, when the listing's title is long. */
+const CUT_SHORT = /(?:\.\.\.|…)\s*["”'’]?\s*$/;
 
 /** An email to read: its subject, sender, day, and its text (from its HTML when it has some). */
 export interface OrderEmail {
@@ -286,35 +315,91 @@ export interface OrderEmail {
  * Reads an order email by plain rules: its summary lines (subtotal, shipping, tax, discount, total, fees), its order
  * number and link, and its items: with `wanted` (a game's title, for the price paid) the lines naming it and the price
  * beside them; else the item the subject names (eBay, Mercari) or the lines with a price that aren't the summary's.
- * Null when it doesn't read as an order (no amounts, or no word of an order or receipt).
+ * The store's suggestions (eBay's "Popular in your interests") and what follows the summary (a footer's repeat of it,
+ * the card paid with) aren't the order's items. Null when it doesn't read as an order (no amounts, or no word of an
+ * order or receipt).
  */
 export function readOrderEmail(mail: OrderEmail, wanted?: string): FoundOrder | null {
-  const lines = mail.text.split('\n').map((l) => l.trim()).filter(Boolean).slice(0, 3000);
+  // An older Shopify email's item properties ("esrb_rating: m") are left out: they come between an item and its price.
+  const lines = mail.text.split('\n').map((l) => l.trim()).filter((l) => l && !PROPERTY_LINE.test(l)).slice(0, 3000);
   const whole = `${mail.subject}\n${mail.text}`;
   if (!/\b(order|receipt|purchase|purchased|bought|invoice|payment|paid)\b/i.test(whole)) return null;
   const store = orderStore(mail.from, mail.fromName);
-  const summary: Partial<Record<Exclude<Label, null | 'price'>, number>> = {};
+  const parsed = lines.map((line) => ({ line, amounts: amountsIn(line) }));
+  /** A line that's an amount alone ("$19.99", "£116.79 GBP"). */
+  const alone = (i: number) => {
+    const p = parsed[i];
+    return p !== undefined && p.amounts.length === 1 && p.line.replace(AMOUNT, '').replace(CODE_WORDS, '').replace(/[\s:|]/g, '') === '';
+  };
+  /** A line that's a label alone ("Subtotal"), its amount on a line of its own. */
+  const labelOnly = (i: number): Label => {
+    const p = parsed[i];
+    return p !== undefined && p.amounts.length === 0 ? labelOf(p.line) : null;
+  };
+  /**
+   * The label of each amount alone on its line: the line before it ("Subtotal", then "$19.99"), or, where the labels
+   * stand in a column beside a column of amounts (Mercari's "Item price", "Buyer protection fee" and "Tax", then their
+   * three amounts), the label in the same place in its column.
+   */
+  const above: Label[] = parsed.map(() => null);
+  for (let i = 0; i < parsed.length; i++) {
+    if (!labelOnly(i)) continue;
+    let k = 1;
+    while (labelOnly(i + k)) k++;
+    let n = 0;
+    while (alone(i + k + n)) n++;
+    if (k >= 2 && n === k) for (let j = 0; j < k; j++) above[i + k + j] = labelOnly(i + j);
+    else if (n > 0) above[i + k] = labelOnly(i + k - 1);
+    i += k - 1;
+  }
+  /** An amount's label: the cell before it on its line ("Subtotal\t$19.99"), else, for an amount alone, the one above. */
+  const labelAt = (i: number, a: Amount): Label => labelOf(labelBefore(parsed[i]!.line, a.index)) ?? (alone(i) ? above[i]! : null);
+  const summaryAt = (i: number) => {
+    const p = parsed[i];
+    const label = p && p.amounts.length > 0 ? labelAt(i, p.amounts[0]!) : null;
+    return label !== null && label !== 'price';
+  };
+  /** The lines of the store's suggestions, from their heading to the order's summary ("Free shipping" in one isn't it). */
+  const ad = new Set<number>();
+  for (let i = 0, on = false; i < parsed.length; i++) {
+    if (AD_HEADING.test(parsed[i]!.line)) on = true;
+    else if (on && (summaryAt(i) || (labelOnly(i) && summaryAt(i + 1)))) on = false;
+    if (on) ad.add(i);
+  }
+
+  const summary: Partial<Record<Exclude<Label, null | 'price' | 'tax'>, number>> = {};
+  let tax: number | undefined;
   let fees = 0;
   let currency: string | null = null;
-  const seen = (label: Exclude<Label, null | 'price'>, cents: number) => {
-    if (label === 'fee') fees += Math.abs(cents);
-    // The first of each (an email may say "Total" again in a footer).
-    else if (summary[label] === undefined) summary[label] = label === 'discount' ? Math.abs(cents) : cents;
-  };
-  /** Each line's amounts, and the label before its first one (or the line before, when this one is an amount alone). */
-  const parsed = lines.map((line) => ({ line, amounts: amountsIn(line) }));
+  /** The lines up to the summary's total (after its subtotal), where the items are; the rest is a footer's. */
+  let end = parsed.length;
+  let sawItem = false;
+  let sawSubtotal = false;
+  // The summary's lines run together; a line without a label ends a run, and a later run (a footer's repeat) is again.
+  let run = 0;
+  let taxRun = -1;
   for (let i = 0; i < parsed.length; i++) {
     const { line, amounts } = parsed[i]!;
-    if (amounts.length === 0) {
-      // A label on its own line, its amount alone on the next.
-      const label = labelOf(line);
-      const next = parsed[i + 1];
-      if (label && label !== 'price' && next && next.amounts.length === 1 && next.line.replace(AMOUNT, '').replace(/[\s:|]/g, '') === '') seen(label, next.amounts[0]!.cents);
+    const label = amounts.length > 0 ? labelAt(i, amounts[0]!) : labelOf(line);
+    if (amounts.length > 0) currency ??= amounts.find((a) => a.currency)?.currency ?? null;
+    if (!label) {
+      run++;
+      if (amounts.length > 0 && amounts[0]!.cents > 0 && !ad.has(i)) sawItem = true;
       continue;
     }
-    currency ??= amounts.find((a) => a.currency)?.currency ?? null;
-    const label = labelOf(labelBefore(line, amounts[0]!.index) || line.slice(0, amounts[0]!.index));
-    if (label && label !== 'price') seen(label, amounts[amounts.length - 1]!.cents);
+    if (amounts.length === 0 || label === 'price') continue;
+    const cents = amounts[amounts.length - 1]!.cents;
+    if (label === 'tax') {
+      // A run's taxes add up (a county's and a state's, duties and taxes).
+      if (taxRun === -1 || taxRun === run) {
+        tax = (tax ?? 0) + cents;
+        taxRun = run;
+      }
+    } else if (label === 'fee') fees += Math.abs(cents);
+    // The first of each (an email may say "Total" again in a footer).
+    else if (summary[label] === undefined) summary[label] = label === 'discount' ? Math.abs(cents) : cents;
+    if (label === 'subtotal') sawSubtotal = true;
+    if (label === 'total' && sawSubtotal && sawItem && end === parsed.length) end = i;
   }
 
   const items: OrderItem[] = [];
@@ -328,44 +413,67 @@ export function readOrderEmail(mail: OrderEmail, wanted?: string): FoundOrder | 
   };
   /** A line's amount for several ("Qty: 2 ... $159.98") is the price of all of them, unless it says each. */
   const perOne = (cents: number, quantity: number, near: string) => (quantity > 1 && !/\beach\b|@|\/\s?ea\b/i.test(near) ? Math.round(cents / quantity) : cents);
+  /** A line between an item's title and its price that isn't another item: its count, console, edition or a note. */
+  const aside = (line: string) => QTY_LINE.test(line) || HAS_QTY.test(line) || variantLine(line) || NOT_ITEM.test(line);
   /** The price of an item named on line i: on its line (not a summary's), else the first item price in the lines after. */
   const priceNear = (i: number): { cents: number; at: number; each: boolean } | null => {
-    for (let j = i; j <= Math.min(i + 6, parsed.length - 1); j++) {
+    for (let j = i; j <= Math.min(i + 6, end - 1); j++) {
       const { line, amounts } = parsed[j]!;
-      if (j > i && labelOf(line) && labelOf(line) !== 'price' && amounts.length === 0) break;
+      if (j > i && ((labelOf(line) && labelOf(line) !== 'price' && amounts.length === 0) || ad.has(j))) break;
       for (const a of amounts) {
-        const label = labelOf(labelBefore(line, a.index));
+        const label = labelAt(j, a);
         // A "Price" or "Unit price" is for one already.
         if ((label === 'price' || label === null) && a.cents > 0) return { cents: a.cents, at: j, each: label === 'price' };
         if (label && label !== 'price') return null;
       }
       // Another item begins: its price isn't this one's.
-      if (j > i + 1 && amounts.length === 0 && wanted && orderItemScore(line, wanted) < ITEM_MATCH && /[a-z]{4}/i.test(line) && !HAS_QTY.test(line)) break;
+      if (j > i + 1 && amounts.length === 0 && wanted && orderItemScore(line, wanted) < ITEM_MATCH && /[a-z]{4}/i.test(line) && !aside(line)) break;
     }
     return null;
   };
-  const titleOf = (line: string) => line.replace(AMOUNT, ' ').replace(QTY_WORDS, ' ').replace(/\t+/g, ' ').replace(/\s+/g, ' ').trim();
+  const titleOf = (line: string) => line.replace(AMOUNT, ' ').replace(QTY_WORDS, ' ').replace(TIMES, ' ').replace(/\t+/g, ' ').replace(/\s+/g, ' ').trim();
+  /**
+   * The title of the item priced on line i, and its line: the words before the price, else a line above it, past its
+   * count ("QTY: 1"), its console or edition ("Switch"), a note ("Estimated ship date...") and a "Price:" label.
+   */
+  const titleFor = (i: number, skip: Set<number>): { title: string; at: number } | null => {
+    const { line, amounts } = parsed[i]!;
+    const before = titleOf(line.slice(0, amounts[0]!.index));
+    if (/[a-z]{3}/i.test(before)) return { title: before, at: i };
+    for (let j = i - 1; j >= Math.max(0, i - 4); j--) {
+      const p = parsed[j]!;
+      if (p.amounts.length > 0 || skip.has(j)) return null;
+      const label = labelOf(p.line);
+      if (label === 'price' || (!label && aside(p.line))) continue;
+      return label ? null : { title: titleOf(p.line), at: j };
+    }
+    return null;
+  };
 
-  /** Lines with a price that aren't the order's summary: the items ("Okami (PS2)   $24.99"), at most ten, and their lines. */
+  /**
+   * Lines with a price that aren't the order's summary: the items ("Okami (PS2)   $24.99"), at most forty (a store's
+   * order of twenty games is shared out over all of them), and their lines.
+   */
   const pricedLines = (skip: Set<number>): { item: OrderItem; at: number }[] => {
     const out: { item: OrderItem; at: number }[] = [];
-    for (let i = 0; i < parsed.length && out.length < 10; i++) {
+    for (let i = 0; i < end && out.length < 40; i++) {
       const { line, amounts } = parsed[i]!;
-      if (skip.has(i) || amounts.length === 0 || amounts[0]!.cents <= 0) continue;
-      let title = titleOf(line.slice(0, amounts[0]!.index));
-      if (!/[a-z]{3}/i.test(title) && i > 0 && parsed[i - 1]!.amounts.length === 0 && !skip.has(i - 1)) title = titleOf(parsed[i - 1]!.line);
-      if (!/[a-z]{3}/i.test(title) || NOT_ITEM.test(title) || labelOf(title) || title.length > 200) continue;
-      const quantity = quantityNear(i, i);
-      out.push({ item: { title, priceCents: perOne(amounts[0]!.cents, quantity, line), quantity }, at: i });
+      if (skip.has(i) || ad.has(i) || amounts.length === 0 || amounts[0]!.cents <= 0) continue;
+      const label = labelAt(i, amounts[0]!);
+      if (label && label !== 'price') continue;
+      const named = titleFor(i, skip);
+      if (!named || !/[a-z]{3}/i.test(named.title) || NOT_ITEM.test(named.title) || labelOf(named.title) || named.title.length > 200) continue;
+      const quantity = quantityNear(named.at, i);
+      out.push({ item: { title: named.title, priceCents: label === 'price' ? amounts[0]!.cents : perOne(amounts[0]!.cents, quantity, line), quantity }, at: i });
     }
     return out;
   };
 
   if (wanted) {
     const used = new Set<number>();
-    for (let i = 0; i < parsed.length && items.length < 5; i++) {
+    for (let i = 0; i < end && items.length < 5; i++) {
       const { line } = parsed[i]!;
-      if (orderItemScore(line, wanted) < ITEM_MATCH || line.length > 300) continue;
+      if (ad.has(i) || orderItemScore(line, wanted) < ITEM_MATCH || line.length > 300) continue;
       const price = priceNear(i);
       if (!price) continue;
       const quantity = quantityNear(i, price.at + 1);
@@ -377,9 +485,16 @@ export function readOrderEmail(mail: OrderEmail, wanted?: string): FoundOrder | 
     if (items.length > 0) items.push(...pricedLines(used).map((p) => p.item));
   }
   if (items.length === 0) {
-    const named = subjectItem(mail.subject) ?? (wanted && orderItemScore(mail.subject, wanted) >= ITEM_MATCH ? wanted : null);
-    const itemPrice = parsed.map(({ line, amounts }) => amounts.find((a) => labelOf(labelBefore(line, a.index)) === 'price')).find(Boolean)?.cents;
-    const fromTotals = summary.total !== undefined ? summary.total - (summary.tax ?? 0) - (summary.shipping ?? 0) - fees + (summary.discount ?? 0) : undefined;
+    let named = subjectItem(mail.subject);
+    if (named && CUT_SHORT.test(mail.subject)) {
+      // The email's own line has the whole of a title the subject cut short.
+      const start = named.toLowerCase().replace(/\s+/g, ' ');
+      const at = lines.findIndex((l, i) => !ad.has(i) && l.length > start.length && l.toLowerCase().replace(/\s+/g, ' ').startsWith(start));
+      if (at >= 0) named = titleOf(lines[at]!).slice(0, 200);
+    }
+    named ??= wanted && orderItemScore(mail.subject, wanted) >= ITEM_MATCH ? wanted : null;
+    const itemPrice = parsed.map(({ amounts }, i) => (ad.has(i) || i >= end ? undefined : amounts.find((a) => labelAt(i, a) === 'price'))).find(Boolean)?.cents;
+    const fromTotals = summary.total !== undefined ? summary.total - (tax ?? 0) - (summary.shipping ?? 0) - fees + (summary.discount ?? 0) : undefined;
     if (named && (!wanted || orderItemScore(named, wanted) >= ITEM_MATCH)) {
       const quantity = quantityNear(0, lines.length - 1);
       const all = summary.subtotal ?? fromTotals ?? null;
@@ -394,7 +509,7 @@ export function readOrderEmail(mail: OrderEmail, wanted?: string): FoundOrder | 
     orderNumber: orderNumberIn(whole),
     currency,
     items,
-    taxCents: summary.tax ?? null,
+    taxCents: tax ?? null,
     shippingCents: summary.shipping ?? null,
     discountCents: summary.discount ?? null,
     totalCents: summary.total ?? null,
@@ -502,19 +617,33 @@ export const ORDER_SCHEMA = {
   required: ['orders'],
 } as const;
 
-/** An email's text for the model: addresses, phone numbers and the lines of a postal address left out, cut to a length. */
+/** A postal address's last line but its country: a city's, with its ZIP or postcode ("Springfield, ST 00000", "London SW1A 1AA"). */
+const CITY_LINE = /,.*\b\d{5}(?:-\d{4})?\b|\b[A-Z]{2},?\s+\d{5}(?:-\d{4})?\b|\b[A-Z]\d[A-Z]\s?\d[A-Z]\d\b|\b[A-Z]{1,2}\d[A-Z\d]?\s\d[A-Z]{2}\b/;
+const COUNTRY_LINE = /^(?:united states(?: of america)?|usa|canada|united kingdom|uk|great britain|australia|new zealand|ireland|germany|france|japan|mexico)$/i;
+
+/**
+ * An email's text for the model: addresses, phone numbers and the lines of a postal address left out (to its city's
+ * line and its country, so a store's next lines, an item's among them, stay), names beside a pick-up, cut to a length.
+ */
 export function orderTextForModel(text: string, max = 6000): string {
-  const lines = text.replace(/[\w.+-]+@[\w-]+(\.[\w-]+)+/g, '[email]').replace(/(?:\+?1[\s.-]?)?\(?\d{3}\)?[\s.-]\d{3}[\s.-]\d{4}\b/g, '[phone]').split('\n');
+  const lines = text
+    .replace(/[\w.+-]+@[\w-]+(\.[\w-]+)+/g, '[email]')
+    .replace(/\b(?:tel|phone|mobile)\b\.?:?[ \t]*\+?[\d \t().-]{7,}\d|(?:\+?1[\s.-]?)?\(?\d{3}\)?[\s.-]\d{3}[\s.-]\d{4}\b|\+\d{10,14}\b/gi, '[phone]')
+    .replace(/\b(pick-?up by|approved for pick-?up by)\s*:.*$/gim, '$1: [name]')
+    .split('\n');
   const out: string[] = [];
   let address = 0;
+  let city = false;
   for (const line of lines) {
-    if (/\b(ship(ping)? to|shipping address|deliver(y|ing)? to|delivery address|billing address|bill to|sold to|mailing address)\b/i.test(line)) {
+    if (/\b(ship(ping)? to|shipping address|deliver(y|ing)? to|delivery address|billing address|bill to|sold to|mailing address)\b|^customer(?: information)?:?$/i.test(line)) {
       out.push(line.replace(/(:|\t).*$/, '$1 [address]'));
       address = 4;
+      city = false;
       continue;
     }
-    // A postal address's lines (no amount among them) after its label.
-    if (address > 0 && amountsIn(line).length === 0) {
+    // A postal address's lines (no amount among them) after its label; after its city's, only a country's or a phone's.
+    if (address > 0 && amountsIn(line).length === 0 && (!city || COUNTRY_LINE.test(line) || line === '[phone]')) {
+      if (CITY_LINE.test(line)) city = true;
       address--;
       continue;
     }
@@ -582,15 +711,17 @@ export function ordersFromAnswer(answer: unknown, mails: { from: string; fromNam
 /**
  * Whether a subject is a purchase's, by Settings > Email's words, each a whole word or phrase: one of the purchase
  * words, and none of the others outside the item it names ("Order confirmed: Watch Dogs" is a purchase; "Returnal"
- * has no "return" in it).
+ * has no "return" in it). An order's number between the words doesn't count ("Order #1234 confirmed", as Shopify's
+ * stores write it, is "order confirmed").
  */
 export function purchaseSubject(subject: string, yes: readonly string[], no: readonly string[]): boolean {
   const words = (w: string) => {
     const t = w.trim().toLowerCase();
     return t ? new RegExp(`(?<![\\p{L}\\p{N}])${t.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}(?![\\p{L}\\p{N}])`, 'u') : null;
   };
-  const whole = subject.toLowerCase();
+  const plain = (t: string) => t.toLowerCase().replace(/#\s?[\w-]*\d[\w-]*/g, ' ').replace(/\s+/g, ' ');
   const item = subjectItem(subject);
-  const rest = item ? whole.replace(item.toLowerCase(), ' ') : whole;
+  const whole = plain(subject);
+  const rest = plain(item ? subject.replace(item, ' ') : subject);
   return yes.some((w) => words(w)?.test(whole)) && !no.some((w) => words(w)?.test(rest));
 }

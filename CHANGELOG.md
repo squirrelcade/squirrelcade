@@ -20,6 +20,10 @@ What changed in each version of Squirrelcade (called Gamefolio before 0.35.0). T
 - **A copy's window fills a phone's screen**, wherever it opens.
 - **Where it is is now Storage location**, in a copy's window, the Stash's filter, Improve, the report and the CSV download. The Stash filter's counts leave out copies sold or removed.
 
+### Fixed
+
+- **Reading order emails without an AI model** (D155, checked against real ones from eBay, Mercari, Amazon, GameStop, Limited Run Games and Super Rare Games): it finds each item's price and title, the whole tax (a county's and a state's, or duties), shipping and total in the stores' real emails, where it used to split labels from their amounts, take eBay's suggested listings and a footer for items, read Mercari's price as its tax and miss GameStop's and Limited Run's items. An eBay title the subject cuts short is read whole from the email, Mercari's listing is linked, and Amazon's new confirmations, which don't name the game, are left alone. On the way counts "Order #123 confirmed" as a purchase, and what goes to an AI model leaves out more phone numbers and addresses without losing the item after them.
+
 ## 1.1.0 (2026-10-12): Check a shelf, Talk, PriceCharting with what you paid, and ARM
 
 ### Added
