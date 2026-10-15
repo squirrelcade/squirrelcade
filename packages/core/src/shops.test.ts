@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { settingDefinitions } from './settings.js';
-import { priceChartingUrl, shopLinks, shopLinksFor, shopUrl } from './shops.js';
+import { priceChartingIdIn, priceChartingUrl, shopLinks, shopLinksFor, shopUrl } from './shops.js';
 
 describe('shop links', () => {
   it('reads "Name | address" lines, leaving out the ones that are not links with a title', () => {
@@ -50,6 +50,21 @@ describe('shop links', () => {
       'https://www.ebay.com/sch/i.html?_nkw=Mario%20%26%20Luigi%3A%20Superstar%20Saga+Game%20Boy%20Advance',
     );
     expect(priceChartingUrl('Okami', 'Playstation 3')).toBe('https://www.pricecharting.com/search-products?type=prices&q=Okami%20Playstation%203');
+  });
+
+  it('picks the PriceCharting ID out of text copied from PriceCharting', () => {
+    expect(priceChartingIdIn('12345')).toBe('12345');
+    expect(priceChartingIdIn('  12345\n')).toBe('12345');
+    expect(priceChartingIdIn('PriceCharting ID: 12345')).toBe('12345');
+    expect(priceChartingIdIn('pricecharting id 7')).toBe('7');
+    // Item Details copied whole: the labelled number, not the release day or the barcode before it.
+    expect(priceChartingIdIn('Release Date: October 2, 2008\nUPC: 711719541028\nPriceCharting ID: 2563\nDescription: ...')).toBe('2563');
+    // Without the label, the first number on its own: not the 3 of "PS3", not a 13-digit barcode.
+    expect(priceChartingIdIn('PS3 #48211')).toBe('48211');
+    expect(priceChartingIdIn('4006381333931 then 555')).toBe('555');
+    expect(priceChartingIdIn('ID 123456789012')).toBe('123456789012');
+    expect(priceChartingIdIn('No number here')).toBeNull();
+    expect(priceChartingIdIn('')).toBeNull();
   });
 
   it('refuses a setting value that is not a shop link', () => {

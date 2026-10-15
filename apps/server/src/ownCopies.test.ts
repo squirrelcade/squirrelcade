@@ -140,6 +140,29 @@ describe('copies of Squirrelcade\'s own', () => {
     expect(items('Puppeteer')).toMatchObject([{ id: fresh.id, source: 'pricecharting', costCents: 800, valueCents: 1100 }]);
   });
 
+  it('gives each copy to send the barcode Squirrelcade knows for its game on its console (D154)', async () => {
+    update(...BASE);
+    const saveBarcode = (code: string, platformKey: string, title: string) => g.app.inject({ method: 'POST', url: '/api/v1/barcodes', cookies, payload: { code, platformKey, title } });
+    const puppeteer = (await add({ platformKey: 'playstation-3', title: 'Puppeteer', completeness: 'complete' })).json().copy;
+    const tearaway = (await add({ platformKey: 'playstation-3', title: 'Tearaway', completeness: 'loose' })).json().copy;
+    const saturn = (await add({ platformKey: 'sega-saturn', title: 'Tearaway', completeness: 'loose' })).json().copy;
+    const uncharted = (await add({ platformKey: 'playstation-3', title: 'Uncharted', completeness: 'sealed' })).json().copy;
+    expect((await send()).toSend.every((c) => (c as { barcode?: unknown }).barcode === null)).toBe(true);
+    // Saved as the scan named them: the game's title in another case, and with the zero some phones add in front.
+    expect((await saveBarcode('0711719000017', 'playstation-3', 'PUPPETEER')).statusCode).toBe(200);
+    // Tearaway's barcode is the Saturn one: the PlayStation 3 copy has none.
+    expect((await saveBarcode('045496590036', 'sega-saturn', 'Tearaway')).statusCode).toBe(200);
+    expect((await saveBarcode('711719541028', 'playstation-3', 'Uncharted')).statusCode).toBe(200);
+    const list = (await g.app.inject({ url: '/api/v1/send/pricecharting', cookies })).json() as { toSend: { id: number; pcId: string | null; barcode: string | null }[] };
+    expect(list.toSend.map((c) => [c.id, c.pcId, c.barcode])).toEqual([
+      [puppeteer.id, null, '711719000017'],
+      [tearaway.id, null, null],
+      [saturn.id, null, '045496590036'],
+      // Its product is known from the export already: it goes in the CSV, and the barcode comes along.
+      [uncharted.id, '1', '711719541028'],
+    ]);
+  });
+
   it('lists the copies to add to PriceCharting, and the export that has them takes them over', async () => {
     update(...BASE);
     const complete = (await add({ platformKey: 'playstation-3', title: 'Puppeteer', completeness: 'complete', costCents: 2500 })).json().copy;

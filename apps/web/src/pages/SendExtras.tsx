@@ -1,8 +1,8 @@
-import { Anchor, Button, Card, Group, Stack, Table, Text, Textarea, TextInput, Title } from '@mantine/core';
-import { priceChartingUrl } from '@squirrelcade/core';
-import { IconCopy, IconDownload, IconExternalLink, IconSend } from '@tabler/icons-react';
+import { Anchor, Badge, Button, Card, Group, Stack, Table, Text, Textarea, TextInput, Title } from '@mantine/core';
+import { priceChartingBarcodeUrl, priceChartingIdIn, priceChartingUrl } from '@squirrelcade/core';
+import { IconClipboard, IconCopy, IconDownload, IconExternalLink, IconSend } from '@tabler/icons-react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { api } from '../api';
 import { copyText } from '../Copy';
 import { count, date, money } from '../format';
@@ -21,6 +21,8 @@ interface SendCopy {
   goneReason: string | null;
   /** Its PriceCharting product id, when Squirrelcade knows it: then it goes in the CSV with its details. */
   pcId: string | null;
+  /** A barcode Squirrelcade knows for the game on its console: "Find it" opens that product on PriceCharting (D154). */
+  barcode: string | null;
   costCents: number | null;
   datePurchased: string | null;
   notes: string;
@@ -53,28 +55,68 @@ export const PRICECHARTING_IMPORTER = 'https://www.pricecharting.com/collection-
 /** PriceCharting's page that takes a CSV by product id, with what you paid, the day bought and notes. */
 export const PRICECHARTING_CSV_IMPORTER = 'https://www.pricecharting.com/collection-import-csv';
 
-/** A copy without a known product: the box for its PriceCharting ID, and where to find it. */
-function PriceChartingId({ c, currency, onSaved }: { c: SendCopy; currency: string; onSaved: () => Promise<unknown> }) {
+/**
+ * Whether this browser lets a page read what was copied: only a secure page (https, or the server itself) has the
+ * clipboard, so a Squirrelcade opened over plain http:// has no Paste button and takes a paste in the box instead.
+ */
+const canReadClipboard = () => window.isSecureContext && typeof navigator.clipboard?.readText === 'function';
+
+/** What was pasted had no PriceCharting ID in it. */
+const noId = () =>
+  notifyError(new Error("What you copied has no number in it: on the game's page on PriceCharting, copy the number under Item Details, PriceCharting ID."), 'No PriceCharting ID');
+
+/**
+ * A copy without a known product: the box for its PriceCharting ID, and where to find it (the product itself when
+ * Squirrelcade knows the game's barcode, else PriceCharting's search by title). Paste reads what was copied there
+ * within the tap (an iPhone shows its own Paste button first), picks the ID out of it and saves (D154). nextAt, set
+ * when this copy is the next one waiting for an ID after a save, brings it into view with the focus on Find it.
+ */
+function PriceChartingId({ c, currency, nextAt, onSaved }: { c: SendCopy; currency: string; nextAt: number; onSaved: (id: number) => Promise<unknown> }) {
   const [value, setValue] = useState('');
+  const row = useRef<HTMLDivElement>(null);
+  const find = useRef<HTMLAnchorElement>(null);
+  useEffect(() => {
+    if (!nextAt) return;
+    row.current?.scrollIntoView({ block: 'center', behavior: 'smooth' });
+    find.current?.focus({ preventScroll: true });
+  }, [nextAt]);
   const save = useMutation({
-    mutationFn: () => api(`/send/pricecharting/${c.id}/product`, { method: 'PUT', json: { pcId: value.trim() } }),
+    mutationFn: (pcId: string) => api(`/send/pricecharting/${c.id}/product`, { method: 'PUT', json: { pcId } }),
     onSuccess: async () => {
       notifySuccess(`${c.title} goes in the CSV now, with its details.`);
       setValue('');
-      await onSaved();
+      await onSaved(c.id);
     },
     onError: (err) => notifyError(err),
   });
+  async function paste() {
+    let text: string;
+    try {
+      text = await navigator.clipboard.readText();
+    } catch {
+      notifyError(new Error("This browser didn't let Squirrelcade read what you copied: paste it in the box, or type the number."), "Couldn't paste");
+      return;
+    }
+    const id = priceChartingIdIn(text);
+    if (!id) return noId();
+    setValue(id);
+    save.mutate(id);
+  }
   return (
-    <Group gap="xs" wrap="wrap" align="center">
+    <Group ref={row} gap="xs" wrap="wrap" align="center" role="group" aria-label={c.title}>
       <Text size="sm" style={{ minWidth: 0, flex: '1 1 12rem' }}>
+        {nextAt > 0 && (
+          <Badge size="xs" variant="light" mr={6} style={{ verticalAlign: 'middle' }}>
+            Next
+          </Badge>
+        )}
         {c.title}{' '}
         <Text span size="xs" c="dimmed">
           {c.platform ?? '?'} · {c.condition}
           {c.costCents ? ` · paid ${money(c.costCents, currency)}` : ''}
         </Text>
       </Text>
-      <Anchor href={priceChartingUrl(c.title, c.platform ?? '')} target="_blank" rel="noreferrer" size="xs">
+      <Anchor ref={find} href={c.barcode ? priceChartingBarcodeUrl(c.barcode) : priceChartingUrl(c.title, c.platform ?? '')} target="_blank" rel="noreferrer" size="xs">
         Find it on PriceCharting
       </Anchor>
       <TextInput
@@ -85,9 +127,21 @@ function PriceChartingId({ c, currency, onSaved }: { c: SendCopy; currency: stri
         inputMode="numeric"
         value={value}
         onChange={(e) => setValue(e.currentTarget.value.replace(/\D/g, ''))}
-        onKeyDown={(e) => e.key === 'Enter' && value && save.mutate()}
+        // What was copied with its label ("PriceCharting ID: 12345", or Item Details whole) gives just the ID.
+        onPaste={(e) => {
+          const id = priceChartingIdIn(e.clipboardData.getData('text'));
+          e.preventDefault();
+          if (id) setValue(id);
+          else noId();
+        }}
+        onKeyDown={(e) => e.key === 'Enter' && value && save.mutate(value)}
       />
-      <Button size="compact-xs" variant="default" disabled={!value} loading={save.isPending} onClick={() => save.mutate()}>
+      {canReadClipboard() && (
+        <Button size="compact-xs" variant="light" leftSection={<IconClipboard size={12} />} aria-label={`Paste the PriceCharting ID of ${c.title}`} disabled={save.isPending} onClick={() => void paste()}>
+          Paste
+        </Button>
+      )}
+      <Button size="compact-xs" variant="default" disabled={!value} loading={save.isPending} onClick={() => save.mutate(value)}>
         Save
       </Button>
     </Group>
@@ -125,11 +179,28 @@ export function SendToPriceCharting() {
     },
     onError: (err) => notifyError(err),
   });
+  // After an ID is saved, the next copy still waiting for one (n tells one save from the next); id 0: none is left, so
+  // the CSV's download is next.
+  const [next, setNext] = useState<{ id: number; n: number } | null>(null);
+  const download = useRef<HTMLAnchorElement>(null);
+  useEffect(() => {
+    if (next?.id !== 0) return;
+    download.current?.scrollIntoView({ block: 'center', behavior: 'smooth' });
+    download.current?.focus({ preventScroll: true });
+  }, [next]);
   const d = data.data;
   if (!d || d.toSend.length + d.waiting.length + d.toRemove.length === 0) return null;
   const withId = d.toSend.filter((c) => c.pcId !== null);
   const byTitle = d.toSend.filter((c) => c.pcId === null);
   const unread = byTitle.filter((c) => !c.conditionReadThere);
+
+  // A run through the list: the copy after the one just given its ID, or the first one before it.
+  async function idSaved(id: number) {
+    const i = byTitle.findIndex((c) => c.id === id);
+    const after = [...byTitle.slice(i + 1), ...byTitle.slice(0, Math.max(i, 0))][0];
+    await refresh();
+    setNext((p) => ({ id: after?.id ?? 0, n: (p?.n ?? 0) + 1 }));
+  }
 
   async function copyList() {
     if (await copyText(d!.text)) notifySuccess(`${count(byTitle.length)} line${byTitle.length === 1 ? '' : 's'} copied. Paste them into PriceCharting's importer.`);
@@ -210,6 +281,7 @@ export function SendToPriceCharting() {
             />
             <Group gap="xs">
               <Button
+                ref={download}
                 size="compact-sm"
                 variant="light"
                 leftSection={<IconDownload size={14} />}
@@ -234,12 +306,12 @@ export function SendToPriceCharting() {
             <Title order={5}>By title: PriceCharting's paste importer ({count(byTitle.length)})</Title>
             <Text size="sm" maw={720}>
               PriceCharting doesn't know which of its games {byTitle.length === 1 ? 'this is' : 'these are'} yet, so {byTitle.length === 1 ? 'it goes' : 'they go'} by title: it reads CIB and
-              Sealed, not what you paid (that stays here). To send one with its details instead, give it its PriceCharting ID: find the game on PriceCharting, and copy the
-              number under Item Details, PriceCharting ID.
+              Sealed, not what you paid (that stays here). To send one with its details instead, give it its PriceCharting ID: Find it on PriceCharting, copy the number
+              under Item Details, PriceCharting ID, and come back to Paste it.
             </Text>
             <Stack gap={6}>
               {byTitle.map((c) => (
-                <PriceChartingId key={c.id} c={c} currency={currency} onSaved={refresh} />
+                <PriceChartingId key={c.id} c={c} currency={currency} nextAt={next?.id === c.id ? next.n : 0} onSaved={idSaved} />
               ))}
             </Stack>
             <Textarea value={d.text} readOnly autosize minRows={2} maxRows={10} aria-label="Lines for PriceCharting's importer" styles={{ input: { fontFamily: 'monospace' } }} onFocus={(e) => e.currentTarget.select()} />

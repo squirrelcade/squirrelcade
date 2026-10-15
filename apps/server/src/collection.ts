@@ -176,6 +176,11 @@ export interface SendCopy {
    * the same console): then it can go in PriceCharting's CSV importer with its details. Null: the paste list only.
    */
   pcId: string | null;
+  /**
+   * A barcode Squirrelcade knows for the game on its console (a scan linked to it, or another app's export), so "Find it
+   * on PriceCharting" opens the product itself, where its PriceCharting ID is (D154). Null: the title search.
+   */
+  barcode: string | null;
   /** What goes in PriceCharting's CSV with it: what you paid, the day bought, your notes. */
   costCents: number | null;
   datePurchased: string | null;
@@ -856,6 +861,13 @@ export class CollectionService {
       const k = `${c.platformId}|${gameKey(c.title)}`;
       if (!known.has(k)) known.set(k, c.productId);
     }
+    // The barcodes Squirrelcade knows, by console and game (the first saved for a game): PriceCharting's search for one
+    // opens that product (D154).
+    const codes = new Map<string, string>();
+    for (const b of this.db.select({ code: barcodes.code, platformId: barcodes.platformId, title: barcodes.title }).from(barcodes).orderBy(asc(barcodes.createdAt), asc(barcodes.code)).all()) {
+      const k = `${b.platformId}|${gameKey(b.title)}`;
+      if (!codes.has(k)) codes.set(k, b.code);
+    }
     const item = (c: CopyRow, platformKey: string | null, platform: string | null): SendCopy => {
       const word = PASTE_WORD[c.completeness as Completeness];
       return {
@@ -872,6 +884,7 @@ export class CollectionService {
         goneAt: c.goneAt,
         goneReason: c.goneReason,
         pcId: PC_ID.test(c.productId) ? c.productId : (known.get(`${c.platformId}|${gameKey(c.title)}`) ?? null),
+        barcode: codes.get(`${c.platformId}|${gameKey(c.title)}`) ?? null,
         costCents: c.costCents,
         datePurchased: c.datePurchased,
         notes: c.notes,

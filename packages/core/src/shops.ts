@@ -60,3 +60,14 @@ export function priceChartingBarcodeUrl(code: string): string {
 export function priceChartingUrl(title: string, consoleName: string): string {
   return `https://www.pricecharting.com/search-products?type=prices&q=${encodeURIComponent(`${title} ${consoleName}`)}`;
 }
+
+/**
+ * The PriceCharting ID in text copied from a game's page there (D154): the number after "PriceCharting ID" when the
+ * label came with it (Item Details copied whole, with its UPC and release date), else the first number of 1 to 12
+ * digits on its own ("12345", "ID: 12345"; not the 3 of "PS3", not a 13-digit barcode). Null when there's none.
+ */
+export function priceChartingIdIn(text: string): string | null {
+  const labelled = /PriceCharting\s*ID\s*[:#]?\s*(\d{1,12})\b/i.exec(text);
+  if (labelled) return labelled[1]!;
+  return /\b\d{1,12}\b/.exec(text)?.[0] ?? null;
+}

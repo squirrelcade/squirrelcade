@@ -589,6 +589,73 @@ export async function uiTest(target, account, check) {
       found.join(' | ') || `${csvRow} | ${csvFile}`,
     );
 
+    // A PriceCharting ID by Paste (D154): two copies whose product isn't known, one with its barcode saved. Find it opens
+    // that one's product by its barcode and the other's search by title; Paste reads what was copied (label and all) and
+    // saves, the next copy waiting gets the focus, and a paste in the box picks the ID out of Item Details copied whole.
+    const pasteCopies = [];
+    for (const title of ['Paste Test Alpha', 'Paste Test Beta']) {
+      const made = await page.request.post(`${base}/api/v1/collection/copies`, { data: { platformKey: 'playstation-3', title, completeness: 'loose' } });
+      if (!made.ok()) throw new Error(`Couldn't add a copy to give its PriceCharting ID (${made.status()})`);
+      pasteCopies.push((await made.json()).copy.id);
+    }
+    await page.request.post(`${base}/api/v1/barcodes`, { data: { code: '711719000017', platformKey: 'playstation-3', title: 'Paste Test Alpha' } });
+    // Chrome is granted the clipboard; WebKit's driver isn't, so a paste in the box stands in for the button there.
+    let clipboard = !webkitRun;
+    if (clipboard) await page.context().grantPermissions(['clipboard-read', 'clipboard-write'], { origin: base }).catch(() => (clipboard = false));
+    await page.goto(`${base}/updates`);
+    const alpha = sendCard.getByRole('group', { name: 'Paste Test Alpha' });
+    const beta = sendCard.getByRole('group', { name: 'Paste Test Beta' });
+    await alpha.waitFor({ timeout: 10000 });
+    const alphaFind = await alpha.getByRole('link', { name: 'Find it on PriceCharting' }).getAttribute('href');
+    const betaFind = await beta.getByRole('link', { name: 'Find it on PriceCharting' }).getAttribute('href');
+    const pasteIn = (box, text) =>
+      box.evaluate((el, t) => {
+        const data = new DataTransfer();
+        data.setData('text/plain', t);
+        el.focus();
+        el.dispatchEvent(new ClipboardEvent('paste', { clipboardData: data, bubbles: true, cancelable: true }));
+      }, text);
+    if (clipboard) {
+      await page.evaluate((t) => navigator.clipboard.writeText(t), 'PriceCharting ID: 98765');
+      await alpha.getByRole('button', { name: 'Paste the PriceCharting ID of Paste Test Alpha' }).click();
+    } else {
+      await pasteIn(alpha.getByLabel('PriceCharting ID of Paste Test Alpha', { exact: true }), 'PriceCharting ID: 98765');
+      await alpha.getByRole('button', { name: 'Save' }).click();
+    }
+    await csvTable.getByText('Paste Test Alpha').waitFor({ timeout: 10000 });
+    await beta.getByText('Next', { exact: true }).waitFor({ timeout: 10000 });
+    const focusedIn = () => page.evaluate(() => document.activeElement?.closest('[role="group"]')?.getAttribute('aria-label') ?? document.activeElement?.textContent ?? '');
+    await page.waitForFunction(() => document.activeElement?.closest('[role="group"]')?.getAttribute('aria-label') === 'Paste Test Beta', null, { timeout: 5000 }).catch(() => undefined);
+    const betaFocused = await focusedIn();
+    // Item Details copied whole: the release day and the barcode come before the ID.
+    await pasteIn(beta.getByLabel('PriceCharting ID of Paste Test Beta', { exact: true }), 'Release Date: October 2, 2008\nUPC: 711719541028\nPriceCharting ID: 54321');
+    const betaBox = await beta.getByLabel('PriceCharting ID of Paste Test Beta', { exact: true }).inputValue();
+    // Beta was added last: the next is the first copy still waiting before it (one an earlier step added), or with none
+    // left, the CSV's download.
+    const othersWaiting = (await (await page.request.get(`${base}/api/v1/send/pricecharting`)).json()).toSend.filter((c) => c.pcId === null && c.title !== 'Paste Test Beta');
+    const afterBeta = othersWaiting[0]?.title ?? 'Download the CSV';
+    await beta.getByRole('button', { name: 'Save' }).click();
+    await csvTable.getByText('Paste Test Beta').waitFor({ timeout: 10000 });
+    await page.waitForFunction((want) => (document.activeElement?.closest('[role="group"]')?.getAttribute('aria-label') ?? document.activeElement?.textContent ?? '').includes(want), afterBeta, { timeout: 5000 }).catch(() => undefined);
+    const afterBetaFocused = await focusedIn();
+    const pasteCsv = await (await page.request.get(`${base}/api/v1/send/pricecharting.csv`)).text();
+    found = await pageProblems();
+    check(
+      `ui: Find it opens a game by its barcode; ${clipboard ? 'Paste' : 'a paste in the box'} gives a copy its PriceCharting ID, and the next copy waiting gets the focus`,
+      found.length === 0 &&
+        alphaFind === 'https://www.pricecharting.com/search-products?type=prices&q=711719000017' &&
+        /\?type=prices&q=Paste%20Test%20Beta%20/.test(betaFind ?? '') &&
+        betaFocused === 'Paste Test Beta' &&
+        betaBox === '54321' &&
+        afterBetaFocused.includes(afterBeta) &&
+        /\r\n98765,1,1,/.test(pasteCsv) &&
+        /\r\n54321,1,1,/.test(pasteCsv),
+      found.join(' | ') || JSON.stringify({ clipboard, alphaFind, betaFind, betaFocused, betaBox, afterBeta, afterBetaFocused, pasteCsv }),
+    );
+    // Out of the way of the walk-through's next steps.
+    for (const id of pasteCopies) await page.request.post(`${base}/api/v1/collection/copies/${id}/remove`, { data: { reason: 'removed' } });
+    await page.request.delete(`${base}/api/v1/barcodes/711719000017`);
+
     // "Add to a set" from the drawer: the game then says it's in the set.
     await page.goto(`${base}/platforms/playstation-3?game=${encodeURIComponent('playstation-3|Uncharted')}`);
     await drawer.getByText('You own it').waitFor({ timeout: 10000 });

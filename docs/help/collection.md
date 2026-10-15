@@ -41,7 +41,15 @@ PriceCharting keeps the prices, so a copy added in Squirrelcade gets its value o
 2. Click **Download the CSV**, then **Open PriceCharting's CSV importer** and upload the file there. Upload it once: PriceCharting adds every row as a new copy.
 3. Back in Squirrelcade, click **I've uploaded it**.
 
-**By title (the paste list),** for the games PriceCharting doesn't know yet: lines for its paste importer ("Okami Playstation 2 CIB"). It reads CIB and Sealed, not what you paid (that stays here); a copy in another condition comes in as loose, so set its condition there after pasting (the card says which). Click **Copy the list**, **Open PriceCharting's importer**, paste and add them, then **I've added them there**. To send one with its details instead, give it its **PriceCharting ID** on the card: **Find it on PriceCharting**, open the game, and copy the number under Item Details, PriceCharting ID.
+**By title (the paste list),** for the games PriceCharting doesn't know yet: lines for its paste importer ("Okami Playstation 2 CIB"). It reads CIB and Sealed, not what you paid (that stays here); a copy in another condition comes in as loose, so set its condition there after pasting (the card says which). Click **Copy the list**, **Open PriceCharting's importer**, paste and add them, then **I've added them there**.
+
+To send one with its details instead, give it its **PriceCharting ID** on the card:
+
+1. Tap **Find it on PriceCharting**. When Squirrelcade knows the game's barcode (one you scanned and linked to it, or one another app's export brought), it opens the game's own page there; otherwise PriceCharting's search by title, where you open the game.
+2. Copy the number under Item Details, **PriceCharting ID** (the label, or all of Item Details, can come along).
+3. Come back and tap **Paste** beside the box: Squirrelcade takes the ID out of what you copied and saves it, and the copy moves to the CSV. On an iPhone, Safari shows its own **Paste** button first; tap it.
+
+**Paste** is there when the browser lets a page read what you copied (Squirrelcade on an https address, or on the computer it runs on). Otherwise paste into the box (it keeps just the number) or type it, then **Save**. The next copy still waiting for its ID then comes up, marked **Next**, so a run through the list is: Find it, copy, back, Paste. Squirrelcade never looks anything up on PriceCharting itself: these are links your browser opens.
 
 Then export from PriceCharting as usual, and bring the export in. It brings each copy's value to the same copy here (not a second one); what you paid, the day and your notes stay Squirrelcade's. A free PriceCharting account takes one import and one export a week.
 
