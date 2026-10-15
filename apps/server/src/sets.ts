@@ -50,6 +50,10 @@ export interface SetGameResult {
   catalogTitle?: string;
   /** Your wishlist preference for it, for a game the catalog has. */
   preference?: string | null;
+  /** Its release number on its console, when the set's list numbers them. */
+  number?: number;
+  /** What your copies of it are worth, for an owned game whose copies have a value. */
+  valueCents?: number;
 }
 
 /** A set with its completion, for the Sets page. */
@@ -70,9 +74,29 @@ export interface SetSummary {
   takenOut: number;
   /** The consoles of the games that count, with their counts. */
   platforms: { key: string; name: string; games: number; owned: number }[];
+  /** The consoles the owner chose for the set (only their games count); null: every console, or the ones collected. */
+  consoles: string[] | null;
+  /** Every console of the set's list, before any choice, with its games (for choosing). */
+  listed: { key: string; name: string; games: number }[];
+  /** The list gives its games release numbers. */
+  numbered: boolean;
+  /** What the owned games of the set are worth, from their copies' values. */
+  valueCents: number;
 }
 
 const platformName = (key: string) => KNOWN_PLATFORMS.find((p) => p.key === key)?.name ?? regionalConsole(key)?.name ?? key;
+
+/** The consoles the owner chose for a set, or null when they chose none (then collectedOnly decides). */
+function chosenConsoles(row: typeof gameSets.$inferSelect): string[] | null {
+  if (!row.consoles) return null;
+  try {
+    const keys: unknown = JSON.parse(row.consoles);
+    const valid = Array.isArray(keys) ? keys.filter((k): k is string => typeof k === 'string') : [];
+    return valid.length > 0 ? valid : null;
+  } catch {
+    return null;
+  }
+}
 
 /** Why a set couldn't be made or read. */
 export class SetError extends Error {}
@@ -128,7 +152,7 @@ export class SetsService {
     const of = new Map<string, string[]>();
     const outside = new Map<string, SetGameForStore>();
     for (const row of this.db.select().from(gameSets).orderBy(asc(gameSets.name)).all()) {
-      for (const g of this.results(row.id, row.collectedOnly, indexes)) {
+      for (const g of this.results(row, indexes)) {
         for (const k of keysOf(g.title)) {
           const id = `${g.platformKey}|${k}`;
           of.set(id, [...new Set([...(of.get(id) ?? []), row.name])]);
@@ -167,7 +191,7 @@ export class SetsService {
   }
 
   /** A set's games: its list, plus the games the owner added by hand, less the ones they took out. */
-  private gamesOf(setId: number): { id: number; title: string; platformKey: string; altTitles: string | null; notes: string | null; byHand: boolean }[] {
+  private gamesOf(setId: number): { id: number; title: string; platformKey: string; altTitles: string | null; notes: string | null; number: number | null; byHand: boolean }[] {
     const edits = this.db.select().from(setEdits).where(eq(setEdits.setId, setId)).all();
     const out = new Set(edits.filter((e) => e.action === 'remove').map((e) => `${e.platformKey}|${matchKey(e.title)}`));
     const listed = this.db
@@ -177,12 +201,16 @@ export class SetsService {
       .all()
       .map((g) => ({ ...g, byHand: false }));
     // A game added by hand has the edit's id, negative so it's never a list row's.
-    const added = edits.filter((e) => e.action === 'add').map((e) => ({ id: -e.id, title: e.title, platformKey: e.platformKey, altTitles: null, notes: null, byHand: true }));
+    const added = edits.filter((e) => e.action === 'add').map((e) => ({ id: -e.id, title: e.title, platformKey: e.platformKey, altTitles: null, notes: null, number: null, byHand: true }));
     return [...listed, ...added].filter((g) => !out.has(`${g.platformKey}|${matchKey(g.title)}`)).sort((a, b) => a.title.localeCompare(b.title));
   }
 
-  private results(setId: number, collectedOnly: boolean, indexes = this.indexes(setId)): SetGameResult[] {
+  private results(set: typeof gameSets.$inferSelect, indexes = this.indexes(set.id)): SetGameResult[] {
+    const setId = set.id;
     const rows = this.gamesOf(setId);
+    // The consoles the owner chose for the set, else (if they said so) the ones they collect.
+    const chosen = chosenConsoles(set);
+    const counts = (platformKey: string) => (chosen ? chosen.includes(platformKey) : !set.collectedOnly || indexes.owned.has(platformKey));
     // The owner's answers about look-alikes, by console and title key.
     const links = new Map<string, { same: string[]; different: Set<string> }>();
     for (const l of this.db.select().from(setLinks).where(eq(setLinks.setId, setId)).all()) {
@@ -195,10 +223,18 @@ export class SetsService {
     const out: SetGameResult[] = [];
     const preferences = this.preferences();
     for (const g of rows) {
-      if (collectedOnly && !indexes.owned.has(g.platformKey)) continue;
+      if (!counts(g.platformKey)) continue;
       const names = [g.title, ...(g.altTitles ? (JSON.parse(g.altTitles) as string[]) : [])];
       const keys = names.flatMap(keysOf);
-      const base = { id: g.id, title: g.title, platformKey: g.platformKey, platform: platformName(g.platformKey), notes: g.notes, ...(g.byHand ? { byHand: true } : {}) };
+      const base = {
+        id: g.id,
+        title: g.title,
+        platformKey: g.platformKey,
+        platform: platformName(g.platformKey),
+        notes: g.notes,
+        ...(g.number !== null ? { number: g.number } : {}),
+        ...(g.byHand ? { byHand: true } : {}),
+      };
       const target = keys.map((k) => indexes.catalog.get(g.platformKey)?.get(k)).find(Boolean);
       if (target) {
         const status: SetGameStatus = target.status === 'owned' ? 'owned' : target.status === 'review' ? 'review' : 'missing';
@@ -231,6 +267,12 @@ export class SetsService {
       const maybe = [...near].filter((t) => !answers?.different.has(t) && names.some((n) => similarityReason(n, t) !== null)).slice(0, 3);
       out.push({ ...base, status: 'missing', ownedAs: [], inCatalog: false, ...(maybe.length > 0 ? { maybe } : {}) });
     }
+    // An owned game's worth: its copies' values (each copy as many times as you have it).
+    for (const r of out) {
+      if (r.status !== 'owned') continue;
+      const copies = [...new Set(r.ownedAs)].flatMap((t) => indexes.owned.get(r.platformKey)?.copies.get(t) ?? []).filter((c) => c.valueCents !== null);
+      if (copies.length > 0) r.valueCents = copies.reduce((sum, c) => sum + c.valueCents! * c.quantity, 0);
+    }
     // A game not owned here that's owned on another console says where ("You have it on Nintendo Switch").
     for (const r of out) {
       if (r.status === 'owned') continue;
@@ -251,6 +293,15 @@ export class SetsService {
       if (g.status === 'owned') p.owned++;
       byPlatform.set(g.platformKey, p);
     }
+    const listed = new Map<string, SetSummary['listed'][number]>();
+    for (const g of this.gamesOf(row.id)) {
+      const p = listed.get(g.platformKey) ?? { key: g.platformKey, name: platformName(g.platformKey), games: 0 };
+      p.games++;
+      listed.set(g.platformKey, p);
+    }
+    // Two games of a set owned as the same copies count them once.
+    const worth = new Map<string, number>();
+    for (const g of games) if (g.valueCents !== undefined) worth.set(`${g.platformKey}|${[...new Set(g.ownedAs)].sort().join('|')}`, g.valueCents);
     return {
       key: row.key,
       name: row.name,
@@ -266,6 +317,10 @@ export class SetsService {
       addedByHand: edits.filter((e) => e.action === 'add').length,
       takenOut: edits.filter((e) => e.action === 'remove').length,
       platforms: [...byPlatform.values()].sort((a, b) => b.games - a.games || a.name.localeCompare(b.name)),
+      consoles: chosenConsoles(row),
+      listed: [...listed.values()].sort((a, b) => b.games - a.games || a.name.localeCompare(b.name)),
+      numbered: games.some((g) => g.number !== undefined),
+      valueCents: [...worth.values()].reduce((sum, c) => sum + c, 0),
     };
   }
 
@@ -276,13 +331,13 @@ export class SetsService {
       .from(gameSets)
       .orderBy(asc(gameSets.name))
       .all()
-      .map((row) => this.summary(row, this.results(row.id, row.collectedOnly, indexes)));
+      .map((row) => this.summary(row, this.results(row, indexes)));
   }
 
   detail(key: string): { set: SetSummary; games: SetGameResult[] } | null {
     const row = this.db.select().from(gameSets).where(eq(gameSets.key, key)).get();
     if (!row) return null;
-    const games = this.results(row.id, row.collectedOnly);
+    const games = this.results(row);
     return { set: this.summary(row, games), games };
   }
 
@@ -321,7 +376,7 @@ export class SetsService {
       for (const g of games) {
         for (const platformKey of g.platforms) {
           tx.insert(setGames)
-            .values({ setId, title: g.title, platformKey, altTitles: g.altTitles?.length ? JSON.stringify(g.altTitles) : null, notes: g.notes ?? null })
+            .values({ setId, title: g.title, platformKey, altTitles: g.altTitles?.length ? JSON.stringify(g.altTitles) : null, notes: g.notes ?? null, number: g.numbers?.[platformKey] ?? null })
             .run();
         }
       }
@@ -403,10 +458,18 @@ export class SetsService {
     return true;
   }
 
-  update(key: string, change: { name?: string; collectedOnly?: boolean }): boolean {
+  /**
+   * Renames a set, or changes which of its consoles count: `consoles` is the owner's choice (only those consoles'
+   * games; [] or null takes the choice away), `collectedOnly` the rule without one.
+   */
+  update(key: string, change: { name?: string; collectedOnly?: boolean; consoles?: unknown }): boolean {
     const set: Partial<typeof gameSets.$inferInsert> = {};
     if (typeof change.name === 'string' && change.name.trim()) set.name = change.name.trim().slice(0, 100);
     if (typeof change.collectedOnly === 'boolean') set.collectedOnly = change.collectedOnly;
+    if (change.consoles === null || Array.isArray(change.consoles)) {
+      const keys = (change.consoles ?? []).filter((k): k is string => typeof k === 'string' && KNOWN_PLATFORMS.some((p) => p.key === k));
+      set.consoles = keys.length > 0 ? JSON.stringify([...new Set(keys)]) : null;
+    }
     if (Object.keys(set).length === 0) return this.db.select({ id: gameSets.id }).from(gameSets).where(eq(gameSets.key, key)).get() !== undefined;
     this.invalidate();
     return this.db.update(gameSets).set(set).where(eq(gameSets.key, key)).run().changes > 0;
@@ -501,8 +564,9 @@ export function registerSetRoutes(app: FastifyInstance, sets: SetsService): void
     return { ok: true };
   });
 
+  /** { name?, collectedOnly?, consoles?: platform keys, or [] / null for no choice }. */
   app.patch('/api/v1/sets/:key', async (request, reply) => {
-    const body = (request.body ?? {}) as { name?: string; collectedOnly?: boolean };
+    const body = (request.body ?? {}) as { name?: string; collectedOnly?: boolean; consoles?: unknown };
     if (!sets.update((request.params as { key: string }).key, body)) return reply.code(404).send({ error: 'not-found', message: 'No such set.' });
     return { ok: true };
   });
@@ -518,10 +582,12 @@ export function registerSetRoutes(app: FastifyInstance, sets: SetsService): void
     const detail = sets.detail(key);
     if (!detail) return reply.code(404).send({ error: 'not-found', message: 'No such set.' });
     const status = (request.query as { status?: string }).status;
-    const rows = detail.games.filter((g) => !status || g.status === status).map((g) => [g.title, g.platform, g.status, g.ownedAs.join('; '), g.notes ?? '']);
+    const rows = detail.games
+      .filter((g) => !status || g.status === status)
+      .map((g) => [g.title, g.platform, g.number ?? '', g.status, g.ownedAs.join('; '), g.valueCents !== undefined ? (g.valueCents / 100).toFixed(2) : '', g.notes ?? '']);
     return reply
       .header('content-type', 'text/csv; charset=utf-8')
       .header('content-disposition', `attachment; filename="${key}${status ? `-${status}` : ''}.csv"`)
-      .send(toCsv([['Title', 'Platform', 'Status', 'Owned as', 'Notes'], ...rows]));
+      .send(toCsv([['Title', 'Platform', 'Number', 'Status', 'Owned as', 'Value', 'Notes'], ...rows]));
   });
 }

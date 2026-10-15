@@ -15,6 +15,8 @@ export interface SetGame {
   platforms: string[];
   altTitles?: string[];
   notes?: string;
+  /** Its release number on each console, when the list numbers them (Super Rare Games' #1 to #163 on Switch). */
+  numbers?: Record<string, number>;
 }
 
 /**
@@ -29,6 +31,8 @@ export const READY_SETS: readonly { name: string; page: string; about: string }[
 const TITLE = /^(title|titles|title\(s\)|game|game title|name)\b/;
 const PLATFORM = /^(platforms?|platform\(s\)|systems?|consoles?)\b/;
 const NOTES = /^(notes?|comments?)$/;
+/** A release number's column: "Release No.", "No.", "Number", "#", or Limited Run's "Limited run #". */
+const NUMBER = /(^|\s)(#|no\.?|num\.?|number)$/;
 
 /** The consoles a set's list can name ("PS4", "Vita", "Nintendo Switch"), as Squirrelcade's platform keys. */
 export function setPlatform(label: string): string | null {
@@ -46,7 +50,24 @@ export function platformsIn(text: string): string[] {
   return [...keys];
 }
 
-/** Adds a game to a set's games, joining the consoles of games listed more than once. */
+/**
+ * The release numbers in a cell, by console: one number for every console of the row ("#163", "42"), or a number per
+ * console as Limited Run's list gives them ("105 (PS4) 161 (Vita)"). Nothing for a cell without one ("Distro (NES)").
+ */
+export function numbersIn(text: string, platforms: readonly string[]): Record<string, number> | undefined {
+  const out: Record<string, number> = {};
+  for (const m of text.matchAll(/(\d{1,5})\s*\(([^)]{1,40})\)/g)) {
+    for (const p of platformsIn(m[2]!)) if (platforms.includes(p) && out[p] === undefined) out[p] = Number(m[1]);
+  }
+  if (Object.keys(out).length === 0) {
+    // A double pack has two numbers ("#11 & #12", "#107/108"): it goes by the first.
+    const one = /^(?:no\.?\s*)?#?\s*(\d{1,5})(?:\s*(?:&|\/|,|-|–|and)\s*#?\s*\d{1,5})*$/i.exec(text.trim());
+    if (one) for (const p of platforms) out[p] = Number(one[1]);
+  }
+  return Object.keys(out).length > 0 ? out : undefined;
+}
+
+/** Adds a game to a set's games, joining the consoles (and release numbers) of games listed more than once. */
 function addGame(games: Map<string, SetGame>, game: SetGame): void {
   const key = game.title.toLowerCase();
   const had = games.get(key);
@@ -56,6 +77,8 @@ function addGame(games: Map<string, SetGame>, game: SetGame): void {
   }
   had.platforms = [...new Set([...had.platforms, ...game.platforms])];
   if (game.altTitles) had.altTitles = [...new Set([...(had.altTitles ?? []), ...game.altTitles])];
+  // A number already read for a console stays (a re-release listed again keeps the first one's).
+  if (game.numbers) had.numbers = { ...game.numbers, ...had.numbers };
 }
 
 /**
@@ -64,6 +87,7 @@ function addGame(games: Map<string, SetGame>, game: SetGame): void {
  * anywhere in the row ("105 (PS4)", "Distro (Switch)"), or else from the heading the table sits under
  * (Super Rare Games' article has a table per console, under "Nintendo Switch", "PlayStation 4"...). Games
  * without a console Squirrelcade knows are counted in `skipped` (PC releases, for example: the PC library keeps those).
+ * A release number column ("Release No.", Limited Run's "Limited run #") gives each game its number on its consoles.
  */
 export function wikiSetGames(html: string): { games: SetGame[]; skipped: number } {
   const games = new Map<string, SetGame>();
@@ -84,6 +108,7 @@ export function wikiSetGames(html: string): { games: SetGame[]; skipped: number 
     const titleCol = labels.findIndex((l) => TITLE.test(l));
     if (titleCol < 0) continue;
     const platformCol = labels.findIndex((l) => PLATFORM.test(l));
+    const numberCol = labels.findIndex((l, i) => i !== titleCol && NUMBER.test(l));
     for (const row of rows.slice(headerRows)) {
       const cell = row[titleCol];
       if (!cell || row.every((c) => c.header)) continue;
@@ -103,7 +128,8 @@ export function wikiSetGames(html: string): { games: SetGame[]; skipped: number 
         skipped++;
         continue;
       }
-      addGame(games, { title, platforms, ...(alt.length > 0 ? { altTitles: alt } : {}) });
+      const numbers = numberCol >= 0 ? numbersIn(row[numberCol]?.text ?? '', platforms) : undefined;
+      addGame(games, { title, platforms, ...(alt.length > 0 ? { altTitles: alt } : {}), ...(numbers ? { numbers } : {}) });
     }
   }
   return { games: [...games.values()], skipped };
@@ -111,8 +137,8 @@ export function wikiSetGames(html: string): { games: SetGame[]; skipped: number 
 
 /**
  * A set's list from CSV: a title column (Title, Game or Name) and a platform column (Platform, Console or
- * System: names such as "PS4" or "Nintendo Switch", several separated by ; or ,), notes optional. A row
- * without a console Squirrelcade knows is skipped and counted as a problem.
+ * System: names such as "PS4" or "Nintendo Switch", several separated by ; or ,), notes and a release number
+ * (No., Number or #) optional. A row without a console Squirrelcade knows is skipped and counted as a problem.
  */
 export function parseSetCsv(text: string): { games: SetGame[]; problems: string[] } {
   const rows = parseCsv(text).filter((r) => r.some((c) => c.trim()));
@@ -123,6 +149,7 @@ export function parseSetCsv(text: string): { games: SetGame[]; problems: string[
   const platformCol = header.findIndex((h) => PLATFORM.test(h));
   if (platformCol < 0) return { games: [], problems: ['No platform column: add a column named Platform (or Console) with each game\'s console.'] };
   const notesCol = header.findIndex((h) => NOTES.test(h));
+  const numberCol = header.findIndex((h, i) => i !== titleCol && NUMBER.test(h));
   const games = new Map<string, SetGame>();
   let unknown = 0;
   for (const r of rows.slice(headerAt + 1)) {
@@ -134,7 +161,8 @@ export function parseSetCsv(text: string): { games: SetGame[]; problems: string[
       continue;
     }
     const notes = notesCol >= 0 ? (r[notesCol] ?? '').trim().slice(0, 500) : '';
-    addGame(games, { title, platforms, ...(notes ? { notes } : {}) });
+    const numbers = numberCol >= 0 ? numbersIn(r[numberCol] ?? '', platforms) : undefined;
+    addGame(games, { title, platforms, ...(notes ? { notes } : {}), ...(numbers ? { numbers } : {}) });
   }
   const problems: string[] = [];
   if (games.size === 0) problems.push('The list has no games with a console Squirrelcade knows.');

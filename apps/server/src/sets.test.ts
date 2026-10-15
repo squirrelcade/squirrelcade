@@ -85,6 +85,27 @@ describe('sets', () => {
       { key: 'nintendo-switch', name: 'Nintendo Switch', games: 3, owned: 1 },
       { key: 'playstation-4', name: 'PlayStation 4', games: 3, owned: 1 },
     ]);
+    // Each game's release number on its console, and what your copies of an owned one are worth.
+    expect(detail.games.find((x: { title: string; platformKey: string }) => x.title === 'Celeste' && x.platformKey === 'nintendo-switch')).toMatchObject({ number: 23, valueCents: 1000 });
+    expect(detail.games.find((x: { title: string; platformKey: string }) => x.title === 'Celeste' && x.platformKey === 'playstation-4')).toMatchObject({ number: 207 });
+    expect(detail.games.find((x: { title: string }) => x.title === 'Cars 2: The Video Game').number).toBeUndefined();
+    expect(detail.set).toMatchObject({ numbered: true, valueCents: 2000, consoles: null });
+    // Every console of the list, before any choice, to choose from.
+    expect(detail.set.listed).toEqual([
+      { key: 'nintendo-switch', name: 'Nintendo Switch', games: 3 },
+      { key: 'playstation-4', name: 'PlayStation 4', games: 3 },
+      { key: 'nintendo-entertainment-system', name: 'Nintendo Entertainment System', games: 1 },
+      { key: 'playstation-vita', name: 'PlayStation Vita', games: 1 },
+    ]);
+
+    // Choosing the set's consoles: only theirs count, whatever you collect; no choice goes back to the rule.
+    const choose = (consoles: unknown) => g.app.inject({ method: 'PATCH', url: '/api/v1/sets/limited-run-games', cookies, payload: { consoles } });
+    expect((await choose(['nintendo-switch', 'playstation-vita', 'not-a-console'])).statusCode).toBe(200);
+    const chosen = (await g.app.inject({ url: '/api/v1/sets/limited-run-games', cookies })).json();
+    expect(chosen.set).toMatchObject({ consoles: ['nintendo-switch', 'playstation-vita'], games: 4, owned: 1, valueCents: 1000 });
+    expect(chosen.set.platforms.map((p: { key: string }) => p.key)).toEqual(['nintendo-switch', 'playstation-vita']);
+    expect((await choose([])).statusCode).toBe(200);
+    expect((await g.app.inject({ url: '/api/v1/sets/limited-run-games', cookies })).json().set).toMatchObject({ consoles: null, games: 6 });
 
     // Answering the look-alike: the same game counts (and survives reading the list again), "not it" stops asking.
     const answer = (decision: string | null) =>
@@ -116,8 +137,11 @@ describe('sets', () => {
     expect((await g.app.inject({ method: 'PATCH', url: '/api/v1/sets/limited-run-games', cookies, payload: { collectedOnly: false } })).statusCode).toBe(200);
     expect((await g.app.inject({ url: '/api/v1/sets', cookies })).json()[0]).toMatchObject({ key: 'limited-run-games', games: 8, owned: 2 });
     const csv = await g.app.inject({ url: '/api/v1/sets/limited-run-games/export?status=missing', cookies });
-    expect(csvLines(csv.body)[0]).toBe('Title,Platform,Status,Owned as,Notes');
-    expect(csvLines(csv.body)).toContain('8bit Music Power,Nintendo Entertainment System,missing,,');
+    expect(csvLines(csv.body)[0]).toBe('Title,Platform,Number,Status,Owned as,Value,Notes');
+    expect(csvLines(csv.body)).toContain('8bit Music Power,Nintendo Entertainment System,,missing,,,');
+    expect(csvLines(csv.body)).toContain('Celeste,PlayStation 4,207,missing,,,');
+    const all = csvLines((await g.app.inject({ url: '/api/v1/sets/limited-run-games/export', cookies })).body);
+    expect(all).toContain('Celeste,Nintendo Switch,23,owned,Celeste,10.00,');
 
     // A page Wikipedia doesn't have.
     const none = await g.app.inject({ method: 'POST', url: '/api/v1/sets', cookies, payload: { name: 'Nope', page: 'List of nothing' } });

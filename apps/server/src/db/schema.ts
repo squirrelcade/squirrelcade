@@ -639,6 +639,8 @@ export const gameSets = sqliteTable('game_sets', {
   page: text('page'),
   /** Only the set's games on consoles in the collection (a set such as Limited Run's spans many). */
   collectedOnly: integer('collected_only', { mode: 'boolean' }).notNull().default(true),
+  /** JSON array of the consoles (platform keys) the owner chose for the set; null: as collectedOnly says. */
+  consoles: text('consoles'),
   createdAt: text('created_at').notNull(),
   builtAt: text('built_at'),
   /** What the last build said (games read, rows without a known console). */
@@ -658,6 +660,8 @@ export const setGames = sqliteTable(
     /** JSON array of the game's other names, when the list gives them. */
     altTitles: text('alt_titles'),
     notes: text('notes'),
+    /** Its release number on this console, when the list numbers them (Super Rare Games' #1, #2...). */
+    number: integer('number'),
   },
   (t) => [index('set_games_set_idx').on(t.setId)],
 );

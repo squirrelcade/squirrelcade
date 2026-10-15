@@ -1395,13 +1395,35 @@ export async function uiTest(target, account, check) {
     const newSet = page.locator('.mantine-Modal-content');
     await newSet.getByLabel('Name').fill('UI set');
     await newSet.getByText('From your own list (CSV)').click();
-    await newSet.locator('input[type=file]').setInputFiles({ name: 'ui-set.csv', mimeType: 'text/csv', buffer: Buffer.from('Title,Platform\nOkami,PS3\nFlower,PS3\n') });
+    // Numbered, as Super Rare Games' releases are, with a game on a console the collection has none of (left out at first).
+    await newSet.locator('input[type=file]').setInputFiles({ name: 'ui-set.csv', mimeType: 'text/csv', buffer: Buffer.from('No.,Title,Platform\n#1,Okami,PS3\n#2,Flower,PS3\n#1,Halo 3,Xbox 360\n') });
     await newSet.getByRole('button', { name: 'Make the set' }).click();
     await page.waitForURL(/\/sets\/ui-set/, { timeout: 15000 });
     // Both games are owned: the set is complete.
     await page.getByText('2 of 2 owned').waitFor({ timeout: 10000 });
     found = await pageProblems();
     check('ui: a set made from a CSV on the Sets page', found.length === 0, found.join(' | '));
+
+    // A numbered set opens on all its games in order, with what you have and what it's worth (D152).
+    const setRows = page.locator('table tbody tr');
+    await setRows.first().waitFor({ timeout: 10000 });
+    const firstRow = await setRows.first().innerText();
+    const allTab = await page.getByRole('tab', { name: /^All/ }).getAttribute('aria-selected');
+    found = await pageProblems();
+    check('ui: a numbered set lists its games by number, with have it and value', found.length === 0 && allTab === 'true' && /#1\s+Okami/.test(firstRow) && /Have it/.test(firstRow) && /\$\d/.test(firstRow), found.join(' | ') || `${allTab} ${JSON.stringify(firstRow)}`);
+    // Choosing its consoles: the Xbox 360 game counts once ticked, as missing, with a link to its price.
+    await page.getByRole('button', { name: 'Consoles' }).click();
+    const consolesWindow = page.locator('.mantine-Modal-content');
+    await consolesWindow.getByLabel('PlayStation 3 (2 games)').check();
+    await consolesWindow.getByLabel('Xbox 360 (1 game)').check();
+    await consolesWindow.getByRole('button', { name: 'Save' }).click();
+    await page.getByText('2 of 3 owned').waitFor({ timeout: 10000 });
+    const halo = page.locator('table tbody tr', { hasText: 'Halo 3' });
+    const haloRow = await halo.innerText();
+    const priceLink = await halo.getByRole('link', { name: 'Price' }).getAttribute('href');
+    const says = await page.getByText(/only PlayStation 3 and Xbox 360/).count();
+    found = await pageProblems();
+    check("ui: a set's consoles chosen", found.length === 0 && /Need it/.test(haloRow) && /pricecharting\.com/.test(priceLink ?? '') && says > 0, found.join(' | ') || `${JSON.stringify(haloRow)} ${priceLink} ${says}`);
 
     // Collection updates from email: switched on on Settings > Email, under your account and its one test, and
     // Collection updates says what's missing (no mailbox is signed in to here).

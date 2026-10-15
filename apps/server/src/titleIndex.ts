@@ -12,6 +12,8 @@ export interface OwnedCopy {
   completeness: Completeness;
   sealed: boolean;
   quantity: number;
+  /** What one is worth (PriceCharting's value, or the owner's spreadsheet's), when known. */
+  valueCents: number | null;
 }
 
 /** The current collection's copies on one console: by title key, by the longer words of their titles (for look-alikes), and by title. */
@@ -91,6 +93,7 @@ export class TitleIndex {
         completeness: copies.completeness,
         sealed: copies.sealed,
         quantity: copies.quantity,
+        valueCents: copies.valueCents,
       })
       .from(copies)
       .innerJoin(platforms, eq(platforms.id, copies.platformId))
@@ -101,7 +104,7 @@ export class TitleIndex {
       on.titles.add(r.title);
       for (const k of keysOf(r.title)) on.byKey.set(k, [...new Set([...(on.byKey.get(k) ?? []), r.title])]);
       for (const w of wordsOf(r.title)) on.byWord.set(w, (on.byWord.get(w) ?? new Set<string>()).add(r.title));
-      const copy: OwnedCopy = { productId: r.productId, title: r.title, completeness: r.completeness as Completeness, sealed: r.sealed, quantity: r.quantity };
+      const copy: OwnedCopy = { productId: r.productId, title: r.title, completeness: r.completeness as Completeness, sealed: r.sealed, quantity: r.quantity, valueCents: r.valueCents };
       on.copies.set(r.title, [...(on.copies.get(r.title) ?? []), copy]);
       out.set(r.platform, on);
     }

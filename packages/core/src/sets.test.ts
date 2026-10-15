@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { parseSetCsv, platformsIn, setKey, setPlatform, wikiPageTitle, wikiSetGames } from './sets.js';
+import { numbersIn, parseSetCsv, platformsIn, setKey, setPlatform, wikiPageTitle, wikiSetGames } from './sets.js';
 
 /** Shaped like "List of Limited Run Games releases": a platform summary, then the games with their consoles in the "Limited run #" column. */
 const LRG = `
@@ -34,16 +34,17 @@ describe('set platforms', () => {
 describe('wikiSetGames', () => {
   it('reads a publisher list: each game with the consoles its row names, PC-only games left out', () => {
     const { games, skipped } = wikiSetGames(LRG);
+    // Limited Run's numbers are one per console, in the "Limited run #" column; a distribution title has none.
     expect(games).toEqual([
-      { title: '2064: Read Only Memories', platforms: ['playstation-4', 'playstation-vita', 'nintendo-switch'] },
+      { title: '2064: Read Only Memories', platforms: ['playstation-4', 'playstation-vita', 'nintendo-switch'], numbers: { 'playstation-4': 105, 'playstation-vita': 161, 'nintendo-switch': 54 } },
       { title: '8bit Music Power', platforms: ['nintendo-entertainment-system'] },
-      { title: 'A-Train Express', platforms: ['playstation-4'] },
+      { title: 'A-Train Express', platforms: ['playstation-4'], numbers: { 'playstation-4': 264 } },
       { title: 'Catlateral Damage: Remeowstered', platforms: ['nintendo-switch', 'playstation-4', 'playstation-5'] },
     ]);
     expect(skipped).toBe(1);
   });
 
-  it("takes a table's console from the heading it's under when its rows name none (Super Rare Games' article)", () => {
+  it("takes a table's console from the heading it's under when its rows name none, and each game's number there (Super Rare Games' article)", () => {
     const srg = `
 <h2 id="Releases">Releases</h2>
 <h3 id="Nintendo_Switch">Nintendo Switch</h3>
@@ -65,9 +66,10 @@ describe('wikiSetGames', () => {
 <h2 id="References">References</h2>`;
     expect(wikiSetGames(srg)).toEqual({
       games: [
-        { title: 'Human: Fall Flat', platforms: ['nintendo-switch'] },
-        { title: 'The Flame in the Flood', platforms: ['nintendo-switch', 'playstation-4'] },
-        { title: 'Some Switch 2 Game', platforms: ['nintendo-switch-2'] },
+        { title: 'Human: Fall Flat', platforms: ['nintendo-switch'], numbers: { 'nintendo-switch': 1 } },
+        // Each console numbers its own releases: #2 on Switch, #1 on PS4.
+        { title: 'The Flame in the Flood', platforms: ['nintendo-switch', 'playstation-4'], numbers: { 'nintendo-switch': 2, 'playstation-4': 1 } },
+        { title: 'Some Switch 2 Game', platforms: ['nintendo-switch-2'], numbers: { 'nintendo-switch-2': 1 } },
       ],
       skipped: 0,
     });
@@ -84,6 +86,28 @@ describe('parseSetCsv', () => {
     ]);
     expect(problems).toEqual(['1 row(s) had no console Squirrelcade knows (PC games, for example) and were left out.']);
     expect(parseSetCsv('Title\nShantae').problems[0]).toMatch(/No platform column/);
+  });
+
+  it('reads a release number column if there is one', () => {
+    const csv = ['No.,Title,Platform', '#1,Human: Fall Flat,Switch', '2,The Flame in the Flood,Switch', ',Cuphead,Switch'].join('\n');
+    expect(parseSetCsv(csv).games).toEqual([
+      { title: 'Human: Fall Flat', platforms: ['nintendo-switch'], numbers: { 'nintendo-switch': 1 } },
+      { title: 'The Flame in the Flood', platforms: ['nintendo-switch'], numbers: { 'nintendo-switch': 2 } },
+      { title: 'Cuphead', platforms: ['nintendo-switch'] },
+    ]);
+  });
+});
+
+describe('numbersIn', () => {
+  it('reads one number for every console, or one per console, and nothing from a cell without one', () => {
+    expect(numbersIn('#163', ['nintendo-switch'])).toEqual({ 'nintendo-switch': 163 });
+    expect(numbersIn('No. 7', ['nintendo-switch', 'playstation-4'])).toEqual({ 'nintendo-switch': 7, 'playstation-4': 7 });
+    expect(numbersIn('105 (PS4) 054 (Switch) 161 (Vita)', ['playstation-4', 'nintendo-switch'])).toEqual({ 'playstation-4': 105, 'nintendo-switch': 54 });
+    // A double pack goes by its first number.
+    expect(numbersIn('#11 & #12', ['nintendo-switch'])).toEqual({ 'nintendo-switch': 11 });
+    expect(numbersIn('#107/108', ['nintendo-switch'])).toEqual({ 'nintendo-switch': 107 });
+    expect(numbersIn('Distro (NES)', ['nintendo-entertainment-system'])).toBeUndefined();
+    expect(numbersIn('8 March 2018', ['nintendo-switch'])).toBeUndefined();
   });
 });
 

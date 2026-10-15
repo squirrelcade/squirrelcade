@@ -2,6 +2,12 @@
 
 What changed in each version of Squirrelcade (called Gamefolio before 0.35.0). The decisions behind these (D01, D02...) are in [docs/DECISIONS.md](docs/DECISIONS.md), each with a tag to roll it back.
 
+## 1.2.0 (coming)
+
+### Added
+
+- **Sets: release numbers, their own consoles, and what they're worth** (D152, the owner's ask, looking at Super Rare Games): a set's games carry their release numbers from its list (Wikipedia's "Release No.", Limited Run's "Limited run #", or a No. column in your CSV; Read again brings them to a set made before), and a numbered set opens on **All**, every game in number order with Have it or Need it and the value of your copies (the summary adds them up; a missing game links to its PriceCharting prices). **Consoles** on a set's page chooses which consoles count: Switch and Switch 2 only for one collector, PlayStation for another. The CSV download gains Number and Value.
+
 ## 1.1.0 (2026-10-12): Check a shelf, Talk, PriceCharting with what you paid, and ARM
 
 ### Added

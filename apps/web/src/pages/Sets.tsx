@@ -1,14 +1,14 @@
-import { KNOWN_PLATFORMS, READY_SETS, setKey } from '@squirrelcade/core';
+import { KNOWN_PLATFORMS, priceChartingUrl, READY_SETS, setKey } from '@squirrelcade/core';
 import { ActionIcon, Anchor, Badge, Button, Card, Checkbox, FileButton, FileInput, Group, Loader, Menu, Modal, Progress, SegmentedControl, Select, Stack, Table, Tabs, Text, TextInput, Tooltip } from '@mantine/core';
 import { useDisclosure } from '@mantine/hooks';
-import { IconDots, IconDownload, IconPlus, IconRefresh, IconSearch, IconUpload, IconX } from '@tabler/icons-react';
+import { IconDeviceGamepad2, IconDots, IconDownload, IconPlus, IconRefresh, IconSearch, IconUpload, IconX } from '@tabler/icons-react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router';
 import { StashMark } from '../Acorn';
 import { api } from '../api';
 import { PageHeader, type SortDirection } from '../components';
-import { count, dateTime } from '../format';
+import { count, dateTime, money } from '../format';
 import { notifyError, notifySuccess, useCanEdit, usePageTitle, useSetting, useSettings } from '../hooks';
 import { GameTitle } from '../GameDrawer';
 import { PreferencePicker } from '../Preference';
@@ -32,6 +32,14 @@ interface SetSummary {
   addedByHand: number;
   takenOut: number;
   platforms: { key: string; name: string; games: number; owned: number }[];
+  /** The consoles you chose for the set (only their games count); null: every console, or the ones you collect. */
+  consoles: string[] | null;
+  /** Every console of the set's list, before any choice. */
+  listed: { key: string; name: string; games: number }[];
+  /** The list gives its games release numbers. */
+  numbered: boolean;
+  /** What the set's games you have are worth. */
+  valueCents: number;
 }
 
 /** One of a set's games on one console (GET /api/v1/sets/:key). */
@@ -57,6 +65,10 @@ interface SetGame {
   catalogTitle?: string;
   /** Your wishlist preference for it (a game its console's catalog has). */
   preference?: string | null;
+  /** Its release number on its console, when the list numbers them. */
+  number?: number;
+  /** What your copies of it are worth (a game you have). */
+  valueCents?: number;
 }
 
 const CATALOG_STATUS: Record<string, string> = {
@@ -68,8 +80,49 @@ const CATALOG_STATUS: Record<string, string> = {
 /** The sets table's columns and which way each sorts first (D144): names A to Z, completion and consoles most first. */
 const SET_SORTS = { name: 'asc', complete: 'desc', consoles: 'desc' } as const satisfies Record<string, SortDirection>;
 
-/** A set's games table's columns and which way each sorts first (D144): words A to Z. */
-const GAME_SORTS = { title: 'asc', console: 'asc', notes: 'asc' } as const satisfies Record<string, SortDirection>;
+/**
+ * A set's games table's columns and which way each sorts first (D144): words and release numbers in order, what you
+ * have first, the most valuable first.
+ */
+const GAME_SORTS = { number: 'asc', title: 'asc', console: 'asc', have: 'desc', value: 'desc', notes: 'asc' } as const satisfies Record<string, SortDirection>;
+
+/** Chooses which of a set's consoles count: the ticked ones, or with none ticked, every console or the ones you collect. */
+function ChooseConsoles({ set, opened, onClose, onSave, saving }: { set: SetSummary; opened: boolean; onClose: () => void; onSave: (body: { consoles: string[]; collectedOnly: boolean }) => void; saving: boolean }) {
+  const [ticked, setTicked] = useState<string[]>(set.consoles ?? []);
+  const [collectedOnly, setCollectedOnly] = useState(set.collectedOnly);
+  return (
+    <Modal opened={opened} onClose={onClose} title="Which consoles count">
+      <Stack>
+        <Text size="sm" c="dimmed">
+          Only the ticked consoles’ games are in the set: its list, its percentage, Store Mode and the wishlist. Someone who collects for PlayStation ticks those instead.
+        </Text>
+        <Checkbox.Group value={ticked} onChange={setTicked}>
+          <Stack gap="xs">
+            {set.listed.map((p) => (
+              <Checkbox key={p.key} value={p.key} label={`${p.name} (${count(p.games)} ${p.games === 1 ? 'game' : 'games'})`} />
+            ))}
+          </Stack>
+        </Checkbox.Group>
+        {ticked.length === 0 && (
+          <Checkbox
+            label="With none ticked: only consoles you collect"
+            description="Leave out the games on consoles you have no games for; untick to count every console in the list."
+            checked={collectedOnly}
+            onChange={(e) => setCollectedOnly(e.currentTarget.checked)}
+          />
+        )}
+        <Group justify="flex-end">
+          <Button variant="default" onClick={onClose}>
+            Cancel
+          </Button>
+          <Button loading={saving} onClick={() => onSave({ consoles: ticked, collectedOnly })}>
+            Save
+          </Button>
+        </Group>
+      </Stack>
+    </Modal>
+  );
+}
 
 /** Makes a set: a ready-made one, from a Wikipedia list, or from the owner's own CSV. */
 function NewSet({ opened, onClose, have }: { opened: boolean; onClose: () => void; have: readonly string[] }) {
@@ -309,12 +362,17 @@ export function SetDetailPage() {
   const navigate = useNavigate();
   const { data: settings } = useSettings();
   const dateFormat = useSetting('general.dateFormat', 'us');
-  const [tab, setTab] = useState<string | null>('missing');
+  const currency = useSetting('general.currency', 'USD');
+  // A numbered set opens on every game in its order (#1, #2...), with what you have marked; others on what's missing.
+  const [chosenTab, setTab] = useState<string | null>(null);
   const [platform, setPlatform] = useState<string | null>(null);
   const [search, setSearch] = useState('');
-  // A heading sorts the games by its column (D144), on every tab.
-  const sorting = useSort(GAME_SORTS, 'title');
+  const [choosing, { open: openChoose, close: closeChoose }] = useDisclosure();
   const detail = useQuery({ queryKey: ['sets', key], queryFn: () => api<{ set: SetSummary; games: SetGame[] }>(`/sets/${key}`) });
+  const numbered = detail.data?.set.numbered ?? false;
+  const tab = chosenTab ?? (numbered ? 'all' : 'missing');
+  // A heading sorts the games by its column (D144), on every tab: a numbered set by its numbers at first.
+  const sorting = useSort(GAME_SORTS, numbered ? 'number' : 'title');
   usePageTitle(detail.data?.set.name ?? 'Sets', settings?.['general.instanceName'] || 'Squirrelcade');
   const refresh = () => queryClient.invalidateQueries({ queryKey: ['sets'] });
   const rebuild = useMutation({
@@ -338,8 +396,13 @@ export function SetDetailPage() {
     onError: (err) => notifyError(err),
   });
   const change = useMutation({
-    mutationFn: (body: { name?: string; collectedOnly?: boolean }) => api(`/sets/${key}`, { method: 'PATCH', json: body }),
-    onSuccess: () => void refresh(),
+    mutationFn: (body: { name?: string; collectedOnly?: boolean; consoles?: string[] }) => api(`/sets/${key}`, { method: 'PATCH', json: body }),
+    onSuccess: () => {
+      closeChoose();
+      // The console shown may no longer be in the set.
+      setPlatform(null);
+      void refresh();
+    },
     onError: (err) => notifyError(err),
   });
   const answer = useMutation({
@@ -372,9 +435,34 @@ export function SetDetailPage() {
   const { set, games } = detail.data;
   const q = search.trim().toLowerCase();
   const shown = games.filter((g) => (!platform || g.platformKey === platform) && (!q || g.title.toLowerCase().includes(q)));
-  // The third column is what the row shows: the copies it's owned as, else the list's notes (nothing while it waits for Review).
-  const sorted = sortRows(shown, (g) => (sorting.by === 'console' ? g.platform : sorting.by === 'notes' ? (g.status === 'owned' ? g.ownedAs.join('; ') : g.status === 'review' ? null : g.notes) : g.title), sorting.dir);
-  const of = (status: SetGame['status']) => sorted.filter((g) => g.status === status);
+  // Each console numbers its own releases, so numbers sort within each console, the set's biggest console first.
+  const consoleOrder = new Map(set.platforms.map((p, i) => [p.key, i]));
+  const HAVE: Record<SetGame['status'], number> = { owned: 2, review: 1, missing: 0 };
+  // The notes column is what the row shows: the copies it's owned as, else the list's notes (nothing while it waits for Review).
+  const sorted = sortRows(
+    shown,
+    (g) =>
+      sorting.by === 'number'
+        ? g.number === undefined
+          ? null
+          : (consoleOrder.get(g.platformKey) ?? 0) * 100_000 + g.number
+        : sorting.by === 'console'
+          ? g.platform
+          : sorting.by === 'have'
+            ? HAVE[g.status]
+            : sorting.by === 'value'
+              ? g.valueCents
+              : sorting.by === 'notes'
+                ? g.status === 'owned'
+                  ? g.ownedAs.join('; ')
+                  : g.status === 'review'
+                    ? null
+                    : g.notes
+                : g.title,
+    sorting.dir,
+  );
+  const of = (status: SetGame['status'] | 'all') => (status === 'all' ? sorted : sorted.filter((g) => g.status === status));
+  const consoleNames = (set.consoles ?? []).map((k) => set.listed.find((p) => p.key === k)?.name ?? KNOWN_PLATFORMS.find((p) => p.key === k)?.name ?? k);
 
   return (
     <>
@@ -397,11 +485,16 @@ export function SetDetailPage() {
               'From your list'
             )}
             {set.builtAt ? `, read ${dateTime(set.builtAt, dateFormat)}` : ''}
-            {set.collectedOnly ? '; only consoles you collect' : ''}
+            {consoleNames.length > 0 ? `; only ${consoleNames.join(' and ')}` : set.collectedOnly ? '; only consoles you collect' : ''}
           </>
         }
         actions={
           <>
+            {canEdit && set.listed.length > 1 && (
+              <Button size="xs" variant="default" leftSection={<IconDeviceGamepad2 size={14} />} onClick={openChoose}>
+                Consoles
+              </Button>
+            )}
             {!canEdit ? null : set.source === 'wikipedia' ? (
               <Button size="xs" variant="default" leftSection={<IconRefresh size={14} />} loading={rebuild.isPending} onClick={() => rebuild.mutate()}>
                 Read again
@@ -439,7 +532,6 @@ export function SetDetailPage() {
                 >
                   Rename
                 </Menu.Item>
-                <Menu.Item onClick={() => change.mutate({ collectedOnly: !set.collectedOnly })}>{set.collectedOnly ? 'Show every console in the list' : 'Only consoles you collect'}</Menu.Item>
                 <Menu.Divider />
                 <Menu.Item
                   color="red"
@@ -460,6 +552,7 @@ export function SetDetailPage() {
           <Text fw={600}>{set.percent}% complete</Text>
           <Text size="sm" c="dimmed">
             {count(set.owned)} of {count(set.games)} owned{set.review > 0 ? `, ${count(set.review)} to review` : ''}
+            {set.valueCents > 0 ? `, worth ${money(set.valueCents, currency)}` : ''}
           </Text>
         </Group>
         <Progress aria-label={`${set.name} complete`} value={set.percent} size="lg" />
@@ -489,6 +582,8 @@ export function SetDetailPage() {
         )}
       </Card>
       <AddGame setKey={key} opened={adding} onClose={closeAdd} platform={platform ?? set.platforms[0]?.key ?? null} />
+      {/* A new window each time it opens, starting from the set's current choice. */}
+      {choosing && <ChooseConsoles set={set} opened={choosing} onClose={closeChoose} onSave={(body) => change.mutate(body)} saving={change.isPending} />}
       {set.platforms.length > 1 && (
         <Group gap={6} mb="sm">
           <Badge component="button" size="lg" variant={platform === null ? 'filled' : 'light'} style={{ cursor: 'pointer', textTransform: 'none' }} onClick={() => setPlatform(null)}>
@@ -512,6 +607,7 @@ export function SetDetailPage() {
       <TextInput placeholder="Search" leftSection={<IconSearch size={16} />} value={search} onChange={(e) => setSearch(e.currentTarget.value)} w={260} mb="sm" />
       <Tabs value={tab} onChange={setTab}>
         <Tabs.List mb="sm">
+          <Tabs.Tab value="all">All ({count(of('all').length)})</Tabs.Tab>
           <Tabs.Tab value="missing">Missing ({count(of('missing').length)})</Tabs.Tab>
           <Tabs.Tab value="owned" leftSection={<StashMark size={13} />}>
             Owned ({count(of('owned').length)})
@@ -523,15 +619,25 @@ export function SetDetailPage() {
         <Table highlightOnHover>
           <Table.Thead>
             <Table.Tr>
+              {set.numbered && sorting.th('number', '#', { w: 64 })}
               {sorting.th('title', 'Game')}
-              {sorting.th('console', 'Console')}
-              {sorting.th('notes', tab === 'owned' ? 'Owned as' : 'Notes', { visibleFrom: 'sm' })}
+              {sorting.th('console', 'Console', { visibleFrom: 'sm' })}
+              {tab === 'all' && sorting.th('have', 'Have it')}
+              {tab !== 'review' && sorting.th('value', 'Value', { ta: 'right' })}
+              {sorting.th('notes', tab === 'owned' ? 'Owned as' : tab === 'all' ? 'Owned as, or notes' : 'Notes', { visibleFrom: 'sm' })}
               <Table.Th w={40} />
             </Table.Tr>
           </Table.Thead>
           <Table.Tbody>
-            {of((tab ?? 'missing') as SetGame['status']).map((g) => (
+            {of(tab as SetGame['status'] | 'all').map((g) => (
               <Table.Tr key={g.id}>
+                {set.numbered && (
+                  <Table.Td>
+                    <Text size="sm" ff="monospace" c={g.number === undefined ? 'dimmed' : undefined}>
+                      {g.number === undefined ? '–' : `#${g.number}`}
+                    </Text>
+                  </Table.Td>
+                )}
                 <Table.Td>
                   <Group gap={6}>
                     <GameTitle platformKey={g.platformKey} title={g.title} />
@@ -541,6 +647,10 @@ export function SetDetailPage() {
                       </Badge>
                     )}
                   </Group>
+                  {/* On a phone the console goes under the title. */}
+                  <Text size="xs" c="dimmed" hiddenFrom="sm">
+                    {g.platform}
+                  </Text>
                   {g.catalogStatus && CATALOG_STATUS[g.catalogStatus] && (
                     <Text size="xs" c="dimmed">
                       {CATALOG_STATUS[g.catalogStatus]}
@@ -586,7 +696,7 @@ export function SetDetailPage() {
                     </Group>
                   )}
                 </Table.Td>
-                <Table.Td>
+                <Table.Td visibleFrom="sm">
                   {g.inCatalog ? (
                     <Anchor component={Link} to={`/platforms/${g.platformKey}?tab=${g.catalogStatus ?? g.status}&q=${encodeURIComponent(g.title)}`} size="sm">
                       {g.platform}
@@ -597,6 +707,36 @@ export function SetDetailPage() {
                     </Tooltip>
                   )}
                 </Table.Td>
+                {tab === 'all' && (
+                  <Table.Td>
+                    {g.status === 'owned' ? (
+                      <Group gap={4} wrap="nowrap">
+                        <StashMark size={14} />
+                        <Text size="sm">Have it</Text>
+                      </Group>
+                    ) : g.status === 'review' ? (
+                      <Anchor component={Link} to="/review" size="sm">
+                        To review
+                      </Anchor>
+                    ) : (
+                      <Text size="sm" c="dimmed">
+                        Need it
+                      </Text>
+                    )}
+                  </Table.Td>
+                )}
+                {tab !== 'review' && (
+                  <Table.Td ta="right">
+                    {g.valueCents !== undefined ? (
+                      <Text size="sm">{money(g.valueCents, currency)}</Text>
+                    ) : g.status !== 'owned' ? (
+                      // Squirrelcade knows values only for copies you have: PriceCharting has the rest.
+                      <Anchor href={priceChartingUrl(g.title, g.platform)} target="_blank" rel="noreferrer" size="xs" c="dimmed">
+                        Price
+                      </Anchor>
+                    ) : null}
+                  </Table.Td>
+                )}
                 <Table.Td visibleFrom="sm">
                   {g.status === 'review' ? (
                     <Anchor component={Link} to="/review" size="sm">
@@ -604,7 +744,7 @@ export function SetDetailPage() {
                     </Anchor>
                   ) : (
                     <Text size="sm" c="dimmed">
-                      {tab === 'owned' ? g.ownedAs.join('; ') : (g.notes ?? '')}
+                      {g.status === 'owned' ? g.ownedAs.join('; ') : (g.notes ?? '')}
                     </Text>
                   )}
                 </Table.Td>
