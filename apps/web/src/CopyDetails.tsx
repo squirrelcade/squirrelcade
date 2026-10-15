@@ -8,6 +8,7 @@ import { useEffect, useLayoutEffect, useState } from 'react';
 import { api } from './api';
 import { date, money } from './format';
 import { overGoalNote } from './Goal';
+import { PLACE_EXAMPLE, usePlaceNotes, type Vocabulary } from './places';
 import { notifyError, notifySuccess, useSetting } from './hooks';
 import { FindInEmail, useOrdersOn, type FoundPrice } from './OrderEmails';
 
@@ -199,6 +200,8 @@ export async function shrinkPhoto(file: Blob, maxSide: number): Promise<Blob> {
 
 /** A copy's details in a line under it: where it is, tags, for sale, who has it, and its photos (each opens full size). */
 export function CopyDetailLine({ details, loans, photos, currency, dateFormat }: { details: CopyDetail | null; loans: Loan[]; photos: PhotoInfo[]; currency: string; dateFormat: 'us' | 'iso' | 'eu' }) {
+  // Where the place itself is (D157), beside it.
+  const placeNote = usePlaceNotes(Boolean(details?.location))(details?.location);
   if (!details && loans.length === 0 && photos.length === 0) return null;
   return (
     <Stack gap={4} mt={4}>
@@ -206,6 +209,7 @@ export function CopyDetailLine({ details, loans, photos, currency, dateFormat }:
         {details?.location && (
           <Badge size="sm" variant="outline" color="gray" leftSection={<IconMapPin size={11} />} style={{ textTransform: 'none' }}>
             {details.location}
+            {placeNote ? ` · ${placeNote}` : ''}
           </Badge>
         )}
         {details?.tags.map((t) => (
@@ -284,8 +288,10 @@ export function CopyDetailsModal({
     queryFn: () => api<{ copyKey: string; details: CopyDetail; loans: Loan[]; photos: PhotoInfo[]; tests: CopyTest[] }>(`/copy?key=${encodeURIComponent(key)}`),
     enabled: Boolean(copy),
   });
-  const vocabulary = useQuery({ queryKey: ['tags'], queryFn: () => api<{ tags: { name: string }[]; locations: { name: string }[] }>('/tags'), enabled: Boolean(copy) });
+  const vocabulary = useQuery({ queryKey: ['tags'], queryFn: () => api<Vocabulary>('/tags'), enabled: Boolean(copy) });
   const [location, setLocation] = useState('');
+  // Where the place typed is (D157), under the field.
+  const placeNote = (vocabulary.data?.locations ?? []).find((l) => l.name.toLowerCase() === location.trim().replace(/\s+/g, ' ').toLowerCase())?.note ?? null;
   const [tags, setTags] = useState<string[]>([]);
   const [sale, setSale] = useState<'none' | 'sale' | 'trade'>('none');
   const [asking, setAsking] = useState<number | string>('');
@@ -680,11 +686,35 @@ export function CopyDetailsModal({
               </Stack>
               </>
               )}
-              <Divider label="Where it is, tags, selling and its digital copy" labelPosition="left" />
+              <Divider label="Storage location, tags, selling and its digital copy" labelPosition="left" />
             </>
           )}
           <Stack gap="xs">
-            <Autocomplete label="Where it is" placeholder="Shelf A, the closet, the office..." disabled={waiting} value={location} onChange={setLocation} data={(vocabulary.data?.locations ?? []).map((l) => l.name)} maxLength={80} comboboxProps={{ zIndex: 400 }} />
+            <Autocomplete
+              label="Storage location"
+              placeholder={PLACE_EXAMPLE}
+              description={placeNote ? `${location.trim()} · ${placeNote}` : undefined}
+              disabled={waiting}
+              value={location}
+              onChange={setLocation}
+              data={(vocabulary.data?.locations ?? []).map((l) => l.name)}
+              renderOption={({ option }) => {
+                const note = vocabulary.data?.locations.find((l) => l.name === option.value)?.note;
+                return (
+                  <Text size="sm">
+                    {option.value}
+                    {note && (
+                      <Text span size="xs" c="dimmed">
+                        {' · '}
+                        {note}
+                      </Text>
+                    )}
+                  </Text>
+                );
+              }}
+              maxLength={80}
+              comboboxProps={{ zIndex: 400 }}
+            />
             <TagsInput label="Your tags" placeholder="Favorite, signed, to sell..." disabled={waiting} value={tags} onChange={setTags} data={(vocabulary.data?.tags ?? []).map((t) => t.name)} maxTags={20} clearable comboboxProps={{ zIndex: 400 }} />
             <SegmentedControl
               aria-label="For sale or trade"

@@ -36,6 +36,10 @@ The camera needs Squirrelcade to be reached over **HTTPS** (a reverse proxy or a
 
 This page never asks the barcode service (UPCitemdb or UPC Database), so their daily lookups are left for stores. A game on another console? Choose that console first.
 
+## Pack a place
+
+**Store Mode > Pack a place** gives your games their storage location quickly, at home: choose a bag, a case or a shelf (or scan its label), then scan each game's barcode or type its title, one after another. Each game you own gets that place; one with several copies asks which; one that was somewhere else moves, with **Undo**. See [Places](your-copies.md#places) for the labels, a photo of a bag's games and the Places page.
+
 ## With no signal
 
 Stores often have none. Store Mode keeps a copy of its answers in your phone's browser, updated each time it opens (and downloaded again only when something changed), and answers from that copy when Squirrelcade can't be reached, saying so. **Add it** works there too: the purchase waits on the phone (its window, for what you paid and photos, is in its drawer later) and is added to your collection as soon as Squirrelcade answers again (once, even if it's sent twice). Open Store Mode once while you're connected; after that it works offline.
@@ -57,6 +61,8 @@ Under the list, the photo shows a box around each spine read as a game. Spines w
 **A vision model** (optional, Settings > Features): with it on and a connection to Squirrelcade, pieces of the photo also go to the model you chose (any service that takes images, or one at home), and the titles it reads are matched the same way, so it finds more spines and never decides what you have. Settings > Sources > Vision model sets which, its key, and how many pieces a day (each piece is one paid request on most services). Or a **helper** of your own: a program that asks Squirrelcade for photos to read and answers, such as the one in the repository's `tools/shelf-helper`, which reads them with Claude Code signed in on your server, on your own Claude plan (no API key).
 
 What it says comes from the same answers as Store Mode, so it's only as current as your collection: buy something, and **Add it** keeps it right.
+
+A photo of your own games (a bag, a case, a shelf at home)? **Put the games I have here in a place**, under the list, gives the ones you have a storage location in one go: see [Places](your-copies.md#places).
 
 ## Talk to Squirrelcade
 

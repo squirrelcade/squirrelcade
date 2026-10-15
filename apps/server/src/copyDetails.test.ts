@@ -55,7 +55,7 @@ describe("copies' details", () => {
     expect((await g.app.inject({ url: `/api/v1/copy?key=${encodeURIComponent(OKAMI_CIB)}`, cookies })).json()).toMatchObject({ details: { location: 'Shelf A' }, loans: [], photos: [] });
     expect((await g.app.inject({ url: '/api/v1/tags', cookies })).json()).toEqual({
       tags: [{ name: 'Favorite', copies: 2 }],
-      locations: [{ name: 'Shelf A', copies: 2 }],
+      locations: [{ name: 'Shelf A', copies: 2, note: null }],
     });
     expect(await titles('?location=shelf%20a')).toEqual(['Okami (complete)', 'Okami (loose)']);
     expect(await titles('?tag=FAVORITE')).toEqual(['Journey (complete)', 'Okami (complete)']);
@@ -66,7 +66,7 @@ describe("copies' details", () => {
     // Taking the sale off drops its price and note; with nothing left, nothing is kept.
     expect((await setCopy({ key: OKAMI_LOOSE, sale: null })).json().details).toEqual({ location: 'Shelf A', tags: [], sale: null, askingCents: null, saleNote: null, digitalClaim: null, digitalClaimedAt: null, digitalStore: null });
     await setCopy({ key: OKAMI_LOOSE, location: '' });
-    expect((await g.app.inject({ url: '/api/v1/tags', cookies })).json().locations).toEqual([{ name: 'Shelf A', copies: 1 }]);
+    expect((await g.app.inject({ url: '/api/v1/tags', cookies })).json().locations).toEqual([{ name: 'Shelf A', copies: 1, note: null }]);
     // What isn't valid is refused.
     for (const bad of [{ tags: 'Favorite' }, { tags: ['x'.repeat(31)] }, { tags: Array.from({ length: 21 }, (_, i) => `t${i}`) }, { sale: 'gift' }, { sale: 'sale', askingCents: -1 }, { location: 'x'.repeat(81) }]) {
       expect((await setCopy({ key: JOURNEY, ...bad })).statusCode).toBe(400);

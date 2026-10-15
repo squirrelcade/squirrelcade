@@ -213,6 +213,8 @@ export async function uiTest(target, account, check) {
       '/collection/copies?view=multiple',
       '/collection/backlog',
       '/collection/loans',
+      '/collection/places',
+      '/collection/places/labels',
       '/collection/sale',
       '/collection/sales',
       '/collection/statistics',
@@ -227,6 +229,7 @@ export async function uiTest(target, account, check) {
       '/store',
       '/store/list',
       '/store/shelf',
+      '/store/pack',
       '/store/photo',
       '/updates',
       '/welcome',
@@ -714,7 +717,7 @@ export async function uiTest(target, account, check) {
     await drawer.getByText('You own it').waitFor({ timeout: 10000 });
     await drawer.getByRole('button', { name: 'Change it, where it is, lending, photos...' }).first().click();
     const copyModal = page.locator('.mantine-Modal-content');
-    const place = copyModal.getByLabel('Where it is');
+    const place = copyModal.getByLabel('Storage location');
     await place.fill('Shelf A');
     // WebKit now and then empties the place typed in the first moment after the window opens (the drawer isn't redrawn,
     // and the window's saved values were already in): it's typed again then, and noted, so the save below still tests saving.
@@ -733,7 +736,7 @@ export async function uiTest(target, account, check) {
       .getByText('Shelf A')
       .waitFor({ timeout: 10000 })
       .catch(async (err) => {
-        const field = await copyModal.getByLabel('Where it is').inputValue().catch(() => '?');
+        const field = await copyModal.getByLabel('Storage location').inputValue().catch(() => '?');
         const sent = placeResponse ? `${placeResponse.status()} ${(placeResponse.request().postData() ?? '').slice(0, 160)}` : 'no request';
         const redrawn = await page.evaluate(() => !document.querySelector('[data-ui-mark="1"]'));
         throw new Error(`${err.message.split('\n')[0]} | the field: "${field}" | the save: ${sent} | drawer redrawn: ${redrawn} | ${page.url()}`);
@@ -1049,6 +1052,60 @@ export async function uiTest(target, account, check) {
     const shelfList = shelfText.slice(shelfText.indexOf('games for sure'));
     const shelfRight = /3 games for sure/.test(shelfText) && ['Demons Souls', 'Puppeteer', 'Tearaway'].every((t) => shelfList.includes(t)) && /Have it\s*3/.test(shelfList);
     check('ui: Check a shelf reads a photo on the page and checks each spine', found.length === 0 && shelfRight, found.join(' | ') || shelfList.slice(0, 500));
+
+    // A photo of a bag's games (D157): the games it has go into a place in one go, after a look at the list.
+    await page.getByRole('button', { name: 'Put the games I have here in a place' }).click();
+    const putCard = page.locator('.mantine-Card-root').filter({ hasText: 'Put the games I have here in a place' });
+    await putCard.getByRole('checkbox').first().waitFor({ timeout: 10000 });
+    await putCard.getByRole('combobox', { name: 'The place' }).fill('Shelf photo bag');
+    await putCard.getByRole('button', { name: /^Put 3 copies in Shelf photo bag$/ }).click();
+    await page.getByText(/^3 copies are in Shelf photo bag$/).waitFor({ timeout: 10000 });
+    const photoPlaced = (await (await page.request.get(`${base}/api/v1/collection/items?location=${encodeURIComponent('shelf photo bag')}`)).json()).items.map((i) => i.title).sort();
+    found = await pageProblems();
+    check('ui: a shelf photo puts the games you have in a place', found.length === 0 && photoPlaced.join(',') === 'Demons Souls,Puppeteer,Tearaway', found.join(' | ') || photoPlaced.join(', '));
+
+    // Pack a place (D157): two games into a place by typed title, a label read as a handheld scanner types it, the place
+    // renamed on the Places page, and the Stash's filter finding both under the new name.
+    await page.goto(`${base}/store/pack`);
+    await page.getByRole('combobox', { name: 'The place' }).fill('Bag 7');
+    const packTitle = page.getByLabel('Or type a title');
+    await packTitle.fill('flower');
+    await page.getByRole('button', { name: 'Put it here: Flower (PlayStation 3)' }).click();
+    await page.getByText('Flower is in Bag 7.').first().waitFor({ timeout: 10000 });
+    await packTitle.fill('journey');
+    // The PS3's list calls it Journey Collector's Edition; the copy, Journey.
+    await page.getByRole('button', { name: /^Put it here: Journey.* \(PlayStation 3\)$/ }).click();
+    await page.getByText('Journey is in Bag 7.').first().waitFor({ timeout: 10000 });
+    await page.getByText(/^Packed this visit: 2 copies/).waitFor({ timeout: 10000 });
+    await settle();
+    const packAccess = await seriousProblems();
+    await page.getByLabel('Or type the barcode').fill(`${base}/store/pack?place=${encodeURIComponent('Bag 8')}`);
+    await page.getByRole('button', { name: 'Look', exact: true }).click();
+    await page.getByText('Now packing Bag 8.').first().waitFor({ timeout: 10000 });
+    const switched = (await page.getByRole('combobox', { name: 'The place' }).inputValue()) === 'Bag 8';
+    await page.goto(`${base}/collection/places`);
+    const bag = page.locator('.mantine-Accordion-item').filter({ hasText: 'Bag 7' });
+    await bag.locator('.mantine-Accordion-control').click();
+    await bag.getByLabel('Its name').fill('Black case #7');
+    await bag.getByRole('button', { name: 'Rename', exact: true }).click();
+    await page.locator('.mantine-Accordion-control').filter({ hasText: 'Black case #7' }).waitFor({ timeout: 10000 });
+    await page.goto(`${base}/collection`);
+    await page.getByRole('combobox', { name: 'Storage location' }).click();
+    await page.getByRole('option', { name: /^Black case #7 \(2\)/ }).click();
+    await page.waitForURL(/location=Black/, { timeout: 10000 });
+    await settle();
+    const inCase = await page.locator('main').innerText();
+    found = await pageProblems();
+    const caseRight = /Flower/.test(inCase) && /Journey/.test(inCase) && !/Tearaway/.test(inCase);
+    check('ui: Pack a place takes two games by title and a label typed in, and a renamed place is on the Stash filter', found.length === 0 && switched && caseRight && packAccess.length === 0, [...found, ...packAccess].join(' | ') || `switched: ${switched}; ${inCase.slice(0, 300)}`);
+
+    // Place labels: a sheet with each place's QR code, to print.
+    await page.goto(`${base}/collection/places/labels?place=${encodeURIComponent('Black case #7')}`);
+    const label = page.getByRole('img', { name: 'QR code for Black case #7' });
+    await label.waitFor({ timeout: 15000 });
+    const labelDrawn = await label.evaluate((img) => img.complete && img.naturalWidth > 0);
+    found = await pageProblems();
+    check("ui: a place's label has its QR code, ready to print", found.length === 0 && labelDrawn, found.join(' | ') || `drawn: ${labelDrawn}`);
 
     // Store Mode answers a typed title.
     await page.goto(`${base}/store`);

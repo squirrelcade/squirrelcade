@@ -101,7 +101,7 @@ describe('the game drawer', () => {
     expect(res.headers['content-disposition']).toMatch(/^attachment; filename="squirrelcade-collection-\d{4}-\d{2}-\d{2}\.csv"$/);
     const lines = res.body.trim().split(/\r?\n/);
     expect(lines[0]).toBe(
-      'Title,Console,PriceCharting console,Region,Condition,Sealed,Copies,Value each (USD),Paid each (USD),Added,Bought,Counts as,Series,Played,Your rating,Where it is,Tags,Lent to,For sale or trade,Your note',
+      'Title,Console,PriceCharting console,Region,Condition,Sealed,Copies,Value each (USD),Paid each (USD),Added,Bought,Counts as,Series,Played,Your rating,Storage location,Tags,Lent to,For sale or trade,Your note',
     );
     expect(lines).toHaveLength(8);
     const row = (title: string) => lines.find((l) => l.startsWith(`${title},`))!.split(',');

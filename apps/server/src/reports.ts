@@ -255,7 +255,7 @@ export function workbookSheets(deps: ReportDeps, may: Sees): Sheet[] {
       'Counts as',
       'Series',
       ...(plays ? ['Played', 'Your rating'] : []),
-      ...(extras ? ['Where it is', 'Tags', 'Lent to', 'For sale or trade', `Asking (${currency})`, 'Photos'] : []),
+      ...(extras ? ['Storage location', 'Tags', 'Lent to', 'For sale or trade', `Asking (${currency})`, 'Photos'] : []),
       ...(notes ? ['Your note'] : []),
     ],
     rows: items.map((item) => {

@@ -87,6 +87,9 @@ const HelpPage = page(() => import('./pages/Help').then((m) => m.HelpPage));
 const ListCheckPage = page(() => import('./pages/ListCheck').then((m) => m.ListCheckPage));
 const ShelfPage = page(() => import('./pages/Shelf').then((m) => m.ShelfPage));
 const ShelfCheckPage = page(() => import('./pages/ShelfCheck').then((m) => m.ShelfCheckPage));
+const PackPage = page(() => import('./pages/Pack').then((m) => m.PackPage));
+const PlacesPage = page(() => import('./pages/Places').then((m) => m.PlacesPage));
+const PlaceLabelsPage = page(() => import('./pages/PlaceLabels').then((m) => m.PlaceLabelsPage));
 const FriendsPage = page(() => import('./pages/Friends').then((m) => m.FriendsPage));
 const FriendPage = page(() => import('./pages/Friends').then((m) => m.FriendPage));
 // After an update, what's new (loaded on its own, after the page).
@@ -313,6 +316,8 @@ function Shell({ noConnection = false }: { noConnection?: boolean }) {
             <Route path="/collection/sales" element={<OwnerOnly><SalesPage /></OwnerOnly>} />
             <Route path="/collection/backlog" element={<SharedWithViewers setting="security.viewersSeePlay"><BacklogPage /></SharedWithViewers>} />
             <Route path="/collection/loans" element={<SharedWithViewers setting="security.viewersSeeCopyDetails"><LoansPage /></SharedWithViewers>} />
+            <Route path="/collection/places" element={<SharedWithViewers setting="security.viewersSeeCopyDetails"><PlacesPage /></SharedWithViewers>} />
+            <Route path="/collection/places/labels" element={<OwnerOnly><PlaceLabelsPage /></OwnerOnly>} />
             <Route path="/collection/sale" element={<SharedWithViewers setting="security.viewersSeeCopyDetails"><ForSalePage /></SharedWithViewers>} />
             <Route path="/collection/statistics" element={<StatisticsPage />} />
             <Route path="/collection/report" element={<ReportPage />} />
@@ -335,6 +340,7 @@ function Shell({ noConnection = false }: { noConnection?: boolean }) {
             <Route path="/store/list" element={<ListCheckPage />} />
             <Route path="/store/photo" element={<ShelfCheckPage />} />
             <Route path="/store/shelf" element={<OwnerOnly><ShelfPage /></OwnerOnly>} />
+            <Route path="/store/pack" element={<OwnerOnly><PackPage /></OwnerOnly>} />
             <Route path="/friends" element={<OwnerOnly><FriendsPage /></OwnerOnly>} />
             <Route path="/friends/:id" element={<OwnerOnly><FriendPage /></OwnerOnly>} />
             <Route path="/updates" element={<OwnerOnly><ImportsPage /></OwnerOnly>} />

@@ -5,6 +5,7 @@ import { api } from '../api';
 import type { SortDirection } from '../components';
 import { count, date, money, wholeMoney } from '../format';
 import { useSetting } from '../hooks';
+import { usePlaceNotes } from '../places';
 import { sortRows, useSort } from '../sort';
 
 /** GET /api/v1/collection/report. */
@@ -51,6 +52,8 @@ export function ReportPage() {
   const sorting = useSort(SORTS, 'platform');
   // Every platform's copies sort the same way, on their own (?itemssort=value&itemsdir=desc); the platforms keep their order.
   const itemSorting = useSort(ITEMS, 'title', 'items');
+  // Where each place itself is (D157), beside it.
+  const noteOf = usePlaceNotes(Boolean(report.data?.consoles.some((c) => c.items.some((i) => i.location))));
   const r = report.data;
   if (!r) return report.isError ? <Text c="red">The report couldn't be made.</Text> : <Loader />;
   const paid = r.totals.costCents !== null;
@@ -121,7 +124,7 @@ export function ReportPage() {
                   {itemSorting.th('qty', 'Qty', { ta: 'right' })}
                   {itemSorting.th('value', 'Value each', { ta: 'right' })}
                   {paid && itemSorting.th('paid', 'Paid each', { ta: 'right' })}
-                  {where && itemSorting.th('where', 'Where it is')}
+                  {where && itemSorting.th('where', 'Storage location')}
                 </Table.Tr>
               </Table.Thead>
               <Table.Tbody>
@@ -136,7 +139,7 @@ export function ReportPage() {
                     <Table.Td ta="right">{i.quantity}</Table.Td>
                     <Table.Td ta="right">{money(i.valueCents, r.currency)}</Table.Td>
                     {paid && <Table.Td ta="right">{i.costCents ? money(i.costCents, r.currency) : ''}</Table.Td>}
-                    {where && <Table.Td>{i.location ?? ''}</Table.Td>}
+                    {where && <Table.Td>{i.location ? `${i.location}${noteOf(i.location) ? ` (${noteOf(i.location)})` : ''}` : ''}</Table.Td>}
                   </Table.Tr>
                 ))}
               </Table.Tbody>

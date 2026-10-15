@@ -848,6 +848,19 @@ export const copyDetails = sqliteTable('copy_details', {
   updatedAt: text('updated_at').notNull(),
 });
 
+/**
+ * A note on a place copies are kept in (D157): where the place itself is ("Bag 7": "under the master bed"), shown
+ * beside the place wherever it appears, so moving a bag is one change. Keyed by the place's name (a copy's
+ * copy_details.location) in lower case, as places are compared.
+ */
+export const placeNotes = sqliteTable('place_notes', {
+  key: text('key').primaryKey(),
+  /** The place's name as typed. */
+  name: text('name').notNull(),
+  note: text('note').notNull(),
+  updatedAt: text('updated_at').notNull(),
+});
+
 /** Copies lent to someone: open until returned, then kept as history. */
 export const loans = sqliteTable(
   'loans',

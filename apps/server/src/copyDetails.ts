@@ -4,7 +4,7 @@ import type { FastifyInstance } from 'fastify';
 import type { Logger } from 'pino';
 import { shown } from './access.js';
 import type { Db } from './db/index.js';
-import { copies, copyDetails, copyPhotos, copyTests, loans, platforms } from './db/schema.js';
+import { copies, copyDetails, copyPhotos, copyTests, loans, placeNotes, platforms } from './db/schema.js';
 import type { NotificationService } from './notifications.js';
 import type { SettingsService } from './settings.js';
 
@@ -128,7 +128,8 @@ function looksLike(mime: string, data: Buffer): boolean {
   return data.length > 12 && data.toString('latin1', 0, 4) === 'RIFF' && data.toString('latin1', 8, 12) === 'WEBP';
 }
 
-const text = (value: unknown, max: number, what: string): string | null => {
+/** A line of the owner's text: spaces folded, up to max characters (null when empty). */
+export const text = (value: unknown, max: number, what: string): string | null => {
   if (value === null || value === undefined) return null;
   if (typeof value !== 'string') throw new CopyDetailsError(`${what} is text.`);
   const t = value.trim().replace(/\s+/g, ' ');
@@ -339,7 +340,7 @@ export class CopyDetailsService {
     const claimedAt = claim === 'claimed' ? (change.digitalClaimedAt === undefined ? before.digitalClaimedAt : change.digitalClaimedAt) : null;
     if (claimedAt !== null && (typeof claimedAt !== 'string' || !DAY.test(claimedAt))) throw new CopyDetailsError('When it was claimed is a day (YYYY-MM-DD).');
     const next: CopyDetail = {
-      location: change.location === undefined ? before.location : text(change.location, 80, 'Where it is kept'),
+      location: change.location === undefined ? before.location : text(change.location, 80, 'A storage location'),
       tags,
       sale: sale as SaleKind | null,
       askingCents: sale ? (asking as number | null) : null,
@@ -348,38 +349,66 @@ export class CopyDetailsService {
       digitalClaimedAt: claimedAt as string | null,
       digitalStore: claim ? (change.digitalStore === undefined ? before.digitalStore : text(change.digitalStore, 40, 'The store')) : null,
     };
-    if (!next.location && next.tags.length === 0 && !next.sale && !next.digitalClaim) {
-      this.db.delete(copyDetails).where(eq(copyDetails.copyKey, copyKey)).run();
-    } else {
-      const row = {
-        productId: copy.productId,
-        location: next.location,
-        tags: JSON.stringify(next.tags),
-        sale: next.sale,
-        askingCents: next.askingCents,
-        saleNote: next.saleNote,
-        digitalClaim: next.digitalClaim,
-        digitalClaimedAt: next.digitalClaimedAt,
-        digitalStore: next.digitalStore,
-        updatedAt: new Date().toISOString(),
-      };
-      this.db.insert(copyDetails).values({ copyKey, ...row }).onConflictDoUpdate({ target: copyDetails.copyKey, set: row }).run();
-    }
+    this.write(this.db, copyKey, copy.productId, next);
     return next;
   }
 
-  /** Every tag and place in use, with how many copies have it (the most first), for suggestions and filters. */
-  vocabulary(): { tags: { name: string; copies: number }[]; locations: { name: string; copies: number }[] } {
+  /** Keeps a copy's details; with none left, the copy has no details kept. */
+  private write(db: Pick<Db, 'insert' | 'delete'>, copyKey: string, productId: string, next: CopyDetail): void {
+    if (!next.location && next.tags.length === 0 && !next.sale && !next.digitalClaim) {
+      db.delete(copyDetails).where(eq(copyDetails.copyKey, copyKey)).run();
+      return;
+    }
+    const row = {
+      productId,
+      location: next.location,
+      tags: JSON.stringify(next.tags),
+      sale: next.sale,
+      askingCents: next.askingCents,
+      saleNote: next.saleNote,
+      digitalClaim: next.digitalClaim,
+      digitalClaimedAt: next.digitalClaimedAt,
+      digitalStore: next.digitalStore,
+      updatedAt: new Date().toISOString(),
+    };
+    db.insert(copyDetails).values({ copyKey, ...row }).onConflictDoUpdate({ target: copyDetails.copyKey, set: row }).run();
+  }
+
+  /**
+   * Gives copies one storage location (null: none), their other details kept (D157: Pack a place, a shelf photo's
+   * games): each copy with where it was before. Every copy must be in the collection, or none changes.
+   */
+  setLocations(copyKeys: string[], location: unknown): { copy: OwnedCopy; before: string | null; after: string | null }[] {
+    const after = text(location, 80, 'A storage location');
+    const owned = this.owned();
+    const index = this.index();
+    const keys = [...new Set(copyKeys)];
+    if (keys.some((k) => !owned.has(k))) throw new CopyDetailsError("That copy isn't in your collection.");
+    const out = keys.map((k) => ({ copy: owned.get(k)!, before: index.get(k)?.location ?? null, after }));
+    this.db.transaction((tx) => {
+      for (const c of out) this.write(tx, c.copy.copyKey, c.copy.productId, { ...(index.get(c.copy.copyKey) ?? EMPTY), location: after });
+    });
+    return out;
+  }
+
+  /**
+   * Every tag and place in use on the collection's copies, with how many copies have it (the most first), for
+   * suggestions and filters; each place with its note on where the place itself is (D157).
+   */
+  vocabulary(): { tags: { name: string; copies: number }[]; locations: { name: string; copies: number; note: string | null }[] } {
     const tags = new Map<string, { name: string; copies: number }>();
-    const locations = new Map<string, { name: string; copies: number }>();
-    for (const d of this.index().values()) {
+    const locations = new Map<string, { name: string; copies: number; note: string | null }>();
+    const notes = new Map(this.db.select({ key: placeNotes.key, note: placeNotes.note }).from(placeNotes).all().map((n) => [n.key, n.note]));
+    const owned = this.owned();
+    for (const [key, d] of this.index()) {
+      if (!owned.has(key)) continue;
       for (const t of d.tags) {
         const k = t.toLowerCase();
         tags.set(k, { name: tags.get(k)?.name ?? t, copies: (tags.get(k)?.copies ?? 0) + 1 });
       }
       if (d.location) {
         const k = d.location.toLowerCase();
-        locations.set(k, { name: locations.get(k)?.name ?? d.location, copies: (locations.get(k)?.copies ?? 0) + 1 });
+        locations.set(k, { name: locations.get(k)?.name ?? d.location, copies: (locations.get(k)?.copies ?? 0) + 1, note: notes.get(k) ?? null });
       }
     }
     const order = (a: { name: string; copies: number }, b: { name: string; copies: number }) => b.copies - a.copies || a.name.localeCompare(b.name);

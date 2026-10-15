@@ -38,6 +38,7 @@ import { HelperQueue, registerHelperRoutes } from './helper.js';
 import { registerTalkRoutes, TalkService } from './talk.js';
 import { CopiesService, registerCopiesRoutes } from './copies.js';
 import { CopyDetailsService, registerCopyDetailRoutes } from './copyDetails.js';
+import { PlacesService, registerPlaceRoutes } from './places.js';
 import { catalogTarget, registerGameRoutes } from './games.js';
 import { ItadClient, PcPriceService, registerPcPriceRoutes, type PcPrice } from './itad.js';
 import { GgDealsService, ggAsPcPrice, type GgPrice } from './ggdeals.js';
@@ -519,6 +520,8 @@ export async function buildApp(options: BuildOptions = {}): Promise<Squirrelcade
   });
   registerPlayRoutes(app, play, (platformKey, title) => catalogTarget(catalogs, platformKey, title)?.target.title ?? null);
   registerCopyDetailRoutes(app, details, settings);
+  // Storage locations made quick (D157): Pack a place, a shelf photo's games in one place, the Places page.
+  registerPlaceRoutes(app, new PlacesService(db, details, lookup, catalogs, log));
   registerOwnCopyRoutes(app, { collection, catalogs, details, settings, db, igdb });
   registerCopyCareRoutes(app, care);
   // Selling (0.22.0): listing kits for eBay and Mercari, the sales, and what to sell next.

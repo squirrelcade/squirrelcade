@@ -18,6 +18,7 @@ import { count, date, money, wholeMoney } from '../format';
 import { useCanEdit, useSetting } from '../hooks';
 import { GameCover, GameTitle, useOpenGame } from '../GameDrawer';
 import { useGameNotes } from '../notes';
+import { usePlaceNotes, type Vocabulary } from '../places';
 import { PlayBadge, type Play } from '../Playing';
 import { TestBadge } from '../CopyDetails';
 
@@ -78,6 +79,8 @@ const EXTRA_FILTERS = ['play', 'location', 'tag', 'lent', 'sale', 'digital'];
 /** A copy's play status and details in a line of small badges. */
 function ItemExtras({ item }: { item: Item }) {
   const d = item.details;
+  // Where the place itself is (D157), beside it.
+  const placeNote = usePlaceNotes(Boolean(d?.location))(d?.location);
   const dateFormat = useSetting('general.dateFormat', 'us');
   const badges = [
     item.missingSince ? (
@@ -89,6 +92,7 @@ function ItemExtras({ item }: { item: Item }) {
     d?.location ? (
       <Badge key="where" size="xs" variant="outline" color="gray" leftSection={<IconMapPin size={10} />} style={{ textTransform: 'none' }}>
         {d.location}
+        {placeNote ? ` · ${placeNote}` : ''}
       </Badge>
     ) : null,
     ...(d?.tags ?? []).map((t) => (
@@ -203,7 +207,7 @@ export function CollectionPage() {
   const seesPaid = useSetting('security.viewersSeePaid', false) || canEdit;
   const seesPlay = useSetting('security.viewersSeePlay', true) || canEdit;
   const seesDetails = useSetting('security.viewersSeeCopyDetails', false) || canEdit;
-  const vocabulary = useQuery({ queryKey: ['tags'], queryFn: () => api<{ tags: { name: string; copies: number }[]; locations: { name: string; copies: number }[] }>('/tags'), enabled: seesDetails });
+  const vocabulary = useQuery({ queryKey: ['tags'], queryFn: () => api<Vocabulary>('/tags'), enabled: seesDetails });
   const [debounced] = useDebouncedValue(search, 250);
   const platform = params.get('platform') ?? '';
   const region = params.get('region') ?? '';
@@ -408,9 +412,9 @@ export function CollectionPage() {
         )}
         {seesDetails && (vocabulary.data?.locations.length ?? 0) > 0 && (
           <Select
-            aria-label="Where it is"
+            aria-label="Storage location"
             placeholder="Anywhere"
-            data={(vocabulary.data?.locations ?? []).map((l) => ({ value: l.name, label: `${l.name} (${l.copies})` }))}
+            data={(vocabulary.data?.locations ?? []).map((l) => ({ value: l.name, label: `${l.name} (${l.copies})${l.note ? ` · ${l.note}` : ''}` }))}
             value={params.get('location')}
             onChange={(v) => set('location', v ?? '')}
             clearable

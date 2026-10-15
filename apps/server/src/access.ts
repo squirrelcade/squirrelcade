@@ -96,7 +96,7 @@ const VIEWER_PC_READS: RegExp[] = [/^\/api\/v1\/pc$/, /^\/api\/v1\/pc\/(games|ex
 const VIEWER_PLAY_READS: RegExp[] = [/^\/api\/v1\/play$/, /^\/api\/v1\/play\/next$/];
 
 /** Copies' details (where each is kept, tags, photos, loans, the games for sale), when viewers see them. */
-const VIEWER_DETAIL_READS: RegExp[] = [/^\/api\/v1\/copy$/, /^\/api\/v1\/tags$/, /^\/api\/v1\/loans$/, /^\/api\/v1\/photos\/\d+$/, /^\/api\/v1\/sale$/, /^\/api\/v1\/sale\/export$/];
+const VIEWER_DETAIL_READS: RegExp[] = [/^\/api\/v1\/copy$/, /^\/api\/v1\/tags$/, /^\/api\/v1\/places$/,/^\/api\/v1\/loans$/, /^\/api\/v1\/photos\/\d+$/, /^\/api\/v1\/sale$/, /^\/api\/v1\/sale\/export$/];
 
 /** Spending by month, when viewers see what the owner paid. */
 const VIEWER_PAID_READS: RegExp[] = [/^\/api\/v1\/collection\/spending$/];

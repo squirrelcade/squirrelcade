@@ -10,6 +10,7 @@ import { HelpLink } from '../components';
 import { GameTitle } from '../GameDrawer';
 import { notifyError, notifySuccess, useCanEdit } from '../hooks';
 import { queuePurchase, readCopy, refreshCopy, unreachable, type OfflineCopy } from '../offline';
+import { PutInPlace } from '../PutInPlace';
 import {
   allReads,
   checklist,
@@ -306,6 +307,8 @@ export function ShelfCheckPage() {
           {section('Have it', list.own, 'blue')}
           {section('Have it on another console, or maybe', list.elsewhere, 'yellow')}
           {section('Not on your list', list.other, 'gray')}
+          {/* A photo of a bag's games: the ones you have get that bag as their place in one go (D157). */}
+          {canEdit && list.own.length > 0 && <PutInPlace key={photo.url} platformKey={chosen!.key} titles={list.own.map((f) => f.title)} />}
           {list.unsure.length > 0 && (
             <Card withBorder padding="sm">
               <Group gap="xs" mb={6}>

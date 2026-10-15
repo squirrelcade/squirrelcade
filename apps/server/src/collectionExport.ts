@@ -41,7 +41,7 @@ export function registerCollectionExport(
         'Counts as',
         'Series',
         ...(playOf ? ['Played', 'Your rating'] : []),
-        ...(ex ? ['Where it is', 'Tags', 'Lent to', 'For sale or trade'] : []),
+        ...(ex ? ['Storage location', 'Tags', 'Lent to', 'For sale or trade'] : []),
         'Your note',
       ],
     ];

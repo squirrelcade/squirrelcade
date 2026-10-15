@@ -1,7 +1,7 @@
-import { Badge, Button, Chip, Group, Loader, Pagination, SegmentedControl, Select, Stack, Table, Text } from '@mantine/core';
+import { Anchor, Badge, Button, Chip, Group, Loader, Pagination, SegmentedControl, Select, Stack, Table, Text } from '@mantine/core';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useMemo, useState } from 'react';
-import { useSearchParams } from 'react-router';
+import { Link, useSearchParams } from 'react-router';
 import { api } from '../api';
 import { PageHeader } from '../components';
 import { CopyDetailsModal, TestBadge, type CopyRef, type CopyTest } from '../CopyDetails';
@@ -9,6 +9,7 @@ import { count } from '../format';
 import { GameTitle } from '../GameDrawer';
 import { useSetting } from '../hooks';
 import { FoundPriceLine, LookUpPrices, useFoundPrices, useOrdersOn } from '../OrderEmails';
+import { usePlaceNotes } from '../places';
 
 type Gap = 'paid' | 'date' | 'photos' | 'tested' | 'location';
 
@@ -42,7 +43,7 @@ interface ImproveList {
   items: ImproveItem[];
 }
 
-const GAP_NAMES: Record<Gap, string> = { paid: 'Price paid', date: 'Day bought', photos: 'Photos', tested: 'Tested', location: 'Where it is' };
+const GAP_NAMES: Record<Gap, string> = { paid: 'Price paid', date: 'Day bought', photos: 'Photos', tested: 'Tested', location: 'Storage location' };
 const PAGE = 50;
 
 /**
@@ -52,11 +53,14 @@ const PAGE = 50;
  */
 export function ImprovePage() {
   const dateFormat = useSetting('general.dateFormat', 'us');
-  const [gap, setGap] = useState<string>('all');
+  // Where each place itself is (D157), beside it.
+  const noteOf = usePlaceNotes();
+  const [params, setParams] = useSearchParams();
+  // A tab asked for in the address (?gap=location: Places' "without one").
+  const [gap, setGap] = useState<string>(() => params.get('gap') ?? 'all');
   const [platform, setPlatform] = useState<string | null>(null);
   const [page, setPage] = useState(1);
   // Only the copies added here (?added=here, Store Mode's link after a haul, D153), kept in the address.
-  const [params, setParams] = useSearchParams();
   const addedHere = params.get('added') === 'here';
   // The copy open in its window, as the list had it (it stays while the list refreshes), and where it was.
   const [open, setOpen] = useState<{ item: ImproveItem; index: number } | null>(null);
@@ -156,6 +160,15 @@ export function ImprovePage() {
                 <Text size="sm" c="dimmed">
                   {count(d.total)} cop{d.total === 1 ? 'y' : 'ies'}
                   {addedHere ? ' added here' : ''}
+                  {gap === 'location' && (
+                    <>
+                      {'. Many in one bag, case or shelf? '}
+                      <Anchor component={Link} to="/store/pack" size="sm">
+                        Pack a place
+                      </Anchor>
+                      {' gives them their place one after another.'}
+                    </>
+                  )}
                 </Text>
                 <Group gap="xs">
                   {ordersOn && d.checked.includes('paid') && d.counts.paid > 0 && (gap === 'all' || gap === 'paid') && <LookUpPrices platform={platform} addedHere={addedHere} />}
@@ -174,7 +187,7 @@ export function ImprovePage() {
                         <Table.Td>
                           {i.platformKey ? <GameTitle platformKey={i.platformKey} title={i.title} fw={500} /> : <Text fw={500}>{i.title}</Text>}
                           <Text size="xs" c="dimmed">
-                            {[i.platform, i.condition, i.location].filter(Boolean).join(' · ')}
+                            {[i.platform, i.condition, i.location && (noteOf(i.location) ? `${i.location} (${noteOf(i.location)})` : i.location)].filter(Boolean).join(' · ')}
                           </Text>
                           <Group gap={4} mt={4}>
                             {i.gaps.includes('paid') && !prices.of(i.id) && (
@@ -202,7 +215,7 @@ export function ImprovePage() {
                               ))}
                             {i.gaps.includes('location') && (
                               <Badge size="sm" variant="light" color="gray" style={{ textTransform: 'none' }}>
-                                Where is it?
+                                No storage location
                               </Badge>
                             )}
                           </Group>

@@ -49,6 +49,7 @@ const MAIN_PAGES: Record<string, string> = {
   '/collection/sales': 'Sales',
   '/collection/backlog': 'Backlog',
   '/collection/loans': 'Loans',
+  '/collection/places': 'Places',
   '/collection/sale': 'For sale',
   '/collection/statistics': 'Statistics',
   '/collection/report': 'Collection report',
@@ -228,6 +229,7 @@ export function Layout({ children }: { children: ReactNode }) {
             {owner && link('/collection/improve', 'Improve')}
             {playShown && link('/collection/backlog', 'Backlog')}
             {detailsShown && link('/collection/loans', 'Loans')}
+            {detailsShown && link('/collection/places', 'Places')}
             {owner && link('/updates', 'Stash updates')}
           </NavLink>
           {/* Acorns: games coming in (the Acorns wishlist and its pages), games going out (for sale, sold), and the

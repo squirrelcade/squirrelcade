@@ -492,6 +492,11 @@ export function StorePage() {
               Scan my shelf
             </Anchor>
           )}
+          {canEdit && (
+            <Anchor component={Link} to="/store/pack" size="sm">
+              Pack a place
+            </Anchor>
+          )}
           <Anchor component={Link} to="/store/photo" size="sm">
             Check a shelf
           </Anchor>

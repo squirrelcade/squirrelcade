@@ -1160,7 +1160,7 @@ export const settingDefinitions = {
   'collection.improveLocation': bool({
     page: 'collection',
     section: 'Improve your collection',
-    label: "Copies without where they're kept",
+    label: 'Copies without a storage location',
     description: "On Stash > Improve's list.",
     default: true,
   }),
