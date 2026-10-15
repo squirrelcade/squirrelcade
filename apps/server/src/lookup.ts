@@ -16,7 +16,7 @@ import { createHash } from 'node:crypto';
 import { gzipSync } from 'node:zlib';
 import { and, asc, eq, inArray, isNull, ne } from 'drizzle-orm';
 import type { FastifyInstance, FastifyRequest } from 'fastify';
-import { shown } from './access.js';
+import { isViewer, shown } from './access.js';
 import type { Logger } from 'pino';
 import type { CatalogService, RommLinker } from './catalogs.js';
 import type { Db } from './db/index.js';
@@ -63,6 +63,16 @@ export interface LookupResult {
   note?: string | null;
   /** Your wishlist preference for a catalog game (Must Have... Do Not Recommend). */
   preference?: string | null;
+  /** Bought and on the way (D156): from which store, when, for how much (not for a brief search, nor a viewer). */
+  onTheWay?: OnTheWayBrief | null;
+}
+
+/** A game on the way, as Store Mode says it (D156). */
+export interface OnTheWayBrief {
+  id: number;
+  store: string;
+  orderDate: string | null;
+  paidCents: number | null;
 }
 
 /**
@@ -477,6 +487,13 @@ export class LookupService {
     this.notes = index;
   }
 
+  /** The games on the way by "platform key|normalized title" (set by the app, D156). */
+  private coming: () => Map<string, OnTheWayBrief> = () => new Map();
+
+  setComing(index: () => Map<string, OnTheWayBrief>): void {
+    this.coming = index;
+  }
+
   /**
    * Set while the ownership API answers a list of games: what every search of the list reads from the collection,
    * read once.
@@ -631,13 +648,14 @@ export class LookupService {
 
     const order: Record<Answer, number> = { need: 0, check: 1, unconfirmed: 2, 'own-elsewhere': 3, own: 4, 'own-not-in-catalog': 5, 'not-a-target': 6, 'not-tracked': 7 };
     const notes = options.brief ? new Map<string, string>() : this.notes();
+    const coming = options.brief ? new Map<string, OnTheWayBrief>() : this.coming();
     return results
       .sort((a, b) => b.relevance - a.relevance || order[a.answer] - order[b.answer] || a.title.localeCompare(b.title) || a.platform.localeCompare(b.platform))
       .slice(0, limit)
       .map((r) => {
         if (options.brief) return r;
         const romm = (r.answer === 'own' || r.answer === 'own-not-in-catalog') && this.rommLink ? this.rommLink(r.platformKey, [r.title, ...r.ownedAs]) : null;
-        return { ...r, coverId: this.igdb?.coverOf(r.platformKey, r.title) ?? null, reviews: this.igdb?.reviewsOf(r.platformKey, r.title) ?? null, romm, note: notes.get(`${r.platformKey}|${normalizeTitle(r.title)}`) ?? null };
+        return { ...r, coverId: this.igdb?.coverOf(r.platformKey, r.title) ?? null, reviews: this.igdb?.reviewsOf(r.platformKey, r.title) ?? null, romm, note: notes.get(`${r.platformKey}|${normalizeTitle(r.title)}`) ?? null, onTheWay: coming.get(`${r.platformKey}|${normalizeTitle(r.title)}`) ?? null };
       });
   }
 
@@ -764,17 +782,25 @@ export class LookupService {
     if (!productName) {
       return { code, known: false, productName: null, searchedFor: null, results: [], message: "The barcode service doesn't know this code. Search by title instead.", lookups };
     }
+    const { platformKey, query, results: ranked } = this.productMatch(productName);
+    const platformName = platformKey ? (this.catalogs.allMatches().find((m) => m.key === platformKey)?.name ?? KNOWN_PLATFORMS.find((k) => k.key === platformKey)?.name ?? null) : null;
+    this.log.info({ context: 'lookup' }, `Barcode ${code} ("${productName}"): searched for "${query}", ${ranked.length} found`);
+    return { code, known: false, productName, searchedFor: query, platformKey, platformName, results: ranked, message: null, lookups };
+  }
+
+  /**
+   * The games a retail product name (a barcode service's, or a listing's title: On the way, D156) may be, the console it
+   * names first: that console's answers come first (the Xbox One's Mafia III before the PS4's), then the rest as good as
+   * they match.
+   */
+  productMatch(productName: string): { platformKey: string | null; query: string; results: LookupResult[] } {
     const platformKey = productPlatform(productName);
     const { query, results } = this.productSearch(productName, platformKey);
-    // The barcode is a game for the console its name gives: that console's answers come first (the Xbox One's
-    // Mafia III before the PS4's), then the rest as good as they match.
     const ranked = results
       .map((r, i) => ({ r, i }))
       .sort((a, b) => Number(b.r.platformKey === platformKey) - Number(a.r.platformKey === platformKey) || b.r.relevance - a.r.relevance || a.i - b.i)
       .map((x) => x.r);
-    const platformName = platformKey ? (this.catalogs.allMatches().find((m) => m.key === platformKey)?.name ?? KNOWN_PLATFORMS.find((k) => k.key === platformKey)?.name ?? null) : null;
-    this.log.info({ context: 'lookup' }, `Barcode ${code} ("${productName}"): searched for "${query}", ${ranked.length} found`);
-    return { code, known: false, productName, searchedFor: query, platformKey, platformName, results: ranked, message: null, lookups };
+    return { platformKey, query, results: ranked };
   }
 
   /**
@@ -960,10 +986,11 @@ export class LookupService {
 
 /** Store Mode: title search, barcode lookups, and remembering which game a barcode is. */
 export function registerLookupRoutes(app: FastifyInstance, lookup: LookupService): void {
-  /** A viewer's answers leave out what isn't shared with them (notes, RomM links). */
+  /** A viewer's answers leave out what isn't shared with them (notes, RomM links), and what's on the way (the owner's). */
   const forRequester = (request: FastifyRequest, results: LookupResult[]): LookupResult[] => {
     const may = shown(request);
-    return may.notes && may.romm ? results : results.map((r) => ({ ...r, note: may.notes ? r.note : null, ...('romm' in r && !may.romm ? { romm: null } : {}) }));
+    const viewer = isViewer(request);
+    return may.notes && may.romm && !viewer ? results : results.map((r) => ({ ...r, note: may.notes ? r.note : null, ...('romm' in r && !may.romm ? { romm: null } : {}), ...(viewer ? { onTheWay: null } : {}) }));
   };
 
   app.get('/api/v1/lookup', async (request) => {

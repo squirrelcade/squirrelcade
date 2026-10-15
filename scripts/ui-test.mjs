@@ -150,7 +150,18 @@ export async function uiTest(target, account, check) {
     const closeModal = async (modal) => {
       await page.mouse.move(5, 5);
       await page.locator('.mantine-Notification-root').first().waitFor({ state: 'detached', timeout: 10000 }).catch(() => {});
-      await modal.locator('.mantine-Modal-close').click();
+      // When the X can't be clicked, what's over it, to tell why.
+      await modal.locator('.mantine-Modal-close').click({ timeout: 15000 }).catch(async (err) => {
+        const over = await page.evaluate(() => {
+          const x = document.querySelector('.mantine-Modal-content .mantine-Modal-close');
+          if (!x) return 'no X';
+          const r = x.getBoundingClientRect();
+          const top = document.elementFromPoint(r.x + r.width / 2, r.y + r.height / 2);
+          const name = (el) => (el ? `${el.tagName.toLowerCase()}.${String(el.className?.baseVal ?? el.className).split(' ').slice(0, 3).join('.')}` : 'nothing');
+          return `X at ${Math.round(r.x)},${Math.round(r.y)} (${Math.round(r.width)}x${Math.round(r.height)}); on top: ${name(top)} in ${name(top?.closest('[class*="mantine-"]:not(svg)'))}; notifications: ${document.querySelectorAll('.mantine-Notification-root').length}; "${(top?.textContent ?? '').trim().slice(0, 60)}"`;
+        });
+        throw new Error(`${err.message.split('\n')[0]} | ${over}`);
+      });
     };
     const settle = async () => {
       await page.waitForLoadState('networkidle');
@@ -225,6 +236,7 @@ export async function uiTest(target, account, check) {
       '/help/matching',
       '/help/playing',
       '/help/your-copies',
+      '/help/orders',
       '/help/selling',
       '/help/services',
       '/help/ai-apps',
@@ -784,6 +796,33 @@ export async function uiTest(target, account, check) {
     await closeModal(walk);
     found = await pageProblems();
     check('ui: Improve your collection opens a copy and walks to the next', found.length === 0 && walkAccess.length === 0, [...found, ...walkAccess].join(' | '));
+
+    // Prices from order emails and On the way (D155, D156), turned on with no mailbox set up: each says what's missing.
+    await page.request.put(`${base}/api/v1/settings`, { data: { changes: { 'orders.find': true, 'orders.watch': true } } });
+    const missingPaid = (await (await page.request.get(`${base}/api/v1/collection/improve?pageSize=1`)).json()).counts.paid > 0;
+    await page.goto(`${base}/collection/improve`);
+    await page.getByRole('button', { name: 'Fill in' }).first().waitFor({ timeout: 10000 });
+    // Only while a copy misses a price.
+    const lookUp = (await page.getByRole('button', { name: 'Look up prices in my email' }).count()) === (missingPaid ? 1 : 0);
+    await page.getByRole('button', { name: 'Fill in' }).first().click();
+    const priceWindow = page.locator('.mantine-Modal-content');
+    await priceWindow.getByRole('button', { name: 'Find in my email' }).click();
+    const mailboxSaid = await page.getByText(/Fill in your email account on Settings > Email/).first().waitFor({ timeout: 15000 }).then(() => true, () => false);
+    await settle();
+    const findAccess = await seriousProblems();
+    await closeModal(priceWindow);
+    await page.goto(`${base}/coming`);
+    await page.getByText('Nothing on the way.').waitFor({ timeout: 10000 });
+    const comingInMenu = await page.locator('nav.mantine-AppShell-navbar').getByText('On the way', { exact: true }).count();
+    await settle();
+    const comingAccess = await seriousProblems();
+    found = await pageProblems();
+    await page.request.put(`${base}/api/v1/settings`, { data: { changes: { 'orders.find': false, 'orders.watch': false } } });
+    check(
+      'ui: Find in my email, Look up prices in my email and On the way, with no mailbox yet, say what to set up',
+      found.length === 0 && lookUp && mailboxSaid && comingInMenu === 1 && findAccess.length === 0 && comingAccess.length === 0,
+      [...found, ...findAccess, ...comingAccess].join(' | ') || `look up ${lookUp}, said ${mailboxSaid}, menu ${comingInMenu}`,
+    );
 
     // Ready to sell, after a rip: the listing for eBay says the disc was read in full; Mercari has its own condition. The
     // sale recorded there is on Collection > Sales, in money and meals, and taken back; Sold in a copy's window asks too.

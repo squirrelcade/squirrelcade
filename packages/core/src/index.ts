@@ -35,3 +35,4 @@ export * from './achievements.js';
 export * from './titleMatch.js';
 export * from './shelf.js';
 export * from './friends.js';
+export * from './orders.js';

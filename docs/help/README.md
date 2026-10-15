@@ -7,6 +7,7 @@ The same guides are in the app: **Help** in the menu, and the **?** on each page
 - [Your collection](collection.md): updating it from PriceCharting (or a spreadsheet of your own), the Stash page, Copies, statistics, the report and the Excel workbook.
 - [What you played](playing.md): play status, ratings, the backlog and "What to play next".
 - [Your copies](your-copies.md): where each copy is, your tags, lending, photos, and selling or trading.
+- [Order emails](orders.md) (optional): what you paid, found in your order emails and filled in for you to check, and On the way, the games you bought that haven't arrived yet.
 - [Selling your games](selling.md): Ready to sell (a listing for eBay or Mercari, its price and photos), recording a sale, and Acorns > Sales.
 - [Consoles, catalogs and completion](catalogs.md): where catalogs come from, a console's page, when a copy counts.
 - [How matching works](../MATCHING.md): the rules for when a copy counts as a catalog game.

@@ -1,5 +1,5 @@
 import { Badge, Button, Chip, Group, Loader, Pagination, SegmentedControl, Select, Stack, Table, Text } from '@mantine/core';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useMemo, useState } from 'react';
 import { useSearchParams } from 'react-router';
 import { api } from '../api';
@@ -8,6 +8,7 @@ import { CopyDetailsModal, TestBadge, type CopyRef, type CopyTest } from '../Cop
 import { count } from '../format';
 import { GameTitle } from '../GameDrawer';
 import { useSetting } from '../hooks';
+import { FoundPriceLine, LookUpPrices, useFoundPrices, useOrdersOn } from '../OrderEmails';
 
 type Gap = 'paid' | 'date' | 'photos' | 'tested' | 'location';
 
@@ -65,6 +66,11 @@ export function ImprovePage() {
   const d = list.data;
   const items = d?.items ?? [];
   const current = open?.item ?? null;
+  // Prices found in the owner's order emails (D155), waiting beside their copies.
+  const ordersOn = useOrdersOn();
+  const currency = useSetting('general.currency', 'USD');
+  const queryClient = useQueryClient();
+  const prices = useFoundPrices(ordersOn);
   const ref: CopyRef | null = useMemo(
     () =>
       current
@@ -151,11 +157,14 @@ export function ImprovePage() {
                   {count(d.total)} cop{d.total === 1 ? 'y' : 'ies'}
                   {addedHere ? ' added here' : ''}
                 </Text>
-                {items.length > 0 && (
-                  <Button size="compact-sm" onClick={() => setOpen({ item: items[0]!, index: 0 })}>
-                    Go through them
-                  </Button>
-                )}
+                <Group gap="xs">
+                  {ordersOn && d.checked.includes('paid') && d.counts.paid > 0 && (gap === 'all' || gap === 'paid') && <LookUpPrices platform={platform} addedHere={addedHere} />}
+                  {items.length > 0 && (
+                    <Button size="compact-sm" onClick={() => setOpen({ item: items[0]!, index: 0 })}>
+                      Go through them
+                    </Button>
+                  )}
+                </Group>
               </Group>
               <Table.ScrollContainer minWidth={320}>
                 <Table verticalSpacing={6} striped highlightOnHover>
@@ -168,7 +177,7 @@ export function ImprovePage() {
                             {[i.platform, i.condition, i.location].filter(Boolean).join(' · ')}
                           </Text>
                           <Group gap={4} mt={4}>
-                            {i.gaps.includes('paid') && (
+                            {i.gaps.includes('paid') && !prices.of(i.id) && (
                               <Badge size="sm" variant="light" color="gray" style={{ textTransform: 'none' }}>
                                 No price paid
                               </Badge>
@@ -197,6 +206,17 @@ export function ImprovePage() {
                               </Badge>
                             )}
                           </Group>
+                          {i.gaps.includes('paid') && prices.of(i.id) && (
+                            <Group gap="xs" mt={4} align="flex-start" wrap="wrap">
+                              <FoundPriceLine f={prices.of(i.id)!} currency={currency} size="xs" />
+                              <Button size="compact-xs" onClick={() => prices.use(i, () => queryClient.invalidateQueries({ queryKey: ['improve'] }))} loading={prices.using === i.id}>
+                                Use it
+                              </Button>
+                              <Button size="compact-xs" variant="subtle" color="gray" onClick={() => prices.forget(i.id)}>
+                                Not this
+                              </Button>
+                            </Group>
+                          )}
                         </Table.Td>
                         <Table.Td w={1}>
                           <Button size="compact-sm" variant="light" onClick={() => setOpen({ item: i, index })}>
@@ -215,6 +235,7 @@ export function ImprovePage() {
       )}
       <CopyDetailsModal
         copy={ref}
+        found={current ? (prices.of(current.id) ?? null) : null}
         onClose={() => setOpen(null)}
         position={open ? `${(page - 1) * PAGE + open.index + 1} of ${count(d?.total ?? 0)}` : undefined}
         onNext={next}

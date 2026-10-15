@@ -1154,3 +1154,43 @@ export const friendFiles = sqliteTable('friend_files', {
   madeAt: text('made_at').notNull(),
   data: text('data').notNull(),
 });
+
+/**
+ * On the way (1.2.0, D156): each game bought that a purchase email named (eBay's, Mercari's, a store's the owner lists),
+ * until it arrives. Not a copy: not counted, not exported, never sent to PriceCharting. Only what the email said is
+ * kept (the store, the day, the listing's title, the amounts), never the email: which one it was is a hash of its
+ * Message-ID, with the item's place in it, so an item is added once.
+ */
+export const comingItems = sqliteTable(
+  'coming_items',
+  {
+    id: integer('id').primaryKey({ autoIncrement: true }),
+    mailRef: text('mail_ref').notNull(),
+    itemIndex: integer('item_index').notNull(),
+    store: text('store').notNull(),
+    orderDate: text('order_date'),
+    orderNumber: text('order_number'),
+    /** The listing or order on the store's own site, when the email had it. */
+    link: text('link'),
+    listingTitle: text('listing_title').notNull(),
+    /** How many of it the order bought; one arrives at a time. */
+    quantity: integer('quantity').notNull().default(1),
+    currency: text('currency'),
+    /** For one of it: the price, and its shares of the order's tax, shipping and discount (the price paid is worked out from them). */
+    itemCents: integer('item_cents'),
+    taxCents: integer('tax_cents'),
+    shippingCents: integer('shipping_cents'),
+    discountCents: integer('discount_cents'),
+    /** Who read the email: ai or plain. */
+    readBy: text('read_by').notNull(),
+    /** The game it is, when Squirrelcade was sure or the owner said. */
+    platformKey: text('platform_key'),
+    title: text('title'),
+    /** waiting, arrived (a copy now: copyId) or dismissed. */
+    status: text('status').notNull().default('waiting'),
+    copyId: integer('copy_id'),
+    createdAt: text('created_at').notNull(),
+    updatedAt: text('updated_at'),
+  },
+  (t) => [uniqueIndex('coming_items_mail_idx').on(t.mailRef, t.itemIndex), index('coming_items_status_idx').on(t.status)],
+);

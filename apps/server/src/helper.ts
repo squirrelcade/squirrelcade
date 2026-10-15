@@ -6,8 +6,9 @@ import { roleOf } from './access.js';
  * Work for a helper of the owner's own (D147): a program that asks Squirrelcade for work with the owner's key
  * (GET /api/v1/helper/next, waiting up to 25 seconds) and answers (POST /api/v1/helper/answer). On the owner's server
  * it's Claude Code signed in with their own plan, say (tools/shelf-helper). Two kinds of work: a shelf photo's pieces
- * to read ("shelf"), and a turn of Talk to answer ("talk", D148). A job waits a minute to be taken and ten minutes for
- * its answer.
+ * to read ("shelf"), and a turn of Talk to answer ("talk", D148); order emails to read (D155, D156) are sent as Talk's
+ * kind, a prompt and its schema, so a helper made before them answers them. A job waits a minute to be taken and ten
+ * minutes for its answer.
  */
 
 /** How long work waits for a helper to take it, and then for its answer. */

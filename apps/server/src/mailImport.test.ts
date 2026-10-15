@@ -41,6 +41,10 @@ function mailbox(mails: FoundMail[], fail?: Error) {
         call.query = query;
         return { folder: '[Gmail]/All Mail', mails: mails.filter((m) => Date.parse(m.date) >= query.since.getTime() && m.subject.toLowerCase().includes(query.subject.toLowerCase())) };
       },
+      gmail: true,
+      async search() {
+        return { folder: '[Gmail]/All Mail', mails: [] };
+      },
       async close() {},
     };
   };

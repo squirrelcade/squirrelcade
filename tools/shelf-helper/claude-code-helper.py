@@ -2,6 +2,8 @@
 """A helper for Squirrelcade's AI model (D147, D148): asks Squirrelcade for work and answers it with Claude Code signed
 in on this computer, so it runs on that account's own Claude plan (no API key). Two kinds of work: a shelf photo's
 pieces to read (Check a shelf: the game titles on them), and a turn of Talk to Squirrelcade (its answer, as JSON).
+Order emails to read (D155, D156: what was bought and what it cost) come as Talk's kind of work too, a prompt and its
+schema with "purpose": "orders", so a helper made before them answers them the same way.
 Squirrelcade's Settings > Sources > Vision model > Kind of API: "A helper of your own".
 
 Any program can be a helper the same way (this one is only an example): GET /api/v1/helper/next with the API key waits
@@ -144,7 +146,8 @@ def work_on(job, key):
     try:
         if job.get("kind") == "talk":
             call("POST", "/api/v1/helper/answer", key, {"id": job["id"], "answer": talk(job)})
-            log(f"answered a turn of Talk in {round(time.time() - started)} s")
+            what = "read order emails" if job.get("purpose") == "orders" else "answered a turn of Talk"
+            log(f"{what} in {round(time.time() - started)} s")
             return
         titles = read(job)
         call("POST", "/api/v1/helper/answer", key, {"id": job["id"], "titles": titles})

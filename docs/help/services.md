@@ -5,7 +5,7 @@ Every outside service, program and tool Squirrelcade works with or recommends: w
 ## Your collection
 
 - [PriceCharting](https://www.pricecharting.com): your collection's values. Its export updates Squirrelcade's copies, and Send to PriceCharting gives the copies added here as lines for its importer. **You need:** an account. **Cost:** free (one import and one export a week), or a paid plan. **Where:** Stash updates.
-- **Your mailbox (IMAP)**: reads PriceCharting's export emails, so an export updates Squirrelcade by itself, and its wishlist deal emails. **You need:** an app password (Gmail: [app passwords](https://myaccount.google.com/apppasswords)). **Cost:** free. **Where:** Settings > Email > Stash updates from your email.
+- **Your mailbox (IMAP)**: reads PriceCharting's export emails, so an export updates Squirrelcade by itself, and its wishlist deal emails; and, only if you turn them on, your order emails (what you paid for a copy) and your eBay and Mercari purchase emails (On the way): see [Order emails](orders.md). It only reads. **You need:** an app password (Gmail: [app passwords](https://myaccount.google.com/apppasswords)). **Cost:** free. **Where:** Settings > Email.
 - [CLZ Games](https://clz.com/games), [GAMEYE](https://www.gameye.app) and [VGCollect](https://vgcollect.com): their exports come in like PriceCharting's (CLZ's with its barcodes). **You need:** their export file. **Cost:** free to export. **Where:** Stash updates.
 
 ## Game information

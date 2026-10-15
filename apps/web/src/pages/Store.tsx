@@ -66,6 +66,8 @@ interface Result {
   preference?: string | null;
   /** IGDB's rating, beside its acorns (0.53.0). */
   reviews?: ReviewsOf;
+  /** Bought and on the way (D156): Add it then makes it arrive, with what its email said. */
+  onTheWay?: { id: number; store: string; orderDate: string | null; paidCents: number | null } | null;
 }
 
 /** The fields of a game's copy that its window needs (GET /api/v1/game). */
@@ -320,6 +322,7 @@ export function StorePage() {
     Promise.all([
       queryClient.invalidateQueries({ queryKey: ['purchases'] }),
       queryClient.invalidateQueries({ queryKey: ['improve'] }),
+      queryClient.invalidateQueries({ queryKey: ['coming'] }),
       queryClient.invalidateQueries({ queryKey: ['lookup'] }),
       queryClient.invalidateQueries({ queryKey: ['catalogs'] }),
       queryClient.invalidateQueries({ queryKey: ['wishlist'] }),
@@ -361,9 +364,12 @@ export function StorePage() {
   const buy = useMutation({
     mutationFn: async (r: Result): Promise<{ how: 'sent' | 'kept'; answer?: unknown }> => {
       try {
+        // A game on the way arrives (D156): its price and the day of its order come with it.
+        if (r.onTheWay) return { how: 'sent', answer: await api(`/coming/${r.onTheWay.id}/arrived`, { method: 'POST' }) };
         return { how: 'sent', answer: await api('/purchases', { method: 'POST', json: { entryId: r.entryId } }) };
       } catch (err) {
-        if (!offlineOn || !unreachable(err)) throw err;
+        // A game on the way arrives with its email's price, so it waits for a connection rather than being kept here.
+        if (!offlineOn || !unreachable(err) || r.onTheWay) throw err;
         await queuePurchase({ entryId: r.entryId!, title: r.title, platform: r.platform });
         return { how: 'kept' };
       }
@@ -621,6 +627,16 @@ export function StorePage() {
                     Your note:
                   </Text>{' '}
                   {r.note}
+                </Text>
+              )}
+              {r.onTheWay && (
+                <Text size="sm">
+                  <Text span size="sm" fw={600}>
+                    On the way:
+                  </Text>{' '}
+                  bought from {r.onTheWay.store}
+                  {r.onTheWay.orderDate ? ` on ${date(r.onTheWay.orderDate, dateFormat)}` : ''}
+                  {r.onTheWay.paidCents !== null ? ` for ${money(r.onTheWay.paidCents, currency)}` : ''}.{canEdit && addable(r) ? ' Add it uses that.' : ''}
                 </Text>
               )}
               {narrow && hasActions(r) && (

@@ -4,7 +4,7 @@
  */
 export const SETTINGS_PAGES = [
   { id: 'general', title: 'General', description: 'Name, time zone, currency, region and logging.' },
-  { id: 'email', title: 'Email', description: "Your email account, entered once: Squirrelcade sends your notifications from it and reads PriceCharting's export and deal emails in it. One Test checks both." },
+  { id: 'email', title: 'Email', description: "Your email account, entered once: Squirrelcade sends your notifications from it and reads PriceCharting's export and deal emails in it, and, if you turn them on, your order emails (what you paid, and On the way). One Test checks both." },
   { id: 'features', title: 'Features', description: "The optional parts of Squirrelcade, and the outside services they use: turn on what you want. Help's Services and tools lists every service and tool, with links." },
   { id: 'interface', title: 'Interface', description: 'Theme, cover art, tables and the start page.' },
   { id: 'collection', title: 'Collection', description: "Your collection: updates from PriceCharting's exports and your own files, copies you add, their photos, tests and estimates." },

@@ -9,6 +9,7 @@ import { api } from './api';
 import { date, money } from './format';
 import { overGoalNote } from './Goal';
 import { notifyError, notifySuccess, useSetting } from './hooks';
+import { FindInEmail, useOrdersOn, type FoundPrice } from './OrderEmails';
 
 /** The owner's details on a copy (GET /api/v1/copy). */
 export interface CopyDetail {
@@ -256,6 +257,7 @@ export function CopyDetailsModal({
   position,
   added = false,
   onScanNext,
+  found,
 }: {
   copy: CopyRef | null;
   onClose: () => void;
@@ -266,8 +268,11 @@ export function CopyDetailsModal({
   added?: boolean;
   /** For a copy just added in Store Mode: save what was typed and open the camera for the next game. */
   onScanNext?: () => void;
+  /** A price Look up prices in my email found for it (Collection › Improve, D155): filled in to check. */
+  found?: FoundPrice | null;
 }) {
   const queryClient = useQueryClient();
+  const ordersOn = useOrdersOn();
   const phone = useMediaQuery('(max-width: 36em)') ?? false;
   const currency = useSetting('general.currency', 'USD');
   const dateFormat = useSetting('general.dateFormat', 'us');
@@ -553,6 +558,20 @@ export function CopyDetailsModal({
                   <NumberInput label={`Price paid (${currency})`} value={paid} onChange={setPaid} min={0} decimalScale={2} allowNegative={false} placeholder="Not known" inputMode="decimal" />
                   <TextInput label="Bought on" type="date" value={bought} onChange={(e) => setBought(e.currentTarget.value)} />
                 </SimpleGrid>
+                {/* What was paid, from the order email (D155): filled in to check, saved with the copy. */}
+                {ordersOn && copy && (
+                  <FindInEmail
+                    key={own.id}
+                    copyId={own.id}
+                    title={copy.title}
+                    initial={found ?? null}
+                    onUse={(f, asked) => {
+                      if (f.paidCents !== null) setPaid(f.paidCents / 100);
+                      // Filled in without a tap (a price found before): the day only where there's none yet.
+                      if (f.date && (asked || !bought)) setBought(f.date);
+                    }}
+                  />
+                )}
                 {/* An estimate is for a copy whose price was forgotten, not one just bought. */}
                 {paid === '' && !added && (
                   <Stack gap={2}>

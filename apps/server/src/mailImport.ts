@@ -26,7 +26,25 @@ export interface FoundMail {
   date: string;
   subject: string;
   from: string;
+  /** The sender's name ("eBay"), when the email gives one. */
+  fromName?: string;
   source: Buffer;
+}
+
+/**
+ * A search of the mailbox for order emails (D155, D156): Gmail's own search words when the mailbox is Gmail's
+ * (X-GM-RAW, which says its own time and size), else the emails since a day with words in their text or from senders;
+ * the newest `limit`, none larger than `maxBytes`.
+ */
+export interface MailSearch {
+  since: Date;
+  gmail?: string;
+  text?: string;
+  from?: string[];
+  limit: number;
+  maxBytes: number;
+  /** Only the emails whose subject this takes: the newest emails' subjects are read first (ten times `limit` of them), and only those fetched whole. */
+  subject?: (subject: string) => boolean;
 }
 
 /** The mailbox to read, and how to sign in to it. */
@@ -43,6 +61,10 @@ export interface MailAccount {
 export interface Mailbox {
   /** The emails since a date from a sender with words in their subject (the newest `limit`), oldest first, and the folder looked in. */
   find(query: { since: Date; from: string; subject: string; limit?: number }): Promise<{ folder: string; mails: FoundMail[] }>;
+  /** Whether it's Gmail's, whose own search words work (MailSearch.gmail). */
+  gmail: boolean;
+  /** The emails a search finds (the newest `limit`), oldest first. */
+  search(query: MailSearch): Promise<{ folder: string; mails: FoundMail[] }>;
   close(): Promise<void>;
 }
 
@@ -73,36 +95,61 @@ export const imapMailbox: MailboxOpener = async (account) => {
   // A dropped connection is reported by the command that was waiting, not as an error of its own.
   client.on('error', () => undefined);
   await client.connect();
+  const folderOf = async () => {
+    if (account.folder) return account.folder;
+    const boxes = await client.list();
+    return boxes.find((b) => b.specialUse === '\\All')?.path ?? 'INBOX';
+  };
+  /** The emails a search found (the newest `limit`): their size first, so a huge message is never downloaded. */
+  const fetchSmall = async (folder: string, found: number[] | false | undefined, limit: number, maxBytes: number, subject?: (s: string) => boolean): Promise<FoundMail[]> => {
+    const uids = (found || []).slice(subject ? -limit * 10 : -limit);
+    if (uids.length === 0) return [];
+    let small: number[] = [];
+    // A subject to match: the envelopes first (a few hundred bytes each), the newest `limit` that match fetched whole.
+    for await (const m of client.fetch(uids, { uid: true, size: true, ...(subject ? { envelope: true } : {}) }, { uid: true })) {
+      if ((m.size ?? 0) <= maxBytes && (!subject || subject(m.envelope?.subject ?? ''))) small.push(m.uid);
+    }
+    small = small.sort((a, b) => a - b).slice(-limit);
+    const mails: FoundMail[] = [];
+    if (small.length === 0) return mails;
+    for await (const m of client.fetch(small, { uid: true, envelope: true, internalDate: true, source: true }, { uid: true })) {
+      if (!m.source) continue;
+      const date = new Date(m.internalDate ?? m.envelope?.date ?? Date.now());
+      mails.push({
+        id: m.envelope?.messageId || `${folder}:${m.uid}`,
+        date: (Number.isNaN(date.getTime()) ? new Date() : date).toISOString(),
+        subject: m.envelope?.subject ?? '',
+        from: m.envelope?.from?.[0]?.address ?? '',
+        fromName: m.envelope?.from?.[0]?.name || undefined,
+        source: m.source,
+      });
+    }
+    return mails.sort((a, b) => a.date.localeCompare(b.date));
+  };
+  const gmail = Boolean(client.capabilities?.has('X-GM-EXT-1'));
   return {
+    gmail,
     async find({ since, from, subject, limit = MAX_MAILS }) {
-      let folder = account.folder;
-      if (!folder) {
-        const boxes = await client.list();
-        folder = boxes.find((b) => b.specialUse === '\\All')?.path ?? 'INBOX';
-      }
+      const folder = await folderOf();
       const lock = await client.getMailboxLock(folder, { readOnly: true });
       try {
         // Only the conditions set: an empty sender or subject would search for nothing, or refuse.
         const found = await client.search({ since, ...(from ? { from } : {}), ...(subject ? { subject } : {}) }, { uid: true });
-        const uids = (found || []).slice(-limit);
-        if (uids.length === 0) return { folder, mails: [] };
-        // Their size first, so a huge message is never downloaded.
-        const small: number[] = [];
-        for await (const m of client.fetch(uids, { uid: true, size: true }, { uid: true })) if ((m.size ?? 0) <= MAX_MAIL_BYTES) small.push(m.uid);
-        const mails: FoundMail[] = [];
-        if (small.length === 0) return { folder, mails };
-        for await (const m of client.fetch(small, { uid: true, envelope: true, internalDate: true, source: true }, { uid: true })) {
-          if (!m.source) continue;
-          const date = new Date(m.internalDate ?? m.envelope?.date ?? Date.now());
-          mails.push({
-            id: m.envelope?.messageId || `${folder}:${m.uid}`,
-            date: (Number.isNaN(date.getTime()) ? new Date() : date).toISOString(),
-            subject: m.envelope?.subject ?? '',
-            from: m.envelope?.from?.[0]?.address ?? '',
-            source: m.source,
-          });
-        }
-        return { folder, mails: mails.sort((a, b) => a.date.localeCompare(b.date)) };
+        return { folder, mails: await fetchSmall(folder, found, limit, MAX_MAIL_BYTES) };
+      } finally {
+        lock.release();
+      }
+    },
+    async search({ since, gmail: words, text, from, limit, maxBytes, subject }) {
+      const folder = await folderOf();
+      const lock = await client.getMailboxLock(folder, { readOnly: true });
+      try {
+        const senders = (from ?? []).map((f) => f.trim()).filter(Boolean);
+        const query =
+          words && gmail
+            ? { gmraw: words }
+            : { since, smaller: maxBytes, ...(text ? { text } : {}), ...(senders.length === 1 ? { from: senders[0] } : senders.length > 1 ? { or: senders.map((f) => ({ from: f })) } : {}) };
+        return { folder, mails: await fetchSmall(folder, await client.search(query, { uid: true }), limit, maxBytes, subject) };
       } finally {
         lock.release();
       }
@@ -208,19 +255,27 @@ export class MailImportService {
    * (the same app password reads mail), and the server to the notification provider's IMAP server (or, for another
    * provider, its SMTP server's name with "imap." for "smtp."). Null, with why, until there's enough to sign in.
    */
-  account(): { account: MailAccount | null; problem: string | null } {
+  account(purpose: 'exports' | 'orders' = 'exports'): { account: MailAccount | null; problem: string | null } {
     const s = this.settings;
     const providerId = s.get('notifications.emailProvider');
     const provider = MAIL_PROVIDERS.find((m) => m.id === providerId);
     const smtpHost = s.get('notifications.smtpHost').trim();
-    const host = s.get('mail.imapHost').trim() || provider?.imapHost || (smtpHost.startsWith('smtp.') ? `imap.${smtpHost.slice(5)}` : '');
-    const user = s.get('mail.username').trim() || s.get('notifications.smtpUser').trim();
-    const pass = s.get('mail.password') || s.get('notifications.smtpPassword');
+    const providerHost = provider?.imapHost || (smtpHost.startsWith('smtp.') ? `imap.${smtpHost.slice(5)}` : '');
+    // Order emails come to your own account (Settings > Email > Your email account): "a different mailbox for exports" is for
+    // PriceCharting's emails, and is used for orders only when your account isn't filled in.
+    const own = purpose === 'orders' && s.get('notifications.smtpUser').trim() !== '' && s.get('notifications.smtpPassword') !== '';
+    const host = own ? providerHost || s.get('mail.imapHost').trim() : s.get('mail.imapHost').trim() || providerHost;
+    const user = own ? s.get('notifications.smtpUser').trim() : s.get('mail.username').trim() || s.get('notifications.smtpUser').trim();
+    const pass = own ? s.get('notifications.smtpPassword') : s.get('mail.password') || s.get('notifications.smtpPassword');
     if (!user || !pass) return { account: null, problem: 'Fill in your email account on Settings > Email: your address and an app password.' };
     if (!host) return { account: null, problem: 'Fill in the incoming mail server (IMAP), such as imap.gmail.com.' };
-    if (!s.get('mail.imapHost').trim() && (providerId === 'outlook' || providerId === 'microsoft365')) {
+    if ((own || !s.get('mail.imapHost').trim()) && (providerId === 'outlook' || providerId === 'microsoft365')) {
+      if (purpose === 'orders') return { account: null, problem: "Microsoft doesn't let programs read Outlook.com or Microsoft 365 mail with a password, so Squirrelcade can't read your order emails there." };
       return { account: null, problem: "Microsoft doesn't let programs read Outlook.com or Microsoft 365 mail with a password. Use another mailbox that gets PriceCharting's email (a forwarding rule to Gmail works)." };
     }
+    // Your own account is read where all its mail is (All Mail, else the inbox), on the usual port: the folder and port
+    // settings are the export mailbox's (a folder only PriceCharting's emails go to, say).
+    if (own) return { account: { host, port: 993, user, pass, folder: '' }, problem: null };
     return { account: { host, port: s.get('mail.imapPort'), user, pass, folder: s.get('mail.folder').trim() }, problem: null };
   }
 
@@ -429,7 +484,7 @@ export class MailImportService {
 }
 
 /** A sign-in or connection failure, said so the owner knows what to fix. */
-function signInProblem(err: unknown): string {
+export function signInProblem(err: unknown): string {
   const e = err as { authenticationFailed?: boolean; code?: string; responseText?: string; message?: string };
   if (e?.authenticationFailed) return `The mailbox refused the sign-in${e.responseText ? ` (${e.responseText})` : ''}: check the username, and use an app password (your account's own password is usually refused).`;
   if (e?.code === 'ENOTFOUND') return "The incoming mail server wasn't found: check its name (imap.gmail.com for Gmail).";

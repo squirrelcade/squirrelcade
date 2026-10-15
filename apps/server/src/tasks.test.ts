@@ -19,7 +19,7 @@ afterEach(async () => {
 describe('tasks', () => {
   it('lists the built-in tasks with schedules from settings', async () => {
     const tasks = (await g.app.inject({ url: '/api/v1/tasks', cookies })).json() as { name: string; intervalMs: number | null }[];
-    expect(tasks.map((t) => t.name).sort()).toEqual(['backup', 'catalog-build', 'export-reminder', 'game-of-the-day', 'health-check', 'housekeeping', 'igdb-sync', 'import-folder', 'loan-reminders', 'mail-import', 'pc-discover', 'pc-prices', 'pc-read', 'psn-sync', 'ra-sync', 'release-reminders', 'romm-sync', 'steam-sync', 'xbox-sync']);
+    expect(tasks.map((t) => t.name).sort()).toEqual(['backup', 'catalog-build', 'export-reminder', 'game-of-the-day', 'health-check', 'housekeeping', 'igdb-sync', 'import-folder', 'loan-reminders', 'mail-import', 'orders-watch', 'pc-discover', 'pc-prices', 'pc-read', 'psn-sync', 'ra-sync', 'release-reminders', 'romm-sync', 'steam-sync', 'xbox-sync']);
     // Release reminders are checked only once they're turned on.
     expect(tasks.find((t) => t.name === 'release-reminders')!.intervalMs).toBeNull();
     // The PC wishlist's search runs only once IGDB's keys are set.
@@ -36,6 +36,11 @@ describe('tasks', () => {
     // Email and export reminders wait for their switch and setting.
     expect(tasks.find((t) => t.name === 'mail-import')!.intervalMs).toBeNull();
     expect(tasks.find((t) => t.name === 'export-reminder')!.intervalMs).toBeNull();
+    // On the way too (off to start with); on, it looks once a day unless set otherwise.
+    expect(tasks.find((t) => t.name === 'orders-watch')!.intervalMs).toBeNull();
+    g.settings.update({ 'orders.watch': true });
+    expect(((await g.app.inject({ url: '/api/v1/tasks', cookies })).json() as { name: string; intervalMs: number | null }[]).find((t) => t.name === 'orders-watch')!.intervalMs).toBe(24 * 3_600_000);
+    g.settings.update({ 'orders.watch': false });
     g.settings.update({ 'collection.dropFolderEnabled': false, 'catalogs.refreshDays': 0 });
     const after = (await g.app.inject({ url: '/api/v1/tasks', cookies })).json() as { name: string; intervalMs: number | null }[];
     expect(after.find((t) => t.name === 'import-folder')!.intervalMs).toBeNull();

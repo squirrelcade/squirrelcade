@@ -44,7 +44,8 @@ import { GgDealsService, ggAsPcPrice, type GgPrice } from './ggdeals.js';
 import { registerRetroAchievementsRoutes, RetroAchievementsService } from './retroachievements.js';
 import { AchievementsService, registerAchievementRoutes, xboxHttpsGet, type PsnApi, type XboxGet } from './achievements.js';
 import { psnApi } from './psn.js';
-import { MailImportService, registerMailRoutes, type ExportDownloader, type MailboxOpener } from './mailImport.js';
+import { imapMailbox, MailImportService, registerMailRoutes, type ExportDownloader, type MailboxOpener } from './mailImport.js';
+import { OrderService, registerOrderRoutes } from './orders.js';
 import { registerMcpRoute } from './mcp.js';
 import { FriendsService, registerFriendRoutes } from './friends.js';
 import { GameOfTheDayService, registerGotdRoutes } from './gotd.js';
@@ -153,6 +154,7 @@ export interface SquirrelcadeApp {
   shares: ShareService;
   pcPrices: PcPriceService;
   mail: MailImportService;
+  orders: OrderService;
   gotd: GameOfTheDayService;
   ra: RetroAchievementsService;
   achievements: AchievementsService;
@@ -453,6 +455,10 @@ export async function buildApp(options: BuildOptions = {}): Promise<Squirrelcade
   registerMailRoutes(app, mail, tasks);
   // Settings > Email's one test: sending from your account, and reading its mailbox.
   app.post('/api/v1/email/test', async () => ({ send: await notifications.testEmail(), read: await mail.test() }));
+  // Prices from your order emails and On the way (D155, D156): the same mailbox, read-only, with the AI model if set up.
+  const orders = new OrderService({ db, settings, mail, collection, lookup, helpers, vision, log, notifications, open: options.mailbox ?? imapMailbox });
+  registerOrderRoutes(app, orders, tasks);
+  lookup.setComing(() => orders.index());
   const deals = new DealsService(settings, mail, catalogs, wishlist, igdb, notifications);
   mail.onNewDeals(async (added) => {
     await deals.alert(added);
@@ -602,6 +608,15 @@ export async function buildApp(options: BuildOptions = {}): Promise<Squirrelcade
     firstRunDelayMs: 60_000,
     run: async () => mail.check(),
     quiet: (m) => /^No (new )?export emails/.test(m ?? ''),
+  });
+  tasks.register({
+    name: 'orders-watch',
+    title: 'Look for games on the way',
+    description: 'Reads your purchase emails (eBay, Mercari and the senders you list) for games bought and not here yet (Settings > Email > On the way).',
+    interval: () => (orders.watchOn() ? settings.get('orders.watchHours') * 3_600_000 : null),
+    firstRunDelayMs: 2 * 60_000,
+    run: async () => orders.watch(),
+    quiet: (m) => /^Nothing new on the way/.test(m ?? ''),
   });
   tasks.register({
     name: 'game-of-the-day',
@@ -767,6 +782,9 @@ export async function buildApp(options: BuildOptions = {}): Promise<Squirrelcade
     if (keys.some((k) => k.startsWith('pc.'))) pc.invalidate();
     if (keys.some((k) => k.startsWith('pc.') || k.startsWith('wishlist.'))) pcWishlist.invalidate();
     if (keys.includes('pc.discoverDays')) tasks.rescheduleAll();
+    // On the way turned on, or looking more or less often: its task follows, and its first look comes soon.
+    if (keys.includes('orders.watch') || keys.includes('orders.watchHours')) tasks.rescheduleAll();
+    if (keys.includes('orders.watch') && settings.get('orders.watch')) tasks.soon('orders-watch');
     if (keys.includes('notifications.releaseReminders') || keys.includes('notifications.loanReminders') || keys.includes('gotd.enabled')) tasks.rescheduleAll();
     // A new IsThereAnyDeal key or store country reads the prices soon; a new interval takes effect now.
     if (keys.includes('pc.pricesRefreshHours') || keys.some((k) => k.startsWith('sources.itad'))) tasks.rescheduleAll();
@@ -892,6 +910,7 @@ export async function buildApp(options: BuildOptions = {}): Promise<Squirrelcade
     shares,
     pcPrices,
     mail,
+    orders,
     gotd,
     ra,
     achievements,

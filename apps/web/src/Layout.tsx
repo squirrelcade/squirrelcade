@@ -42,6 +42,7 @@ const activity = (f: MenuFriend) => f.file?.receivedAt ?? f.createdAt;
 const MAIN_PAGES: Record<string, string> = {
   '/collection': 'Stash',
   '/collection/add': 'Add a game',
+  '/coming': 'On the way',
   '/collection/copies': 'Copies',
   '/collection/upgrades': 'Upgrades',
   '/collection/improve': 'Improve your collection',
@@ -114,7 +115,11 @@ export function Layout({ children }: { children: ReactNode }) {
   const friends = useQuery({ queryKey: ['friends'], queryFn: () => api<{ friends: MenuFriend[] }>('/friends'), enabled: !!session?.authenticated && owner });
   const friendList = [...(friends.data?.friends ?? [])].sort((a, b) => activity(b).localeCompare(activity(a)) || a.name.localeCompare(b.name));
   // The menu's sections (0.58.0, the owner's layout): For sale and Sales are games going out, so they're under Acorns.
-  const inAcorns = path.startsWith('/wishlist') || path === '/acorns' || path === '/collection/add' || path === '/collection/sale' || path === '/collection/sales';
+  const inAcorns = path.startsWith('/wishlist') || path === '/acorns' || path === '/collection/add' || path === '/coming' || path === '/collection/sale' || path === '/collection/sales';
+  // On the way (D156): games bought that haven't arrived, while Settings > Email watches for them.
+  const comingOn = useSetting('orders.watch', false) === true && owner;
+  const coming = useQuery({ queryKey: ['coming'], queryFn: () => api<{ items: unknown[] }>('/coming'), enabled: !!session?.authenticated && comingOn, staleTime: 60_000 });
+  const comingCount = coming.data?.items.length ?? 0;
   // Statistics and Report are the Almanac's (2026-10-06), with the consoles and sets; their addresses stay.
   const inAlmanac = path.startsWith('/platforms') || path.startsWith('/sets') || path === '/collection/statistics' || path === '/collection/report';
   const inCollection = (path.startsWith('/collection') && !inAcorns && !inAlmanac) || path === '/updates';
@@ -229,6 +234,7 @@ export function Layout({ children }: { children: ReactNode }) {
               ranking: the rules that give acorns (D121; the owner's layout in 0.58.0). */}
           <NavLink label="Acorns" leftSection={<Acorn size={18} />} opened={inAcorns} onClick={() => navigate('/wishlist')} childrenOffset={28}>
             {owner && link('/collection/add', 'Add a game')}
+            {comingOn && link('/coming', 'On the way', undefined, comingCount > 0 ? <Badge size="xs" variant="light" color="forest">{comingCount}</Badge> : undefined)}
             {link('/wishlist', 'Acorns wishlist')}
             {link('/wishlist/coming-soon', 'Coming soon')}
             {link('/wishlist/past', 'Past releases')}
