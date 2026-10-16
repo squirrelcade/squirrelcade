@@ -54,7 +54,7 @@ After that, the menu on the left has everything (on a phone, the bar at the bott
 
 While a new install still has essential setup steps left, they come first. **Settings > Interface > Start page** chooses the page Squirrelcade opens on.
 
-Click any game's title (or its cover) to open everything about it in one panel, the game drawer. The search box at the top (press **/**) finds any game on your consoles, and with the PC library on, your PC games too (a remaster that only came out as a download, say), which open in the PC library. Numbers can be typed either way: "Mafia 2" finds "Mafia II".
+Click any game's title (or its cover) to open everything about it in one panel, the game drawer. The search box at the top (press **/**) finds any game on your consoles, and with the PC library on, your PC games too (a remaster that only came out as a download, say), which open in the PC library. Numbers can be typed either way: "Mafia 2" finds "Mafia II". When the games found are on several consoles, chips above them name each console with how many: tap one to see that console's only (Store Mode's search has them too).
 
 ## Keeping it up to date
 

@@ -1003,6 +1003,27 @@ export async function uiTest(target, account, check) {
       dupShown && (extra === 0 || dupLink === '/collection/copies?view=repeats') && extra === sums.totals.copies - sums.totals.games,
       `${dupText}; shown: ${dupShown}; link: ${dupLink}; copies ${sums.totals.copies}, games ${sums.totals.games}`,
     );
+    // The header's search filters by console (the owner, 2026-10-16): a chip for each console among the matches; one
+    // tapped shows that console's only, and the list stays open.
+    for (const platformKey of ['playstation-3', 'playstation-4', 'nintendo-switch']) {
+      await page.request.post(`${base}/api/v1/collection/copies`, { data: { platformKey, title: 'Chipfilter Quest', completeness: 'complete' } });
+    }
+    await page.getByLabel('Find a game', { exact: true }).fill('chipfilter');
+    const consoleChips = page.getByRole('group', { name: 'Filter by console' });
+    await consoleChips.waitFor({ timeout: 10000 });
+    const chipsBefore = await page.getByRole('option', { name: /Chipfilter Quest/ }).count();
+    await consoleChips.getByText(/^PlayStation 4 1$/).click();
+    await page.waitForTimeout(400);
+    const chipOptions = await page.getByRole('option', { name: /Chipfilter Quest/ }).allInnerTexts();
+    found = await pageProblems();
+    check(
+      "ui: the header's search filters its matches by console",
+      found.length === 0 && chipsBefore === 3 && chipOptions.length === 1 && /PlayStation 4/.test(chipOptions[0] ?? ''),
+      found.join(' | ') || `before ${chipsBefore}, after ${JSON.stringify(chipOptions)}`,
+    );
+    await page.getByLabel('Find a game', { exact: true }).fill('');
+    await page.keyboard.press('Escape');
+
     // A heading sorts the Stash (D144): Added once is the newest first, twice the oldest, as the server orders them.
     const firstOf = async (query) => (await (await page.request.get(`${base}/api/v1/collection/items?${query}&pageSize=1`)).json()).items[0]?.title ?? '';
     const addedHeading = page.getByRole('columnheader', { name: 'Added' });

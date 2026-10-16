@@ -6,6 +6,7 @@ What changed in each version of Squirrelcade (called Gamefolio before 0.35.0). T
 
 ### Added
 
+- **Searches filter by console** (the owner's ask): when a search's games are on several consoles, chips above them name each console with how many ("PlayStation 4 2"); tap one to see that console's only, and again (or All) to see them all. In the header's search, a console tapped asks for its best matches, beyond the first page; Store Mode's search filters its answers in place, with or without a connection.
 - **Stash > Recently added** (D161, the owner's ask): the copies added lately (the last 7, 30 or 90 days), newest first, each finished right there: its condition, what you paid, the rip and where it's kept, in the order you'd do them, each saved as you go. The rip is **Read fully** in one tap, with an arrow for **Read with errors** or **Couldn't be read**. **Edit this copy** opens its window for the rest.
 
 ### Changed

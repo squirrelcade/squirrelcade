@@ -6,6 +6,7 @@ import { useEffect, useRef, useState } from 'react';
 import { Link, useNavigate } from 'react-router';
 import { StashMark } from './Acorn';
 import { ANSWERS, type Answer } from './choices';
+import { ConsoleChips, isConsoleChip } from './ConsoleChips';
 import { api } from './api';
 import { recentGames, useOpenGame, type RecentGame } from './GameDrawer';
 import { useFeature, useSetting } from './hooks';
@@ -29,6 +30,16 @@ interface PcFound {
 /** How many PC library games the search lists, under the consoles' games. */
 const PC_RESULTS = 4;
 
+/** How many matches the console chips count from: as many as the server gives. */
+const SPREAD = 30;
+
+/** The console chips at the top of the search's list, when its matches span consoles. */
+function ConsoleChipsHeader({ spread, value, onChange }: { spread: Found[]; value: string | null; onChange: (key: string | null) => void }) {
+  const chips = <ConsoleChips results={spread} value={value} onChange={onChange} keepFocus />;
+  if (new Set(spread.map((r) => r.platformKey)).size < 2 && value === null) return null;
+  return <Combobox.Header>{chips}</Combobox.Header>;
+}
+
 /**
  * The header's search: type a title (or press "/" anywhere) and pick a game to open it in the game drawer,
  * with Store Mode's answer beside each one. With the PC library on, its games are listed under them (D146): a game
@@ -49,10 +60,19 @@ export function HeaderSearch() {
     ['/', () => input.current?.focus()],
     ['mod+K', () => input.current?.focus()],
   ]);
+  // The top matches (as many as the server gives, 30) for the console chips; the list shows the first `limit` of them.
   const found = useQuery({
-    queryKey: ['lookup', 'title', query, limit],
-    queryFn: () => api<Found[]>(`/lookup?q=${encodeURIComponent(query)}&limit=${limit}`),
+    queryKey: ['lookup', 'title', query, SPREAD],
+    queryFn: () => api<Found[]>(`/lookup?q=${encodeURIComponent(query)}&limit=${SPREAD}`),
     enabled: query.length >= 2,
+  });
+  // A console chosen: that console's best matches, asked of the server (beyond the top 30 if need be).
+  const [consoleKey, setConsoleKey] = useState<string | null>(null);
+  useEffect(() => setConsoleKey(null), [query]);
+  const onConsole = useQuery({
+    queryKey: ['lookup', 'title', query, limit, consoleKey],
+    queryFn: () => api<Found[]>(`/lookup?q=${encodeURIComponent(query)}&platform=${encodeURIComponent(consoleKey!)}&limit=${limit}`),
+    enabled: query.length >= 2 && consoleKey !== null,
   });
   // The PC library's games by the same name (a viewer who isn't shown the PC library gets none).
   const pcFound = useQuery({
@@ -63,13 +83,21 @@ export function HeaderSearch() {
   });
   // Without a search typed, the games opened lately.
   const [recent, setRecent] = useState<RecentGame[]>([]);
-  const results = query.length >= 2 ? (found.data ?? []) : recent.map((r) => ({ ...r, answer: null }));
-  const pcResults = query.length >= 2 ? (pcFound.data?.items ?? []) : [];
-  const fetching = found.isFetching || pcFound.isFetching;
+  const spread = query.length >= 2 ? (found.data ?? []) : [];
+  // On a console chosen, its own matches (the top 30's on it while the server answers); else the first `limit`.
+  const results =
+    query.length < 2
+      ? recent.map((r) => ({ ...r, answer: null }))
+      : consoleKey
+        ? (onConsole.data ?? spread.filter((r) => r.platformKey === consoleKey))
+        : spread.slice(0, limit);
+  // PC games aren't on a console: they leave the list while one is chosen.
+  const pcResults = query.length >= 2 && !consoleKey ? (pcFound.data?.items ?? []) : [];
+  const fetching = found.isFetching || pcFound.isFetching || onConsole.isFetching;
   // Enter opens the best match without an arrow key first.
   useEffect(() => {
-    if (found.data?.length || pcFound.data?.items.length) combobox.selectFirstOption();
-  }, [found.data, pcFound.data]);
+    if (found.data?.length || pcFound.data?.items.length || onConsole.data?.length) combobox.selectFirstOption();
+  }, [found.data, pcFound.data, onConsole.data]);
 
   const pick = (value: string) => {
     if (value.startsWith('pc:')) {
@@ -116,7 +144,8 @@ export function HeaderSearch() {
               setRecent(recentGames());
               combobox.openDropdown();
             }}
-            onBlur={() => combobox.closeDropdown()}
+            // A console chip tapped keeps the list open (the focus comes back to the box when it's chosen).
+            onBlur={(e) => !isConsoleChip(e.relatedTarget) && combobox.closeDropdown()}
             onKeyDown={(e) => {
               if (e.key === 'Escape') {
                 setText('');
@@ -132,6 +161,17 @@ export function HeaderSearch() {
                 Opened lately
               </Text>
             </Combobox.Header>
+          )}
+          {/* The matches' consoles, to see one console's only (tapped without closing the list). */}
+          {query.length >= 2 && (spread.length > 0 || consoleKey) && (
+            <ConsoleChipsHeader
+              spread={spread}
+              value={consoleKey}
+              onChange={(key) => {
+                setConsoleKey(key);
+                input.current?.focus();
+              }}
+            />
           )}
           <Combobox.Options>
             {results.length === 0 && pcResults.length === 0 ? (

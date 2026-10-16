@@ -36,6 +36,7 @@ import { type Answer } from '../choices';
 import { Verdict } from '../Verdict';
 import { PreferencePicker } from '../Preference';
 import { Link, useSearchParams } from 'react-router';
+import { ConsoleChips } from '../ConsoleChips';
 import { Acorns, Reviews, type ReviewsOf } from '../Acorn';
 
 
@@ -409,6 +410,10 @@ export function StorePage() {
   });
 
   const results = barcode ? barcodeSearch.data?.results : titleSearch.data?.results;
+  // One console's answers only, when they span several (the owner, 2026-10-16); a new search shows them all again.
+  const [consoleKey, setConsoleKey] = useState<string | null>(null);
+  useEffect(() => setConsoleKey(null), [query]);
+  const shown = consoleKey ? results?.filter((r) => r.platformKey === consoleKey) : results;
   const loading = barcode ? barcodeSearch.isFetching : titleSearch.isFetching;
   const failed = barcode ? barcodeSearch.error : titleSearch.error;
   const offlineAt = (barcode ? barcodeSearch.data?.offlineAt : titleSearch.data?.offlineAt) ?? null;
@@ -601,7 +606,8 @@ export function StorePage() {
           No catalog or collection game matches “{query}”. If it's a real game for a console you collect, it may be missing from that console's catalog.
         </Alert>
       )}
-      {results?.map((r) => {
+      {results && results.length > 0 && <ConsoleChips results={results} value={consoleKey} onChange={setConsoleKey} />}
+      {shown?.map((r) => {
         const reason = reasonOf(r);
         return (
         <Card key={`${r.platformKey}|${r.title}`} withBorder padding="sm">
