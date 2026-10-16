@@ -55,6 +55,7 @@ const MAIN_PAGES: Record<string, string> = {
   '/collection/copies': 'Copies',
   '/collection/upgrades': 'Upgrades',
   '/collection/improve': 'Improve your collection',
+  '/collection/recent': 'Recently added',
   '/collection/sales': 'Sales',
   '/collection/backlog': 'Backlog',
   '/collection/loans': 'Loans',
@@ -236,6 +237,8 @@ export function Layout({ children }: { children: ReactNode }) {
           {/* Each section says what it's for under its name, the rule the menu is sorted by (the owner, 2026-10-16). */}
           <NavLink label="Stash" description={SECTION_RULE.stash} leftSection={<StashMark size={16} />} opened={inCollection} onClick={() => navigate('/collection')} childrenOffset={28}>
             {link('/collection', 'Stash')}
+            {/* The copies just in, finished in one place: condition, price paid, the rip, where it's kept (D161). */}
+            {owner && link('/collection/recent', 'Recently added')}
             {link('/collection/copies', 'Copies')}
             {link('/collection/upgrades', 'Upgrades')}
             {owner && link('/collection/improve', 'Improve')}

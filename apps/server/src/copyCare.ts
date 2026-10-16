@@ -8,12 +8,12 @@ import {
   type CostEstimate,
   type TestResult,
 } from '@squirrelcade/core';
-import { and, eq, isNotNull, isNull } from 'drizzle-orm';
+import { and, asc, desc, eq, gte, isNotNull, isNull } from 'drizzle-orm';
 import type { FastifyInstance } from 'fastify';
 import type { CatalogService } from './catalogs.js';
 import type { CopyDetailsService } from './copyDetails.js';
 import type { Db } from './db/index.js';
-import { catalogEntries, copies, copyPhotos, platforms } from './db/schema.js';
+import { catalogEntries, copies, copyPhotos, copyTests, platforms } from './db/schema.js';
 import { catalogTarget } from './games.js';
 import type { IgdbService } from './igdb.js';
 import type { SettingsService } from './settings.js';
@@ -46,6 +46,35 @@ export interface ImproveItem {
   /** The owner's estimate of what it cost (null unless they set one). */
   estimatedCents: number | null;
 }
+
+/** A copy on Stash > Recently added (D161): what's finished there, and what its full window needs. */
+export interface RecentItem {
+  id: number;
+  key: string;
+  title: string;
+  platform: string | null;
+  platformKey: string | null;
+  completeness: string;
+  condition: string;
+  costCents: number | null;
+  estimatedCents: number | null;
+  datePurchased: string | null;
+  notes: string;
+  gradingCompany: string;
+  gradingCertId: string;
+  slots: string[];
+  addedAt: string;
+  location: string | null;
+  /** Its console is one whose games are ripped (Settings > Collection > Consoles whose games you rip). */
+  canRip: boolean;
+  /** Its latest rip, with its id to take it back. */
+  lastRip: { id: number; result: TestResult; testedAt: string } | null;
+}
+
+/** How far back Recently added looks by default, and at most (days), and how many copies it lists at most. */
+export const RECENT_DAYS = 30;
+const RECENT_MAX_DAYS = 365;
+const RECENT_MAX = 300;
 
 type CopyRow = typeof copies.$inferSelect;
 
@@ -103,6 +132,50 @@ export class CopyCareService {
     const bought = !['loose', 'box-only', 'manual-only', 'unknown'].includes(copy.completeness);
     const table = parseNewGamePrices(this.settings.get('collection.newGamePrices'));
     return estimateCost({ completeness: copy.completeness, platformKey, platformName }, bought ? this.released(copy.platformId!, platformKey, copy.title) : null, table, this.settings.get('collection.usedShare'));
+  }
+
+  /**
+   * Stash > Recently added (D161, the owner's way: a game logged, then ripped, then put away): the copies added to the
+   * collection in the last `days` days, newest first, with what's finished there (condition, price paid, the rip, where
+   * it's kept) and what its full window needs.
+   */
+  recent(days = RECENT_DAYS): { days: number; total: number; items: RecentItem[] } {
+    const span = Math.min(Math.max(Math.round(days) || RECENT_DAYS, 1), RECENT_MAX_DAYS);
+    const since = new Date(Date.now() - span * 86_400_000).toISOString();
+    const rows = this.db
+      .select({ copy: copies, platformKey: platforms.key, platform: platforms.name })
+      .from(copies)
+      .leftJoin(platforms, eq(platforms.id, copies.platformId))
+      .where(and(isNull(copies.goneAt), gte(copies.addedAt, since)))
+      .orderBy(desc(copies.addedAt), desc(copies.id))
+      .all();
+    const index = this.details.index();
+    const rips = new Map<string, RecentItem['lastRip']>();
+    for (const t of this.db.select().from(copyTests).where(eq(copyTests.kind, 'rip')).orderBy(asc(copyTests.testedAt), asc(copyTests.id)).all()) {
+      rips.set(t.copyKey, { id: t.id, result: t.result as TestResult, testedAt: t.testedAt });
+    }
+    const ripConsoles = this.settings.get('collection.ripConsoles');
+    const items = rows.slice(0, RECENT_MAX).map(({ copy: c, platformKey, platform }): RecentItem => ({
+      id: c.id,
+      key: c.key,
+      title: c.title,
+      platform,
+      platformKey,
+      completeness: c.completeness,
+      condition: COMPLETENESS_LABELS[c.completeness as Completeness] ?? c.completeness,
+      costCents: c.costCents,
+      estimatedCents: c.estimatedCents,
+      datePurchased: c.datePurchased,
+      notes: c.notes,
+      gradingCompany: c.gradingCompany,
+      gradingCertId: c.gradingCertId,
+      slots: this.slotsOf(c, platformKey),
+      addedAt: c.addedAt,
+      location: index.get(c.key)?.location ?? null,
+      canRip: platformKey !== null && ripConsoles.includes(platformKey),
+      lastRip: rips.get(c.key) ?? null,
+    }));
+    return { days: span, total: rows.length, items };
   }
 
   /** The owner's estimates of the copies whose price paid they don't know, together: for their view of what they spent. */
@@ -197,4 +270,9 @@ export function registerCopyCareRoutes(app: FastifyInstance, care: CopyCareServi
     return care.improve({ gap: q.gap || undefined, platform: q.platform || undefined, added: q.added || undefined, page: q.page ? Number(q.page) : undefined, pageSize: q.pageSize ? Number(q.pageSize) : undefined });
   });
   app.get('/api/v1/collection/estimates', async () => care.estimatedTotal());
+  /** ?days=30 (1 to 365): the copies added lately, newest first (Stash > Recently added). */
+  app.get('/api/v1/collection/recent', async (request) => {
+    const days = Number((request.query as { days?: string }).days);
+    return care.recent(Number.isFinite(days) && days > 0 ? days : RECENT_DAYS);
+  });
 }

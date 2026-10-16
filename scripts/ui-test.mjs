@@ -800,6 +800,29 @@ export async function uiTest(target, account, check) {
     found = await pageProblems();
     check('ui: a copy without its manual links to one on eBay', found.length === 0 && /ebay\.com\/sch\/.*manual%20only/.test(ebayHref ?? ''), found.join(' | ') || String(ebayHref));
 
+    // Stash > Recently added (D161): a copy just in, finished in place: what was paid, the rip in one tap, its place.
+    await page.goto(`${base}/collection/recent`);
+    const recentCard = page.locator('.mantine-Card-root', { hasText: 'Parts Test Game' }).first();
+    await recentCard.waitFor({ timeout: 10000 });
+    await recentCard.getByLabel('Price paid for Parts Test Game').fill('12.50');
+    await recentCard.getByLabel('Price paid for Parts Test Game').press('Enter');
+    await recentCard.getByText('Saved').waitFor({ timeout: 10000 });
+    await recentCard.getByRole('button', { name: 'Parts Test Game: Read fully' }).click();
+    await recentCard.getByText(/^Ripped .*read fully$/i).waitFor({ timeout: 10000 });
+    await recentCard.getByLabel('Storage location of Parts Test Game').fill('Shelf R');
+    await recentCard.getByLabel('Storage location of Parts Test Game').press('Enter');
+    let recentItem = null;
+    for (let i = 0; i < 20 && recentItem?.location !== 'Shelf R'; i++) {
+      await page.waitForTimeout(250);
+      recentItem = (await (await page.request.get(`${base}/api/v1/collection/recent`)).json()).items.find((x) => x.title === 'Parts Test Game');
+    }
+    found = await pageProblems();
+    check(
+      'ui: Recently added finishes a copy in place: price, the rip in one tap, its place',
+      found.length === 0 && recentItem?.costCents === 1250 && recentItem?.lastRip?.result === 'works' && recentItem?.location === 'Shelf R',
+      found.join(' | ') || JSON.stringify(recentItem),
+    );
+
     // Collection > Improve: what copies are missing, filled in one copy at a time.
     await page.goto(`${base}/collection/improve`);
     await page.getByRole('button', { name: 'Fill in' }).first().click();

@@ -1,4 +1,6 @@
+import { eq } from 'drizzle-orm';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { copies } from './db/schema.js';
 import { HEADER, multipartForm, seedCatalogs, setUp, testApp } from './test-helpers.js';
 
 let g: Awaited<ReturnType<typeof testApp>>;
@@ -146,5 +148,24 @@ describe('looking after copies', () => {
     // The counts are the list's; without the filter, every copy missing something.
     expect(here.counts.paid).toBe(1);
     expect((await improve()).total).toBe(5);
+  });
+
+  it('lists the copies added lately, newest first, with their rip and place, to finish there (D161)', async () => {
+    load();
+    // Uncharted came in long ago.
+    g.db.update(copies).set({ addedAt: new Date(Date.now() - 100 * 86_400_000).toISOString() }).where(eq(copies.id, idOf('Uncharted'))).run();
+    const added = (await g.app.inject({ method: 'POST', url: '/api/v1/collection/copies', cookies, payload: { platformKey: 'playstation-3', title: 'Okami HD', completeness: 'complete' } })).json().copy as { id: number; key: string };
+    await g.app.inject({ method: 'POST', url: '/api/v1/copy/tests', cookies, payload: { key: added.key, kind: 'rip', result: 'works' } });
+    await g.app.inject({ method: 'PUT', url: '/api/v1/copy', cookies, payload: { key: added.key, location: 'Bag 7' } });
+    const recent = (await g.app.inject({ url: '/api/v1/collection/recent', cookies })).json();
+    expect(recent.days).toBe(30);
+    // The newest first; the one added a hundred days ago isn't there.
+    expect(recent.items[0]).toMatchObject({ id: added.id, title: 'Okami HD', condition: 'Complete in box', location: 'Bag 7', canRip: true, lastRip: { result: 'works', id: expect.any(Number) } });
+    expect(recent.items.map((i: { title: string }) => i.title)).not.toContain('Uncharted');
+    expect(recent.total).toBe(4);
+    // A Switch game isn't one whose games are ripped (Settings > Collection), so it has no rip to give.
+    expect(recent.items.find((i: { title: string }) => i.title === 'Mario Kart 8 Deluxe')).toMatchObject({ canRip: false, lastRip: null });
+    // Further back, it is.
+    expect((await g.app.inject({ url: '/api/v1/collection/recent?days=365', cookies })).json().items.map((i: { title: string }) => i.title)).toContain('Uncharted');
   });
 });

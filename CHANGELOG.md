@@ -4,6 +4,10 @@ What changed in each version of Squirrelcade (called Gamefolio before 0.35.0). T
 
 ## 1.2.2 (coming)
 
+### Added
+
+- **Stash > Recently added** (D161, the owner's ask): the copies added lately (the last 7, 30 or 90 days), newest first, each finished right there: its condition, what you paid, the rip and where it's kept, in the order you'd do them, each saved as you go. The rip is **Read fully** in one tap, with an arrow for **Read with errors** or **Couldn't be read**. **Edit this copy** opens its window for the rest.
+
 ### Changed
 
 - **Stash updates is under Acorns** (the owner's ask), with the rest of what comes into your collection and goes out of it: PriceCharting's exports come in there, and your new copies go out to PriceCharting. The menu says the rule under each section's name: **Stash**, the games you have; **Acorns**, games coming in and going out.

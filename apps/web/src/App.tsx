@@ -52,6 +52,7 @@ const AddGamePage = page(() => import('./pages/AddGame').then((m) => m.AddGamePa
 const CopiesPage = page(() => import('./pages/Copies').then((m) => m.CopiesPage));
 const UpgradesPage = page(() => import('./pages/Upgrades').then((m) => m.UpgradesPage));
 const ImprovePage = page(() => import('./pages/Improve').then((m) => m.ImprovePage));
+const RecentPage = page(() => import('./pages/Recent').then((m) => m.RecentPage));
 const OnTheWayPage = page(() => import('./pages/OnTheWay').then((m) => m.OnTheWayPage));
 const SalesPage = page(() => import('./pages/Sales').then((m) => m.SalesPage));
 const BacklogPage = page(() => import('./pages/Backlog').then((m) => m.BacklogPage));
@@ -312,6 +313,7 @@ function Shell({ noConnection = false }: { noConnection?: boolean }) {
             <Route path="/collection/copies" element={<CopiesPage />} />
             <Route path="/collection/upgrades" element={<UpgradesPage />} />
             <Route path="/collection/improve" element={<OwnerOnly><ImprovePage /></OwnerOnly>} />
+            <Route path="/collection/recent" element={<OwnerOnly><RecentPage /></OwnerOnly>} />
             <Route path="/coming" element={<OwnerOnly><OnTheWayPage /></OwnerOnly>} />
             <Route path="/collection/sales" element={<OwnerOnly><SalesPage /></OwnerOnly>} />
             <Route path="/collection/backlog" element={<SharedWithViewers setting="security.viewersSeePlay"><BacklogPage /></SharedWithViewers>} />

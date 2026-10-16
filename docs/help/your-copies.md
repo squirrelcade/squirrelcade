@@ -21,6 +21,17 @@ Open a game you own, and click **Edit my copy** beside **Have it** at the top, o
 
 The drawer then shows each copy's details under it, and the Stash page shows them on its rows.
 
+## Recently added
+
+**Stash > Recently added** lists the copies you added lately (the last 30 days to start with; 7 or 90 at the top), newest first, to finish each one right there once it's in, without searching for it. Each copy has, in the order you'd do them:
+
+1. **Condition**, from the box in your hand.
+2. **Price paid**, from the receipt (saved when you leave the box or press Enter).
+3. **Ripped**, on the consoles whose games you rip (Settings › Collection): **Read fully** in one tap, since most rips do; the arrow beside it has **Read with errors** and **Couldn't be read**. Once recorded, it shows the result, with an × to take it back.
+4. **Storage location**, as you put it away: the places you've used come up as you type.
+
+Each change saves as you make it ("Saved" shows by the copy). **Edit this copy** opens its window for the rest: photos, notes, the day you bought it.
+
 **Completing a copy.** A copy that isn't complete in its box has a line under it in **Your copies**, such as "Find its manual: eBay · Mercari · FB Marketplace". Each link searches that marketplace for exactly what the copy lacks: the manual, the case (a disc's or a card's) or box (a cartridge's), or the game itself. The marketplaces are your shop links in the "Used marketplaces" group (Settings › Interface › Shop links). Once you have the missing part, change the copy's condition (to Complete in box, say) in its window. Its filters narrow the list to a place, a tag, the games lent out, the ones for sale or trade, or the digital copies claimed (or not yet).
 
 ## Standard photos
