@@ -4,6 +4,15 @@ What changed in each version of Squirrelcade (called Gamefolio before 0.35.0). T
 
 ## 1.2.1 (coming)
 
+### Added
+
+- **Find what a copy is missing** (D160, the owner's ask): a copy that isn't complete in its box has a line under it in **Your copies**, "Find its manual: eBay · Mercari · FB Marketplace", searching your used marketplaces (Settings › Interface › Shop links, the "Used marketplaces" group) for exactly what it lacks: the manual, a disc's or card's case, a cartridge's box, or the game itself.
+
+### Changed
+
+- **Edit this copy** (the owner's ask): each copy under a game's **Your copies** has a button like **Edit my copy** at the top, in place of the small "Change it, where it is, lending, photos..." link. It opens the same window.
+- **Save and close** (the owner's ask): a copy's window has one kind of save, which saves everything changed in it (the copy, where it's kept, tags, selling) and closes it, in place of "Save the copy" and "Save", which each saved half and left it open.
+
 ### Fixed
 
 - **Games counted as owned through an unrelated game** (D159): with cross-generation games on (the default), a game with another name in Japanese, Korean or Chinese (IGDB gives many) could count as owned through any game on the console before or after it that also had one: on one collection, 746 games, such as 173 Switch games "owned" as a Wii U copy of Zumba Fitness World Party. They showed as owned on their console's checklist and in Store Mode, and were left off the wishlist. Names in other scripts are now told apart by their own letters, so only the same name matches. Your completion percentages can go down after this update: the games that come back as missing were never yours.

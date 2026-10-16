@@ -9,7 +9,7 @@ Nothing is posted for you. Squirrelcade has no eBay or Mercari account of yours:
 Open a copy's **Ready to sell** from:
 
 - its game's drawer, under Your copies (**ready to sell**);
-- its window (**Change it, where it is, lending, photos...**), beside **Sold**;
+- its window (**Edit this copy**), beside **Sold**;
 - **Acorns > For sale**, beside a copy marked for sale;
 - **Acorns > Sales**, from the games worth selling next (below).
 

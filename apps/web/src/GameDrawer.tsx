@@ -1,5 +1,5 @@
 import { DrawerHistory, type HistoryText } from './pages/History';
-import { COMPLETENESS_LABELS, priceChartingUrl, shopLinksFor, shopUrl, type Completeness, type SettingsValues, type ShopLink, SHOPS_IN_LISTS } from '@squirrelcade/core';
+import { COMPLETENESS_LABELS, missingParts, partsSearch, priceChartingUrl, shopLinksFor, shopUrl, type Completeness, type SettingsValues, type ShopLink, SHOPS_IN_LISTS } from '@squirrelcade/core';
 import { Anchor, Badge, Box, Button, Divider, Drawer, Group, Loader, Menu, Modal, Spoiler, Stack, Table, Text, Textarea, Tooltip } from '@mantine/core';
 import { useMediaQuery } from '@mantine/hooks';
 import { IconCheck, IconChevronDown, IconClock, IconEyeOff, IconNotes, IconPencil, IconPlus, IconRestore, IconShoppingCart, IconX } from '@tabler/icons-react';
@@ -832,10 +832,36 @@ export function GameDrawer() {
                             )}
                           </Group>
                         )}
+                        {/* A copy that isn't complete: its missing parts looked for on your used marketplaces (D160). */}
+                        {canEdit &&
+                          (() => {
+                            const parts = missingParts(x.completeness, g.platformKey);
+                            const markets = shopLinksFor(shops ?? [], g.platformKey)
+                              .filter((s) => s.group === 'Used marketplaces')
+                              .slice(0, SHOPS_IN_LISTS);
+                            if (parts.length === 0 || markets.length === 0) return null;
+                            return (
+                              <Text size="xs" mt={2}>
+                                Find its {parts.join(' and ')}:{' '}
+                                {markets.map((s, i) => (
+                                  <span key={s.name}>
+                                    {i > 0 && ' · '}
+                                    <Anchor href={shopUrl(s.template, partsSearch(g.title, parts), g.platform)} target="_blank" rel="noreferrer" size="xs">
+                                      {s.name}
+                                    </Anchor>
+                                  </span>
+                                ))}
+                              </Text>
+                            );
+                          })()}
+                        {/* The copy's own window (what you paid, where it's kept, lending, photos...), as the button
+                            beside Have it looks (the owner, 2026-10-16). */}
                         {canEdit && (
-                          <Anchor component="button" type="button" size="xs" onClick={() => setEditing(editRef(x))}>
-                            Change it, where it is, lending, photos...
-                          </Anchor>
+                          <Group mt={4}>
+                            <button type="button" className="sc-tag" data-tone="edit" onClick={() => setEditing(editRef(x))}>
+                              <IconPencil size={13} aria-hidden /> Edit this copy
+                            </button>
+                          </Group>
                         )}
                         {c && x.countsAs !== 'exact' && (
                           <Text size="xs" c="dimmed">

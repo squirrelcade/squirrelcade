@@ -715,7 +715,7 @@ export async function uiTest(target, account, check) {
     // A copy's details from the drawer: where it's kept, and lent to someone; the Loans page lists it.
     await page.goto(`${base}/platforms/playstation-3?game=${encodeURIComponent('playstation-3|Uncharted')}`);
     await drawer.getByText('You own it').waitFor({ timeout: 10000 });
-    await drawer.getByRole('button', { name: 'Change it, where it is, lending, photos...' }).first().click();
+    await drawer.getByRole('button', { name: 'Edit this copy' }).first().click();
     const copyModal = page.locator('.mantine-Modal-content');
     const place = copyModal.getByLabel('Storage location');
     await place.fill('Shelf A');
@@ -730,8 +730,10 @@ export async function uiTest(target, account, check) {
     // (WebKit lost it now and then before 0.35.1: the field was empty when saved).
     await page.evaluate(() => document.querySelector('.mantine-Drawer-body > *')?.setAttribute('data-ui-mark', '1'));
     const placeSaved = page.waitForResponse((r) => r.url().endsWith('/api/v1/copy') && r.request().method() === 'PUT', { timeout: 10000 }).catch(() => null);
-    await copyModal.getByRole('button', { name: 'Save', exact: true }).click();
+    // Save and close (the owner, 2026-10-16): everything typed is saved, and the window closes.
+    await copyModal.getByRole('button', { name: 'Save and close' }).last().click();
     const placeResponse = await placeSaved;
+    await copyModal.waitFor({ state: 'detached', timeout: 10000 });
     await drawer
       .getByText('Shelf A')
       .waitFor({ timeout: 10000 })
@@ -741,6 +743,8 @@ export async function uiTest(target, account, check) {
         const redrawn = await page.evaluate(() => !document.querySelector('[data-ui-mark="1"]'));
         throw new Error(`${err.message.split('\n')[0]} | the field: "${field}" | the save: ${sent} | drawer redrawn: ${redrawn} | ${page.url()}`);
       });
+    // Open again to lend it.
+    await drawer.getByRole('button', { name: 'Edit this copy' }).first().click();
     await copyModal.getByLabel('Lend it to').fill('Sam');
     await copyModal.getByRole('button', { name: 'Lend', exact: true }).click();
     await copyModal.getByRole('button', { name: "It's back" }).waitFor({ timeout: 10000 });
@@ -759,7 +763,7 @@ export async function uiTest(target, account, check) {
     await drawer.getByText('You own it').waitFor({ timeout: 10000 });
     await drawer.getByRole('button', { name: 'tested: it works' }).first().click();
     await drawer.getByText(/^Tested .*: works$/).first().waitFor({ timeout: 10000 });
-    await drawer.getByRole('button', { name: 'Change it, where it is, lending, photos...' }).first().click();
+    await drawer.getByRole('button', { name: 'Edit this copy' }).first().click();
     const careModal = page.locator('.mantine-Modal-content');
     await careModal.getByRole('button', { name: 'Take Box front' }).waitFor({ timeout: 10000 });
     const slotPhoto = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8DwHwAFBQIAX8jx0gAAAABJRU5ErkJggg==', 'base64');
@@ -774,18 +778,27 @@ export async function uiTest(target, account, check) {
     // An estimated price only when asked: empty on a copy without a price paid until Suggest fills it; saved, it shows.
     await page.request.post(`${base}/api/v1/collection/copies`, { data: { platformKey: 'playstation-3', title: 'Estimate Test Game', completeness: 'complete' } });
     await page.goto(`${base}/platforms/playstation-3?game=${encodeURIComponent('playstation-3|Estimate Test Game')}`);
-    await drawer.getByRole('button', { name: 'Change it, where it is, lending, photos...' }).first().click();
+    await drawer.getByRole('button', { name: 'Edit this copy' }).first().click();
     const estimateModal = page.locator('.mantine-Modal-content');
     const estimateField = estimateModal.getByLabel(/^Estimated price/);
     const emptyAtFirst = (await estimateField.inputValue()) === '';
     await estimateModal.getByRole('button', { name: 'Suggest', exact: true }).click();
     await estimateModal.getByText(/^Suggested: a new game on this console/).waitFor({ timeout: 10000 });
     const suggestedValue = await estimateField.inputValue();
-    await estimateModal.getByRole('button', { name: 'Save the copy' }).click();
-    await closeModal(estimateModal);
+    await estimateModal.getByRole('button', { name: 'Save and close' }).first().click();
+    await estimateModal.waitFor({ state: 'detached', timeout: 10000 });
     await drawer.getByText(/^estimated /).waitFor({ timeout: 10000 });
     found = await pageProblems();
     check('ui: an estimated price only when asked: Suggest fills it, and saved it shows', found.length === 0 && emptyAtFirst && suggestedValue !== '', found.join(' | ') || `empty at first: ${emptyAtFirst}, suggested: ${suggestedValue}`);
+
+    // A copy that isn't complete: its missing part looked for on the used marketplaces (D160).
+    await page.request.post(`${base}/api/v1/collection/copies`, { data: { platformKey: 'playstation-3', title: 'Parts Test Game', completeness: 'item-box' } });
+    await page.goto(`${base}/platforms/playstation-3?game=${encodeURIComponent('playstation-3|Parts Test Game')}`);
+    const partsLine = drawer.getByText(/^Find its manual:/);
+    await partsLine.waitFor({ timeout: 10000 });
+    const ebayHref = await partsLine.getByRole('link', { name: 'eBay' }).getAttribute('href');
+    found = await pageProblems();
+    check('ui: a copy without its manual links to one on eBay', found.length === 0 && /ebay\.com\/sch\/.*manual%20only/.test(ebayHref ?? ''), found.join(' | ') || String(ebayHref));
 
     // Collection > Improve: what copies are missing, filled in one copy at a time.
     await page.goto(`${base}/collection/improve`);
@@ -831,7 +844,7 @@ export async function uiTest(target, account, check) {
     // sale recorded there is on Collection > Sales, in money and meals, and taken back; Sold in a copy's window asks too.
     await page.goto(`${base}/platforms/playstation-3?game=${encodeURIComponent('playstation-3|Uncharted')}`);
     await drawer.getByText('You own it').waitFor({ timeout: 10000 });
-    await drawer.getByRole('button', { name: 'Change it, where it is, lending, photos...' }).first().click();
+    await drawer.getByRole('button', { name: 'Edit this copy' }).first().click();
     const ripWindow = page.getByRole('dialog', { name: /^Uncharted · / });
     await ripWindow.getByRole('button', { name: 'Read fully' }).click();
     await ripWindow.getByText(/^Ripped .*: read fully$/).first().waitFor({ timeout: 10000 });
@@ -867,7 +880,7 @@ export async function uiTest(target, account, check) {
     await page.getByText(/^Nothing sold yet/).waitFor({ timeout: 10000 });
     await page.goto(`${base}/platforms/playstation-3?game=${encodeURIComponent('playstation-3|Uncharted')}`);
     await drawer.getByText('You own it').waitFor({ timeout: 10000 });
-    await drawer.getByRole('button', { name: 'Change it, where it is, lending, photos...' }).first().click();
+    await drawer.getByRole('button', { name: 'Edit this copy' }).first().click();
     await ripWindow.getByRole('button', { name: 'Sold', exact: true }).click();
     const soldAsk = page.getByRole('dialog', { name: /^It sold · Uncharted/ });
     await soldAsk.getByRole('button', { name: 'Take it out without a sale' }).waitFor({ timeout: 10000 });
@@ -1000,7 +1013,7 @@ export async function uiTest(target, account, check) {
     await page.goto(`${base}/collection?game=${encodeURIComponent('playstation-3|Tearaway')}`);
     await page.getByRole('button', { name: /^Edit (my|a) copy/ }).click();
     if (await page.getByRole('menuitem').first().isVisible().catch(() => false)) await page.getByRole('menuitem').first().click();
-    await page.getByRole('button', { name: 'Save the copy' }).waitFor({ timeout: 10000 });
+    await page.getByRole('button', { name: 'Save and close' }).first().waitFor({ timeout: 10000 });
     found = await pageProblems();
     check('ui: Edit my copy, beside Have it, opens the copy', found.length === 0, found.join(' | '));
     await page.keyboard.press('Escape');

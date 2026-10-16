@@ -388,7 +388,6 @@ export function CopyDetailsModal({
     digitalClaimedAt: digitalClaim === 'claimed' && digitalClaimedAt ? digitalClaimedAt : null,
     digitalStore: digitalClaim ? digitalStore.trim() || null : null,
   });
-  const saveDetails = () => change.mutate({ path: '/copy', method: 'PUT', json: detailsJson(), done: 'Saved.' });
 
   /** A standard photo (its slot), taking the place of the one it had. */
   async function addSlotPhoto(slot: string, file: File) {
@@ -444,7 +443,6 @@ export function CopyDetailsModal({
     // A graded copy's grader and certificate (they go to PriceCharting's CSV with it).
     ...(completeness === 'graded' ? { gradingCompany: grader, gradingCertId: cert.trim() } : {}),
   });
-  const saveCopy = () => change.mutate({ path: `/collection/copies/${own!.id}`, method: 'PUT', json: copyJson(), done: 'Saved. What you change here stays, whatever the next export says.' });
 
   /**
    * The copy's own fields that changed since it was opened. Only those are sent: a field sent is kept as the owner's
@@ -478,8 +476,8 @@ export function CopyDetailsModal({
         digitalClaimedAt: d.digitalClaim === 'claimed' && d.digitalClaimedAt ? d.digitalClaimedAt : null,
         digitalStore: d.digitalClaim ? d.digitalStore || null : null,
       });
-  // Done, Later and Scan the next one (a copy just added), and Next copy (a walk through copies), save what was typed
-  // first, the copy and its details together, so nothing is lost on the way to the next one.
+  // Save and close, Done, Later and Scan the next one (a copy just added), and Next copy (a walk through copies), save
+  // what was typed first, the copy and its details together, so nothing is lost on the way out or to the next one.
   const finish = useMutation({
     mutationFn: async (_then: 'close' | 'scan' | 'next') => {
       const fields = changedCopy();
@@ -624,8 +622,9 @@ export function CopyDetailsModal({
                 <TextInput label="Notes" value={notes} onChange={(e) => setNotes(e.currentTarget.value)} maxLength={500} />
                 {!added && (
                 <Group justify="space-between">
-                  <Button onClick={saveCopy} loading={busy}>
-                    Save the copy
+                  {/* Everything typed in the window, saved together, then the window closes (the owner, 2026-10-16). */}
+                  <Button onClick={() => finish.mutate('close')} loading={busy}>
+                    Save and close
                   </Button>
                   <Group gap="xs">
                     <Button variant="light" color="green" size="compact-sm" onClick={() => setSelling('list')} disabled={busy}>
@@ -751,8 +750,8 @@ export function CopyDetailsModal({
             </Group>
             {!added && (
               <Group>
-                <Button onClick={saveDetails} loading={busy} disabled={waiting}>
-                  Save
+                <Button onClick={() => finish.mutate('close')} loading={busy} disabled={waiting}>
+                  Save and close
                 </Button>
               </Group>
             )}

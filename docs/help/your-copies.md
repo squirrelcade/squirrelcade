@@ -6,7 +6,7 @@ Each copy you own has its own details: your complete copy of a game and your loo
 
 ## A copy's details
 
-Open a game you own, and under **Your copies** click **Change it, where it is, lending, photos...** beside a copy:
+Open a game you own, and click **Edit my copy** beside **Have it** at the top, or **Edit this copy** under a copy in **Your copies**:
 
 - **The copy**: its condition, what you paid, the day you bought it and notes (see [Your collection](collection.md#adding-a-copy-in-squirrelcade)); **Sold** or **Remove** takes it out of your collection. Without a price paid, it has an **Estimated price** of your own, empty unless you fill it in (below).
 - **Tested**: **It works**, **Works, with problems** or **Doesn't work**, with a note if you like ("the battery's dead"): each test is kept with its day and time, the newest first. Under Your copies, **tested: it works** records one in a tap. On the consoles whose games you rip, **Ripped** records how a full read of the disc went (see [Selling your games](selling.md#tested-and-ripped)).
@@ -17,7 +17,11 @@ Open a game you own, and under **Your copies** click **Change it, where it is, l
 - **Its digital copy**: for a disc that came with a digital license (Xbox's disc-to-digital, a code in the box): **Claimed** (with the day and the store), **Not claimed yet**, or **Not offered for this one**. A claimed license outlives the disc: sell the disc and the game still counts as owned, digitally, for Claude and AI apps ([Claude and AI apps](ai-apps.md)).
 - **Photos**: the box, the cart, the condition. They're made smaller in your browser before they're sent (to 1600 pixels on their longest side by default, Settings > Collection > Photo size), and kept in Squirrelcade's database, so every backup has them. Up to 10 a copy (Settings > Collection > Photos per copy).
 
-The drawer then shows each copy's details under it, and the Stash page shows them on its rows. Its filters narrow the list to a place, a tag, the games lent out, the ones for sale or trade, or the digital copies claimed (or not yet).
+**Save and close** (under the copy's fields, and again under its details) saves everything you changed in the window at once, then closes it. Tests, loans and photos are kept the moment you add them.
+
+The drawer then shows each copy's details under it, and the Stash page shows them on its rows.
+
+**Completing a copy.** A copy that isn't complete in its box has a line under it in **Your copies**, such as "Find its manual: eBay · Mercari · FB Marketplace". Each link searches that marketplace for exactly what the copy lacks: the manual, the case (a disc's or a card's) or box (a cartridge's), or the game itself. The marketplaces are your shop links in the "Used marketplaces" group (Settings › Interface › Shop links). Once you have the missing part, change the copy's condition (to Complete in box, say) in its window. Its filters narrow the list to a place, a tag, the games lent out, the ones for sale or trade, or the digital copies claimed (or not yet).
 
 ## Standard photos
 

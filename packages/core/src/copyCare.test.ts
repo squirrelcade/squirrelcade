@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { DISC_CONSOLES, estimateCost, mediaOf, NEW_GAME_PRICES, parseNewGamePrices, photoSlotsFor, RIPPABLE_CONSOLES } from './copyCare.js';
+import { DISC_CONSOLES, estimateCost, mediaOf, missingParts, NEW_GAME_PRICES, parseNewGamePrices, partsSearch, photoSlotsFor, RIPPABLE_CONSOLES } from './copyCare.js';
 import { KNOWN_PLATFORMS } from './platforms.js';
 import { settingDefinitions } from './settings.js';
 
@@ -64,5 +64,22 @@ describe("a copy's care", () => {
     // Another region's console takes its base console's price.
     expect(estimateCost({ completeness: 'complete', platformKey: 'super-famicom', platformName: 'Super Famicom' }, null, prices, 50)).toMatchObject({ cents: 5999, date: null });
     expect(estimateCost({ completeness: 'complete', platformKey: 'game-and-watch', platformName: 'Game & Watch' }, null, prices, 50)).toBeNull();
+  });
+});
+
+describe("a copy's missing parts (D160)", () => {
+  it('names what a copy lacks as listings do: the case of a disc or card, the box of a cartridge, the manual, the game', () => {
+    expect(missingParts('item-box', 'playstation-3')).toEqual(['manual']);
+    expect(missingParts('item-manual', 'playstation-3')).toEqual(['case']);
+    expect(missingParts('item-manual', 'super-nintendo')).toEqual(['box']);
+    expect(missingParts('loose', 'nintendo-switch')).toEqual(['case', 'manual']);
+    expect(missingParts('box-only', 'nintendo-64')).toEqual(['cartridge', 'manual']);
+    expect(missingParts('manual-only', 'playstation-2')).toEqual(['disc', 'case']);
+    for (const whole of ['complete', 'sealed', 'graded', 'unknown']) expect(missingParts(whole, 'playstation-3')).toEqual([]);
+  });
+
+  it('searches for one part alone, or the parts together', () => {
+    expect(partsSearch('Armored Core: Verdict Day', ['manual'])).toBe('Armored Core: Verdict Day manual only');
+    expect(partsSearch('Super Mario 64', ['cartridge', 'manual'])).toBe('Super Mario 64 cartridge manual');
   });
 });

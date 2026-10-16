@@ -52,6 +52,36 @@ export function mediaOf(platformKey: string): GameMedia {
   return 'cartridge';
 }
 
+/**
+ * What a copy lacks to be complete in its box, as listings name it, to look for it (D160): "manual"; a disc's or a
+ * card's "case", a cartridge's or a disk's "box"; and the game itself by what it comes on ("disc", "cartridge"). None for
+ * a copy complete, sealed, graded or of unknown condition.
+ */
+export function missingParts(completeness: Completeness | string, platformKey: string): string[] {
+  const media = mediaOf(platformKey);
+  const box = media === 'cartridge' || media === 'disk' ? 'box' : 'case';
+  const game = MEDIA_NAMES[media].toLowerCase();
+  switch (completeness) {
+    case 'item-box':
+      return ['manual'];
+    case 'item-manual':
+      return [box];
+    case 'loose':
+      return [box, 'manual'];
+    case 'box-only':
+      return [game, 'manual'];
+    case 'manual-only':
+      return [game, box];
+    default:
+      return [];
+  }
+}
+
+/** The words to search a marketplace with for a copy's missing parts: one part "only" ("... manual only"), or the parts. */
+export function partsSearch(title: string, parts: readonly string[]): string {
+  return `${title} ${parts.join(' ')}${parts.length === 1 ? ' only' : ''}`;
+}
+
 /** The standard photo slots of Settings > Collection, by the part of a copy they show. */
 export interface PhotoSlotSettings {
   box: string[];
