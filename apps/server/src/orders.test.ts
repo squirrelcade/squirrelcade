@@ -19,7 +19,13 @@ function orderMail(id: string, daysAgo: number, from: string, subject: string, r
 /** A stand-in Gmail mailbox: its own search finds the emails with the phrase in them; every search is recorded. */
 function gmailBox(mails: FoundMail[]) {
   const searches: MailSearch[] = [];
+  const headerQueries: { since: Date; gmail?: string; subjects: readonly string[]; limit: number }[] = [];
   const open: MailboxOpener = async () => ({
+    // Headers only: who sent each email since the day, and its subject (the subject check is the caller's).
+    async headers(query) {
+      headerQueries.push(query);
+      return mails.filter((m) => Date.parse(m.date) >= query.since.getTime()).map((m) => ({ from: m.from, fromName: m.fromName, subject: m.subject, date: m.date }));
+    },
     gmail: true,
     async find() {
       return { folder: '[Gmail]/All Mail', mails: [] };
@@ -38,7 +44,7 @@ function gmailBox(mails: FoundMail[]) {
     },
     async close() {},
   });
-  return { open, searches, mails };
+  return { open, searches, headerQueries, mails };
 }
 
 const EBAY_OKAMI = orderMail('ebay1@ebay', 3, 'ebay@ebay.com', 'Order confirmed: Okami PS2 Complete CIB Tested', [
@@ -215,5 +221,32 @@ describe('On the way', () => {
     const theirs = (await g!.app.inject({ url: '/api/v1/lookup?q=Okami&platform=playstation-2', cookies: viewer })).json() as { title: string; onTheWay: unknown }[];
     expect(theirs.find((r) => r.title === 'Okami')?.onTheWay).toBeNull();
     expect(((await g!.app.inject({ url: '/api/v1/lookup?q=Okami&platform=playstation-2', cookies })).json() as { title: string; onTheWay: unknown }[]).find((r) => r.title === 'Okami')?.onTheWay).toMatchObject({ id: lot.id });
+  });
+
+  it("finds the stores of your purchase emails from their headers alone, for On the way's list", async () => {
+    const mercari = orderMail('mercari2@mercari', 5, 'no-reply@mercari.com', 'You purchased Shantae', [['Item price', '$30.00']]);
+    const gamestop = orderMail('gs1@gamestop', 30, 'notifications@info.gamestop.com', 'Thank you for your order!', [['Item price', '$59.99']]);
+    const shipped = orderMail('ship2@ebay', 1, 'ebay@ebay.com', 'Your order has shipped: Okami PS2', [['Order total', '$32.14']]);
+    const older = orderMail('old1@shop', 500, 'orders@oldshop.example', 'Order confirmed', [['Item price', '$5.00']]);
+    const pizza = orderMail('pz1@pizza', 3, 'receipts@pizza.example', 'Your receipt from Pizza Place', [['Total', '$20.00']]);
+    const { box, cookies } = await owner([EBAY_OKAMI, SHOP_TWO, mercari, gamestop, shipped, older, pizza]);
+    // Off with On the way.
+    expect((await g!.app.inject({ method: 'POST', url: '/api/v1/orders/stores', cookies })).statusCode).toBe(409);
+    g!.settings.update({ 'orders.watch': true });
+    const started = (await g!.app.inject({ method: 'POST', url: '/api/v1/orders/stores', cookies })).json() as { id: string };
+    const job = await settle<{ state: string; read: number; days: number; stores: { domain: string; name: string; emails: number; known: boolean }[] }>(`/api/v1/orders/stores/${started.id}`, cookies);
+    expect(job).toMatchObject({ state: 'done', read: 6, days: 365 });
+    // Gmail's own search: a purchase word in the subject, within "Look at order emails from the last" (a year).
+    expect(box.headerQueries[0]?.gmail).toMatch(/^\{subject:"order confirmed" .*\} newer_than:365d$/);
+    // The stores Squirrelcade reads first; a shipping notice and an email older than a year count for nothing.
+    expect(job.stores.map((s) => [s.domain, s.name, s.emails, s.known])).toEqual([
+      ['ebay.com', 'eBay', 1, true],
+      ['gamestop.com', 'GameStop', 1, true],
+      ['limitedrungames.com', 'Limited Run Games', 1, true],
+      ['mercari.com', 'Mercari', 1, true],
+      ['pizza.example', 'Store', 1, false],
+    ]);
+    // No email was fetched whole.
+    expect(box.searches).toHaveLength(0);
   });
 });

@@ -36,7 +36,13 @@ When an order has several games, its tax, shipping and discount are shared out b
 
 ## On the way
 
-Turn on **Watch for games you bought: On the way**. Squirrelcade then looks through your purchase emails every 24 hours (**Look every**, from 1 hour to a week), from eBay and Mercari to start with; **Purchase emails from** takes any other store's address, or its domain (such as `limitedrungames.com`, which takes any address there). A purchase email is one whose subject says so ("Order confirmed", "You purchased", "Thanks for your order", a receipt), and not a shipping or delivery notice, a refund or a sale of yours: both lists are under **Show advanced**.
+Turn on **Watch for games you bought: On the way**. Squirrelcade then looks through your purchase emails every 24 hours (**Look every**, from 1 hour to a week), from eBay and Mercari to start with. To add more stores to **Purchase emails from**:
+
+- **Tap a store** under the list (Amazon, GameStop, Target, Walmart, Best Buy, Limited Run Games, Super Rare Games, Fangamer, Play-Asia): the stores whose order emails Squirrelcade's own reader knows.
+- **Find my stores in my email** looks through your purchase emails from the last year (**Look at order emails from the last**) and lists every store they came from, with how many and the newest one's subject, the stores Squirrelcade reads first. Tick the ones you buy games from and **Add the ticked**. Only the emails' senders and subjects are read for this, and nothing is kept.
+- **Type** any other store's web address and press Enter: a domain (such as `fangamer.com`) takes any address there.
+
+Then **Save changes**. A purchase email is one whose subject says so ("Order confirmed", "You purchased", "Thanks for your order", a receipt), and not a shipping or delivery notice, a refund or a sale of yours: both lists are under **Show advanced**.
 
 Each game bought goes on **Acorns > On the way** with the store, the day, the price paid (as counted above) and the listing or order. Squirrelcade matches the listing's title to the game it is when it's sure (its console named, its title's words all there); when it isn't, the listing's own title shows with **Is it ...?** and a search, for you to say. What's on the way:
 
@@ -53,5 +59,5 @@ The first look goes back 14 days (**The first look goes back**); each look after
 
 1. Settings > Email: your email account, with an app password, and **Test sending and reading**.
 2. In **Prices from your order emails**, turn on **Find what you paid in your order emails**; choose **What counts as the price paid** and **Read order emails with**.
-3. In **On the way**, turn on **Watch for games you bought: On the way**, and add the stores you buy from to **Purchase emails from**.
+3. In **On the way**, turn on **Watch for games you bought: On the way**, and add the stores you buy from to **Purchase emails from**: tap them, or **Find my stores in my email**.
 4. Save. On the way's first look comes within a few minutes; Settings > Tasks has it as **Look for games on the way**.

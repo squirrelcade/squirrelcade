@@ -1654,6 +1654,17 @@ export async function uiTest(target, account, check) {
     await page.request.put(`${base}/api/v1/settings`, { data: { changes: { 'features.mail': false } } });
     check('ui: Stash updates from email are switched on on Settings > Email, and shown on Stash updates', found.length === 0 && mailTest > 0, found.join(' | ') || (mailTest > 0 ? '' : 'no Save and test button'));
 
+    // On the way's stores (D158): a store the order reader knows is a tap away, and Find my stores sits beside the list.
+    await page.goto(`${base}/settings/email`);
+    await page.getByRole('switch', { name: 'Watch for games you bought: On the way' }).click({ force: true });
+    await page.getByRole('button', { name: 'Add Amazon (amazon.com)' }).click();
+    const amazonChip = await page.getByText('amazon.com', { exact: true }).count();
+    const amazonLeft = await page.getByRole('button', { name: 'Add Amazon (amazon.com)' }).count();
+    const finder = await page.getByRole('button', { name: /find my stores/i }).count();
+    await page.getByRole('button', { name: 'Discard' }).click();
+    found = await pageProblems();
+    check("ui: On the way's stores added in a tap, with Find my stores beside them", found.length === 0 && amazonChip > 0 && amazonLeft === 0 && finder > 0, found.join(' | ') || `chip ${amazonChip}, button left ${amazonLeft}, finder ${finder}`);
+
     // A viewer: invited with a link, they join, look at the collection and change nothing.
     const invite = await (await page.request.post(`${base}/api/v1/invites`, { data: { name: 'Mom' } })).json();
     const viewerContext = await browser.newContext({ serviceWorkers: 'block', viewport: { width: 1280, height: 800 } });

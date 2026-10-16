@@ -47,7 +47,7 @@ import {
   Tooltip,
 } from '@mantine/core';
 import { useLocalStorage, useMediaQuery } from '@mantine/hooks';
-import { IconDownload, IconRestore, IconUpload } from '@tabler/icons-react';
+import { IconDownload, IconPlus, IconRestore, IconUpload } from '@tabler/icons-react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useEffect, useMemo, useState } from 'react';
 import { Link, Navigate, useLocation, useParams } from 'react-router';
@@ -66,7 +66,7 @@ import { SecurityExtras } from './SecurityExtras';
 import { FeatureExtras } from './FeatureExtras';
 import { ItadButtons } from './ItadExtras';
 import { VisionPresets, VisionTest } from './VisionExtras';
-import { EmailTest } from './EmailExtras';
+import { EmailTest, StoreFinder } from './EmailExtras';
 import { RaButtons } from './RaExtras';
 import { AchievementButtons } from './AchievementExtras';
 import { TelegramChatFinder } from './TelegramExtras';
@@ -279,6 +279,8 @@ export function SettingsPage({ pageId: fixedPage }: { pageId?: string } = {}) {
       <VisionTest unsaved={changedKeys.length > 0} save={save} />
     ) : k === 'notifications.smtpPassword' ? (
       <EmailTest unsaved={changedKeys.length > 0} save={save} />
+    ) : k === 'orders.watchSenders' ? (
+      <StoreFinder unsaved={changedKeys.length > 0} save={save} current={value(k) as string[]} onAdd={(domains) => update(k, [...new Set([...(value(k) as string[]), ...domains])])} />
     ) : k === 'sources.raApiKey' ? (
       <RaButtons unsaved={changedKeys.length > 0} save={save} />
     ) : k === 'sources.xboxApiKey' ? (
@@ -771,6 +773,28 @@ function Field({
             ? (platformNames.data ?? []).filter((p) => p.eligible).map((p) => ({ key: p.key, name: p.name }))
             : KNOWN_PLATFORMS.map((p) => ({ key: p.key, name: names.get(p.key) ?? p.name }));
         return <PlatformCheckboxes label={label} description={def.description} value={value as string[]} onChange={onChange} options={options.sort((a, b) => a.name.localeCompare(b.name))} error={issue} />;
+      }
+      if (def.suggestions?.length) {
+        // The usual values one tap away (a store On the way knows), and any other typed in.
+        const list = value as string[];
+        const left = def.suggestions.filter((s) => !list.includes(s.value));
+        return (
+          <Stack gap={6} maw={520}>
+            <TagsInput {...common} value={list} onChange={onChange} data={def.suggestions.map((s) => s.value)} placeholder="Type another and press Enter" clearable />
+            {left.length > 0 && (
+              <Group gap={6}>
+                <Text size="xs" c="dimmed">
+                  Add:
+                </Text>
+                {left.map((s) => (
+                  <Button key={s.value} size="compact-xs" variant="light" leftSection={<IconPlus size={12} />} onClick={() => onChange([...list, s.value])} aria-label={`Add ${s.label} (${s.value})`}>
+                    {s.label}
+                  </Button>
+                ))}
+              </Group>
+            )}
+          </Stack>
+        );
       }
       return <TagsInput {...common} value={value as string[]} onChange={onChange} placeholder="Type and press Enter" clearable />;
     default:

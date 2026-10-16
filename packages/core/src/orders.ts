@@ -725,3 +725,76 @@ export function purchaseSubject(subject: string, yes: readonly string[], no: rea
   const rest = plain(item ? subject.replace(item, ' ') : subject);
   return yes.some((w) => words(w)?.test(whole)) && !no.some((w) => words(w)?.test(rest));
 }
+
+/** Web domains whose names have two parts after the store's (amazon.co.uk), for a sender's store. */
+const TWO_PART_ENDINGS = new Set(['co.uk', 'org.uk', 'com.au', 'net.au', 'co.jp', 'ne.jp', 'com.br', 'com.mx', 'co.nz', 'co.kr', 'com.sg', 'com.hk', 'co.za', 'com.tr', 'co.in', 'com.ar']);
+
+/** The store's web domain an email came from: "notifications@info.gamestop.com" is gamestop.com, "x@amazon.co.uk" amazon.co.uk. */
+export function senderDomain(address: string): string | null {
+  const host = address.trim().toLowerCase().split('@')[1]?.replace(/[>\s]+$/, '');
+  if (!host || !/^[a-z0-9.-]+\.[a-z]{2,}$/.test(host)) return null;
+  const parts = host.split('.').filter(Boolean);
+  const keep = parts.length >= 3 && TWO_PART_ENDINGS.has(parts.slice(-2).join('.')) ? 3 : 2;
+  return parts.slice(-keep).join('.');
+}
+
+/** A purchase email's sender and subject, without the email (Find my stores reads no more of it). */
+export interface MailHeader {
+  from: string;
+  fromName?: string;
+  subject: string;
+  date: string;
+}
+
+/** A store found in the mailbox's purchase emails, for Settings > Email > Find my stores. */
+export interface StoreSeen {
+  /** Its web domain, as "Purchase emails from" takes it. */
+  domain: string;
+  /** The name Squirrelcade knows it by, else the name its emails come from most. */
+  name: string;
+  /** Its purchase emails in the time looked at. */
+  emails: number;
+  /** Its newest purchase email's subject and day, to recognize it by. */
+  lastSubject: string;
+  lastDate: string;
+  /** Squirrelcade's own order reader knows its emails. */
+  known: boolean;
+}
+
+/** Gmail's search for purchase emails from any store: a purchase word in the subject, within the days. */
+export function gmailPurchaseSearch(subjects: readonly string[], days: number): string {
+  const any = subjects
+    .map((w) => w.trim().replace(/["{}()]/g, ''))
+    .filter(Boolean)
+    .map((w) => `subject:${/\s/.test(w) ? `"${w}"` : w}`);
+  return `${any.length ? `{${any.join(' ')}} ` : ''}newer_than:${Math.max(1, Math.round(days))}d`;
+}
+
+/**
+ * The stores in purchase emails' headers (only those whose subject reads as a purchase, as On the way's rules say), by
+ * their web domain: the stores Squirrelcade's reader knows first, then the most emails.
+ */
+export function storesSeen(headers: readonly MailHeader[], yes: readonly string[], no: readonly string[]): StoreSeen[] {
+  const by = new Map<string, Omit<StoreSeen, 'name' | 'known'> & { names: Map<string, number> }>();
+  for (const h of headers) {
+    if (!purchaseSubject(h.subject, yes, no)) continue;
+    const domain = senderDomain(h.from);
+    if (!domain) continue;
+    const s = by.get(domain) ?? { domain, emails: 0, lastSubject: '', lastDate: '', names: new Map<string, number>() };
+    s.emails++;
+    if (h.date >= s.lastDate) {
+      s.lastDate = h.date;
+      s.lastSubject = h.subject.slice(0, 120);
+    }
+    const name = h.fromName?.trim();
+    if (name) s.names.set(name, (s.names.get(name) ?? 0) + 1);
+    by.set(domain, s);
+  }
+  return [...by.values()]
+    .map(({ names, ...s }) => {
+      const store = ORDER_STORES.find((o) => o.domains.includes(s.domain));
+      const usual = [...names.entries()].sort((a, b) => b[1] - a[1])[0]?.[0];
+      return { ...s, name: store?.name ?? usual ?? s.domain, known: Boolean(store) };
+    })
+    .sort((a, b) => Number(b.known) - Number(a.known) || b.emails - a.emails || a.domain.localeCompare(b.domain));
+}

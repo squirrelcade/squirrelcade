@@ -1,6 +1,7 @@
 import {
   dayIn,
   gmailOrderSearch,
+  gmailPurchaseSearch,
   ITEM_MATCH,
   itemCost,
   KNOWN_PLATFORMS,
@@ -16,9 +17,11 @@ import {
   productPlatform,
   purchaseSubject,
   readOrderEmail,
+  storesSeen,
   type FoundOrder,
   type OrderEmail,
   type PaidCounts,
+  type StoreSeen,
 } from '@squirrelcade/core';
 import { and, desc, eq, isNull, lte, or } from 'drizzle-orm';
 import type { FastifyInstance } from 'fastify';
@@ -101,6 +104,23 @@ export interface BatchJob {
   finishedAt: number | null;
 }
 
+/** Find my stores (Settings > Email): the stores of the mailbox's purchase emails, worked out from their headers. */
+export interface StoresJob {
+  id: string;
+  state: 'reading' | 'done' | 'failed';
+  stores: StoreSeen[];
+  /** How many emails' headers were looked at. */
+  read: number;
+  /** The days looked back. */
+  days: number;
+  error: string | null;
+  finishedAt: number | null;
+}
+
+/** At most this many purchase emails' headers are looked at (the newest), and this many stores listed. */
+const MAX_STORE_HEADERS = 3000;
+const MAX_STORES = 60;
+
 /** A price found for a copy by Look up prices in my email, kept until it's used, turned down, or the copy has a price. */
 export interface StoredFound extends FoundPrice {
   copyId: number;
@@ -144,6 +164,7 @@ export interface OnTheWay {
 export class OrderService {
   private readonly finds = new Map<string, FindJob>();
   private readonly batches = new Map<string, BatchJob>();
+  private readonly storeJobs = new Map<string, StoresJob>();
 
   constructor(
     private readonly d: {
@@ -266,6 +287,48 @@ export class OrderService {
   batch(id: string): BatchJob | undefined {
     this.sweep();
     return this.batches.get(id);
+  }
+
+  /**
+   * Find my stores (Settings > Email, under "Purchase emails from"): the stores the owner buys from, from the senders of
+   * the mailbox's purchase emails within "Look at order emails from the last" (a subject On the way's rules take as a
+   * purchase). Only the headers are read, never an email whole, and nothing is kept: the list is for the owner to pick from.
+   */
+  startStores(): StoresJob {
+    this.sweep();
+    const running = [...this.storeJobs.values()].find((j) => j.state === 'reading');
+    if (running) return running;
+    const s = this.d.settings;
+    const days = s.get('orders.lookBackDays');
+    const job: StoresJob = { id: randomUUID(), state: 'reading', stores: [], read: 0, days, error: null, finishedAt: null };
+    this.storeJobs.set(job.id, job);
+    void (async () => {
+      let box: Mailbox | null = null;
+      try {
+        box = await this.openBox();
+        if (!box.headers) throw new Error("This mailbox can't be searched for stores.");
+        const yes = s.get('orders.watchSubjects');
+        const no = s.get('orders.watchNotSubjects');
+        const since = new Date(Date.now() - days * 86_400_000);
+        const headers = await box.headers({ since, ...(box.gmail ? { gmail: gmailPurchaseSearch(yes, days) } : {}), subjects: yes, limit: MAX_STORE_HEADERS });
+        job.read = headers.length;
+        job.stores = storesSeen(headers, yes, no).slice(0, MAX_STORES);
+        job.state = 'done';
+        this.d.log.info({ context: 'orders' }, `Find my stores: ${headers.length} emails' headers, ${job.stores.length} stores`);
+      } catch (err) {
+        job.state = 'failed';
+        job.error = err instanceof Error ? err.message : String(err);
+      } finally {
+        await box?.close().catch(() => undefined);
+        job.finishedAt = Date.now();
+      }
+    })();
+    return job;
+  }
+
+  storesJob(id: string): StoresJob | undefined {
+    this.sweep();
+    return this.storeJobs.get(id);
   }
 
   /** The prices kept for copies that still miss one (a copy given a price or an estimate since, or gone, drops out). */
@@ -682,7 +745,7 @@ export class OrderService {
 
   private sweep(): void {
     const now = Date.now();
-    for (const map of [this.finds, this.batches] as Map<string, { finishedAt: number | null }>[]) for (const [k, j] of map) if (j.finishedAt !== null && now - j.finishedAt > KEEP_MS) map.delete(k);
+    for (const map of [this.finds, this.batches, this.storeJobs] as Map<string, { finishedAt: number | null }>[]) for (const [k, j] of map) if (j.finishedAt !== null && now - j.finishedAt > KEEP_MS) map.delete(k);
   }
 
   private readState<T>(key: string): T | null {
@@ -726,6 +789,9 @@ export function registerOrderRoutes(app: FastifyInstance, orders: OrderService, 
     return orders.startBatch({ platform: typeof b.platform === 'string' ? b.platform : undefined, added: typeof b.added === 'string' ? b.added : undefined });
   });
   app.get('/api/v1/orders/batch/:id', async (request, reply) => orders.batch((request.params as { id: string }).id) ?? reply.code(404).send({ error: 'not-found', message: 'That lookup is no longer kept.' }));
+  // Find my stores: the stores of the mailbox's purchase emails, for "Purchase emails from" (owner only: no viewer path).
+  app.post('/api/v1/orders/stores', async (_request, reply) => (orders.watchOn() ? orders.startStores() : off(reply, 'watch')));
+  app.get('/api/v1/orders/stores/:id', async (request, reply) => orders.storesJob((request.params as { id: string }).id) ?? reply.code(404).send({ error: 'not-found', message: 'That search is no longer kept.' }));
   app.get('/api/v1/orders/found', async () => ({ found: orders.findOn() ? orders.found() : [] }));
   app.delete('/api/v1/orders/found/:copyId', async (request) => {
     orders.forgetFound(Number((request.params as { copyId: string }).copyId));

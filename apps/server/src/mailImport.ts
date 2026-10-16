@@ -1,4 +1,4 @@
-import { exportAttachment, exportLinks, hostAllowed, MAIL_PROVIDERS, parseDealEmail, PRICECHARTING_COLLECTION_URL, type PriceChartingDeal } from '@squirrelcade/core';
+import { exportAttachment, exportLinks, hostAllowed, MAIL_PROVIDERS, parseDealEmail, PRICECHARTING_COLLECTION_URL, type MailHeader, type PriceChartingDeal } from '@squirrelcade/core';
 import { eq } from 'drizzle-orm';
 import type { FastifyInstance } from 'fastify';
 import { ImapFlow } from 'imapflow';
@@ -65,6 +65,11 @@ export interface Mailbox {
   gmail: boolean;
   /** The emails a search finds (the newest `limit`), oldest first. */
   search(query: MailSearch): Promise<{ folder: string; mails: FoundMail[] }>;
+  /**
+   * The sender and subject of the emails with one of these words in their subject (Gmail's own search words when it's
+   * Gmail's), the newest `limit`: their headers only, no email fetched whole (Find my stores).
+   */
+  headers?(query: { since: Date; gmail?: string; subjects: readonly string[]; limit: number }): Promise<MailHeader[]>;
   close(): Promise<void>;
 }
 
@@ -150,6 +155,30 @@ export const imapMailbox: MailboxOpener = async (account) => {
             ? { gmraw: words }
             : { since, smaller: maxBytes, ...(text ? { text } : {}), ...(senders.length === 1 ? { from: senders[0] } : senders.length > 1 ? { or: senders.map((f) => ({ from: f })) } : {}) };
         return { folder, mails: await fetchSmall(folder, await client.search(query, { uid: true }), limit, maxBytes, subject) };
+      } finally {
+        lock.release();
+      }
+    },
+    async headers({ since, gmail: words, subjects, limit }) {
+      const folder = await folderOf();
+      const lock = await client.getMailboxLock(folder, { readOnly: true });
+      try {
+        const wanted = subjects.map((s) => s.trim()).filter(Boolean);
+        const query = words && gmail ? { gmraw: words } : { since, ...(wanted.length === 1 ? { subject: wanted[0] } : wanted.length > 1 ? { or: wanted.map((s) => ({ subject: s })) } : {}) };
+        const uids = ((await client.search(query, { uid: true })) || []).slice(-limit);
+        const out: MailHeader[] = [];
+        if (uids.length === 0) return out;
+        // The envelope only: who sent it, its subject and day (a few hundred bytes each).
+        for await (const m of client.fetch(uids, { uid: true, envelope: true, internalDate: true }, { uid: true })) {
+          const date = new Date(m.internalDate ?? m.envelope?.date ?? Date.now());
+          out.push({
+            from: m.envelope?.from?.[0]?.address ?? '',
+            fromName: m.envelope?.from?.[0]?.name || undefined,
+            subject: m.envelope?.subject ?? '',
+            date: (Number.isNaN(date.getTime()) ? new Date() : date).toISOString(),
+          });
+        }
+        return out;
       } finally {
         lock.release();
       }

@@ -1,7 +1,7 @@
 import { IGDB_EXTRA_PLATFORM_IDS, IGDB_PLATFORM_IDS } from './igdb.js';
 import { MAIL_PROVIDERS } from './notify.js';
 import { EXPORT_LINK_HOSTS } from './mailImport.js';
-import { NOT_PURCHASE_SUBJECTS_DEFAULT, ORDER_WORDS_DEFAULT, PURCHASE_SUBJECTS_DEFAULT, WATCH_SENDERS_DEFAULT } from './orders.js';
+import { NOT_PURCHASE_SUBJECTS_DEFAULT, ORDER_STORES, ORDER_WORDS_DEFAULT, PURCHASE_SUBJECTS_DEFAULT, WATCH_SENDERS_DEFAULT } from './orders.js';
 import { NEW_GAME_PRICES, RIPPABLE_CONSOLES } from './copyCare.js';
 import { REGION_LOCKED_DEFAULT } from './platforms.js';
 import { STOREFRONT_OWNERSHIP_DEFAULT } from './pc.js';
@@ -47,6 +47,8 @@ export interface SettingDefinition<T = unknown> {
   advanced?: boolean;
   /** A list of platform keys, edited as checkboxes: of the tracked consoles, or of every console Squirrelcade knows. */
   platforms?: 'tracked' | 'known';
+  /** A typed list's usual values, offered as one-tap buttons under it (the stores On the way knows). */
+  suggestions?: readonly SettingOption[];
   /** Takes effect after a restart. */
   restartRequired?: boolean;
   /** Shown only while this switch (a boolean setting) is on, as the page has it: a service's fields under its switch. */
@@ -80,7 +82,7 @@ function select<const V extends string>(
   return { ...def, kind: 'select', schema: z.enum(values) as unknown as z.ZodType<V> };
 }
 
-function list(def: Common & { default: string[]; maxItems?: number; platforms?: 'tracked' | 'known' }): SettingDefinition<string[]> {
+function list(def: Common & { default: string[]; maxItems?: number; platforms?: 'tracked' | 'known'; suggestions?: readonly SettingOption[] }): SettingDefinition<string[]> {
   return {
     ...def,
     kind: 'list',
@@ -813,9 +815,12 @@ export const settingDefinitions = {
     page: 'email',
     section: 'On the way',
     label: 'Purchase emails from',
-    description: 'The senders whose purchase emails count, by their address or their domain ("ebay.com" is any address at eBay): add a store you buy from.',
+    description:
+      'The stores whose purchase emails count. Tap a store below to add it, or type another store\'s web address and press Enter ("ebay.com" is any address at eBay), then Save changes.',
     default: [...WATCH_SENDERS_DEFAULT],
     maxItems: 30,
+    // The stores the order reader knows, by their main address.
+    suggestions: ORDER_STORES.map((s) => ({ value: s.domains[0]!, label: s.name })),
     shownWhen: 'orders.watch',
   }),
   'orders.watchNotify': bool({

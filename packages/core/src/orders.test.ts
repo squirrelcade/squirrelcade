@@ -1,6 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import {
   gmailOrderSearch,
+  gmailPurchaseSearch,
+  senderDomain,
+  storesSeen,
   itemCost,
   orderItemFor,
   orderItemScore,
@@ -413,5 +416,42 @@ describe("the stores' real emails, as they're shaped", () => {
     expect(purchaseSubject(m.subject, PURCHASE_SUBJECTS_DEFAULT, NOT_PURCHASE_SUBJECTS_DEFAULT)).toBe(true);
     // A listing's year isn't a sequel's number either.
     expect(orderItemScore('Okami PS2 2006 CIB Complete', 'Okami')).toBe(1);
+  });
+});
+
+describe('Find my stores', () => {
+  it("names a sender's store by its web domain", () => {
+    expect(senderDomain('notifications@info.gamestop.com')).toBe('gamestop.com');
+    expect(senderDomain('ebay@reply.ebay.com')).toBe('ebay.com');
+    expect(senderDomain('auto-confirm@amazon.co.uk')).toBe('amazon.co.uk');
+    expect(senderDomain('help@superraregames.com')).toBe('superraregames.com');
+    expect(senderDomain('not an address')).toBeNull();
+  });
+
+  it('searches Gmail for a purchase word in the subject, within the days', () => {
+    expect(gmailPurchaseSearch(['order confirmed', 'receipt'], 365)).toBe('{subject:"order confirmed" subject:receipt} newer_than:365d');
+  });
+
+  it('lists the stores of purchase emails: the ones Squirrelcade reads first, then the most emails', () => {
+    const yes = ['order confirmed', 'receipt', 'purchased', 'thank you for your order'];
+    const no = ['shipped', 'delivered'];
+    const at = (d: number) => new Date(Date.UTC(2026, 9, d)).toISOString();
+    const stores = storesSeen(
+      [
+        { from: 'receipts@pizza.example', fromName: 'Pizza Place', subject: 'Your receipt from Pizza Place', date: at(1) },
+        { from: 'receipts@pizza.example', fromName: 'Pizza Place', subject: 'Your receipt from Pizza Place', date: at(5) },
+        { from: 'notifications@info.gamestop.com', fromName: 'GameStop', subject: 'Thank you for your order!', date: at(3) },
+        { from: 'ebay@ebay.com', fromName: 'eBay', subject: 'Order confirmed: Okami PS2', date: at(2) },
+        { from: 'ebay@ebay.com', fromName: 'eBay', subject: 'Your order has shipped: Okami PS2', date: at(4) },
+        { from: 'news@shop.example', fromName: 'Shop', subject: 'New arrivals this week', date: at(6) },
+      ],
+      yes,
+      no,
+    );
+    expect(stores).toEqual([
+      { domain: 'ebay.com', name: 'eBay', emails: 1, lastSubject: 'Order confirmed: Okami PS2', lastDate: at(2), known: true },
+      { domain: 'gamestop.com', name: 'GameStop', emails: 1, lastSubject: 'Thank you for your order!', lastDate: at(3), known: true },
+      { domain: 'pizza.example', name: 'Pizza Place', emails: 2, lastSubject: 'Your receipt from Pizza Place', lastDate: at(5), known: false },
+    ]);
   });
 });
