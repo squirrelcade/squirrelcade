@@ -1,6 +1,8 @@
 import { Alert, Button, Group, Modal, Stack, Text } from '@mantine/core';
-import { IconBulb } from '@tabler/icons-react';
+import { useMediaQuery } from '@mantine/hooks';
+import { IconBulb, IconDeviceMobile } from '@tabler/icons-react';
 import { useEffect, useRef, useState, type ReactNode } from 'react';
+import { useSetting } from './hooks';
 import { cameraProblem, scan, scanEach } from './scanner';
 
 /**
@@ -27,6 +29,22 @@ export function ScannerModal({
 }) {
   const video = useRef<HTMLVideoElement>(null);
   const [error, setError] = useState<string | null>(null);
+  // How long the camera stays ready for the next scan (D162), so a run of scans asks the browser for it once.
+  const keepSeconds = useSetting('interface.cameraKeepSeconds', 90);
+  // Scanning is upright only (the owner: "locked in one direction"): a phone turned sideways pauses it and says so. A
+  // page can't lock an iPhone's screen, and iPhone Safari could leave the picture turned a quarter after a turn.
+  const sideways = useMediaQuery('(orientation: landscape) and (max-height: 32em)') ?? false;
+  const paused = useRef(false);
+  paused.current = sideways;
+  useEffect(() => {
+    const v = video.current;
+    if (!opened || sideways || !v?.srcObject) return;
+    // Upright again: the picture is attached anew, the right way up.
+    const stream = v.srcObject;
+    v.srcObject = null;
+    v.srcObject = stream;
+    void v.play().catch(() => undefined);
+  }, [sideways, opened]);
   // The latest handlers, so a page that renders again doesn't restart the camera.
   const handlers = useRef({ onCode, qr });
   handlers.current = { onCode, qr };
@@ -49,13 +67,18 @@ export function ScannerModal({
     }
     setError(null);
     const abort = new AbortController();
-    const options = { onTrack: setTrack, qr: withQr ? (text: string) => Boolean(handlers.current.qr?.(text)) : undefined };
+    const options = {
+      onTrack: setTrack,
+      qr: withQr ? (text: string) => Boolean(handlers.current.qr?.(text)) : undefined,
+      keepMs: Math.max(0, keepSeconds) * 1000,
+      paused: () => paused.current,
+    };
     const failed = (err: unknown) => setError(err instanceof Error ? err.message : String(err));
     const start = () => {
       if (!video.current) return void setTimeout(start, 50);
       if (keepOpen) scanEach(video.current, abort.signal, (code) => handlers.current.onCode(code), options).catch(failed);
       else
-        scan(video.current, abort.signal, setTrack, { qr: options.qr }).then(
+        scan(video.current, abort.signal, setTrack, { qr: options.qr, keepMs: options.keepMs, paused: options.paused }).then(
           (code) => code && handlers.current.onCode(code),
           failed,
         );
@@ -73,7 +96,15 @@ export function ScannerModal({
         <Alert color="yellow">{error}</Alert>
       ) : (
         <Stack gap="xs">
-          <video ref={video} muted playsInline style={{ width: '100%', borderRadius: 8, background: '#000' }} />
+          <div style={{ position: 'relative' }}>
+            <video ref={video} muted playsInline style={{ width: '100%', borderRadius: 8, background: '#000', display: 'block' }} />
+            {sideways && (
+              <div className="sc-scan-upright" role="status">
+                <IconDeviceMobile size={28} aria-hidden />
+                Turn your phone upright to scan
+              </div>
+            )}
+          </div>
           <Group justify="space-between" wrap="nowrap" align="flex-start">
             <Text size="xs" c="dimmed">
               Hold the barcode flat, about a hand's width away, filling half the picture. Shiny case? Tilt it a little so the light doesn't shine on the barcode.

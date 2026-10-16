@@ -421,6 +421,17 @@ export const settingDefinitions = {
     max: 182,
     unit: 'days',
   }),
+  'interface.cameraKeepSeconds': num({
+    page: 'interface',
+    section: 'Store Mode',
+    label: 'Keep the camera ready between scans',
+    description:
+      "After a scan, the camera stays on this long, so the next scan starts at once and the browser doesn't ask for the camera again (iPhone Safari asks each time it's turned back on, unless its Website Settings say Allow). The camera's light may show meanwhile; it turns off when the time is up or you leave the page. 0 turns it off right after each scan.",
+    default: 90,
+    min: 0,
+    max: 600,
+    unit: 'seconds',
+  }),
   'interface.storeOffline': bool({
     page: 'interface',
     section: 'Store Mode',
@@ -1089,6 +1100,15 @@ export const settingDefinitions = {
     description: '"{game}" becomes Disc, Cartridge, Card or Disk by the console (a PlayStation 2 game\'s "Disc front", a Super Nintendo game\'s "Cartridge front"). Not for a sealed copy.',
     default: ['{game} front', '{game} back'],
     maxItems: 10,
+  }),
+  'collection.photoSideways': list({
+    page: 'collection',
+    section: 'Your copies',
+    label: 'Standard photos taken sideways',
+    description:
+      'The standard photos to take with the phone turned sideways (landscape), such as a case opened flat; the others are taken upright. Each photo\'s button says which, and a photo taken the other way gets a note offering to retake it. Names as above ("{game} front" too).',
+    default: ['Inside'],
+    maxItems: 20,
   }),
   'collection.photoSlotsManual': list({
     page: 'collection',

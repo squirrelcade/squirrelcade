@@ -749,6 +749,23 @@
   color: var(--sc-cade-text);
 }
 
+/* The scanner with the phone sideways (D162): scanning is upright only, so the picture is covered until it's turned back. */
+.sc-scan-upright {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 16px;
+  border-radius: 8px;
+  background: rgba(0, 0, 0, 0.82);
+  color: #fff;
+  font-weight: 700;
+  text-align: center;
+}
+
 /* Store Mode's verdict (0.50.0): the answer in large pixel type on its tone's color, and its reason under it. */
 .sc-verdict {
   display: flex;

@@ -6,6 +6,10 @@ What changed in each version of Squirrelcade (called Gamefolio before 0.35.0). T
 
 ### Added
 
+- **The camera stays ready between scans** (D162, the owner's ask: the iPhone asked for the camera at every scan): for 90 seconds after a scan (Settings > Interface > Store Mode), so the next one starts at once and the browser asks once; it turns off when the time is up or you leave the page. Help > Store Mode says how to make an iPhone always allow it.
+- **Scanning is upright** (D162): turned sideways, the scanner pauses and says "Turn your phone upright to scan", then picks up the right way up, which also mends the picture an iPhone could leave turned a quarter after a turn.
+- **Each standard photo says how to hold the phone** (D162): upright for the box and the disc, sideways for Inside (Settings > Collection > Standard photos taken sideways); a photo taken the other way gets a note offering to retake it.
+
 - **Searches filter by console** (the owner's ask): when a search's games are on several consoles, chips above them name each console with how many ("PlayStation 4 2"); tap one to see that console's only, and again (or All) to see them all. In the header's search, a console tapped asks for its best matches, beyond the first page; Store Mode's search filters its answers in place, with or without a connection.
 - **Stash > Recently added** (D161, the owner's ask): the copies added lately (the last 7, 30 or 90 days), newest first, each finished right there: its condition, what you paid, the rip and where it's kept, in the order you'd do them, each saved as you go. The rip is **Read fully** in one tap, with an arrow for **Read with errors** or **Couldn't be read**. **Edit this copy** opens its window for the rest.
 

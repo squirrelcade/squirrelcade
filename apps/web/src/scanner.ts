@@ -1,4 +1,5 @@
 import { normalizeBarcode } from '@squirrelcade/core';
+import { cameraKeeper } from './camera';
 import wasmUrl from 'zxing-wasm/reader/zxing_reader.wasm?url';
 
 interface Detector {
@@ -38,7 +39,21 @@ export interface ScanOptions {
   onTrack?: (track: MediaStreamTrack) => void;
   /** Also reads QR codes whose text this accepts (a place's label). */
   qr?: (text: string) => boolean;
+  /** How long the camera stays ready after the scan (D162), for the next one; 0 turns it off at once. */
+  keepMs?: number;
+  /** Reads nothing while this says so (the phone held sideways: scanning is upright only, D162). */
+  paused?: () => boolean;
 }
+
+/** The camera, kept ready between scans (D162): the rear one, asked for a sharp picture. */
+const camera = cameraKeeper(() =>
+  navigator.mediaDevices.getUserMedia({
+    video: { facingMode: { ideal: 'environment' }, width: { ideal: 1920 }, height: { ideal: 1080 } },
+    audio: false,
+  }),
+);
+// Leaving the page (another app, the phone locked) turns the camera off at once.
+if (typeof document !== 'undefined') document.addEventListener('visibilitychange', () => document.visibilityState === 'hidden' && camera.stop());
 
 const BARCODE = /^\d{8,14}$/;
 /** A code still in sight isn't given again; gone this long and back, it is. */
@@ -51,10 +66,7 @@ const AGAIN_AFTER_MS = 2000;
  */
 async function readCodes(video: HTMLVideoElement, signal: AbortSignal, options: ScanOptions, onCode: (code: string) => boolean): Promise<void> {
   const detector = await createDetector(Boolean(options.qr));
-  const stream = await navigator.mediaDevices.getUserMedia({
-    video: { facingMode: { ideal: 'environment' }, width: { ideal: 1920 }, height: { ideal: 1080 } },
-    audio: false,
-  });
+  const stream = await camera.open();
   try {
     const track = stream.getVideoTracks()[0];
     if (track) {
@@ -66,7 +78,7 @@ async function readCodes(video: HTMLVideoElement, signal: AbortSignal, options: 
     let last: string | null = null;
     const seen = new Map<string, number>();
     while (!signal.aborted) {
-      if (video.readyState >= 2) {
+      if (video.readyState >= 2 && !options.paused?.()) {
         const codes = await detector.detect(video).catch(() => []);
         const read = codes.map((c) => c.rawValue).find((v) => BARCODE.test(v) || Boolean(options.qr?.(v)));
         // A UPC read once with a zero in front and once without is the same code.
@@ -80,8 +92,8 @@ async function readCodes(video: HTMLVideoElement, signal: AbortSignal, options: 
       await new Promise((r) => setTimeout(r, 150));
     }
   } finally {
-    for (const track of stream.getTracks()) track.stop();
     video.srcObject = null;
+    camera.release(stream, options.keepMs ?? 0);
   }
 }
 

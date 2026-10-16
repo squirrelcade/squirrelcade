@@ -1,7 +1,7 @@
 import { Anchor, Autocomplete, Badge, Button, CloseButton, Divider, FileButton, Group, Image, Loader, Modal, NumberInput, SegmentedControl, Select, SimpleGrid, Stack, TagsInput, Text, TextInput, Tooltip } from '@mantine/core';
-import { COMPLETENESS_LABELS, GRADERS, RIP_RESULTS, TEST_RESULTS, type Completeness, type TestKind, type TestResult } from '@squirrelcade/core';
+import { COMPLETENESS_LABELS, GRADERS, MEDIA_NAMES, mediaOf, RIP_RESULTS, TEST_RESULTS, type Completeness, type TestKind, type TestResult } from '@squirrelcade/core';
 import { SellHelper } from './SellHelper';
-import { IconCamera, IconCheck, IconMapPin, IconUserShare, IconVideoFilled } from '@tabler/icons-react';
+import { IconCamera, IconCheck, IconDeviceMobile, IconDeviceMobileRotated, IconMapPin, IconUserShare, IconVideoFilled } from '@tabler/icons-react';
 import { useMediaQuery } from '@mantine/hooks';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useEffect, useLayoutEffect, useState } from 'react';
@@ -177,7 +177,7 @@ export function AddCopyModal({ game, onClose }: { game: { platformKey: string; p
 export const photoUrl = (id: number) => `/api/v1/photos/${id}`;
 
 /** Makes a photo smaller in the browser (at most `maxSide` pixels on its longest side), as a JPEG. */
-export async function shrinkPhoto(file: Blob, maxSide: number): Promise<Blob> {
+export async function shrinkPhoto(file: Blob, maxSide: number, size?: { width: number; height: number }): Promise<Blob> {
   let source: ImageBitmap | HTMLImageElement;
   try {
     source = await createImageBitmap(file, { imageOrientation: 'from-image' });
@@ -195,6 +195,8 @@ export async function shrinkPhoto(file: Blob, maxSide: number): Promise<Blob> {
   canvas.width = Math.max(1, Math.round(source.width * scale));
   canvas.height = Math.max(1, Math.round(source.height * scale));
   canvas.getContext('2d')!.drawImage(source, 0, 0, canvas.width, canvas.height);
+  // Its size as it's kept (upright or sideways), for whoever asked.
+  if (size) Object.assign(size, { width: canvas.width, height: canvas.height });
   return new Promise((resolve, reject) => canvas.toBlob((b) => (b ? resolve(b) : reject(new Error("This photo can't be read here."))), 'image/jpeg', 0.85));
 }
 
@@ -282,6 +284,12 @@ export function CopyDetailsModal({
   const dateFormat = useSetting('general.dateFormat', 'us');
   const loanDays = useSetting('collection.loanDays', 30);
   const maxSide = useSetting('collection.photoMaxSide', 1600);
+  // Which standard photos are taken with the phone sideways (D162; "{game}" by the console's media), the rest upright.
+  const sidewaysSlots = useSetting('collection.photoSideways', ['Inside']);
+  const isSideways = (slot: string) => {
+    const media = copy?.copy?.platformKey ? MEDIA_NAMES[mediaOf(copy.copy.platformKey)] : 'Disc';
+    return sidewaysSlots.some((s) => s.replace(/\{game\}/gi, media).trim().toLowerCase() === slot.trim().toLowerCase());
+  };
   const key = copy?.copyKey ?? '';
   const current = useQuery({
     queryKey: ['copy', key],
@@ -389,16 +397,23 @@ export function CopyDetailsModal({
     digitalStore: digitalClaim ? digitalStore.trim() || null : null,
   });
 
-  /** A standard photo (its slot), taking the place of the one it had. */
+  /** A standard photo (its slot), taking the place of the one it had; one taken the other way than usual says so (D162). */
   async function addSlotPhoto(slot: string, file: File) {
     setUploading(1);
     try {
       const form = new FormData();
       form.append('key', key);
       form.append('slot', slot);
-      form.append('file', await shrinkPhoto(file, maxSide), 'photo.jpg');
+      const size = { width: 0, height: 0 };
+      form.append('file', await shrinkPhoto(file, maxSide, size), 'photo.jpg');
       await api('/photos', { method: 'POST', body: form });
-      notifySuccess(`${slot}: kept.`);
+      const wanted = isSideways(slot);
+      const landscape = size.width > size.height;
+      notifySuccess(
+        size.width === size.height || landscape === wanted
+          ? `${slot}: kept.`
+          : `${slot}: kept. It was taken ${landscape ? 'sideways' : 'upright'}, and ${slot} is usually ${wanted ? 'sideways' : 'upright'}: retake it if it looks wrong.`,
+      );
     } catch (err) {
       notifyError(err, "The photo couldn't be kept");
     } finally {
@@ -810,7 +825,13 @@ export function CopyDetailsModal({
                       <FileButton onChange={(file) => file && void addSlotPhoto(slot, file)} accept="image/*" capture="environment">
                         {(props) => (
                           <Button {...props} variant="default" h={90} leftSection={<IconCamera size={16} />} loading={uploading > 0} aria-label={`Take ${slot}`} styles={{ label: { whiteSpace: 'normal' } }}>
-                            {slot}
+                            {/* How to hold the phone for it (D162): the case opened flat sideways, the rest upright. */}
+                            <Stack gap={2} align="center">
+                              <span>{slot}</span>
+                              <Text span size="xs" c="dimmed">
+                                {isSideways(slot) ? <IconDeviceMobileRotated size={12} aria-hidden /> : <IconDeviceMobile size={12} aria-hidden />} {isSideways(slot) ? 'sideways' : 'upright'}
+                              </Text>
+                            </Stack>
                           </Button>
                         )}
                       </FileButton>

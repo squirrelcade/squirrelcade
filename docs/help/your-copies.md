@@ -38,6 +38,8 @@ Each change saves as you make it ("Saved" shows by the copy). **Edit this copy**
 
 Each copy has its standard photos, by what it has and what its console plays games from: a disc game complete in its box has **Box front**, **Box back**, **Inside**, **Disc front** and **Disc back**; a sealed copy only the box's front and back; a loose cartridge its **Cartridge front** and **Cartridge back** (a Switch, DS, 3DS or Vita game's **Card**). Each is a button in the copy's window: on a phone it opens the camera, and the photo takes that place (**retake** to replace it). Other photos go under **Add photos**, as before. Settings > Collection > Your copies names the standard photos (the box's sides, the manual, whatever you like; "{game}" becomes Disc, Cartridge, Card or Disk).
 
+Each photo's button says how to hold the phone for it: **upright** for the box's front and back and the disc, **sideways** for **Inside** (the case opened flat). The phone's own camera turns freely, so it's up to you; a photo taken the other way than its button says gets a note offering to retake it. **Standard photos taken sideways** (Settings > Collection) lists the sideways ones.
+
 ## Estimated prices
 
 When you don't know what you paid for a copy (PriceCharting writes 0 for those), you can give it an **Estimated price** in its window, to get a sense of what you've spent. It stays empty unless you fill it in: Squirrelcade estimates nothing on its own. **Suggest** proposes one: a copy with its box at its console's usual price for a new game (and when the game came out, as when you most likely bought it); one without its box at half of that, most likely bought used. Keep it, change it, or clear it, then **Save the copy**.
