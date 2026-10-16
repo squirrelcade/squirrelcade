@@ -2,7 +2,7 @@
 
 What changed in each version of Squirrelcade (called Gamefolio before 0.35.0). The decisions behind these (D01, D02...) are in [docs/DECISIONS.md](docs/DECISIONS.md), each with a tag to roll it back.
 
-## 1.2.0 (coming)
+## 1.2.0 (2026-10-15): Add it, prices from your order emails, On the way, places and numbered sets
 
 ### Added
 
