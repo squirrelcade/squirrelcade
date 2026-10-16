@@ -30,17 +30,17 @@ Values come from a PriceCharting export, or from a Value column in a spreadsheet
    - **Covers (optional):** free IGDB keys give covers, genres and series. See [Optional parts](features.md).
    - **Wishlist (optional):** put the consoles and genres you like in your own order.
 
-After that, the menu on the left has everything (on a phone, the bar at the bottom has Today, Collection, Store Mode and Acorns, and **More** opens the menu):
+After that, the menu on the left has everything (on a phone, the bar at the bottom has Today, Stash, Scan and Acorns, and **More** opens the menu). Its two main sections follow one rule, said under their names: the **Stash** is the games you have, and **Acorns** is games coming in and going out.
 
 | Page | What it's for |
 | --- | --- |
 | **Today** | The home page: what matters today on one screen (below). The squirrel at the top left brings you back to it from anywhere. |
-| **Stash** | Your collection: your copies, as a list or a grid, with filters, and a spreadsheet download. Under it: **Copies** (every copy of each game across consoles, and your PC games beside them), **Upgrades**, **Improve** (what each copy is missing), **Backlog**, **Loans**, and **Stash updates** (where new exports go, with what each one added and removed). |
-| **Acorns** | Games coming in and going out: the **Acorns wishlist** (the games worth getting next), **Coming soon**, **Past releases** (the ones that came out around this time in past years), **Deals**, **For sale**, **Sales** (what you sold, and what to sell next), and **Acorns ranking** (the rules that give acorns). |
+| **Stash** | Your collection: your copies, as a list or a grid, with filters, and a spreadsheet download. Under it: **Copies** (every copy of each game across consoles, and your PC games beside them), **Upgrades**, **Improve** (what each copy is missing), **Backlog**, **Loans** and **Places** (where each game is kept). |
+| **Acorns** | Games coming in and going out: **Add a game**, **On the way** (when it's on), **Stash updates** (PriceCharting's exports coming in, with what each one added and removed, and your new copies going out to PriceCharting), the **Acorns wishlist** (the games worth getting next), **Coming soon**, **Past releases** (the ones that came out around this time in past years), **Deals**, **For sale**, **Sales** (what you sold, and what to sell next), and **Acorns ranking** (the rules that give acorns). |
 | **Almanac** | **Platforms** (each console's completion, its catalog, its Top 100 and its history; **Timeline** shows consoles and landmark games by year), **Sets** (your own sets beyond consoles: a publisher's releases, a series), **Statistics** (your collection counted every way) and **Report** (every copy, to print). |
 | **Friends** | Your collection next to your friends': each friend's page has **Compare** and **Trades**. See [Friends](friends.md). |
 | **PC library** | With the PC library on: your PC games, and under it the **PC wishlist** and **PC deals** (its games on sale now). |
-| **Store Mode** | For your phone in a store: the button at the top (and in the bar at the bottom on a phone). |
+| **Store Mode** | For your phone in a store: **Scan** at the top (and in the bar at the bottom on a phone) opens it with the camera on. |
 | **Settings**, **System** | Everything you can change, and under System: **Review** (titles that look alike, for you to answer: the same game, or not; its count shows on System), the server's status, tasks, backups and logs. |
 
 **Today**, card by card:

@@ -7,7 +7,7 @@ The Stash's mark is a little treasure chest. Wherever Squirrelcade says you have
 ## Updating it
 
 1. On PriceCharting, **My Collection > Download (CSV)**. Keep the file's name (`collection_YYYYMMDD.csv`): its date is the date of the prices.
-2. In Squirrelcade, open **Stash > Stash updates** (or click **Update** on the Stash page) and drop the file on the box, or click the box to choose it. The `collection.zip` PriceCharting sends works as it is.
+2. In Squirrelcade, open **Acorns > Stash updates** (or click **Update** on the Stash page) and drop the file on the box, or click the box to choose it. The `collection.zip` PriceCharting sends works as it is.
 
 Other ways in: let Squirrelcade pick it up from your email (below), or save the file into the watched folder (the `imports` folder of a Docker install). Squirrelcade checks that folder every 15 minutes (Settings > Tasks), and **Settings > Collection** has its switch and its file name pattern.
 

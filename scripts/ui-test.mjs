@@ -1582,6 +1582,14 @@ export async function uiTest(target, account, check) {
     found = await pageProblems();
     check('ui: a collection update uploads on its page', found.length === 0, found.join(' | '));
 
+    // The menu's rule under each section's name, and Stash updates under Acorns, open there (the owner, 2026-10-16).
+    const navbar = page.locator('.mantine-AppShell-navbar');
+    const acornsOpen = await navbar.getByText('Games coming in and going out').isVisible();
+    const stashRule = await navbar.getByText('The games you have').isVisible();
+    const updatesActive = await navbar.locator('a[href="/updates"][data-active]').count();
+    found = await pageProblems();
+    check('ui: Stash updates sits under Acorns, and each section says what it is for', found.length === 0 && acornsOpen && stashRule && updatesActive === 1, found.join(' | ') || `acorns rule ${acornsOpen}, stash rule ${stashRule}, active ${updatesActive}`);
+
     // An export without Uncharted (one game of eight is more than an update may remove unheld, so that's raised
     // first): its copy waits on Review's Copies tab, still counted, and "I still have it" settles it.
     await page.request.put(`${base}/api/v1/settings`, { data: { changes: { 'collection.maxRemovalPercent': 50 } } });

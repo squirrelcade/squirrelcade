@@ -109,7 +109,11 @@ export function ImportsPage() {
 
   return (
     <>
-      <PageHeader help="collection" title="Stash updates" description="Keep your collection up to date with PriceCharting's export: the CSV file, or the collection.zip it arrives in." />
+      <PageHeader
+        help="collection"
+        title="Stash updates"
+        description="Under Acorns, with the rest of what comes into your Stash and goes out of it: PriceCharting's export brings your collection in (the CSV file, or the collection.zip it arrives in), and Send to PriceCharting takes the copies you add here out to it."
+      />
       {pending.map((p) => (
         <Alert key={p.id} color="yellow" icon={<IconAlertTriangle />} title={`${p.fileName} is waiting for you`} mb="md">
           <Stack gap="xs">

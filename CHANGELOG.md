@@ -2,6 +2,12 @@
 
 What changed in each version of Squirrelcade (called Gamefolio before 0.35.0). The decisions behind these (D01, D02...) are in [docs/DECISIONS.md](docs/DECISIONS.md), each with a tag to roll it back.
 
+## 1.2.2 (coming)
+
+### Changed
+
+- **Stash updates is under Acorns** (the owner's ask), with the rest of what comes into your collection and goes out of it: PriceCharting's exports come in there, and your new copies go out to PriceCharting. The menu says the rule under each section's name: **Stash**, the games you have; **Acorns**, games coming in and going out.
+
 ## 1.2.1 (2026-10-16): games wrongly counted as owned, and a copy's buttons
 
 ### Added

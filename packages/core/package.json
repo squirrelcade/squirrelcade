@@ -1,6 +1,6 @@
 {
   "name": "@squirrelcade/core",
-  "version": "1.2.1",
+  "version": "1.2.2",
   "private": true,
   "license": "AGPL-3.0-only",
   "description": "Squirrelcade domain logic: settings, imports, matching and scoring",

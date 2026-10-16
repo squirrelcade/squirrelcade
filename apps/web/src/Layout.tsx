@@ -18,6 +18,15 @@ import { useFeature, usePageTitle, useSession, useSetting, useSettings } from '.
 import { DEEP_BUTTON } from './look';
 import { Acorn, StashMark } from './Acorn';
 
+/**
+ * The rule the menu is sorted by, said under each section's name (the owner, 2026-10-16): the Stash is what you have,
+ * Acorns is games coming in and going out (and Stash updates with them: PriceCharting's exports in, your copies out).
+ */
+export const SECTION_RULE = {
+  stash: 'The games you have',
+  acorns: 'Games coming in and going out',
+} as const;
+
 const SYSTEM_PAGES = [
   { path: '/system/status', label: 'Status' },
   { path: '/system/tasks', label: 'Tasks' },
@@ -115,15 +124,17 @@ export function Layout({ children }: { children: ReactNode }) {
   // Friends by name in the menu (0.58.0): the most recently active first, at most MENU_FRIENDS; All friends has them all.
   const friends = useQuery({ queryKey: ['friends'], queryFn: () => api<{ friends: MenuFriend[] }>('/friends'), enabled: !!session?.authenticated && owner });
   const friendList = [...(friends.data?.friends ?? [])].sort((a, b) => activity(b).localeCompare(activity(a)) || a.name.localeCompare(b.name));
-  // The menu's sections (0.58.0, the owner's layout): For sale and Sales are games going out, so they're under Acorns.
-  const inAcorns = path.startsWith('/wishlist') || path === '/acorns' || path === '/collection/add' || path === '/coming' || path === '/collection/sale' || path === '/collection/sales';
+  // The menu's sections (0.58.0, the owner's layout): the Stash is what you have; Acorns is games coming in and going out
+  // (For sale and Sales; Stash updates too since 2026-10-16, PriceCharting's exports in and your new copies out).
+  const inAcorns =
+    path.startsWith('/wishlist') || path === '/acorns' || path === '/collection/add' || path === '/coming' || path === '/collection/sale' || path === '/collection/sales' || path === '/updates';
   // On the way (D156): games bought that haven't arrived, while Settings > Email watches for them.
   const comingOn = useSetting('orders.watch', false) === true && owner;
   const coming = useQuery({ queryKey: ['coming'], queryFn: () => api<{ items: unknown[] }>('/coming'), enabled: !!session?.authenticated && comingOn, staleTime: 60_000 });
   const comingCount = coming.data?.items.length ?? 0;
   // Statistics and Report are the Almanac's (2026-10-06), with the consoles and sets; their addresses stay.
   const inAlmanac = path.startsWith('/platforms') || path.startsWith('/sets') || path === '/collection/statistics' || path === '/collection/report';
-  const inCollection = (path.startsWith('/collection') && !inAcorns && !inAlmanac) || path === '/updates';
+  const inCollection = path.startsWith('/collection') && !inAcorns && !inAlmanac;
   const reviewBadge =
     reviewCount > 0 ? (
       <Badge size="xs" variant="light" color="yellow">
@@ -222,7 +233,8 @@ export function Layout({ children }: { children: ReactNode }) {
             The Stash (the collection, named for what a squirrel keeps, 2026-10-06): the games you have, and keeping them
             up to date.
           */}
-          <NavLink label="Stash" leftSection={<StashMark size={16} />} opened={inCollection} onClick={() => navigate('/collection')} childrenOffset={28}>
+          {/* Each section says what it's for under its name, the rule the menu is sorted by (the owner, 2026-10-16). */}
+          <NavLink label="Stash" description={SECTION_RULE.stash} leftSection={<StashMark size={16} />} opened={inCollection} onClick={() => navigate('/collection')} childrenOffset={28}>
             {link('/collection', 'Stash')}
             {link('/collection/copies', 'Copies')}
             {link('/collection/upgrades', 'Upgrades')}
@@ -230,13 +242,14 @@ export function Layout({ children }: { children: ReactNode }) {
             {playShown && link('/collection/backlog', 'Backlog')}
             {detailsShown && link('/collection/loans', 'Loans')}
             {detailsShown && link('/collection/places', 'Places')}
-            {owner && link('/updates', 'Stash updates')}
           </NavLink>
-          {/* Acorns: games coming in (the Acorns wishlist and its pages), games going out (for sale, sold), and the
-              ranking: the rules that give acorns (D121; the owner's layout in 0.58.0). */}
-          <NavLink label="Acorns" leftSection={<Acorn size={18} />} opened={inAcorns} onClick={() => navigate('/wishlist')} childrenOffset={28}>
+          {/* Acorns: games coming in (the Acorns wishlist and its pages, On the way, Stash updates' exports) and going out
+              (for sale, sold, Stash updates' sends to PriceCharting), and the ranking: the rules that give acorns (D121;
+              the owner's layout in 0.58.0; Stash updates moved here 2026-10-16). */}
+          <NavLink label="Acorns" description={SECTION_RULE.acorns} leftSection={<Acorn size={18} />} opened={inAcorns} onClick={() => navigate('/wishlist')} childrenOffset={28}>
             {owner && link('/collection/add', 'Add a game')}
             {comingOn && link('/coming', 'On the way', undefined, comingCount > 0 ? <Badge size="xs" variant="light" color="forest">{comingCount}</Badge> : undefined)}
+            {owner && link('/updates', 'Stash updates')}
             {link('/wishlist', 'Acorns wishlist')}
             {link('/wishlist/coming-soon', 'Coming soon')}
             {link('/wishlist/past', 'Past releases')}
