@@ -42,7 +42,19 @@ const NUMBERED = new Set(['part', 'chapter', 'episode', 'volume', 'vol', 'act', 
  * meets "Mega Man 10".
  */
 export function matchKey(title: string): string {
-  return matchTokens(title).join('');
+  return scriptKey(title) ?? matchTokens(title).join('');
+}
+
+/**
+ * The key of a title in another script (Japanese, Korean, Chinese, Cyrillic...): its own letters and digits, marked so
+ * it never meets a Latin key, so only the same name matches it. Normalizing keeps nothing of its letters: two such names
+ * shared an empty key (or a stray digit, "デッドオアアライブ2" being "2"), and IGDB's other names in those scripts made
+ * unrelated games one (D159: hundreds of games counted as owned through one cross-generation copy). Null for a Latin title.
+ */
+function scriptKey(title: string): string | null {
+  if (latinTitle(title)) return null;
+  const own = title.normalize('NFKC').toLowerCase().replace(/[^\p{L}\p{N}]+/gu, '');
+  return own ? `~${own}` : null;
 }
 
 /** The words behind matchKey, with numbers written as digits ("Tomb Raider II" -> tomb, raider, 2). */
@@ -78,7 +90,7 @@ export function matchTokens(title: string): string[] {
  * so matching uses it on its own only where the titles are Japanese.
  */
 export function romajiKey(title: string): string {
-  return romajiTokens(matchTokens(title)).join('');
+  return scriptKey(title) ?? romajiTokens(matchTokens(title)).join('');
 }
 
 /** Words with Japanese long vowels, n before b, m and p, and the particle "wo" folded (see romajiKey). */

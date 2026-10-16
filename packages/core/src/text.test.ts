@@ -39,6 +39,23 @@ describe('matchKey', () => {
   const same = (a: string, b: string) => expect(matchKey(a), `${a} / ${b}`).toBe(matchKey(b));
   const different = (a: string, b: string) => expect(matchKey(a), `${a} / ${b}`).not.toBe(matchKey(b));
 
+  it("keeps names in other scripts apart: each by its own letters, never an empty key or a stray digit (D159)", () => {
+    // IGDB's other names: Zombie Army Trilogy's Korean one, Indiana Jones and the Great Circle's Chinese one.
+    different('좀비 아미 트릴로지', '夺宝奇兵：古老之圈');
+    different('ワーウルフ：ジ・アポカリプス', '좀비 아미 트릴로지');
+    expect(matchKey('夺宝奇兵：古老之圈')).not.toBe('');
+    // A digit alone was all that was left: "デッドオアアライブ2" met any other "2".
+    different('デッドオアアライブ2', 'ストリートファイター2');
+    different('デッドオアアライブ2', '2');
+    // The same name still matches itself, spaces and punctuation aside; and never a Latin title.
+    same('ゼルダの伝説 ブレス オブ ザ ワイルド', 'ゼルダの伝説　ブレス・オブ・ザ・ワイルド');
+    different('Хроники', 'Khroniki');
+    // Latin titles are as before, accents included.
+    expect(matchKey('Pokémon')).toBe('pokemon');
+    expect(matchKey('Ōkami')).toBe('okami');
+    expect(romajiKey('夺宝奇兵：古老之圈')).toBe(matchKey('夺宝奇兵：古老之圈'));
+  });
+
   it('treats the same game written differently as one title', () => {
     same('The Elder Scrolls V: Skyrim', 'Elder Scrolls V: Skyrim');
     same('Tomb Raider Trilogy (The)', 'Tomb Raider Trilogy');

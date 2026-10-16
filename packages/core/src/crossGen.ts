@@ -52,7 +52,8 @@ export function applyCrossGen(
   const targets = match.targets.map((r): TargetResult => {
     if (r.status !== 'missing') return r;
     const year = yearOf(r.target);
-    const keys = [r.target.title, ...(r.target.altTitles ?? [])].map(matchKey);
+    // A name with no key (punctuation alone) matches nothing.
+    const keys = [r.target.title, ...(r.target.altTitles ?? [])].map(matchKey).filter(Boolean);
     for (const p of partners) {
       for (const key of keys) {
         const there = p.owned.get(key);

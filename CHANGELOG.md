@@ -2,6 +2,12 @@
 
 What changed in each version of Squirrelcade (called Gamefolio before 0.35.0). The decisions behind these (D01, D02...) are in [docs/DECISIONS.md](docs/DECISIONS.md), each with a tag to roll it back.
 
+## 1.2.1 (coming)
+
+### Fixed
+
+- **Games counted as owned through an unrelated game** (D159): with cross-generation games on (the default), a game with another name in Japanese, Korean or Chinese (IGDB gives many) could count as owned through any game on the console before or after it that also had one: on one collection, 746 games, such as 173 Switch games "owned" as a Wii U copy of Zumba Fitness World Party. They showed as owned on their console's checklist and in Store Mode, and were left off the wishlist. Names in other scripts are now told apart by their own letters, so only the same name matches. Your completion percentages can go down after this update: the games that come back as missing were never yours.
+
 ## 1.2.0 (2026-10-15): Add it, prices from your order emails, On the way, places and numbered sets
 
 ### Added

@@ -31,6 +31,20 @@ describe('cross-generation games', () => {
     expect(releaseYear(null)).toBeNull();
   });
 
+  it('never counts a game through a copy whose only shared thing is a name in another script (D159)', () => {
+    // On the owner's install, every Switch 2 game with a Chinese or Japanese other name counted as their Switch copy of
+    // Zombie Army Trilogy, whose Korean name had the same (empty) key.
+    const before = match([missing(1, 'Indiana Jones and the Great Circle', ['夺宝奇兵：古老之圈']), missing(2, 'Monster Hunter Wilds', ['モンスターハンターワイルズ'])]);
+    const partner: CrossGenPartner = {
+      name: 'Nintendo Switch',
+      owned: new Map(['Zombie Army Trilogy', '좀비 아미 트릴로지'].map((n) => [matchKey(n), { productId: '1', title: 'Zombie Army Trilogy', year: 2020 }])),
+    };
+    expect(applyCrossGen(before, [partner], 0, () => null).targets.map((t) => t.status)).toEqual(['missing', 'missing']);
+    // The same name in another script still counts.
+    const same: CrossGenPartner = { name: 'Nintendo Switch', owned: new Map([[matchKey('モンスターハンターワイルズ'), { productId: '2', title: 'Monster Hunter Wilds', year: 2025 }]]) };
+    expect(applyCrossGen(before, [same], 0, () => null).targets.map((t) => t.status)).toEqual(['missing', 'owned']);
+  });
+
   it('counts a missing game owned on a neighbor, by its title or another name, within the years', () => {
     const years: Record<number, number> = { 1: 2025, 2: 2018, 3: 2020, 4: 2017 };
     const before = match([missing(1, 'Hollow Knight: Silksong'), missing(2, 'Old Port'), missing(3, 'Only Here'), missing(4, 'Zelda BotW', ['The Legend of Zelda: Breath of the Wild'])]);

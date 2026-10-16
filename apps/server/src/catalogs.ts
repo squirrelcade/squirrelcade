@@ -381,7 +381,7 @@ export class CatalogService {
         .from(copies)
         .where(and(isNull(copies.goneAt), eq(copies.platformId, platformId)))
         .all();
-      for (const r of rows) out.set(matchKey(r.title), { productId: r.productId, title: r.title, year: null });
+      for (const r of rows) if (matchKey(r.title)) out.set(matchKey(r.title), { productId: r.productId, title: r.title, year: null });
       return out;
     }
     const years = this.entryYears(platformId);
@@ -389,9 +389,10 @@ export class CatalogService {
       // Owned there through its own copies (another cross-generation answer never chains on).
       if (r.status !== 'owned' || r.via || !r.matches[0]) continue;
       const owned = { productId: r.matches[0].productId, title: r.matches[0].title, year: years.get(r.target.id) ?? null };
-      for (const name of [r.target.title, ...(r.target.altTitles ?? [])]) out.set(matchKey(name), owned);
+      // A name with no key (punctuation alone) stands for no game (D159).
+      for (const name of [r.target.title, ...(r.target.altTitles ?? [])]) if (matchKey(name)) out.set(matchKey(name), owned);
     }
-    for (const p of side.unmatched) if (!out.has(matchKey(p.title))) out.set(matchKey(p.title), { productId: p.productId, title: p.title, year: null });
+    for (const p of side.unmatched) if (matchKey(p.title) && !out.has(matchKey(p.title))) out.set(matchKey(p.title), { productId: p.productId, title: p.title, year: null });
     return out;
   }
 
