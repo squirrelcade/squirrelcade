@@ -46,6 +46,30 @@ export function StashMark({ size = 14 }: { size?: number }) {
   );
 }
 
+/**
+ * The Nutshell's mark (D163): a pixel walnut half cracked open, its gold kernel showing, for "your collection in a
+ * nutshell" (the consoles, sets, statistics and report), beside the Stash's chest and the acorn. Decorative.
+ */
+export function NutshellMark({ size = 14 }: { size?: number }) {
+  return (
+    <svg
+      viewBox="0 0 7 6"
+      width={Math.round((size * 7) / 6)}
+      height={size}
+      shapeRendering="crispEdges"
+      aria-hidden="true"
+      focusable="false"
+      style={{ display: 'inline-block', flex: 'none', verticalAlign: '-0.12em' }}
+    >
+      {/* The kernel's two lobes, as a walnut's (a flat top read as a mushroom). */}
+      <path d="M1 0h2v1H1zM4 0h2v1H4zM0 1h7v1H0z" fill="#e9b44c" />
+      <path d="M3 1h1v1H3z" fill="#b8862c" />
+      <path d="M0 2h7v1H0zM0 3h1v1H0zM6 3h1v1H6zM1 4h1v1H1zM5 4h1v1H5zM2 5h3v1H2z" fill="#6b3a10" />
+      <path d="M1 3h5v1H1zM2 4h3v1H2z" fill="#c27a3f" />
+    </svg>
+  );
+}
+
 /** Words that say you have a game ("Have it", "Owned") with the Stash's mark before them (D142). */
 export function Have({ children, size = 12 }: { children: ReactNode; size?: number }) {
   return (

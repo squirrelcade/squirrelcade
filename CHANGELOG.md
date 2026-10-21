@@ -15,6 +15,8 @@ What changed in each version of Squirrelcade (called Gamefolio before 0.35.0). T
 
 ### Changed
 
+- **The Almanac is now the Nutshell** (D163, the owner's ask): your collection in a nutshell, with its own pixel mark (a walnut cracked open, gold inside) and its line under its name, "Your collection, by the numbers", as the Stash and Acorns have theirs. Platforms, Sets, Statistics and Report are under it as before, at the same addresses.
+
 - **Stash updates is under Acorns** (the owner's ask), with the rest of what comes into your collection and goes out of it: PriceCharting's exports come in there, and your new copies go out to PriceCharting. The menu says the rule under each section's name: **Stash**, the games you have; **Acorns**, games coming in and going out.
 
 ## 1.2.1 (2026-10-16): games wrongly counted as owned, and a copy's buttons

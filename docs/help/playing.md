@@ -26,7 +26,7 @@ Games you haven't marked count as not played yet, so your backlog starts as your
 
 - The Collection page shows each copy's status and rating, and **Played or not** narrows the list to one status (or your backlog). Its download has them too.
 - The **Top 100** lists show what you played of each game, and how many you've finished.
-- **Almanac > Statistics** counts your games by status, and the ones you finished each year.
+- **Nutshell > Statistics** counts your games by status, and the ones you finished each year.
 
 ## RetroAchievements
 

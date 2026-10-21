@@ -126,9 +126,9 @@ Click a title or a cover to open the **game drawer**: your copies with their val
 
 Statistics' **Paid** says what you recorded paying, and beside it your [estimates](your-copies.md#estimated-prices) for the copies whose price you don't know (never part of what you paid).
 
-- **Almanac > Statistics** counts your collection every way: copies and value by console, condition and region; games by the decade they came out and by genre (from IGDB); copies added each year, what you spent each year, what you played, and your most valuable copies. **Value by platform over time** shows each console's value at every collection update (the 12 most valuable, with the change since the first update); it starts with the updates Squirrelcade kept when you installed 0.13.0, and every update after adds a point.
+- **Nutshell > Statistics** counts your collection every way: copies and value by console, condition and region; games by the decade they came out and by genre (from IGDB); copies added each year, what you spent each year, what you played, and your most valuable copies. **Value by platform over time** shows each console's value at every collection update (the 12 most valuable, with the change since the first update); it starts with the updates Squirrelcade kept when you installed 0.13.0, and every update after adds a point.
 - **Your goal**: Settings > Collection > Your goal takes how many copies (or games) you mean to have. Today and Statistics then show how far you are, the change over the last 12 months (the copies that came, by the day you bought them, less the ones that left) and when you'd get there at that pace. Once you're there, they say how many are over it, with a link to [what to sell](selling.md), and each copy you add (I bought it, Add a copy) says so as it's added: one in, one out.
-- **Almanac > Report** lists every copy by console with its condition, region and value (and what you paid and where it's kept), with totals, laid out to print or save as a PDF: **Print or save as PDF**. Handy for insurance, or a record of the collection.
+- **Nutshell > Report** lists every copy by console with its condition, region and value (and what you paid and where it's kept), with totals, laid out to print or save as a PDF: **Print or save as PDF**. Handy for insurance, or a record of the collection.
 
 ## Copies
 

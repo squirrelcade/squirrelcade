@@ -1,7 +1,7 @@
 import { SETTINGS_PAGES } from '@squirrelcade/core';
 import { ActionIcon, Anchor, AppShell, Badge, Burger, Button, Group, Menu, NavLink, ScrollArea, Text, Tooltip, UnstyledButton } from '@mantine/core';
 import { useDisclosure, useMediaQuery } from '@mantine/hooks';
-import { IconSun, IconVideoFilled, IconChevronDown, IconBook2, IconDeviceDesktop, IconHelp, IconListCheck, IconLogout, IconMenu2, IconPlus, IconServer, IconSettings, IconUser, IconUsersGroup } from '@tabler/icons-react';
+import { IconSun, IconVideoFilled, IconChevronDown, IconDeviceDesktop, IconHelp, IconListCheck, IconLogout, IconMenu2, IconPlus, IconServer, IconSettings, IconUser, IconUsersGroup } from '@tabler/icons-react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useState, type ReactNode } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router';
@@ -16,7 +16,7 @@ import { clearCopy } from './offline';
 import { PasswordModal } from './Password';
 import { useFeature, usePageTitle, useSession, useSetting, useSettings } from './hooks';
 import { DEEP_BUTTON } from './look';
-import { Acorn, StashMark } from './Acorn';
+import { Acorn, NutshellMark, StashMark } from './Acorn';
 
 /**
  * The rule the menu is sorted by, said under each section's name (the owner, 2026-10-16): the Stash is what you have,
@@ -25,6 +25,7 @@ import { Acorn, StashMark } from './Acorn';
 export const SECTION_RULE = {
   stash: 'The games you have',
   acorns: 'Games coming in and going out',
+  nutshell: 'Your collection, by the numbers',
 } as const;
 
 const SYSTEM_PAGES = [
@@ -133,9 +134,9 @@ export function Layout({ children }: { children: ReactNode }) {
   const comingOn = useSetting('orders.watch', false) === true && owner;
   const coming = useQuery({ queryKey: ['coming'], queryFn: () => api<{ items: unknown[] }>('/coming'), enabled: !!session?.authenticated && comingOn, staleTime: 60_000 });
   const comingCount = coming.data?.items.length ?? 0;
-  // Statistics and Report are the Almanac's (2026-10-06), with the consoles and sets; their addresses stay.
-  const inAlmanac = path.startsWith('/platforms') || path.startsWith('/sets') || path === '/collection/statistics' || path === '/collection/report';
-  const inCollection = path.startsWith('/collection') && !inAcorns && !inAlmanac;
+  // Statistics and Report are the Nutshell's (the Almanac's from 2026-10-06), with the consoles and sets; their addresses stay.
+  const inNutshell = path.startsWith('/platforms') || path.startsWith('/sets') || path === '/collection/statistics' || path === '/collection/report';
+  const inCollection = path.startsWith('/collection') && !inAcorns && !inNutshell;
   const reviewBadge =
     reviewCount > 0 ? (
       <Badge size="xs" variant="light" color="yellow">
@@ -261,9 +262,9 @@ export function Layout({ children }: { children: ReactNode }) {
             {owner && link('/collection/sales', 'Sales')}
             {owner && link('/acorns', 'Acorns ranking')}
           </NavLink>
-          {/* The Almanac (Data until 2026-10-06): the consoles with their catalogs, sets of your own, and the collection
-              counted (Statistics) and listed to print (Report). */}
-          <NavLink label="Almanac" leftSection={<IconBook2 size={18} />} opened={inAlmanac} onClick={() => navigate('/platforms')} childrenOffset={28}>
+          {/* The Nutshell (D163; Data until 2026-10-06, then the Almanac): your collection in a nutshell, the consoles with
+              their catalogs, sets of your own, and the collection counted (Statistics) and listed to print (Report). */}
+          <NavLink label="Nutshell" description={SECTION_RULE.nutshell} leftSection={<NutshellMark size={16} />} opened={inNutshell} onClick={() => navigate('/platforms')} childrenOffset={28}>
             {link('/platforms', 'Platforms')}
             {link('/sets', 'Sets')}
             {link('/collection/statistics', 'Statistics')}

@@ -1865,7 +1865,7 @@ export async function uiTest(target, account, check) {
     await failing.goto(`${base}/collection`);
     await failing.waitForLoadState('networkidle');
     await failing.route('**/assets/Sets-*.js', (route) => route.abort());
-    await failing.locator('nav.mantine-AppShell-navbar').getByText('Almanac', { exact: true }).first().click();
+    await failing.locator('nav.mantine-AppShell-navbar').getByText('Nutshell', { exact: true }).first().click();
     await failing.getByRole('link', { name: 'Sets' }).first().click();
     await failing.getByText("This page couldn't be shown").waitFor({ timeout: 15000 });
     const offersSupport = (await failing.getByRole('link', { name: 'Download a support file' }).count()) === 1;
@@ -1883,7 +1883,7 @@ export async function uiTest(target, account, check) {
     check('ui: a page that fails shows why, offers the support file, and the menu still works', offersSupport && recovered, failedAt);
 
     // Home (2026-10-06): the squirrel at the top left leads to Today from any page; Statistics and Report are the
-    // Almanac's; where the whole week fits (a wide screen), its arrows sit on the calendar's two sides.
+    // Nutshell's; where the whole week fits (a wide screen), its arrows sit on the calendar's two sides.
     await page.setViewportSize({ width: 1680, height: 950 });
     await page.goto(`${base}/sets`);
     await page.getByRole('link', { name: /: Today$/ }).click();
@@ -1893,14 +1893,14 @@ export async function uiTest(target, account, check) {
     const titleArrowsHidden = !(await page.locator('.sc-week-title-arrows').isVisible());
     if (sideShown) await sideAfter.click();
     const turned = sideShown && (await page.getByRole('heading', { name: 'Out next week' }).waitFor({ timeout: 10000 }).then(() => true, () => false));
-    await page.locator('nav.mantine-AppShell-navbar').getByText('Almanac', { exact: true }).first().click();
+    await page.locator('nav.mantine-AppShell-navbar').getByText('Nutshell', { exact: true }).first().click();
     const almanacStats = await page.locator('nav.mantine-AppShell-navbar').getByRole('link', { name: 'Statistics' }).first().waitFor({ timeout: 10000 }).then(() => true, () => false);
     found = await pageProblems();
     await page.setViewportSize({ width: 1280, height: 800 });
     check(
-      "ui: the squirrel leads home to Today, a wide screen turns the week from the calendar's sides, and Statistics is in the Almanac",
+      "ui: the squirrel leads home to Today, a wide screen turns the week from the calendar's sides, and Statistics is in the Nutshell",
       found.length === 0 && homeIsToday && sideShown && titleArrowsHidden && turned && almanacStats,
-      found.join(' | ') || `home ${homeIsToday}, side arrows ${sideShown}, title arrows hidden ${titleArrowsHidden}, turned ${turned}, Statistics in the Almanac ${almanacStats}`,
+      found.join(' | ') || `home ${homeIsToday}, side arrows ${sideShown}, title arrows hidden ${titleArrowsHidden}, turned ${turned}, Statistics in the Nutshell ${almanacStats}`,
     );
 
     // A phone's width: the menu folds away behind its button.
@@ -1908,7 +1908,7 @@ export async function uiTest(target, account, check) {
     await page.goto(`${base}/wishlist`);
     await settle();
     await page.getByRole('button', { name: 'Menu' }).click();
-    await page.locator('nav.mantine-AppShell-navbar').getByText('Almanac', { exact: true }).first().click();
+    await page.locator('nav.mantine-AppShell-navbar').getByText('Nutshell', { exact: true }).first().click();
     await page.getByRole('link', { name: 'Sets' }).first().click();
     await settle();
     found = await pageProblems();
