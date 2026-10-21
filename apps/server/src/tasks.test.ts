@@ -156,6 +156,38 @@ describe('tasks', () => {
     expect((await g.tasks.runNow('housekeeping'))!.status).toBe('success');
   });
 
+  it('tries a failed task again in half an hour, until it has failed as often as it takes to tell the owner (D164)', async () => {
+    let fail = true;
+    const told: number[] = [];
+    g.tasks.events.on('failed', (_t, _m, inARow) => told.push(inARow));
+    g.tasks.register({ name: 'flaky', title: 'Flaky', description: 'An outside service down for a moment.', interval: () => 86_400_000, run: async () => {
+      if (fail) throw new Error('RetroAchievements answered 502.');
+      return 'Read 3 games.';
+    } });
+    g.tasks.rescheduleAll();
+    const next = () => Date.parse(g.tasks.list().find((t) => t.name === 'flaky')!.nextRunAt!) - Date.now();
+    // Failed once, then twice: each time it tries again in about 30 minutes (Settings > Tasks), not tomorrow.
+    await g.tasks.runNow('flaky');
+    expect(next()).toBeGreaterThan(29 * 60_000);
+    expect(next()).toBeLessThan(31 * 60_000);
+    await g.tasks.runNow('flaky');
+    expect(next()).toBeLessThan(31 * 60_000);
+    // The third failure is when the owner hears of it (3 by default): no more quick retries, its next regular run.
+    await g.tasks.runNow('flaky');
+    expect(told).toEqual([1, 2, 3]);
+    expect(next()).toBeGreaterThan(23 * 3_600_000);
+    // A success clears the count: the next failure is a first one again.
+    fail = false;
+    await g.tasks.runNow('flaky');
+    fail = true;
+    await g.tasks.runNow('flaky');
+    expect(told).toEqual([1, 2, 3, 1]);
+    // Retries off: a failure waits for the next regular run.
+    g.settings.update({ 'tasks.retryMinutes': 0 });
+    await g.tasks.runNow('flaky');
+    expect(next()).toBeGreaterThan(23 * 3_600_000);
+  });
+
   it('marks runs interrupted by a crash', async () => {
     // A run left "running" is what a crash leaves behind.
     g.db.insert(taskRuns).values({ task: 'backup', trigger: 'schedule', status: 'running', startedAt: new Date().toISOString() }).run();

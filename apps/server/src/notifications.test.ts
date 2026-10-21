@@ -109,7 +109,7 @@ describe('notifications', () => {
   it('alerts when an import is held for confirmation and when a task fails', async () => {
     await start();
     turnOn();
-    g.settings.update({ 'notifications.onImport': false });
+    g.settings.update({ 'notifications.onImport': false, 'notifications.failuresBeforeAlert': 1 });
     await loadCatalog();
     await upload([['1', 'Uncharted', 'Playstation 3', 1000], ['2', 'Okami HD', 'Playstation 3', 2000], ['3', 'Ni no Kuni', 'Playstation 3', 2000]]);
     // Keeping only one of the three games removes 67%: held, with a message.
@@ -132,7 +132,7 @@ describe('notifications', () => {
   it('sends each kind of message at its own Pushover priority', async () => {
     await start();
     turnOn();
-    g.settings.update({ 'notifications.pushoverPrioritySummary': '-1', 'notifications.pushoverPriorityWaiting': '0', 'notifications.pushoverPriorityProblem': '1' });
+    g.settings.update({ 'notifications.pushoverPrioritySummary': '-1', 'notifications.pushoverPriorityWaiting': '0', 'notifications.pushoverPriorityProblem': '1', 'notifications.failuresBeforeAlert': 1 });
     await loadCatalog();
     await upload([['1', 'Uncharted', 'Playstation 3', 1000], ['2', 'Okami HD', 'Playstation 3', 2000], ['3', 'Ni no Kuni', 'Playstation 3', 2000]]);
     expect(sent.push.at(-1)).toMatchObject({ title: 'Squirrelcade: 2 games added', priority: -1 });
@@ -246,12 +246,37 @@ describe('more ways to send messages', () => {
     expect(posted('apprise')).toMatchObject({ body: { title: 'Squirrelcade: test message', type: 'info', format: 'text' } });
   });
 
-  it('alerts a failing task once, at most daily while it keeps failing, and once when it works again', async () => {
+  it('tells of a task only once it has failed three times in a row, and not of one that works again before (D164)', async () => {
     await start();
     turnOn();
     const subjects = () => sent.mail.map((m) => m.subject);
+    // RetroAchievements down for a moment: one failure, then it works on its retry. Nothing to tell.
+    g.notifications.taskFailed('ra-sync', 'Read RetroAchievements', 'RetroAchievements answered 502.', 1);
+    g.notifications.taskSucceeded('ra-sync', 'Read RetroAchievements');
+    g.notifications.taskFailed('ra-sync', 'Read RetroAchievements', 'RetroAchievements answered 502.', 1);
+    g.notifications.taskFailed('ra-sync', 'Read RetroAchievements', 'RetroAchievements answered 502.', 2);
+    await g.notifications.idle();
+    expect(subjects()).toEqual([]);
+    // The third in a row: now it's a problem.
+    g.notifications.taskFailed('ra-sync', 'Read RetroAchievements', 'RetroAchievements answered 502.', 3);
+    await g.notifications.idle();
+    expect(subjects()).toEqual(['Squirrelcade: read retroachievements failed']);
+    expect(sent.mail[0]!.text).toContain('Read RetroAchievements failed 3 times in a row: RetroAchievements answered 502.');
+    // Set to 1, the first failure tells.
+    g.settings.update({ 'notifications.failuresBeforeAlert': 1 });
+    g.notifications.taskFailed('backup', 'Back up database', 'the disk is full', 1);
+    await g.notifications.idle();
+    expect(subjects()[1]).toBe('Squirrelcade: back up database failed');
+  });
+
+  it('alerts a failing task once, at most daily while it keeps failing, and once when it works again', async () => {
+    await start();
+    turnOn();
+    // From its first failure (the setting at 1), to follow one alert through.
+    g.settings.update({ 'notifications.failuresBeforeAlert': 1 });
+    const subjects = () => sent.mail.map((m) => m.subject);
     const t0 = new Date('2026-10-04T12:00:00Z');
-    const fail = (minutes: number) => g.notifications.taskFailed('mail-import', 'Check your email for exports', 'Invalid credentials', new Date(t0.getTime() + minutes * 60_000));
+    const fail = (minutes: number) => g.notifications.taskFailed('mail-import', 'Check your email for exports', 'Invalid credentials', 1, new Date(t0.getTime() + minutes * 60_000));
     fail(0);
     fail(30);
     fail(60 * 23);
@@ -275,7 +300,7 @@ describe('more ways to send messages', () => {
   it('marks how urgent a message is where a service has that, and says what a refusing service answered', async () => {
     await start();
     allServices();
-    g.settings.update({ 'notifications.pushoverPriorityProblem': '2' });
+    g.settings.update({ 'notifications.pushoverPriorityProblem': '2', 'notifications.failuresBeforeAlert': 1 });
     g.notifications.taskFailed('backup', 'Backup', 'the disk is full');
     await g.notifications.idle();
     expect(posted('ntfy').body).toMatchObject({ priority: 5, title: 'Squirrelcade: backup failed' });

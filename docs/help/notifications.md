@@ -66,7 +66,7 @@ Update summaries, updates waiting for you, and problems each have an importance,
 ## What you're told
 
 - **After each collection update:** what was added and removed, the value, the wishlist's new top picks, the biggest price moves, and the games coming out in the next 30 days (each part a setting).
-- **When something needs you:** an update or a PC library reading held because it would remove too much, a task that failed (once when it starts failing, at most once a day while it keeps failing, and once when it works again), a health problem (a missing folder, old backups, a disk filling up).
+- **When something needs you:** an update or a PC library reading held because it would remove too much, a task that keeps failing (once it has failed 3 times in a row, at most once a day while it keeps failing, and once when it works again: one failure is usually an outside service down for a moment, and the task tries again on its own half an hour later; **Tell me after a task fails this many times in a row** here, and **Try a failed task again after** on Settings > Tasks), a health problem (a missing folder, old backups, a disk filling up).
 - **When a lent game is overdue** (on): one message per loan, when a game you lent isn't back by its day ([Your copies](your-copies.md)).
 - **PC price drops** (with PC game prices on): a game on the PC wishlist at its lowest price ever, or at a discount you choose (Settings > PC library > Prices).
 - **Release reminders** (off until you turn them on): a message when games you don't have come out on the consoles you collect, on the day or some days before, each game once. Games you own, said aren't a target, snoozed or marked Do Not Recommend are left out; "Only games with at least this many acorns" can leave out more.

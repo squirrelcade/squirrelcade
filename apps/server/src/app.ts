@@ -294,7 +294,11 @@ export async function buildApp(options: BuildOptions = {}): Promise<Squirrelcade
     igdb.forgetPlatforms();
     tasks.soon('catalog-build');
   });
-  tasks.events.on('failed', (task, message) => notifications.taskFailed(task.name, task.title, message));
+  tasks.events.on('failed', (task, message, inARow) => notifications.taskFailed(task.name, task.title, message, inARow));
+  // A failed scheduled task tries again (Settings > Tasks) until it has failed as often as it takes to be told (D164).
+  tasks.setRetry((inARow) =>
+    inARow < settings.get('notifications.failuresBeforeAlert') && settings.get('tasks.retryMinutes') > 0 ? settings.get('tasks.retryMinutes') * 60_000 : null,
+  );
   tasks.events.on('succeeded', (task) => notifications.taskSucceeded(task.name, task.title));
   // Console copies are part of the PC library's matrix; PC ownership shows on the wishlist.
   collection.events.on('changed', () => pc.invalidate());

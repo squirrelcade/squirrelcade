@@ -52,7 +52,12 @@ const INTERRUPTED_RERUN_MS = 2 * 60_000;
 export class TaskRunner {
   /** Each quiet check's last look that found nothing (in memory: after a restart, the check simply looks once more). */
   private looked = new Map<string, { startedAt: string; finishedAt: string; message: string | null }>();
-  readonly events = new EventEmitter<{ failed: [task: { name: string; title: string }, message: string]; succeeded: [task: { name: string; title: string }] }>();
+  /** failed carries how many times in a row the task has failed now (1 for a first failure). */
+  readonly events = new EventEmitter<{ failed: [task: { name: string; title: string }, message: string, inARow: number]; succeeded: [task: { name: string; title: string }] }>();
+  /** Each task's failures in a row (from its history the first time, then counted); a success clears it. */
+  private readonly failures = new Map<string, number>();
+  /** How long after a failure a scheduled task tries again, given its failures in a row; null waits for its next run. */
+  private retryAfter: (inARow: number) => number | null = () => null;
   private readonly tasks = new Map<string, TaskDefinition>();
   private readonly nextRun = new Map<string, number>();
   /** Runs asked for with soon() that haven't started yet; they outlast a reschedule. */
@@ -72,6 +77,25 @@ export class TaskRunner {
 
   register(def: TaskDefinition): void {
     this.tasks.set(def.name, def);
+  }
+
+  /**
+   * A failed scheduled task tries again sooner than its next regular run (D164): a short outage of an outside service
+   * (RetroAchievements answering 502) then passes before anyone is told.
+   */
+  setRetry(retryAfter: (inARow: number) => number | null): void {
+    this.retryAfter = retryAfter;
+  }
+
+  /** A task's failures in a row in its history, before the run `exceptId` (interrupted runs don't count either way). */
+  private failedInARow(name: string, exceptId: number): number {
+    let n = 0;
+    for (const r of this.db.select({ id: taskRuns.id, status: taskRuns.status }).from(taskRuns).where(eq(taskRuns.task, name)).orderBy(desc(taskRuns.id)).limit(50).all()) {
+      if (r.id === exceptId || r.status === 'interrupted' || r.status === 'running') continue;
+      if (r.status !== 'failed') break;
+      n++;
+    }
+    return n;
   }
 
   /**
@@ -187,6 +211,7 @@ export class TaskRunner {
       const t0 = Date.now();
       const current = { startedAt, progress: null as string | null };
       this.current = current;
+      let failedInARow = 0;
       try {
         const message = (await def.run(log, (text) => (current.progress = text.slice(0, 200)))) ?? null;
         const finishedAt = new Date().toISOString();
@@ -199,16 +224,23 @@ export class TaskRunner {
           this.looked.delete(name);
         }
         log.info(`${def.title}: done in ${Date.now() - t0} ms${message ? ` (${message})` : ''}`);
+        this.failures.set(name, 0);
         this.events.emit('succeeded', { name: def.name, title: def.title });
       } catch (err) {
         const message = err instanceof Error ? err.message : String(err);
         this.db.update(taskRuns).set({ status: 'failed', finishedAt: new Date().toISOString(), message }).where(eq(taskRuns.id, run.id)).run();
-        log.error({ err }, `${def.title} failed`);
-        this.events.emit('failed', { name: def.name, title: def.title }, message);
+        const inARow = (this.failures.get(name) ?? this.failedInARow(name, run.id)) + 1;
+        this.failures.set(name, inARow);
+        failedInARow = inARow;
+        log.error({ err }, `${def.title} failed${inARow > 1 ? ` (${inARow} times in a row)` : ''}`);
+        this.events.emit('failed', { name: def.name, title: def.title }, message, inARow);
       } finally {
         this.running = null;
         this.current = null;
         this.reschedule(name);
+        // A failure tries again soon, while the retries say so; then the task waits for its next regular run.
+        const retry = failedInARow > 0 ? this.retryAfter(failedInARow) : null;
+        if (retry !== null && retry > 0) this.soon(name, retry);
       }
     }
   }

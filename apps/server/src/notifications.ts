@@ -314,15 +314,17 @@ export class NotificationService {
   }
 
   /**
-   * A failed run. A task that starts failing alerts once, then at most once a day while it keeps failing (one that
-   * runs every half hour once alerted every half hour); taskSucceeded says when it works again.
+   * A failed run, `inARow` the task's failures in a row now. One failure is seldom a problem (an outside service down
+   * for a moment; the task tries again on its own): it's told once the task has failed "Tell me after a task fails this
+   * many times in a row" (D164), then at most once a day while it keeps failing; taskSucceeded says when it works again.
    */
-  taskFailed(name: string, title: string, message: string, now = new Date()): void {
+  taskFailed(name: string, title: string, message: string, inARow = 1, now = new Date()): void {
+    if (inARow < Math.max(1, this.settings.get('notifications.failuresBeforeAlert'))) return;
     const failing = this.failingTasks();
     const was = failing[name];
     if (was && now.getTime() - Date.parse(was.alerted) < DAY_MS) return;
     const since = was?.since ?? now.toISOString();
-    const body = was ? `${title} has been failing since ${since.slice(0, 10)}: ${message}` : `${title} failed: ${message}`;
+    const body = was ? `${title} has been failing since ${since.slice(0, 10)}: ${message}` : `${title} failed${inARow > 1 ? ` ${inARow} times in a row` : ''}: ${message}`;
     this.alert(`${title.toLowerCase()} ${was ? 'still fails' : 'failed'}`, body, '/system/tasks', 'problem');
     this.saveFailingTasks({ ...failing, [name]: { since, alerted: now.toISOString() } });
   }

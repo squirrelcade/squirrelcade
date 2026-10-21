@@ -2453,8 +2453,18 @@ export const settingDefinitions = {
     page: 'notifications',
     section: 'When to notify',
     label: 'When something fails or needs you',
-    description: 'Send a message when a background task fails, an export file is refused, or a collection update is held until you confirm it.',
+    description: 'Send a message when a background task keeps failing (see below), an export file is refused, or a collection update is held until you confirm it.',
     default: true,
+  }),
+  'notifications.failuresBeforeAlert': num({
+    page: 'notifications',
+    section: 'When to notify',
+    label: 'Tell me after a task fails this many times in a row',
+    description:
+      'A task that fails once is seldom a problem: an outside service (RetroAchievements, IGDB, your mailbox) was down for a moment. It tries again on its own (Settings > Tasks > Try a failed task again after), and you hear about it once it has failed this many times in a row. 1 tells you at the first failure.',
+    default: 3,
+    min: 1,
+    max: 10,
   }),
   'notifications.topCount': num({
     page: 'notifications',
@@ -2903,6 +2913,17 @@ export const settingDefinitions = {
     min: 1,
     max: 30,
     unit: 'days',
+  }),
+  'tasks.retryMinutes': num({
+    page: 'tasks',
+    section: 'Schedules',
+    label: 'Try a failed task again after',
+    description:
+      'A scheduled task that fails runs again this long after, until it has failed as many times in a row as it takes to tell you (Settings > Notifications); then it waits for its next regular run. 0 waits for the next regular run.',
+    default: 30,
+    min: 0,
+    max: 720,
+    unit: 'minutes',
   }),
   'tasks.achievementsReadDays': num({
     page: 'tasks',
