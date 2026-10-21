@@ -47,25 +47,26 @@ export function StashMark({ size = 14 }: { size?: number }) {
 }
 
 /**
- * The Nutshell's mark (D163): a pixel walnut half cracked open, its gold kernel showing, for "your collection in a
- * nutshell" (the consoles, sets, statistics and report), beside the Stash's chest and the acorn. Decorative.
+ * The Nutshell's mark (D163): a peanut in its shell, upright, its two lobes pinched in the middle, for "your collection
+ * in a nutshell" (the consoles, sets, statistics and report), beside the Stash's chest and the acorn (the owner's pick,
+ * after walnut halves that read as eyes or bowls). Decorative.
  */
 export function NutshellMark({ size = 14 }: { size?: number }) {
   return (
     <svg
-      viewBox="0 0 7 6"
-      width={Math.round((size * 7) / 6)}
+      viewBox="0 0 5 9"
+      width={Math.round((size * 5) / 9)}
       height={size}
       shapeRendering="crispEdges"
       aria-hidden="true"
       focusable="false"
       style={{ display: 'inline-block', flex: 'none', verticalAlign: '-0.12em' }}
     >
-      {/* The kernel's two lobes, as a walnut's (a flat top read as a mushroom). */}
-      <path d="M1 0h2v1H1zM4 0h2v1H4zM0 1h7v1H0z" fill="#e9b44c" />
-      <path d="M3 1h1v1H3z" fill="#b8862c" />
-      <path d="M0 2h7v1H0zM0 3h1v1H0zM6 3h1v1H6zM1 4h1v1H1zM5 4h1v1H5zM2 5h3v1H2z" fill="#6b3a10" />
-      <path d="M1 3h5v1H1zM2 4h3v1H2z" fill="#c27a3f" />
+      <path d="M1 0h3v1H1zM0 1h1v3H0zM4 1h1v3H4zM1 4h1v1H1zM3 4h1v1H3zM0 5h1v3H0zM4 5h1v3H4zM1 8h3v1H1z" fill="#6b3a10" />
+      <path d="M1 1h1v1H1zM3 1h1v1H3zM1 2h3v1H1zM1 3h1v1H1zM3 3h1v1H3zM2 4h1v1H2zM1 5h1v1H1zM3 5h1v1H3zM1 6h3v1H1zM1 7h1v1H1zM3 7h1v1H3z" fill="#d9a05b" />
+      {/* A light spot on each lobe, a dimple under it. */}
+      <path d="M2 1h1v1H2zM2 5h1v1H2z" fill="#f2c97e" />
+      <path d="M2 3h1v1H2zM2 7h1v1H2z" fill="#a8652a" />
     </svg>
   );
 }

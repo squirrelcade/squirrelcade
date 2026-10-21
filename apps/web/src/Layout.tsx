@@ -264,7 +264,7 @@ export function Layout({ children }: { children: ReactNode }) {
           </NavLink>
           {/* The Nutshell (D163; Data until 2026-10-06, then the Almanac): your collection in a nutshell, the consoles with
               their catalogs, sets of your own, and the collection counted (Statistics) and listed to print (Report). */}
-          <NavLink label="Nutshell" description={SECTION_RULE.nutshell} leftSection={<NutshellMark size={16} />} opened={inNutshell} onClick={() => navigate('/platforms')} childrenOffset={28}>
+          <NavLink label="Nutshell" description={SECTION_RULE.nutshell} leftSection={<NutshellMark size={18} />} opened={inNutshell} onClick={() => navigate('/platforms')} childrenOffset={28}>
             {link('/platforms', 'Platforms')}
             {link('/sets', 'Sets')}
             {link('/collection/statistics', 'Statistics')}
