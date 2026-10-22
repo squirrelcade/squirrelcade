@@ -9,7 +9,8 @@ The owner keeps scans of old video game magazines (Nintendo Power, EGM, GamePro 
 1. **Keep the library:** each magazine and its issues (title, number, cover date, publisher, cover), the scans left where they are, and the physical copies the owner has (or wants), like any other collectible.
 2. **Read them:** page by page, comfortably on a phone.
 3. **Read their text:** OCR on each page, searchable across every issue ("every mention of Chrono Trigger"), and what the pages are (reviews with their scores, previews, cover stories, guides, codes, ads).
-4. **Link the games:** on a game's page, **In the magazines**: every issue and page about it, what kind of coverage, the score, and a tap that opens that page; on an issue's page, the games it covers, marked owned or wanted.
+4. **Tap the games on a page:** while reading, each game the page names is outlined where it's printed; a tap brings up its card on top of the page: whether you own it (which copies, where they're kept), where it is in RomM to play, and its details, without leaving the page.
+5. **Link the games:** on a game's page, **In the magazines**: every issue and page about it, what kind of coverage, the score, and a tap that opens that page; on an issue's page, the games it covers, marked owned or wanted.
 
 As with everything in Squirrelcade, it's an optional part (Settings > Features, off to start with), it works without any outside service, and every choice below is a setting with a neutral default.
 
@@ -23,7 +24,7 @@ Tables in Squirrelcade's database, beside the collection's:
 | `magazine_issues` | One issue | magazine, number as printed ("Vol. 45", "#70"), cover date (year and month), cover story, page count, **the scan**: its path under a magazines folder (never copied), kind (PDF, CBZ/CBR, a folder of images), size and hash (to notice a replaced file), and, if the owner uses another reader, the same issue's link there (Komga or Kavita); OCR state (not yet, done, failed, which engine, when) |
 | `magazine_pages` | One page of an issue | issue, its place in the file, the printed page number when read, width and height, **the page's text** (from the scan's own text layer or OCR), OCR confidence, **what the page is** (cover, contents, review, preview, feature, guide or map, codes and tips, letters, ad, other) |
 | `magazine_pages_fts` | Full-text search | SQLite's FTS5 over the pages' text (the database is SQLite already): fast phrase search, ranked, with highlighted snippets |
-| `magazine_mentions` | A game on a page | page and issue, **the title as printed**, where on the page (a box, to highlight it), the game it's linked to (see below), the console if the page says one, **kind** (review, preview, cover, guide, code, ad, mention), **score** as printed ("8.5", "4/5", EGM's four reviewers' scores as a list) and its scale, **confidence**, **how** (exact title, another name, fuzzy, the AI model, the owner), **status** (linked, suggested, rejected) |
+| `magazine_mentions` | A game on a page | page and issue, **the title as printed**, where on the page (a box: the words that matched, or one the owner drew; it's what the reader outlines and makes tappable), the game it's linked to (see below), the console if the page says one, **kind** (review, preview, cover, guide, code, ad, mention), **score** as printed ("8.5", "4/5", EGM's four reviewers' scores as a list) and its scale, **confidence**, **how** (exact title, another name, fuzzy, the AI model, the owner), **status** (linked, suggested, rejected) |
 | `magazine_rules` | The owner's answers, remembered | a printed title (per magazine or for all) → a game, or "not a game" ("ZELDA III" is A Link to the Past; "Rampage" in a letter isn't the game); applied to every issue, and again after a catalog changes |
 | `magazine_copies` | A physical issue the owner has | issue, condition (sealed, complete, loose), **what's with it** (poster, cards, inserts, a strategy guide supplement), price paid, value, the day bought, notes; it gets a copy key so places, tags, photos, tests and loans work as they do for games |
 | `magazine_wants` | An issue the owner is after | issue, a note, how much they'd pay |
@@ -45,6 +46,19 @@ Tables in Squirrelcade's database, beside the collection's:
 - **Kavita**: its reader links have no page; it opens where its reading progress is (its API can set that progress first, at the cost of moving the owner's place).
 
 So no other reader is required, and none is integrated: the files stay where they are, and any reader the owner likes can read the same folder.
+
+### Games on the page
+
+The owner's idea (2026-10-21): "recognize where games are, and you could kind of click it... on top of whether or not I own the game, where it is in RomM, and additional details."
+
+- **Where:** the OCR gives each word's box on the page, so each mention keeps the box around its title (the words that matched, joined). The reader draws those boxes over the page, faintly, colored by the answer Store Mode gives: green for one you have, gold for one on the wishlist, grey for the rest; a button hides them for plain reading.
+- **A tap opens the game's card on top of the page** (a sheet from the bottom on a phone, a popover on a computer), from the answers Squirrelcade already has:
+  - **Have it, or not:** your copies (condition, value, where each is kept), owned on another console or on PC, or Need it with its acorns and place on the wishlist;
+  - **RomM:** where the game is in RomM, with **Play** to open it there (the link Store Mode and the Top 100 already show when RomM is set up);
+  - **What the magazines said:** this page's score, and the game's other mentions ("also in EGM #70, p. 42");
+  - **Details:** cover, release date, genres, reviews, and the full game drawer one tap further; **Add it**, **I bought it** and price links as in Store Mode.
+- **What OCR can't read** (a game's name only in its logo, a screenshot, box art): in a **mark games** mode the owner draws a box on the page and picks the game; it's kept as a mention from the owner (confirmed), with its box. Later, the AI model (if set up) could suggest boxes for logos and box art on review pages.
+- **An uncertain match** shows a dotted outline: a tap offers **This is it** / **Another game...** / **Not a game**, the same answers as Review > Magazines, right on the page.
 
 ## OCR: reading the text at home
 
@@ -94,6 +108,7 @@ So no other reader is required, and none is integrated: the files stay where the
 **Phase 3: the games.**
 
 - Title spotting, scoring and the Review queue (above); page kinds; scores by the magazines' patterns, then the AI model for what's left, if set up.
+- **Games on the page** in the reader: their outlines, colored by whether you have them, and the game's card on a tap (have it, where it's kept, RomM, the magazines' scores, details), with a mark-games mode for logos the OCR can't read.
 - **In the magazines** in every game's drawer: issue, page, kind, score, a thumbnail, opening at the page; the issue's page lists its games (owned, on another console, on the wishlist, with acorns).
 - The rest of Squirrelcade uses it: Store Mode can show "EGM gave it 8.5" beside a game you're looking at; the wishlist can take magazines' scores as a rule (a setting, off by default); Claude's connector and Talk can answer "what did Nintendo Power say about it?".
 
