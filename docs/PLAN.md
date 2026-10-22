@@ -205,7 +205,7 @@ Each phase ends with something the user can use, with tests, deployed on the hom
 
 **Done: ideas from other collection apps** (0.6.0, D52 to D59; researched in [docs/IDEAS.md](IDEAS.md), all nine picked by the owner): what you played (status, rating, the backlog, "What to play next"), share links for the wishlist and the games for sale, a spreadsheet of your own as the collection, each copy's place, tags, loans and photos, PC wishlist prices from IsThereAnyDeal, a sell and trade list, statistics, and a printable report. With them, the collection as one Excel workbook (D58) and a license (AGPL-3.0, D60).
 
-**Later:** **magazines** (the owner's idea, 2026-10-21: scanned game magazines read, searched and linked to the games they cover; [docs/design/magazines.md](design/magazines.md), three phases), several collections in one Squirrelcade, and export straight to Google Sheets (for now, Collection > Download gives a CSV or an Excel workbook, which Sheets opens). (Done since: the Wishlist section's better name, Acorns (D121), and the public release, 1.0.0 on 2026-10-06.)
+**Later:** **one haul flow** (2026-10-21, logged in docs/IDEAS.md: a pile scanned in, then all its prices found in the order emails at once and confirmed in Recently added), **magazines** (the owner's idea, 2026-10-21: scanned game magazines read, searched and linked to the games they cover; [docs/design/magazines.md](design/magazines.md), three phases), several collections in one Squirrelcade, and export straight to Google Sheets (for now, Collection > Download gives a CSV or an Excel workbook, which Sheets opens). (Done since: the Wishlist section's better name, Acorns (D121), and the public release, 1.0.0 on 2026-10-06.)
 
 ## Moving off the old system
 
