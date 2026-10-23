@@ -122,7 +122,34 @@ Each phase goes to the owner's server when it's done (edge). Public releases gro
 
 **Load:** the drawer asks once per game and gets a stored answer; Wikipedia about one request a second with Squirrelcade's User-Agent; Wikidata in batches; YouTube under 3,000 units a day; OCR at night, at low priority.
 
-**Tests:** trimmed articles of the seven decade games as fixtures for the parsers (the counts above as expectations); server tests with stand-in Wikipedia, Wikidata, Wayback and YouTube; walkthrough steps for the switch, the drawer's tabs, the reader opening at a page and the video player; one check on the owner's iPhone for the reader and full screen.
+**Tests:** the weekly live check of the seven decade games (a scheduled GitHub workflow opening an issue on a drop), trimmed articles of the seven decade games as fixtures for the parsers (the counts above as expectations); server tests with stand-in Wikipedia, Wikidata, Wayback and YouTube; walkthrough steps for the switch, the drawer's tabs, the reader opening at a page and the video player; one check on the owner's iPhone for the reader and full screen.
+
+## Keeping it working, on everyone's installs
+
+The owner's question (2026-10-23): "How do we deal with maintenance with it, particularly when this is deployed to other people?"
+
+**The shape that keeps it small:** every install reads the public sources itself (Wikipedia, Wikidata, the Wayback Machine, YouTube with its own owner's key); there's no Squirrelcade server in the middle to run, pay for or keep up. What needs care is what the code assumes about those sources, and the lists it ships with. Both change only in releases.
+
+**What can break, and what happens then:**
+
+| What changes | How it shows | What's built so it holds |
+| --- | --- | --- |
+| Wikipedia's review box or citation style | Fewer reviews read | A forgiving reader; anything unread is left out, never shown broken; the last good reading is kept (outside sources fail soft) |
+| Wikidata's identifiers (MobyGames moved to a new id scheme in 2024) | A reference site's link missing | Link formats read from Wikidata itself (its "formatter URL"), not written into the code; a site whose property is retired falls back to its replacement |
+| YouTube's embedding rules (error 153 in 2025) or API | Videos not playing inline | Watch on YouTube as the fallback, always shown; the key optional (most installs won't have one); channels kept by their id, not their @handle |
+| A channel closes, a video is removed | A dead video | The monthly refresh (YouTube's 30-day rule asks for it anyway) drops it |
+| A site in the starting lists closes | A dead link | Removed from the defaults in the next release; links the owner added stay theirs |
+| A new magazine or outlet in the review boxes | Its short name shown as is | The box's own label used for an unknown outlet; the names list grows in releases |
+
+**Finding out before users do:** Squirrelcade sends nothing home (no telemetry, by principle), so breakage is caught three ways. (1) **A weekly check in GitHub** (a scheduled workflow in the public repository) reads the seven decade games live and compares them with what they should give (Super Metroid's 25 outlets, Space Invaders' 11 period sources, Halo found through its article...); a drop opens a GitHub issue. (2) **Each install's System › Status** shows each source's last good read and its errors, and tells its owner only when a source keeps failing (D164). (3) **The owner's own install**, which runs edge first.
+
+**Being a good neighbor at scale:** with many installs, each one asks politely and rarely: Squirrelcade's own User-Agent with its version and the project's address (Wikimedia's policy asks for it), about one request a second, answers kept a month, and a cheap check first (Wikipedia gives each article's latest revision for 50 titles in one request: an article is read again only when it changed). If installs grow into the thousands, a **history data pack** can be built once a week by a GitHub workflow (the parsed review boxes, citations and identifiers for the ~29,000 games with articles; Wikipedia's text is CC BY-SA, so the pack is too, credited) and published with the releases: installs download one file, and read live only what's newer or missing. Not needed at the start; a decision for later.
+
+**When the reader improves:** each reading keeps the version of the reader that made it. A release with a better reader re-reads games gradually in the background (owned and wishlist games first), not all at once.
+
+**What other people have to do:** nothing beyond turning History on. The tasks run by themselves at night, fail soft, and say so on System › Status; the starting lists come with updates; their own changes (channels, sites, answers on Review) are never overwritten. Magazines are the one part with their own care: the scans are theirs to keep on their own storage.
+
+**What the project has to do:** answer the weekly check's issues when they open (expected: a few times a year, mostly YouTube and Wikipedia template changes), refresh the starting lists now and then, and keep the decade-game tests passing. A few hours a month at most, in releases like any other.
 
 ## Risks, and what keeps them small
 
