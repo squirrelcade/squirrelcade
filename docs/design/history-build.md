@@ -38,6 +38,7 @@ Overall, Wikidata links 152,532 games to IGDB, and 29,253 of them have an Englis
 
 | Where | Today | With History on |
 | --- | --- | --- |
+| **PC games** | Their own section (PC library, PC wishlist, PC deals); a PC game opens the PC library page | Under the Stash and Acorns (to decide); a PC game opens the same game page as a console game, its storefronts and hours where a console game shows its condition and photos (mockup 7) |
 | **The menu** | Today, Stash, Acorns, Nutshell, Friends, Settings, System, Help | **Magazines** (Library, Reading now, Wanted, Search) and **History** (Time machine, Timeline, Consoles, Videos) added, each with its line and mark; Timeline and the consoles' histories move into History (still linked from Platforms) |
 | **A game's drawer** | Details, why it matters, Top 100 place, your copies, notes, links | **Your copy first**, right under Have it and Edit my copy: a card with its condition, what you paid, what it's worth, where it's kept, its test and rip, its tags, and its standard photos as small thumbnails that open full size (with History on or off). Then the **History** part: the game's own timeline strip and **At the time / Where it came from / Looking back** (mockups 1, 2, 6) |
 | **Reading** | Nothing | A full-screen reader for the owner's scans, the games on each page outlined and tappable (mockup 3) |
@@ -50,6 +51,13 @@ Overall, Wikidata links 152,532 games to IGDB, and 29,253 of them have an Englis
 | **Help, README, website** | Collecting | History and Magazines pages; "What leaves your server" updated; the pitch adds understanding and experiencing the games once phase 1 ships |
 | **Outside contacts** | Wikipedia (catalogs), the services you set up | Wikipedia and Wikidata (more of them), the Wayback Machine's lookup, YouTube (from your browser when you press Play; from the server with a key) |
 | **Storage** | The collection | A few MB of history per thousand games; magazine text about half a GB for a large library |
+
+## PC games
+
+The owner's question on review (2026-10-23): the plan left the PC library out, and "maybe PC could be brought into the Stash and Acorns". Today the PC library is its own menu section (PC library, PC wishlist, PC deals), its games open the PC library page rather than a game's page, and on the owner's install it's larger than all the consoles together. Two ways, for the owner to choose (mockup 7):
+
+- **The owner's idea: PC into the Stash and Acorns.** PC library under the Stash; PC wishlist and PC deals under Acorns: the menu's rule (games you have, games coming in and going out) holds, and one section goes. PC stays its own page with its own totals, never mixed into the console lists.
+- **Claude's suggestion: PC as a platform, in two steps.** (1) The same menu move, with the totals side by side ("980 console games · 1,240 PC games"), never added up unless a setting says so: ownership elsewhere stays related, never the same thing. (2) With History, a PC game gets the same game page as a console game: **Your copies** shows its storefronts (Steam, GOG, Epic, Game Pass), hours played and achievements, and any console copies of the same game; the same History part below (PC games have articles and reference sites like any game; PC magazines go in the same library: Computer Gaming World's whole run is scanned on the Internet Archive, and PC Gamer's issues are cited at the page); and PC appears among the platforms in the Nutshell. Step 2 joins phase 0, which builds the game page anyway.
 
 ## The phases
 
@@ -171,3 +179,5 @@ The owner's question (2026-10-23): "How do we deal with maintenance with it, par
 5. The At the time window (18 months).
 6. The order: phases 0 and 1 first (recommended), or magazines first while the scans are gathered.
 7. ~~Where the History part sits~~ Decided (the owner, 2026-10-23): the page opens with Your copy (the card with photos), History below it.
+8. PC games: into the Stash and Acorns (the owner's idea), or that plus PC as a platform with the same game page (Claude's two steps).
+9. Magazines' text reading (OCR): in the main download (about 40 to 60 MB more), or an optional add-on only people who want OCR install; once the timing test shows how much it's wanted.
