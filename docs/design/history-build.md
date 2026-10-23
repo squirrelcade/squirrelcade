@@ -39,7 +39,7 @@ Overall, Wikidata links 152,532 games to IGDB, and 29,253 of them have an Englis
 | Where | Today | With History on |
 | --- | --- | --- |
 | **The menu** | Today, Stash, Acorns, Nutshell, Friends, Settings, System, Help | **Magazines** (Library, Reading now, Wanted, Search) and **History** (Time machine, Timeline, Consoles, Videos) added, each with its line and mark; Timeline and the consoles' histories move into History (still linked from Platforms) |
-| **A game's drawer** | Details, why it matters, Top 100 place, your copies, notes, links | A **History** part: the game's own timeline strip, then **At the time / Where it came from / Looking back** (mockups 1, 2, 6) |
+| **A game's drawer** | Details, why it matters, Top 100 place, your copies, notes, links | **Your copy first**, right under Have it and Edit my copy: a card with its condition, what you paid, what it's worth, where it's kept, its test and rip, its tags, and its standard photos as small thumbnails that open full size (with History on or off). Then the **History** part: the game's own timeline strip and **At the time / Where it came from / Looking back** (mockups 1, 2, 6) |
 | **Reading** | Nothing | A full-screen reader for the owner's scans, the games on each page outlined and tappable (mockup 3) |
 | **Settings** | Features: the optional parts | **Features › History** and its parts (Reviews and links, Videos, Magazines); **Settings › History**: the At the time window, Reference sites, Video channels, where videos play; **Sources**: an optional YouTube key; **Magazines**: the folder, reading, OCR (mockup 5) |
 | **Review** | Titles, copies, barcodes | New tabs: **Videos** (likely matches), **Magazines** (games on pages), **Came from** (games named in articles) |
@@ -57,6 +57,7 @@ Each phase lists what's built, how it's checked (with the decade games), and its
 
 ### Phase 0: groundwork (small, 1 session)
 
+- **Your copy at the top of a game's page** (the owner's review, 2026-10-23: "this is still primarily a collecting application, so I want to make sure that we have the collection portion covered"): under Have it and Edit my copy, a card with the copy's condition, price paid, value, storage location, test and rip, tags, and its standard photos as thumbnails (tap for full size). Several copies: one line each, the best first, each with its photos. It comes first whether History is on or off.
 - **Settings › Features › History** with its parts; the History section's shell; the drawer's History part as an empty frame.
 - **Each game's identity:** the catalog build keeps the Wikipedia article each list links (it reads it now and drops it); the article's Wikidata item from Wikipedia (`pageprops`, 50 titles a request); the IGDB id as a fallback. A `game_refs` row per game.
 - Checked: History off changes nothing (walkthrough); on, Super Metroid is Q1194825 and Halo Q276217 (through its article).
@@ -142,4 +143,4 @@ Each phase goes to the owner's server when it's done (edge). Public releases gro
 4. A YouTube key (free) now, or later.
 5. The At the time window (18 months).
 6. The order: phases 0 and 1 first (recommended), or magazines first while the scans are gathered.
-7. Where the History part sits in a game's drawer: below Your copies (recommended, so collecting stays first), or above.
+7. ~~Where the History part sits~~ Decided (the owner, 2026-10-23): the page opens with Your copy (the card with photos), History below it.
