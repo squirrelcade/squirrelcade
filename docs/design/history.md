@@ -1,5 +1,7 @@
 # History: every game as it was seen then, and as we see it now
 
+**The implementation plan, with six decades of examples and mockups: [history-build.md](history-build.md).** History is optional (the owner, 2026-10-23: "selectable whether or not people want it... people just want to use Squirrelcade for collecting"): one switch, Settings › Features › History; off, Squirrelcade stays a collection manager.
+
 **Status: planned, not built** (the owner's direction, 2026-10-23: "the next step of Squirrelcade is to improve its history section... a thing that will allow people to learn about games as much as play the games and collect the games"). Researched 2026-10-23; nothing here is decided until it's built. The magazines part has its own design: [magazines.md](magazines.md).
 
 ## Why
@@ -137,6 +139,8 @@ Settings > Features: **History** (the links and Reviews from the time; on: Wikip
 5. The phase order (above), and whether phase 2 (magazines) comes first while the scans are gathered.
 
 ## Research notes (2026-10-23)
+
+- Six decades checked (Space Invaders, Super Mario Bros., Super Metroid, Halo, Breath of the Wild, Tears of the Kingdom, Donkey Kong Bananza): for games before the 1990s the review box is empty or later, and the sources of their time are citations in the article's text (trade papers, newspapers); details in history-build.md.
 
 - Wikidata, queried by Super Metroid's IGDB id: 107 external identifiers, each with its site's link format (property P1630), Retromags (P12948) and the MobyGames, GameFAQs, GameSpot, Giant Bomb, StrategyWiki, HowLongToBeat, VGMdb, speedrun.com ids among them.
 - Wikipedia's Super Metroid article: a review table of 26 outlets, magazine citations with issue and page and Internet Archive scans at the page, 78 citations with an archived copy, and a GameTrailers retrospective cited as video.
