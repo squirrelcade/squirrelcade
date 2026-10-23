@@ -1,5 +1,7 @@
 # Magazines: a library of scanned game magazines, read, searched and linked to the games
 
+**Part of [History](history.md)** (2026-10-23): the magazines are the heart of a game's **At the time** view, and Wikipedia's review citations give the issue and page of thousands of reviews before any OCR.
+
 **Status: planned, not built** (the owner's idea, 2026-10-21; logged in [IDEAS.md](../IDEAS.md) and the plan's "Later" list). A design to pick up later; nothing here is decided until it's built.
 
 ## What it's for
