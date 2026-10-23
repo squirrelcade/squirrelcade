@@ -2,6 +2,12 @@
 
 **Status: planned, not built** (the owner's direction, 2026-10-23: "the next step of Squirrelcade is to improve its history section... a thing that will allow people to learn about games as much as play the games and collect the games"). Researched 2026-10-23; nothing here is decided until it's built. The magazines part has its own design: [magazines.md](magazines.md).
 
+## Why
+
+> "Appreciating a game is more than just playing it. Playing is, of course, by far the most important part of it. But understanding how it was viewed at the time, understanding what inspired it and what it inspired, all of those things are really important to help appreciate a game and its viewpoint in history. And understanding how people at the time felt the game was... I wanted Squirrelcade to be collecting, understanding your collection, adding, removing stuff from it, but also be able to have it help you experience video games and video game history." (the owner, 2026-10-23)
+
+Collecting stays Squirrelcade's core. History is how it helps people understand a game and its place: when it came out, where it came from, what it led to, and how it's remembered. It's a principle of the plan now ("A game is more than a copy", [PLAN.md](../PLAN.md)).
+
 ## The idea: two viewpoints
 
 Squirrelcade looks at games from today, looking back: what a game is worth now, its place in a Top 100, how it's remembered. The owner wants the other view too:
@@ -28,6 +34,12 @@ A **History** part in every game's drawer, with **At the time** and **Looking ba
 - **The web, as it was:** the review and news pages of the time as the Wayback Machine kept them (GameSpot's 1990s review address, say), dated.
 - **Videos of the day:** reviews from the channels the owner picked, published within the window; commercials and TV segments from channels marked as archives of the era.
 
+**Where it came from, and what it led to** (between the two views, since it spans both):
+
+- **Inspired by:** the games its makers drew on, from its Wikipedia article's development section; **Inspired:** the games that followed its lead, from the article's legacy section (Super Metroid's names the games of the genre it helped name). The games named there are found with Squirrelcade's title matcher (the one the magazine pages use) and shown as links, each marked owned, on another console, or wanted; an uncertain one waits on Review.
+- **Its series** (Squirrelcade's series, already kept), **its genre's lineage** where Wikidata has it (Super Metroid: a Metroidvania), and the people behind it where the article or Wikidata names them (its director, its composer: their other games, through the same matching).
+- Wikidata's own "influenced by" links are too few to rely on (51 video games had one on 2026-10-23); the articles' text is where this knowledge is. The AI model, if the owner sets one up, can sum up a section in a line; without one, the section's own opening sentences show, with a link to read on.
+
 **Looking back:**
 
 - **Videos:** retrospectives, documentaries and today's reviews from the owner's channels, played inside Squirrelcade (full screen too).
@@ -40,7 +52,7 @@ A **History** part in every game's drawer, with **At the time** and **Looking ba
 | Source | Gives | Needs | Cost and limits |
 | --- | --- | --- | --- |
 | **Wikidata** (CC0) | Each game's page on 100+ reference sites (Super Metroid has 107 identifiers: MobyGames, GameFAQs, GameSpot, Giant Bomb, StrategyWiki, HowLongToBeat, The Cover Project, VGMdb, speedrun.com, Retromags, the fan wikis...), **with each site's link format**, found from the IGDB id Squirrelcade already keeps (Wikidata's "IGDB game ID") | Nothing (a polite User-Agent) | One query for a few hundred games; refreshed monthly |
-| **Wikipedia** (CC BY-SA, credited as now) | The game's **review table**: each outlet, score and citation; citations carry the date, the **magazine, issue and page** ("EGM vol. 7 no. 6, June 1994, p. 28"), links to **scans on the Internet Archive at the page**, and archived copies of web reviews (Super Metroid's article: 26 outlets, 78 citations with an archived copy). Also the article's summary, and its later essays and video citations | Nothing; Squirrelcade already reads Wikipedia's lists (and their links to each game's article) | One request per game, kept a month; owned and wishlist games first |
+| **Wikipedia** (CC BY-SA, credited as now) | The game's **review table**: each outlet, score and citation; citations carry the date, the **magazine, issue and page** ("EGM vol. 7 no. 6, June 1994, p. 28"), links to **scans on the Internet Archive at the page**, and archived copies of web reviews (Super Metroid's article: 26 outlets, 78 citations with an archived copy). Also the article's summary, its **development and legacy sections** (what inspired it, what it inspired), and its later essays and video citations | Nothing; Squirrelcade already reads Wikipedia's lists (and their links to each game's article) | One request per game, kept a month; owned and wishlist games first |
 | **The Wayback Machine** | Archived copies of pages that are gone: `archive.org/wayback/available` finds the snapshot nearest a date | Nothing | A link per page; looked up when shown, cached |
 | **YouTube, without a key** | A video the owner pastes (its title from YouTube's oEmbed, no key); videos Wikipedia cites; trailers from **IGDB** (its game videos, with the keys Squirrelcade already has); each channel's **newest 15 videos** from its RSS feed (new reviews of new games, as they come out); a **Search this channel** link per game | Nothing | Free |
 | **YouTube, with a key** (the YouTube Data API, a free Google Cloud key) | **Each chosen channel's whole back catalog**, matched to games: a channel's uploads list costs 1 unit per 50 videos (IGN's very large catalog, a few thousand units once; the free quota is 10,000 units a day); searching would cost 100 units a call, so it isn't used | A key, on Settings > Sources like IGDB's | YouTube's policies: data refreshed or dropped within 30 days, so only the matched videos are kept, refreshed monthly (1 unit per 50) |
@@ -110,7 +122,7 @@ Settings > Features: **History** (the links and Reviews from the time; on: Wikip
 
 ## Phases, in the order recommended
 
-1. **The game's identity, Learn more and Reviews from the time** (medium; no keys). Keep each game's Wikipedia article (the catalogs already read it) and Wikidata item (from its IGDB id); the Reference sites setting; Wikipedia's review table with dates, issues and pages; archived copies. The game drawer's History part with both views (most of At the time already: scores and dates, archived reviews). The foundation the rest builds on.
+1. **The game's identity, Learn more, Reviews from the time, and where it came from** (medium; no keys). Keep each game's Wikipedia article (the catalogs already read it) and Wikidata item (from its IGDB id); the Reference sites setting; Wikipedia's review table with dates, issues and pages; archived copies; **Inspired by and Inspired** from the article's development and legacy sections, the games named there linked. The game drawer's History part with both views (most of At the time already: scores and dates, archived reviews). The foundation the rest builds on.
 2. **Magazines, phase 1: the section, collecting and reading** ([magazines.md](magazines.md)), as the owner gathers the scans. With phase 1 done, **Reviews from the time opens the owner's own scans at the page** wherever Wikipedia names the issue and page: the Super Metroid example works here, before any OCR.
 3. **Videos** (medium). Without a key: pasted videos, IGDB's trailers, Wikipedia's cited videos, channels' newest uploads, Search this channel. With a key: whole channels matched, Review > Videos. The player with full screen, the referrer fix, the thumbnail first.
 4. **Magazines, phases 2 and 3:** text, search, the games on every page and tapping them (magazines.md).
@@ -132,3 +144,4 @@ Settings > Features: **History** (the links and Reviews from the time; on: Wikip
 - YouTube Data API: search costs 100 units, an uploads page 1 unit, 10,000 units a day free; its policies ask for API data to be refreshed or deleted within 30 days.
 - YouTube embeds fail with error 153 without the page's address (late 2025); `strict-origin-when-cross-origin` on the frame fixes it.
 - Retromags' game page for Super Metroid: its ads and release details, not a list of reviews.
+- Wikidata's "influenced by" (P737): 51 video games in all; Super Metroid has none, but its genre (Metroidvania) and series are there. Influence lives in Wikipedia's articles.

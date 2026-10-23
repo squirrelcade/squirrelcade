@@ -6,6 +6,8 @@ The plan of record: what Squirrelcade is, the decisions behind it, its architect
 
 A self-hosted web app, run as one Docker container, for managing a video game collection: what you own, what each console's library still lacks, what to buy next and why, and whether the game in your hand at a store is one you need. It takes over from the n8n and Google Sheets setup, keeps the rules that setup got right, and drops the machinery that made it fragile. It looks and works like Sonarr, Radarr or RomM: everything in the browser, settings in the app, background tasks you can see and run.
 
+**More than collecting** (the owner, 2026-10-23): "Appreciating a game is more than just playing it. Playing is, of course, by far the most important part of it. But understanding how it was viewed at the time, understanding what inspired it and what it inspired, all of those things are really important to help appreciate a game and its viewpoint in history... I wanted Squirrelcade to be collecting, understanding your collection, adding, removing stuff from it, but also be able to have it help you experience video games and video game history." Collecting stays the core; the [History](design/history.md) work (with the [magazines](design/magazines.md)) is how Squirrelcade helps people understand and enjoy the games, not only keep them.
+
 ## Decisions
 
 | Decision | Choice | Date |
@@ -25,6 +27,7 @@ A self-hosted web app, run as one Docker container, for managing a video game co
 - **No guessing.** Aliases and compilations come from reviewed mappings. Anything uncertain goes to a review queue rather than being silently matched or silently missed.
 - **The user's decisions are durable.** Rules, overrides, exclusions, mappings and curated game details are never overwritten by a refresh.
 - **Every recommendation explains itself**, point by point.
+- **A game is more than a copy.** Beside what you own and what it's worth: how the game was seen when it came out, what inspired it and what it inspired, and how it's remembered (the owner, 2026-10-23; [History](design/history.md)).
 - **All or nothing.** Each refresh runs in a database transaction: it either completes or changes nothing. No half-finished runs.
 - **Outside sources fail soft.** A source that's down or returns nothing never wipes the last good data.
 - **Every decision is a setting.** Tastes, consoles, regions, rules, points, list sizes, schedules, limits, folders and keys all live in the settings pages with a description and a default. Nothing about one person's collection is written into the code, so anyone can install Squirrelcade and tune it.
