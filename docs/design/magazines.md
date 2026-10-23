@@ -125,6 +125,29 @@ The owner's idea (2026-10-21): "recognize where games are, and you could kind of
 
 Squirrelcade never downloads or shares scans: it reads the owner's own files, and what it learns from them stays on the server.
 
+## On everyone's installs
+
+The owner's question (2026-10-23): "How will we handle the magazine side of things when it's deployed?" Unlike the rest of History, magazines run on each person's own files and hardware, so the design rests on six things.
+
+**1. Their files, their folder, read-only.** An optional folder mounted the way the Playnite folder is (`- /path/to/magazines:/magazines:ro` in docker-compose, and the same in the Unraid, Synology and TrueNAS guides). Squirrelcade never copies, moves, renames or changes a scan. A searchable PDF beside a scan is written only to a separate folder the owner gives it write access to, if they ask.
+
+**2. Never shared.** Squirrelcade doesn't download scans, host them or point anyone to where to get them; Help says to use scans people made or have the right to keep. Friends' share files can list issues owned, never pages or text. Viewers see the magazines only if a setting allows (off to start with). Game pages may link to a public scan already on the Internet Archive, as Wikipedia does.
+
+**3. Naming issues without guesswork.** A **magazine index** ships with Squirrelcade as a data file (each magazine's title, publisher, numbering and each issue's cover date), starting with the big runs (EGM, Nintendo Power, GamePro, Game Informer, Computer Gaming World, Electronic Games, PC Gamer, Next Generation, the official PlayStation, Xbox and Nintendo magazines, Famitsu), built from Wikipedia and fan wikis (CC BY-SA, credited; Retromags' database only with its permission). File names are read with the patterns the common collections use ("Electronic Gaming Monthly Issue 070 (May 1995)", "Nintendo Power 045 (Feb 1993)"); what isn't recognized waits on a **Name these** list, and the owner's names are remembered. The index grows in releases, and anyone can add a magazine with a pull request or a CSV.
+
+**4. Any hardware, from a Raspberry Pi to a mini PC.**
+- *Reading* works everywhere: pages drawn on request by MuPDF (a few MB in the image, on Intel and ARM), kept in a cache with a size limit (a setting, 1 GB to start).
+- *Text*: a scan's own text layer is used for free. OCR is **off until turned on**, per library: it runs at night, with a thread limit and at low priority (Plex and the rest come first), and before it starts it times the first issue and says how long the library will take on this machine.
+- *Languages*: English included; others (Japanese for Famitsu) downloaded when turned on, an outside contact listed in Help.
+- *The image*: MuPDF and Tesseract with English add about 40 to 60 MB; to decide when built whether OCR lives in the main image or an optional companion container that only people who want OCR run.
+- *Odd files*: CBR (RAR) and 7z read through libarchive; encrypted or damaged files go to a "couldn't read" list with the reason.
+
+**5. Backups stay small.** The magazines' text, search index and page cache live in their own files (`magazines.db` and a cache folder), rebuildable from the scans, and are left out of the weekly backups by default (a setting). What only the owner made (issues, physical copies, wanted issues, Review answers, games marked on pages) stays in the main database and is backed up.
+
+**6. Updates don't redo the work.** Each page keeps which reader and OCR read it. A release with better OCR or matching re-reads only what the owner asks (or the pages it was unsure of), never a whole library on its own. Magazines' score layouts (EGM's Review Crew, Nintendo Power's ratings) ship as data files and improve in releases.
+
+**What it costs the project:** almost nothing that runs: no outside service is needed. Tests use small PDFs generated during the test run, never real scans in the public repository. The recurring work is growing the magazine index and the score layouts, which others can contribute to.
+
 ## Still to decide when it's picked up
 
 - Its place in the menu, and whether physical issues count in the Stash's totals.
