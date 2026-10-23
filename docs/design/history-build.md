@@ -1,6 +1,8 @@
 # History: the implementation plan
 
-**Status: a plan for review** (2026-10-23), built from [history.md](history.md) (the idea and its sources) and [magazines.md](magazines.md). Nothing here is built. Mockups: [history/](history/).
+**Status: reviewed and decided** (the owner's reviews, 2026-10-23), built from [history.md](history.md) (the idea and its sources) and [magazines.md](magazines.md). Nothing here is built yet; [What's built first](#whats-built-first) has the order. Mockups: [history/](history/).
+
+**Names:** in the app the two new sections are **Leaves** ("Magazines you keep, want and read", an orange leaf) and **Roots** ("Games in their time, and since", an acorn putting down roots), and a game's History part is its **Roots** (the owner: "I'd like it to be squirrel themed"; mockup 12). This plan and its files keep the working names History and Magazines.
 
 ## In short
 
@@ -38,13 +40,13 @@ Overall, Wikidata links 152,532 games to IGDB, and 29,253 of them have an Englis
 
 | Where | Today | With History on |
 | --- | --- | --- |
-| **PC games** | Their own section (PC library, PC wishlist, PC deals); a PC game opens the PC library page | Under the Stash and Acorns (to decide); a PC game opens the same game page as a console game, its storefronts and hours where a console game shows its condition and photos (mockup 7) |
-| **The menu** | Today, Stash, Acorns, Nutshell, Friends, Settings, System, Help | **Magazines** (Library, Reading now, Wanted, Search) and **History** (Time machine, Timeline, Consoles, Videos) added, each with its line and mark; Timeline and the consoles' histories move into History (still linked from Platforms) |
-| **A game's drawer** | Details, why it matters, Top 100 place, your copies, notes, links | **Your copy first**, right under Have it: a card with its condition, what you paid, what it's worth, where it's kept, its test and rip, its tags, its standard photos as small thumbnails that open full size, and **Edit this copy** inside it (with History on or off). A game on several consoles: one card, every platform it came out on, the console you came from open (mockup 8). On a phone, the same order in one column (mockup 9). Then the **History** part: the game's own timeline strip and **At the time / Where it came from / Looking back** (mockups 1, 2, 6) |
+| **PC games** | Their own section (PC library, PC wishlist, PC deals); a PC game opens the PC library page | PC library under the Stash, PC wishlist and PC deals under Acorns (first of all); a PC game opens the same game page as a console game, its storefronts and hours where a console game shows its condition and photos (phase 0, mockup 7); PC always listed apart, after the consoles |
+| **The menu** | Today, Stash, Acorns, Nutshell, Friends, Settings, System, Help | **Leaves** (Library, Reading now, Wanted, Search) and **Roots** (Time machine, Timeline, Consoles, Videos) added, each with its line and mark (mockup 12); Timeline and the consoles' histories move into Roots (still linked from Platforms) |
+| **A game's drawer** | Details, why it matters, Top 100 place, your copies, notes, links | **The shared header** (chips, Play on RomM, the title with its stars, the Worth or Acorns and Reviews circles; [One look for a game](#one-look-for-a-game)), then **Your copy**, right under Have it: a card with its condition, what you paid, what it's worth, where it's kept, its test and rip, its tags, its standard photos as small thumbnails that open full size, and **Edit this copy** inside it (with History on or off). A game on several consoles: one card, every platform it came out on, the console you came from open (mockup 8). On a phone, the same order in one column (mockup 9). Then the **History** part: the game's own timeline strip and **At the time / Where it came from / Looking back** (mockups 1, 2, 6) |
 | **Reading** | Nothing | A full-screen reader for the owner's scans, the games on each page outlined and tappable (mockup 3) |
 | **Settings** | Features: the optional parts | **Features › History** and its parts (Reviews and links, Videos, Magazines); **Settings › History**: the At the time window, Reference sites, Video channels, where videos play; **Sources**: an optional YouTube key; **Magazines**: the folder, reading, OCR (mockup 5) |
 | **Review** | Titles, copies, barcodes | New tabs: **Videos** (likely matches), **Magazines** (games on pages), **Came from** (games named in articles) |
-| **Today** | The game of the day, releases, loans... | A **This month in history** card: what came out 10, 20, 30 years ago this month, and the owner's magazines from that month |
+| **Today** | The game of the day, releases, loans... | Game of the Day in the shared header (Play on RomM, stars, Reviews from Metacritic when known; mockup 13); a **This month in history** card: what came out 10, 20, 30 years ago this month, and the owner's magazines from that month |
 | **Store Mode** | Have it / Need it, value, sets | A line of its time: "EGM: 9 9 9 9 (1994)" |
 | **Search** | Games | A **Magazines** tab: words across every issue |
 | **Claude and Talk** | The collection, the wishlist | The reviews of the time and magazine mentions: "what did Nintendo Power say about it?" |
@@ -56,8 +58,30 @@ Overall, Wikidata links 152,532 games to IGDB, and 29,253 of them have an Englis
 
 The owner's question on review (2026-10-23): the plan left the PC library out, and "maybe PC could be brought into the Stash and Acorns". Today the PC library is its own menu section (PC library, PC wishlist, PC deals), its games open the PC library page rather than a game's page, and on the owner's install it's larger than all the consoles together. Two ways, for the owner to choose (mockup 7):
 
+**Decided (the owner, 2026-10-23): both steps.** Step 1 goes in first of all; step 2 in phase 0.
+
 - **The owner's idea: PC into the Stash and Acorns.** PC library under the Stash; PC wishlist and PC deals under Acorns: the menu's rule (games you have, games coming in and going out) holds, and one section goes. PC stays its own page with its own totals, never mixed into the console lists.
 - **Claude's suggestion: PC as a platform, in two steps.** (1) The same menu move, with the totals side by side ("980 console games · 1,240 PC games"), never added up unless a setting says so: ownership elsewhere stays related, never the same thing. (2) With History, a PC game gets the same game page as a console game: **Your copies** shows its storefronts (Steam, GOG, Epic, Game Pass), hours played and achievements, and any console copies of the same game; the same History part below (PC games have articles and reference sites like any game; PC magazines go in the same library: Computer Gaming World's whole run is scanned on the Internet Archive, and PC Gamer's issues are cited at the page); and PC appears among the platforms in the Nutshell. Step 2 joins phase 0, which builds the game page anyway.
+
+## One look for a game
+
+The owner's review (2026-10-23): "I would like to be consistent with the game of the day... the circle with the acorns and the circle with the review... put onto the tab that comes out... Really, anywhere else, I'm wanting it to be kind of a consistent look and feel." Every place that shows a game large (its page, Game of the Day, Store Mode's answer) uses **one header**, one component in the code (mockups 1, 7, 8, 9, 11, 13):
+
+- **Chips:** the console; **Have it** (with how many consoles, for a game on several), or its wishlist place and priority; what's missing ("PS5: not yet"); **Play on RomM** when RomM has the game (Open in RomM when it can't play it in the browser), on Game of the Day too.
+- **The title with its stars** (the owner: "a little star... next to the name... other stars for maybe top selling"): at most three, the rest behind "+n", each saying where it comes from on hover and opening its list on a tap:
+  - **Top 100 with its place** ("★ #2 Top 100"), from the console's Top 100 list Squirrelcade already has.
+  - **Best-selling on its console**, from Wikipedia's best-selling lists (one per console where they exist).
+  - **Awards**, from Wikidata's "award received" (P166): Game of the Year at the Golden Joysticks, BAFTA, The Game Awards, DICE, the World Video Game Hall of Fame. Checked 2026-10-23: Grand Theft Auto V has 11 (Golden Joystick Ultimate Game of the Year 2013...), Half-Life 2 has 7 (BAFTA Best Game 2005...), Ōkami 2 (BAFTA Artistic Achievement 2007).
+  - **Critics' favorite:** reviews at 90 or more.
+  - **Launch title:** released the day its console launched.
+- **Two circles**, drawn as Game of the Day draws them now:
+  - **Worth** for a game the owner has (the owner: "instead of the acorns, what the copy is worth"): what the copies are worth, the ring filled by where that sits in the collection ("worth more than 92% of your games"); **Acorns** for a game not owned, as today.
+  - **Reviews:** Metacritic's score when Wikipedia's review table or Wikidata has it (never read from Metacritic's site), IGDB's rating otherwise; the circle says which.
+- **On a phone:** the chips and stars beside the cover, the two circles under them (mockup 9).
+
+## PC apart from the consoles
+
+The owner (2026-10-23): "I always want the PC one to be considered separate than the console ones you might own... put maybe all the way on the right." Wherever a game's platforms or copies are listed: the consoles in release order (a console the game came out on that the owner doesn't have shown dashed with Want it), then **PC alone, after a divider**, styled apart (storefronts and hours, not copies). The same in Your copies' list ("On PC"), on the phone, and in the counts ("7 copies on 5 consoles · and on PC"). It's the plan's rule of exact ownership: owning a game on PC never counts as owning a console version.
 
 ## The phases
 
@@ -72,7 +96,9 @@ Each phase lists what's built, how it's checked (with the decade games), and its
   - **A copy's worth, as a graph** (the owner: "graph the price data for a particular copy... just click the copy, and that is where it comes up. I don't want the collection stuff to take too much more"): the card stays its size; Worth gets a small line beside it, and clicking it opens the graph over the page: the copy's value at each collection update since it was added (the price points Squirrelcade already keeps, from PriceCharting's export, in the copy's condition), a dashed line at what was paid, now, the change since added and over what was paid, a value per point on hover or tap, and Show as a table (mockup 10). Today the same history is the small line with hover in Your copies.
   - **A game you don't have yet** (the owner: "if I don't have it, how do I look it up and buy"): in Your copy's place, a **Get it** card in gold: the shop links (Settings › Interface, used marketplaces first, the rest folded), PriceCharting for its prices (Squirrelcade has prices only for games in the collection; prices for others stay an open question, since PriceCharting's API is a paid plan), its acorns and why, **I bought it** (opening Add it with the whole copy), Snooze and Not a target, and its other versions and remasters you have (mockup 11). History is the same below it.
   - **On a phone** (mockup 9): the page fills the screen; the copy card in one column (its facts two by two, the photos in a row, Edit this copy the card's full width); the platforms row scrolls sideways; History's timeline scrolls sideways, and its three tabs stay at the top while scrolling.
-- **Settings › Features › History** with its parts; the History section's shell; the drawer's History part as an empty frame.
+- **The shared header** ([One look for a game](#one-look-for-a-game)) on the game page, Game of the Day and Store Mode's answer: its chips, Play on RomM, the stars (the Top 100 place now; best-selling lists and Wikidata's awards read with the game's identity below; critics' favorite and launch title from what's known), the Worth or Acorns circle, and the Reviews circle (Metacritic from Wikipedia's review table once phase 1 reads it, IGDB's until then).
+- **PC apart** in every list of a game's platforms and copies ([PC apart from the consoles](#pc-apart-from-the-consoles)).
+- **Settings › Features › Roots** with its parts; the Roots section's shell; the drawer's Roots part as an empty frame.
 - **Each game's identity:** the catalog build keeps the Wikipedia article each list links (it reads it now and drops it); the article's Wikidata item from Wikipedia (`pageprops`, 50 titles a request); the IGDB id as a fallback. A `game_refs` row per game.
 - Checked: History off changes nothing (walkthrough); on, Super Metroid is Q1194825 and Halo Q276217 (through its article).
 
@@ -132,7 +158,9 @@ Each phase goes to the owner's server when it's done (edge). Public releases gro
 
 **Privacy:** Wikipedia, Wikidata and the Wayback Machine are asked from the server; YouTube from the viewer's browser only on Play (thumbnails come through the server); scans never leave the server. Help's "What leaves your server" lists each.
 
-**Licenses and terms:** Wikipedia's text (CC BY-SA) credited where shown, as the catalogs already do; Wikidata is CC0; YouTube through its player and API terms (no downloads, the 30-day rule); other sites linked, never read (no scraping of Metacritic, GameFAQs or IGN).
+**Licenses and terms:** Wikipedia's text (CC BY-SA) credited where shown, as the catalogs already do; Wikidata is CC0; YouTube through its player and API terms (no downloads, the 30-day rule); other sites linked, never read (no scraping of Metacritic, GameFAQs or IGN). Metacritic's scores come only through Wikipedia's review table and Wikidata, credited to Metacritic, with a link to its page.
+
+**The website, README, Help and the AI setup prompts follow every phase** (the owner, 2026-10-23: "we're going to need to update the GitHub with particularly the AI prompt... somebody can copy and paste into an AI and walk through not only the setup of the program, but also the configuration"). A phase isn't done until both prompts cover setting up and configuring what it adds: `docs/ai/setup-prompt.md` (before installing) and the one an install writes (`apps/server/src/aiSetup.ts`), with the settings file the AI can write for Settings › Import. For these phases: Roots on or off and its parts, reference sites, video channels and the YouTube key (click by click), the Leaves folder in each install guide, text reading and its timing test, RomM's Play, where the stars come from. A test checks that every setting is named in the prompt, so a new one can't be missed. The website (pitch, cards, screenshots from the demo collection) and the README change in the same release.
 
 **Load:** the drawer asks once per game and gets a stored answer; Wikipedia about one request a second with Squirrelcade's User-Agent; Wikidata in batches; YouTube under 3,000 units a day; OCR at night, at low priority.
 
@@ -176,15 +204,32 @@ The owner's question (2026-10-23): "How do we deal with maintenance with it, par
 | The work grows | Phases ship on their own; the OCR choice waits for a benchmark |
 | Obscure games have little | Reference links still reach most games; empty states say why |
 
-## For the owner to decide
+## Decided
 
-1. The sections' names and marks (Magazines and History, with a magazine and an hourglass as drafts).
-2. Whether History starts on for new installs (on for the owner's).
-3. The starting video channels.
-4. A YouTube key (free) now, or later.
-5. The At the time window (18 months).
-6. The order: phases 0 and 1 first (recommended), or magazines first while the scans are gathered.
-7. ~~Where the History part sits~~ Decided (the owner, 2026-10-23): the page opens with Your copy (the card with photos), History below it; Edit this copy inside each copy, not beside Have it.
-8. PC games: into the Stash and Acorns (the owner's idea), or that plus PC as a platform with the same game page (Claude's two steps).
-9. Magazines' text reading (OCR): in the main download (about 40 to 60 MB more), or an optional add-on only people who want OCR install; once the timing test shows how much it's wanted.
-10. A game on several consoles: At the time opens on the first release's reviews (suggested: that's when the game was new), or on the release of the console you came from.
+The owner's answers, 2026-10-23:
+
+1. **Names:** Leaves and Roots, each with its line under it (mockup 12).
+2. **History (Roots) starts on** for new installs.
+3. **The starting video channels** as listed (IGN, GameSpot and Gaming Historian on; the rest listed off).
+4. **A YouTube key: yes.** The owner makes one when phase 3 starts, from click-by-click steps.
+5. **At the time:** 18 months after release.
+6. **The order:** see [What's built first](#whats-built-first).
+7. **The game page:** the shared header, then Your copy, then Roots; Edit this copy inside each copy, not beside Have it.
+8. **PC games:** both steps.
+9. **Text reading (OCR):** in the main download or an add-on, decided after the timing test.
+10. **A game on several consoles:** At the time opens on the first release.
+11. **The second circle** on a game the owner has: what it's worth; the **Reviews circle**: Metacritic when known, IGDB otherwise; **stars**: all five, at most three shown, Top 100 with its place.
+
+## What's built first
+
+1. **The PC menu move** (PC step 1): PC library under the Stash, PC wishlist and PC deals under Acorns, the totals side by side.
+2. **Phase 0:** the shared header, Your copy first, Edit this copy, Play on RomM, the worth graph, Get it, a game on several consoles, PC as a platform, PC apart.
+3. **Phase 1:** reviews of the time, where it came from, learn more.
+4. **The haul flow** and **Check a shelf's next steps** (tap a box to fix it, fixes remembered, a console's full list).
+5. Phases 2 to 6 as above.
+
+Alongside: the order-email parts turned on for the owner; regular public releases (every couple of weeks) and a What's new note on Today after each update (both on the roadmap, the owner's yes).
+
+## Later
+
+**Old computers** (the owner, 2026-10-23: "other older computers, like the Apple II... I'm going to want to bring in some Apple II magazines as well, which is what I read as a kid... Commodore"). Not PC: they collect like consoles (boxed disks and tapes, manuals, feelies), so they'd be platforms beside the consoles in the Stash, perhaps grouped as Computers. Roots and Leaves need nothing new (the magazine index gains Softalk, Nibble, inCider, A+, Call-A.P.P.L.E., Compute!, Compute!'s Gazette, Ahoy!, Zzap!64...; many are on the Internet Archive, to check per title). New work: platforms for them (Squirrelcade's 52 are keyed to PriceCharting's console names), catalogs from IGDB and Wikipedia's lists, prices that may be missing (typed by hand or left out), copy details of their own (disk size, tape, feelies, original or copied disk). The Apple II first, with its magazines.

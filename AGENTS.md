@@ -31,6 +31,10 @@ Squirrelcade runs in a Docker container with nothing else required: no AI, no Pr
 
 squirrelcade.com is the one-page site in `site/`. When a feature is added or changed and that touches what the site says or shows (its pitch, the "what it does" cards, the getting-started steps, the screenshots, the share image), update the site in the same piece of work and redeploy it (`docs/website.md`). Screenshots come only from the made-up demo collection (`scripts/demo.mjs`), never anyone's own.
 
+## The guides and the AI setup prompt follow the app too
+
+A change that adds or changes something to set up or configure updates, in the same piece of work: Help, the README and install guides, and both AI setup prompts (`docs/ai/setup-prompt.md`, for before installing, and the one an install writes, `apps/server/src/aiSetup.ts`), including the settings file the AI can write. The prompts are meant to take someone through setup and configuration from start to finish, by pasting them into any AI chat.
+
 ## Hard rule
 
 - Never handle passwords: the person types them.

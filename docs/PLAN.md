@@ -27,6 +27,8 @@ A self-hosted web app, run as one Docker container, for managing a video game co
 - **No guessing.** Aliases and compilations come from reviewed mappings. Anything uncertain goes to a review queue rather than being silently matched or silently missed.
 - **The user's decisions are durable.** Rules, overrides, exclusions, mappings and curated game details are never overwritten by a refresh.
 - **Every recommendation explains itself**, point by point.
+- **One look for a game.** Wherever a game is shown large (its page, Game of the Day, Store Mode's answer), it has the same header: its chips, Play on RomM, the title with its stars, and two circles (Worth or Acorns, and Reviews), from one component (the owner, 2026-10-23; [history-build.md](design/history-build.md#one-look-for-a-game)).
+- **PC apart.** Wherever a game's platforms or copies are listed, the consoles come first in release order and PC alone after them, set apart (the owner, 2026-10-23).
 - **A game is more than a copy.** Beside what you own and what it's worth: how the game was seen when it came out, what inspired it and what it inspired, and how it's remembered (the owner, 2026-10-23; [History](design/history.md)).
 - **All or nothing.** Each refresh runs in a database transaction: it either completes or changes nothing. No half-finished runs.
 - **Outside sources fail soft.** A source that's down or returns nothing never wipes the last good data.

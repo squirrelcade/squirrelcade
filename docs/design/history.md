@@ -61,7 +61,7 @@ A **History** part in every game's drawer, with **At the time** and **Looking ba
 | **The owner's magazine scans** | Everything in [magazines.md](magazines.md): the pages, their text, the games on them | The scans on a share | Server time at night for the text |
 | **Retromags** (through Wikidata's Retromags game ID) | A game's page there: its magazine **ads** and release details | Nothing | A link |
 
-**Not used:** reading sites that have no open data (Metacritic, GameFAQs' pages, IGN's pages): links only, as their terms ask. MobyGames' API is limited and its terms unclear: its pages are linked through Wikidata instead. Squirrelcade never downloads videos or copies articles: it links, embeds and remembers where things are.
+**Not used:** reading sites that have no open data (Metacritic, GameFAQs' pages, IGN's pages): links only, as their terms ask. Metacritic's scores still show: Wikipedia's review tables and Wikidata carry them, per platform and cited. MobyGames' API is limited and its terms unclear: its pages are linked through Wikidata instead. Squirrelcade never downloads videos or copies articles: it links, embeds and remembers where things are.
 
 ## Videos
 
