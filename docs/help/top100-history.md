@@ -35,7 +35,7 @@ Your version is kept apart from Squirrelcade's. If a later version of Squirrelca
 
 ## Timeline
 
-**Platforms > Timeline:** the console generations side by side, then year by year, each console's launch and its landmark games (the best of its Top 100, and its Start here games), marked ✓ when you have them. It shows the consoles you collect; **Consoles you don't collect too** shows them all. How many games per console is a setting (Settings > Interface > "Landmark games per console on the timeline").
+**Platforms > Timeline** (and Roots › Timeline): year by year, each console's launch and its landmark games (the best of its Top 100, and its Start here games), marked when you have them; the generations side by side are on Roots › Consoles. It shows the consoles you collect; **Consoles you don't collect too** (on Roots › Consoles, remembered on that device) shows them all. How many games per console is a setting (Settings > Interface > "Landmark games per console on the timeline").
 
 ## In the game drawer
 

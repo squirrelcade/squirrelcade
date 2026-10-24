@@ -64,6 +64,7 @@ const ImportsPage = page(() => import('./pages/Imports').then((m) => m.ImportsPa
 const PlatformDetailPage = page(() => import('./pages/PlatformDetail').then((m) => m.PlatformDetailPage));
 const PlatformsPage = page(() => import('./pages/Platforms').then((m) => m.PlatformsPage));
 const RootsPage = page(() => import('./pages/Roots').then((m) => m.RootsPage));
+const RootsConsolePage = page(() => import('./pages/Roots').then((m) => m.RootsConsolePage));
 const PcLibraryPage = page(() => import('./pages/PcLibrary').then((m) => m.PcLibraryPage));
 const PcWishlistPage = page(() => import('./pages/PcWishlist').then((m) => m.PcWishlistPage));
 const ComingSoonPage = page(() => import('./pages/ComingSoon').then((m) => m.ComingSoonPage));
@@ -326,6 +327,7 @@ function Shell({ noConnection = false }: { noConnection?: boolean }) {
             <Route path="/collection/statistics" element={<StatisticsPage />} />
             <Route path="/collection/report" element={<ReportPage />} />
             <Route path="/roots" element={<RootsPage />} />
+            <Route path="/roots/:key" element={<RootsConsolePage />} />
             <Route path="/platforms" element={<PlatformsPage />} />
             <Route path="/platforms/:key" element={<PlatformDetailPage />} />
             <Route path="/sets" element={<SetsPage />} />

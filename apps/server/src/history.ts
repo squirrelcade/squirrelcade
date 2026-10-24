@@ -162,8 +162,18 @@ export class HistoryError extends Error {}
 
 const hash = (value: unknown) => createHash('sha256').update(JSON.stringify(value)).digest('hex').slice(0, 16);
 
-/** A platform's display name when the database doesn't have it: Squirrelcade's own name, or another region's console's. */
-const knownName = (key: string) => KNOWN_PLATFORMS.find((p) => p.key === key)?.name ?? regionalConsole(key)?.name ?? key;
+/**
+ * A platform's display name when the database doesn't have it: Squirrelcade's own name, another region's console's,
+ * its Top 100 list's ("Bally Astrocade", for consoles Squirrelcade has no catalog for), else its key as words.
+ */
+const knownName = (key: string, listName?: string) =>
+  KNOWN_PLATFORMS.find((p) => p.key === key)?.name ??
+  regionalConsole(key)?.name ??
+  listName ??
+  key
+    .split('-')
+    .map((w) => (w ? w[0]!.toUpperCase() + w.slice(1) : w))
+    .join(' ');
 
 /**
  * Top 100 lists and console history (D48, D49). The lists and texts ship with Squirrelcade (apps/server/data); the
@@ -217,7 +227,7 @@ export class HistoryService {
   }
 
   private platformName(key: string): string {
-    return this.platformNames().get(key) ?? knownName(key);
+    return this.platformNames().get(key) ?? knownName(key, this.lists.get(key)?.name);
   }
 
   /** The platforms' names, read again after a few seconds (new consoles appear with collection updates). */

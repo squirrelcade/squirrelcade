@@ -1,5 +1,4 @@
 import { RingProgress, Stack, Text, Tooltip } from '@mantine/core';
-import { IconExternalLink, IconPlayerPlayFilled } from '@tabler/icons-react';
 import type { ReactNode } from 'react';
 import { Link } from 'react-router';
 import { Acorn, Star } from './Acorn';
@@ -7,7 +6,7 @@ import { Cover } from './components';
 import { count } from './format';
 import { useSetting } from './hooks';
 import { dot } from './look';
-import type { RommLink } from './Romm';
+export { RommChip } from './Romm';
 
 /**
  * One header for a game wherever it's shown large (D165, the owner: "consistent with the game of the day... anywhere
@@ -158,24 +157,6 @@ export function ConsoleChip({ platformKey, platform }: { platformKey: string; pl
       <span className="sc-dot" style={dot(platformKey, platform)} />
       {platform}
     </span>
-  );
-}
-
-/**
- * Play on RomM at the top (the owner, 2026-10-23: "a button on top that says Play on RomM"): when RomM can run the game
- * in the browser; Open in RomM when it can't; "RomM?" when only the title matched.
- */
-export function RommChip({ link }: { link: RommLink | null | undefined }) {
-  if (!link) return null;
-  const play = Boolean(link.playUrl) && !link.possible;
-  const tip = link.possible ? `Possibly this game: RomM's "${link.name}" has the same title, but IGDB doesn't confirm it.` : play ? 'Play it in the browser, in RomM' : `In RomM as ${link.name}`;
-  return (
-    <Tooltip label={tip} multiline maw={280}>
-      <a className="sc-chip" data-tone="romm" href={play ? link.playUrl! : link.url} target="_blank" rel="noopener noreferrer">
-        {play ? <IconPlayerPlayFilled size={13} aria-hidden /> : <IconExternalLink size={13} aria-hidden />}
-        {play ? 'Play on RomM' : link.possible ? 'RomM?' : 'Open in RomM'}
-      </a>
-    </Tooltip>
   );
 }
 

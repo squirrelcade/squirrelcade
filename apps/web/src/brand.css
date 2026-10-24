@@ -499,6 +499,12 @@
   background: var(--sc-romm-bg);
   color: var(--sc-romm);
 }
+/* RomM's button in lists (a console's games, a Top 100, the Stash): the same purple, smaller. */
+.sc-chip[data-size='sm'] {
+  gap: 4px;
+  padding: 2px 8px;
+  font-size: 12px;
+}
 a.sc-chip,
 button.sc-chip {
   border: 0;
@@ -1058,4 +1064,13 @@ button.sc-star {
   .sc-tag {
     transition: none;
   }
+}
+
+/* A card that opens a page when clicked anywhere (Roots' consoles). */
+.sc-card-link {
+  cursor: pointer;
+  transition: border-color 120ms ease;
+}
+.sc-card-link:hover {
+  border-color: var(--sc-cade);
 }

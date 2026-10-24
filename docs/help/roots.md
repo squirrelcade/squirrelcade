@@ -26,8 +26,10 @@ A game's **stars** beside its name come partly from Roots: **#2 best-selling** o
 
 **Roots** in the menu has:
 
-- **Consoles:** each console's history (with a few games to start with) and its **Top 100** list, by generation. Each opens the console's own tab (see [Top 100 and history](top100-history.md)).
-- **Timeline:** the consoles by year, each with landmark games from its Top 100 and its "Start here" games (Platforms has it too).
+- **Consoles:** each console's history (with a few games to start with) and its **Top 100** list, by generation. Click a console's card for its page (its history first, else its Top 100), or its **History** or **Top 100** link. Each opens the console's page in Roots, with its **History** and **Top 100** tabs (see [Top 100 and history](top100-history.md)); its checklist stays in the Nutshell (Platforms), linked from there.
+- **Timeline:** year by year, the consoles that came out and the landmark games of each (the best of its Top 100 and its "Start here" games). Platforms has it too.
+
+Both show the consoles you collect; **Consoles you don't collect too**, on Roots › Consoles, adds the others, and is remembered on that device (the timeline follows it).
 
 ## Settings > Roots
 

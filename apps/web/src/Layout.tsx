@@ -290,8 +290,8 @@ export function Layout({ children }: { children: ReactNode }) {
           {/* Roots (D165): games in their time and since, each console's history and Top 100, the timeline; with the
               Top 100 lists and history on (Settings > Features). Its consoles and timeline stay linked from Platforms. */}
           {historyOn && (
-            <NavLink label="Roots" description={SECTION_RULE.roots} leftSection={<RootsMark size={18} />} opened={path === '/roots'} onClick={() => navigate('/roots')} childrenOffset={28}>
-              <NavLink component={Link} to="/roots" label="Consoles" active={path === '/roots' && rootsView !== 'timeline'} onClick={close} />
+            <NavLink label="Roots" description={SECTION_RULE.roots} leftSection={<RootsMark size={18} />} opened={path.startsWith('/roots')} onClick={() => navigate('/roots')} childrenOffset={28}>
+              <NavLink component={Link} to="/roots" label="Consoles" active={path.startsWith('/roots') && rootsView !== 'timeline'} onClick={close} />
               <NavLink component={Link} to="/roots?view=timeline" label="Timeline" active={path === '/roots' && rootsView === 'timeline'} onClick={close} />
             </NavLink>
           )}

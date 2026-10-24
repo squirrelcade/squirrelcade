@@ -1,6 +1,6 @@
 # RomM
 
-[RomM](https://github.com/rommapp/romm) is a self-hosted library for your own game backups, which can play many of them in the browser. Squirrelcade can link your games to the same game in your RomM: **RomM** opens its page there, **Play** starts it in the browser where RomM can run it.
+[RomM](https://github.com/rommapp/romm) is a self-hosted library for your own game backups, which can play many of them in the browser. Squirrelcade can link your games to the same game in your RomM, with one purple button wherever the game is shown: **Play on RomM** starts it in the browser where RomM can run it, **Open in RomM** opens its page there otherwise. It sits at the top of a game's page, Game of the Day and Store Mode's answer, and right under the title in lists (your Stash, a console's games, its Top 100 and Start here games).
 
 It's off in a new install: **Settings > Sources > RomM (your ROM library)** turns it on.
 

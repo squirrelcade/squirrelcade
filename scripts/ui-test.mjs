@@ -225,6 +225,8 @@ export async function uiTest(target, account, check) {
       '/series',
       '/roots',
       '/roots?view=timeline',
+      '/roots/playstation-3',
+      '/roots/playstation-3?tab=top100',
       '/pc',
       '/pc/wishlist',
       '/pc/wishlist?view=deals',
@@ -1099,8 +1101,12 @@ export async function uiTest(target, account, check) {
     await page.getByRole('heading', { name: 'Roots' }).waitFor({ timeout: 10000 });
     await settle();
     found = await pageProblems();
-    const timelineTab = await page.getByRole('radio', { name: 'Timeline' }).count();
-    check('ui: the Roots section shows', found.length === 0 && timelineTab === 1, found.join(' | ') || `timeline tab: ${timelineTab}`);
+    // No switch of its own: the menu has Consoles and Timeline; the timeline is year by year.
+    const ownSwitch = await page.getByRole('radio', { name: 'Timeline' }).count();
+    await page.getByRole('link', { name: 'Timeline', exact: true }).first().click();
+    const yearByYear = await page.getByText(/^Year by year/).first().waitFor({ timeout: 10000 }).then(() => true, () => false);
+    found = [...found, ...(await pageProblems())];
+    check('ui: the Roots section shows', found.length === 0 && ownSwitch === 0 && yearByYear && page.url().includes('view=timeline'), found.join(' | ') || `own switch: ${ownSwitch}, year by year: ${yearByYear}, at ${page.url()}`);
 
     // Check a list: several games at once, with and without their console, and a barcode Store Mode knows
     // (saved for Okami here), as a handheld scanner types it.

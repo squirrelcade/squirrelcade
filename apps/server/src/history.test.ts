@@ -339,6 +339,18 @@ describe('Console history', () => {
     }
     expect((await g.app.inject({ url: '/api/v1/game?platform=playstation-3&title=Journey', cookies: owner })).json().history).toBeNull();
   });
+
+  it('names the consoles Squirrelcade has no catalog for: by their Top 100 list, else their key as words (never the bare key)', async () => {
+    const astrocade = { platform: 'astrocade', name: 'Bally Astrocade', list: [{ rank: 1, title: 'Gorf', alt: [], year: 1981 }] };
+    const arcadia = { ...HISTORY.consoles[0]!, platformKey: 'arcadia-2001', startHere: [] };
+    g = await testApp({ top100Data: { ...TOP100, platforms: [...TOP100.platforms, astrocade] }, historyData: { ...HISTORY, consoles: [...HISTORY.consoles, arcadia] } });
+    const cookies = await setUp(g);
+    seed(g);
+    const consoles = (await g.app.inject({ url: '/api/v1/history/timeline', cookies })).json().consoles as { platformKey: string; name: string }[];
+    expect(consoles.find((c) => c.platformKey === 'astrocade')?.name).toBe('Bally Astrocade');
+    expect(consoles.find((c) => c.platformKey === 'arcadia-2001')?.name).toBe('Arcadia 2001');
+    expect(consoles.find((c) => c.platformKey === 'playstation-3')?.name).toBe('PlayStation 3');
+  });
 });
 
 describe('the lists and history that ship with Squirrelcade', () => {

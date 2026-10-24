@@ -85,7 +85,7 @@ describe('the game drawer', () => {
     // out, a launch title (by the catalog's dates).
     const celeste = await game('nintendo-switch', 'Celeste');
     expect(celeste.stars.map((x: { kind: string }) => x.kind)).toEqual(['top100', 'launch']);
-    expect(celeste.stars[0]).toMatchObject({ label: expect.stringMatching(/^#\d+ Top 100$/), href: '/platforms/nintendo-switch?tab=top100' });
+    expect(celeste.stars[0]).toMatchObject({ label: expect.stringMatching(/^#\d+ Top 100$/), href: '/roots/nintendo-switch?tab=top100' });
     expect(celeste.stars[1]).toMatchObject({ label: 'Launch title', detail: 'Out the day the Nintendo Switch launched, March 3, 2017' });
     // Worth: every copy of the game, filled by how much of the collection is worth less (here, all of it the same).
     expect(celeste.worth).toEqual({ cents: 1000, copies: 1, percentile: 0 });

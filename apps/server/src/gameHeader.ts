@@ -13,7 +13,7 @@ export interface GameStar {
   label: string;
   /** Where it comes from, for its tooltip. */
   detail: string;
-  /** The list it's on, inside Squirrelcade ("/platforms/snes?tab=top100") or outside. */
+  /** The list it's on, inside Squirrelcade ("/roots/snes?tab=top100") or outside. */
   href: string | null;
 }
 
@@ -91,7 +91,7 @@ export function headerStars(game: {
       kind: 'top100',
       label: `#${game.top100.rank} Top 100`,
       detail: `#${game.top100.rank} of ${game.top100.of} on the ${game.platform}'s Top 100`,
-      href: `/platforms/${encodeURIComponent(game.platformKey)}?tab=top100`,
+      href: `/roots/${encodeURIComponent(game.platformKey)}?tab=top100`,
     });
   }
   const sold = game.read?.bestselling;

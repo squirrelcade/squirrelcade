@@ -16,7 +16,6 @@ import {
   Popover,
   SimpleGrid,
   Stack,
-  Switch,
   Table,
   Text,
   Textarea,
@@ -27,6 +26,7 @@ import {
 } from '@mantine/core';
 import { IconCheck, IconDots, IconExternalLink, IconPencil, IconSearch } from '@tabler/icons-react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useLocalStorage } from '@mantine/hooks';
 import { Fragment, useMemo, useState, type ReactNode } from 'react';
 import { Link, useSearchParams } from 'react-router';
 import { StashMark } from '../Acorn';
@@ -450,7 +450,6 @@ export function Top100Tab({ platformKey, narrow }: { platformKey: string; narrow
               {sorting.th('rank', '#', { ta: 'right', w: 40 })}
               {sorting.th('title', 'Game')}
               {!narrow && sorting.th('owned', 'You', { w: 190 })}
-              {romm && !narrow && sorting.th('romm', 'RomM', { w: 110 })}
             </Table.Tr>
           </Table.Thead>
           <Table.Tbody>
@@ -475,11 +474,12 @@ export function Top100Tab({ platformKey, narrow }: { platformKey: string; narrow
                         <Text size="xs" c="dimmed">
                           {[r.year, credits].filter(Boolean).join(' · ')}
                         </Text>
+                        {/* RomM's purple button up by the title (the owner: "put the Play on RomM higher to the top"). */}
+                        <RommLinks link={r.romm} />
                         <WhyText platformKey={on} title={name} why={r.why} />
                         {narrow && (
                           <Group gap="sm" mt={4} align="flex-start">
                             <OwnedCell game={r} platformKey={platformKey} />
-                            <RommLinks link={r.romm} />
                             {r.owned !== 'owned' && r.catalogTitle && <PreferencePicker platformKey={on} title={r.catalogTitle} value={r.preference} width={170} />}
                           </Group>
                         )}
@@ -494,11 +494,6 @@ export function Top100Tab({ platformKey, narrow }: { platformKey: string; narrow
                           <PreferencePicker platformKey={on} title={r.catalogTitle} value={r.preference} width={170} />
                         </Group>
                       )}
-                    </Table.Td>
-                  )}
-                  {romm && !narrow && (
-                    <Table.Td valign="top">
-                      <RommLinks link={r.romm} />
                     </Table.Td>
                   )}
                 </Table.Tr>
@@ -854,10 +849,10 @@ export function ConsoleHistoryTab({ platformKey }: { platformKey: string }) {
                     <GameTitle platformKey={on} title={name} fw={600}>
                       {g.title}
                     </GameTitle>
+                    <RommLinks link={g.romm} />
                     <Text size="sm">{g.why}</Text>
                     <Group gap="md" align="flex-start">
                       <OwnedCell game={g} platformKey={platformKey} />
-                      <RommLinks link={g.romm} />
                       {g.owned !== 'owned' && g.catalogTitle && <PreferencePicker platformKey={on} title={g.catalogTitle} value={g.preference} width={170} />}
                     </Group>
                   </Stack>
@@ -869,7 +864,7 @@ export function ConsoleHistoryTab({ platformKey }: { platformKey: string }) {
       )}
       {view.data.hasTop100 && (
         <Text size="sm">
-          <Anchor component={Link} to={`/platforms/${platformKey}?tab=top100`}>
+          <Anchor component={Link} to={`/roots/${platformKey}?tab=top100`}>
             Its Top 100 games
           </Anchor>
         </Text>
@@ -979,8 +974,18 @@ function ConsoleEditor({ platformKey, history, onClose }: { platformKey: string;
 }
 
 /** Consoles and landmark games on one timeline: the generations side by side, then year by year. */
+/**
+ * Whether Roots shows the consoles you don't collect too (the owner: "it remembers whatever you select"): the switch on
+ * Roots > Consoles, kept in this browser; the timeline follows it.
+ */
+export function useAllConsoles(): [boolean, (value: boolean) => void] {
+  const [all, setAll] = useLocalStorage<boolean>({ key: 'squirrelcade-roots-all-consoles', defaultValue: false });
+  return [all, setAll];
+}
+
+/** The timeline, year by year: the consoles that came out and the landmark games (the generations are Roots > Consoles'). */
 export function TimelinePanel() {
-  const [all, setAll] = useState(false);
+  const [all] = useAllConsoles();
   const timeline = useQuery({ queryKey: ['history', 'timeline'], queryFn: () => api<TimelineData>('/history/timeline') });
   if (timeline.isError) return <Text c="red">{(timeline.error as Error).message}</Text>;
   if (!timeline.data) return <Loader />;
@@ -988,46 +993,20 @@ export function TimelinePanel() {
   const consoles = all || collected.length === 0 ? timeline.data.consoles : collected;
   const shown = new Set(consoles.map((c) => c.platformKey));
   const games = timeline.data.games.filter((g) => shown.has(g.platformKey));
-  const generations = [...new Set(consoles.map((c) => c.generation ?? 0))].sort((a, b) => a - b);
   const years = [...new Set([...consoles.map((c) => c.launched).filter((y): y is number => y !== null), ...games.map((g) => g.year)])].sort((a, b) => a - b);
   // A game you have: the Stash's chest (D142); one that might be yours: a question mark.
   const mark = (o: ListOwnership) => (o === 'owned' ? <StashMark size={12} /> : o === 'review' || o === 'maybe' ? '?' : '');
 
   return (
     <Stack gap="md">
-      <Group justify="space-between" wrap="wrap">
-        <Text size="sm" c="dimmed">
-          Consoles by the year they came out, with their best games from the Top 100 lists and their &quot;Start here&quot; games (<StashMark size={12} /> you have it).
-        </Text>
-        {collected.length > 0 && <Switch size="sm" label="Consoles you don't collect too" checked={all} onChange={(e) => setAll(e.currentTarget.checked)} />}
-      </Group>
-      <Title order={4}>Generations</Title>
-      <SimpleGrid cols={{ base: 1, xs: 2, md: 3, lg: 4 }}>
-        {generations.map((gen) => (
-          <Card key={gen} withBorder padding="sm">
-            <Text fw={600} size="sm" mb={4}>
-              {gen ? generationName(gen) : 'Other'}
-            </Text>
-            <Stack gap={2}>
-              {consoles
-                .filter((c) => (c.generation ?? 0) === gen)
-                .map((c) => (
-                  <Text key={c.platformKey} size="sm">
-                    <Anchor component={Link} to={`/platforms/${c.platformKey}?tab=${c.hasHistory ? 'history' : 'top100'}`} size="sm">
-                      {c.name}
-                    </Anchor>{' '}
-                    <Text span size="xs" c="dimmed">
-                      {c.launched ?? '?'}
-                      {c.ended && c.ended !== c.launched ? `–${c.ended}` : ''}
-                      {c.manufacturer ? ` · ${c.manufacturer}` : ''}
-                    </Text>
-                  </Text>
-                ))}
-            </Stack>
-          </Card>
-        ))}
-      </SimpleGrid>
-      <Title order={4}>Year by year</Title>
+      <Text size="sm" c="dimmed">
+        Year by year: the consoles that came out, with their best games from the Top 100 lists and their &quot;Start here&quot; games (<StashMark size={12} /> you have it).{' '}
+        {collected.length > 0 && consoles !== timeline.data.consoles
+          ? 'Only the consoles you collect: the switch on Roots › Consoles adds the others.'
+          : collected.length > 0
+            ? "With the consoles you don't collect (the switch on Roots › Consoles)."
+            : ''}
+      </Text>
       <Table verticalSpacing={6}>
         <Table.Tbody>
           {years.map((y) => {
@@ -1042,7 +1021,7 @@ export function TimelinePanel() {
                   {launched.length > 0 && (
                     <Group gap={6} mb={those.length > 0 ? 4 : 0}>
                       {launched.map((c) => (
-                        <Badge key={c.platformKey} variant="light" style={{ textTransform: 'none' }} component={Link} to={`/platforms/${c.platformKey}?tab=${c.hasHistory ? 'history' : 'top100'}`}>
+                        <Badge key={c.platformKey} variant="light" style={{ textTransform: 'none' }} component={Link} to={`/roots/${c.platformKey}?tab=${c.hasHistory ? 'history' : 'top100'}`}>
                           {c.name} launches
                         </Badge>
                       ))}
@@ -1093,7 +1072,7 @@ export function DrawerHistory({ platformKey, title, history }: { platformKey: st
     <Stack gap={4}>
       {history.top100 && (
         <Group gap={6}>
-          <Badge variant="light" color="squirrel" style={{ textTransform: 'none' }} component={Link} to={`/platforms/${platformKey}?tab=top100`}>
+          <Badge variant="light" color="squirrel" style={{ textTransform: 'none' }} component={Link} to={`/roots/${platformKey}?tab=top100`}>
             #{history.top100.rank} in the console&apos;s Top 100
           </Badge>
         </Group>

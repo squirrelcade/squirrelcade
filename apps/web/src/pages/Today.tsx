@@ -832,7 +832,7 @@ function Movers({ currency, dateFormat, className }: { currency: string; dateFor
 /** The catalogs, Top 100 lists and sets closest to done. */
 function Completion({ lines, done }: { lines: CompletionLine[]; done: number }) {
   if (lines.length === 0) return null;
-  const to = (l: CompletionLine) => (l.kind === 'set' ? `/sets/${l.key}` : l.kind === 'top100' ? `/platforms/${l.key}?tab=top100` : `/platforms/${l.key}`);
+  const to = (l: CompletionLine) => (l.kind === 'set' ? `/sets/${l.key}` : l.kind === 'top100' ? `/roots/${l.key}?tab=top100` : `/platforms/${l.key}`);
   const name = (l: CompletionLine) => (l.kind === 'set' ? l.name : l.kind === 'top100' ? `${l.name} Top 100` : `${l.name} catalog`);
   return (
     <section className="sc-card sc-pad" aria-labelledby="completion-h" style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>

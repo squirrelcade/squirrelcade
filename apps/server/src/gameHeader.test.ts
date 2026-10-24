@@ -13,7 +13,7 @@ describe("the game page's header (D165)", () => {
       read: { bestselling: { rank: 4, list: 'list of best-selling Super Nintendo games', url: 'https://en.wikipedia.org/wiki/x' }, awards: [{ name: 'Game of the Year', year: '1994' }] },
     });
     expect(stars.map((s) => s.label)).toEqual(['#2 Top 100', '#4 best-selling', 'Game of the Year 1994', "Critics' favorite", 'Launch title']);
-    expect(stars[0]).toMatchObject({ href: '/platforms/super-nintendo?tab=top100', detail: "#2 of 100 on the Super Nintendo's Top 100" });
+    expect(stars[0]).toMatchObject({ href: '/roots/super-nintendo?tab=top100', detail: "#2 of 100 on the Super Nintendo's Top 100" });
   });
 
   it("calls reviews a critics' favorite at 90 or more, and only on enough ratings", () => {
