@@ -11,7 +11,8 @@ Every outside service, program and tool Squirrelcade works with or recommends: w
 ## Game information
 
 - [IGDB](https://www.igdb.com): box art, genres, series, release dates and developers, and proof of a physical release. **You need:** a [Twitch developer application](https://dev.twitch.tv/console/apps) (see [Optional parts](features.md#igdb-keys)). **Cost:** free. **Where:** Settings > Features.
-- [Wikipedia](https://en.wikipedia.org): each console's list of games (its catalog), and lists for sets. **You need:** nothing. **Cost:** free. **Where:** Settings > Sources > Catalog sources.
+- [Wikipedia](https://en.wikipedia.org): each console's list of games (its catalog), and lists for sets; with Roots on, each game's article (its reviews of the time, the sources it cites, the games it came from and led to) and the best-selling lists. **You need:** nothing. **Cost:** free. **Where:** Settings > Sources > Catalog sources, and Settings > Roots.
+- [Wikidata](https://www.wikidata.org): with Roots on, a game's pages on reference sites (MobyGames, GameFAQs, HowLongToBeat...) and its awards. **You need:** nothing. **Cost:** free. **Where:** Settings > Roots.
 - [Nintendo Life](https://www.nintendolife.com): which Switch 2 games are Game-Key Cards, and newer releases. **You need:** nothing (it's off to start with). **Cost:** free. **Where:** Settings > Sources > Catalog sources.
 - [Steam](https://store.steampowered.com): review scores for the PC wishlist's games. **You need:** nothing. **Cost:** free. **Where:** the PC library.
 - [IsThereAnyDeal](https://isthereanydeal.com): the best price now and the lowest ever of the PC wishlist's games, and a message when one drops. **You need:** a free [API key](https://isthereanydeal.com/apps/my/). **Cost:** free. **Where:** Settings > Sources > IsThereAnyDeal (PC game prices).

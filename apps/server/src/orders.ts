@@ -23,7 +23,7 @@ import {
   type PaidCounts,
   type StoreSeen,
 } from '@squirrelcade/core';
-import { and, desc, eq, isNull, lte, or } from 'drizzle-orm';
+import { and, desc, eq, gte, isNull, lte, or } from 'drizzle-orm';
 import type { FastifyInstance } from 'fastify';
 import { createHash, randomUUID } from 'node:crypto';
 import { simpleParser } from 'mailparser';
@@ -248,7 +248,7 @@ export class OrderService {
    * newest added first, on a console or added here if asked, up to Settings > Email's limit, one after another in one
    * visit to the mailbox. What's found is kept for each copy until it's used or turned down.
    */
-  startBatch(filter: { platform?: string; added?: string }): BatchJob {
+  startBatch(filter: { platform?: string; added?: string; recentDays?: number }): BatchJob {
     this.sweep();
     const running = [...this.batches.values()].find((b) => b.state === 'reading');
     if (running) return running;
@@ -351,7 +351,7 @@ export class OrderService {
   }
 
   /** The copies missing a price paid: none, or 0, and no estimate of the owner's; newest added first. */
-  private missingPrice(filter: { platform?: string; added?: string }, limit = this.d.settings.get('orders.batchMax')) {
+  private missingPrice(filter: { platform?: string; added?: string; recentDays?: number }, limit = this.d.settings.get('orders.batchMax')) {
     return this.d.db
       .select({ id: copies.id, title: copies.title, platformKey: platforms.key, datePurchased: copies.datePurchased, addedAt: copies.addedAt })
       .from(copies)
@@ -363,6 +363,8 @@ export class OrderService {
           isNull(copies.estimatedCents),
           ...(filter.platform ? [eq(platforms.key, filter.platform)] : []),
           ...(filter.added === 'here' ? [eq(copies.source, 'squirrelcade')] : []),
+          // The haul: the copies added lately (Stash > Recently added's days).
+          ...(filter.recentDays ? [gte(copies.addedAt, new Date(Date.now() - filter.recentDays * 86_400_000).toISOString())] : []),
         ),
       )
       .orderBy(desc(copies.addedAt), desc(copies.id))
@@ -785,8 +787,12 @@ export function registerOrderRoutes(app: FastifyInstance, orders: OrderService, 
   app.get('/api/v1/orders/find/:id', async (request, reply) => orders.find((request.params as { id: string }).id) ?? reply.code(404).send({ error: 'not-found', message: 'That lookup is no longer kept.' }));
   app.post('/api/v1/orders/batch', async (request, reply) => {
     if (!orders.findOn()) return off(reply, 'find');
-    const b = (request.body ?? {}) as { platform?: unknown; added?: unknown };
-    return orders.startBatch({ platform: typeof b.platform === 'string' ? b.platform : undefined, added: typeof b.added === 'string' ? b.added : undefined });
+    const b = (request.body ?? {}) as { platform?: unknown; added?: unknown; recentDays?: unknown };
+    return orders.startBatch({
+      platform: typeof b.platform === 'string' ? b.platform : undefined,
+      added: typeof b.added === 'string' ? b.added : undefined,
+      recentDays: typeof b.recentDays === 'number' && b.recentDays > 0 && b.recentDays <= 366 ? b.recentDays : undefined,
+    });
   });
   app.get('/api/v1/orders/batch/:id', async (request, reply) => orders.batch((request.params as { id: string }).id) ?? reply.code(404).send({ error: 'not-found', message: 'That lookup is no longer kept.' }));
   // Find my stores: the stores of the mailbox's purchase emails, for "Purchase emails from" (owner only: no viewer path).

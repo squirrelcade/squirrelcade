@@ -618,7 +618,7 @@ export class HistoryService {
 
 /** Top 100 lists, console history and the timeline; the owner's versions of history texts. */
 export function registerHistoryRoutes(app: FastifyInstance, history: HistoryService): void {
-  const off = { error: 'feature-off', message: 'Top 100 lists and console history are off (Settings > Features).' };
+  const off = { error: 'feature-off', message: 'Roots (the Top 100 lists and console history) is off (Settings > Features).' };
 
   app.get('/api/v1/history', async (_request, reply) => {
     if (!history.enabled()) return reply.code(404).send(off);

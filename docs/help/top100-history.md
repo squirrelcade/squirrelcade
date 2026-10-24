@@ -1,6 +1,6 @@
 # Top 100 and history
 
-With **Top 100 lists and console history** on (Settings > Features; it is by default), each console's page has two more tabs, and Platforms has a timeline.
+With **Roots** on (Settings > Features; it is by default), each console's page has two more tabs, Platforms has a timeline, and the menu has the **Roots** section with both (see [Roots](roots.md)). A game in its console's Top 100 has its place as a star beside its name, on its page and in Store Mode.
 
 ## Top 100
 

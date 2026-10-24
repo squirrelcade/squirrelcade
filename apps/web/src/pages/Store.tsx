@@ -7,7 +7,7 @@ import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { api, errorMessage } from '../api';
 import { BarcodeLookupsLeft, HelpLink, RetryCountdown } from '../components';
 import { RegionBadge } from '../Region';
-import { RommLinks, type RommLink } from '../Romm';
+import type { RommLink } from '../Romm';
 import { count, date, money, timeAgo } from '../format';
 import { overGoalNote } from '../Goal';
 import { notifyError, notifySuccess, useCanEdit, useSetting, useSettings } from '../hooks';
@@ -32,6 +32,8 @@ import { ScannerModal } from '../ScannerModal';
 import { CopyDetailsModal, type CopyRef } from '../CopyDetails';
 import { isBarcode } from '../lines';
 import { GameCover, GameTitle } from '../GameDrawer';
+import { GameStars, RommChip, type GameStar } from '../GameHeader';
+import { useOrdersOn } from '../OrderEmails';
 import { type Answer } from '../choices';
 import { Verdict } from '../Verdict';
 import { PreferencePicker } from '../Preference';
@@ -69,6 +71,8 @@ interface Result {
   reviews?: ReviewsOf;
   /** Bought and on the way (D156): Add it then makes it arrive, with what its email said. */
   onTheWay?: { id: number; store: string; orderDate: string | null; paidCents: number | null } | null;
+  /** The stars beside its name, as on the game page (D165). */
+  stars?: GameStar[];
 }
 
 /** The fields of a game's copy that its window needs (GET /api/v1/game). */
@@ -187,6 +191,8 @@ export function StorePage() {
   const barcode = isBarcode(query) ? query.replace(/\D/g, '') : null;
   const queryClient = useQueryClient();
   const canEdit = useCanEdit();
+  // Find in my email on (Settings > Email): the haul's prices from the order emails, in Recently added.
+  const ordersOn = useOrdersOn();
 
   // This browser's copy of Store Mode's answers, updated each time Store Mode opens, for answering without a
   // connection (Settings > Interface > "Answer without a connection"; off removes it).
@@ -626,6 +632,7 @@ export function StorePage() {
             {r.coverId && <GameCover platformKey={r.platformKey} title={r.title} id={r.coverId} width={48} />}
             <Stack gap={2} style={{ minWidth: 0 }}>
               <GameTitle platformKey={r.platformKey} title={r.title} fw={600} size="md" withNote={false} />
+              <GameStars stars={r.stars ?? []} />
               <Group gap={6}>
                 <Text size="sm" c="dimmed">
                   {r.platform}
@@ -687,7 +694,11 @@ export function StorePage() {
               {r.ownedOn.length > 0 && reason.said !== 'ownedOn' && <Text size="xs">You have it on {r.ownedOn.join(', ')}</Text>}
               {(r.ownedOnPc?.length ?? 0) > 0 && <Text size="xs">You have it on PC ({r.ownedOnPc!.join(', ')})</Text>}
               {(r.sets?.length ?? 0) > 0 && <Text size="xs">In your {r.sets!.length === 1 ? 'set' : 'sets'} {r.sets!.join(', ')}</Text>}
-              <RommLinks link={r.romm} />
+              {r.romm && (
+                <span>
+                  <RommChip link={r.romm} />
+                </span>
+              )}
               {r.maybe.length > 0 && reason.said !== 'maybe' && <Text size="xs">Might be {r.maybe.join(' or ')} in your collection</Text>}
               {r.answer === 'need' && r.wishlist && reason.said !== 'wishlist' && (
                 <Text size="xs">
@@ -742,11 +753,19 @@ export function StorePage() {
             They're in your collection. Stash updates › Send to PriceCharting has them as lines for PriceCharting's importer.
           </Text>
           {/* Games added one after another in a store get their details in one sitting later: Improve walks them (D153). */}
-          {canEdit && (toFill.data?.total ?? 0) > 0 && (
-            <Button component={Link} to="/collection/improve?added=here" size="compact-sm" variant="light" mb={6}>
-              Fill in their details ({count(toFill.data!.total)})
-            </Button>
-          )}
+          <Group gap="xs" mb={6}>
+            {canEdit && (toFill.data?.total ?? 0) > 0 && (
+              <Button component={Link} to="/collection/improve?added=here" size="compact-sm" variant="light">
+                Fill in their details ({count(toFill.data!.total)})
+              </Button>
+            )}
+            {/* The haul: their prices from your order emails at once, confirmed in Recently added. */}
+            {canEdit && ordersOn && (
+              <Button component={Link} to="/collection/recent?days=7" size="compact-sm" variant="default">
+                Find their prices in my email
+              </Button>
+            )}
+          </Group>
           <Stack gap={2}>
             {purchases.data!.map((p) => (
               <Text key={p.id} size="sm" component="div">

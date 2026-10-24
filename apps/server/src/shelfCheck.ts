@@ -109,6 +109,25 @@ export function registerShelfRoutes(app: FastifyInstance, lookup: LookupService,
   const consoleNames = () => new Set(lookup.offlineCopy(false).copy.platforms.map((p) => p.name));
 
   // What the vision model can do now, for the phone deciding whether to send pieces.
+  // Check a shelf's next steps: a read fixed to a game (or to no game), remembered for the next photo; and the
+  // console's full list, for the games off your checklist.
+  app.put('/api/v1/shelf/fixes', async (request, reply) => {
+    const b = request.body as { platform?: unknown; read?: unknown; title?: unknown } | null;
+    if (typeof b?.platform !== 'string' || typeof b.read !== 'string' || !(typeof b.title === 'string' || b.title === null) || !lookup.saveShelfFix(b.platform, b.read, b.title)) {
+      return reply.code(400).send({ error: 'invalid', message: 'Send a console, the text read (4 letters or more) and the game it is (or null for no game).' });
+    }
+    return { ok: true };
+  });
+  app.delete('/api/v1/shelf/fixes', async (request) => {
+    const q = request.query as { platform?: string; read?: string };
+    return { removed: typeof q.platform === 'string' && typeof q.read === 'string' ? lookup.forgetShelfFix(q.platform, q.read) : false };
+  });
+  app.get('/api/v1/shelf/titles/:platform', async (request, reply) => {
+    const titles = lookup.shelfTitles((request.params as { platform: string }).platform);
+    if (!titles) return reply.code(404).send({ error: 'not-found', message: 'No such console.' });
+    return { titles };
+  });
+
   app.get('/api/v1/shelf/model', async () => ({
     available: vision.ready(),
     left: vision.left(),

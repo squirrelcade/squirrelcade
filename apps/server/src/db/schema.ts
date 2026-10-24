@@ -160,6 +160,8 @@ export const catalogEntries = sqliteTable(
      * console whose list only has retail games). null: only IGDB, owning it or the user can confirm it.
      */
     evidence: text('evidence'),
+    /** The Wikipedia article the source's list links the game to, for Roots (D165); null for a game the list doesn't link. */
+    wikiArticle: text('wiki_article'),
     updatedAt: text('updated_at').notNull(),
   },
   (t) => [uniqueIndex('catalog_entries_key_idx').on(t.platformId, t.key)],
@@ -383,6 +385,24 @@ export const barcodes = sqliteTable('barcodes', {
   source: text('source').notNull(),
   createdAt: text('created_at').notNull(),
 });
+
+/**
+ * Check a shelf's fixes (D147's next steps): a spine's read text, as shelfReadKey makes it, is this game on this
+ * console, or no game at all (title null). Kept in Store Mode's offline copy, so a fix works with no signal.
+ */
+export const shelfFixes = sqliteTable(
+  'shelf_fixes',
+  {
+    id: integer('id').primaryKey({ autoIncrement: true }),
+    platformId: integer('platform_id')
+      .notNull()
+      .references(() => platforms.id, { onDelete: 'cascade' }),
+    readKey: text('read_key').notNull(),
+    title: text('title'),
+    updatedAt: text('updated_at').notNull(),
+  },
+  (t) => [uniqueIndex('shelf_fixes_idx').on(t.platformId, t.readKey)],
+);
 
 /** Rows of every kept import; the current collection is the rows of the current import. */
 export const collectionItems = sqliteTable(
@@ -1207,3 +1227,57 @@ export const comingItems = sqliteTable(
   },
   (t) => [uniqueIndex('coming_items_mail_idx').on(t.mailRef, t.itemIndex), index('coming_items_status_idx').on(t.status)],
 );
+
+/**
+ * Roots (D165): each game's Wikipedia article as last read: the review table, dated sources, releases and the games
+ * it names (packages/core/src/roots.ts), and from Wikidata its reference sites and awards. Rebuilt from the articles,
+ * so nothing here is the owner's own.
+ */
+export const gameArticles = sqliteTable('game_articles', {
+  /** The article's title on English Wikipedia ("Super Metroid"). */
+  article: text('article').primaryKey(),
+  /** Its Wikidata item ("Q1194825"). */
+  wikidataId: text('wikidata_id'),
+  /** The article's revision that was read. */
+  revision: integer('revision'),
+  /** The reader that read it (ROOTS_READER_VERSION): a better reader reads it again. */
+  readerVersion: integer('reader_version'),
+  /** JSON RootsReading. */
+  data: text('data'),
+  /** JSON: Wikidata's identifiers on reference sites ({ "P11688": "super-metroid" }) and awards ([{ name, year }]). */
+  wikidata: text('wikidata'),
+  readAt: text('read_at'),
+  /** When its revision was last compared (a cheap check before reading it again). */
+  checkedAt: text('checked_at'),
+  /** Why the last reading failed, if it did. */
+  error: text('error'),
+});
+
+/**
+ * The article a game on a console is, when its catalog doesn't say (a game outside the catalog, or from another source):
+ * found once by searching Wikipedia, or named by the owner. A null article: looked, and none fits.
+ */
+export const gameArticleLinks = sqliteTable(
+  'game_article_links',
+  {
+    id: integer('id').primaryKey({ autoIncrement: true }),
+    platformKey: text('platform_key').notNull(),
+    /** The game's title key (matchKey). */
+    titleKey: text('title_key').notNull(),
+    article: text('article'),
+    /** search, or owner. */
+    foundBy: text('found_by').notNull(),
+    checkedAt: text('checked_at').notNull(),
+  },
+  (t) => [uniqueIndex('game_article_links_game_idx').on(t.platformKey, t.titleKey)],
+);
+
+/** Wikipedia's best-selling lists, one per console that has one (its games' articles and places), for the header's stars. */
+export const bestSellingLists = sqliteTable('best_selling_lists', {
+  platformKey: text('platform_key').primaryKey(),
+  /** The list's article ("List of best-selling PlayStation 2 video games"). */
+  page: text('page').notNull(),
+  /** JSON [{ article, title, rank }]. */
+  data: text('data').notNull(),
+  readAt: text('read_at').notNull(),
+});

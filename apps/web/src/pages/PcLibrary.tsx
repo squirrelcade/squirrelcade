@@ -402,8 +402,11 @@ export function PcLibraryPage() {
                 <Table.Tr key={f.key}>
                   <Table.Td>
                     <Stack gap={4}>
+                      {/* A PC game opens the same game page as a console game (D165): its storefronts are its copies. */}
                       <Text size="sm" fw={500}>
-                        {f.title}
+                        <GameTitle platformKey="pc" title={f.title} fw={500}>
+                          {f.title}
+                        </GameTitle>
                         {f.favorite && ' ★'}
                       </Text>
                       <Group gap={4}>

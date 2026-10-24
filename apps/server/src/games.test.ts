@@ -63,6 +63,56 @@ describe('the game drawer', () => {
     expect((await g.app.inject({ url: '/api/v1/game?platform=nope&title=X', cookies })).statusCode).toBe(404);
   });
 
+  it('gives the header its stars, Worth and Reviews, and every console the game is on (D165)', async () => {
+    seedCatalogs(g, {
+      owned: [
+        ...['Celeste', 'Cuphead', 'Gris', 'Tunic', 'Ori', 'Inside'].map((t, i): [string, string, string] => [String(i + 1), t, 'Nintendo Switch']),
+        ['9', 'Hades', 'Playstation 4'],
+        ['10', 'Hades', 'Playstation 4'],
+      ],
+      catalogs: {
+        'nintendo-switch': [
+          { title: 'Hades', evidence: 'list', releaseDate: '2018-09-17' },
+          { title: 'Celeste', evidence: 'list', releaseDate: '2017-03-03' },
+          { title: 'Snipperclips', evidence: 'list', releaseDate: '2017-03-03' },
+          { title: 'Tunic', evidence: 'list', releaseDate: '2022-09-27' },
+        ],
+        'playstation-4': [{ title: 'Hades', evidence: 'list', releaseDate: '2021-08-13' }],
+        'playstation-5': [{ title: 'Hades', evidence: 'list', releaseDate: '2021-08-13' }],
+      },
+    });
+    // Celeste: in the Switch's Top 100 (shipped with Squirrelcade), and out the day its console's catalog shows two games
+    // out, a launch title (by the catalog's dates).
+    const celeste = await game('nintendo-switch', 'Celeste');
+    expect(celeste.stars.map((x: { kind: string }) => x.kind)).toEqual(['top100', 'launch']);
+    expect(celeste.stars[0]).toMatchObject({ label: expect.stringMatching(/^#\d+ Top 100$/), href: '/platforms/nintendo-switch?tab=top100' });
+    expect(celeste.stars[1]).toMatchObject({ label: 'Launch title', detail: 'Out the day the Nintendo Switch launched, March 3, 2017' });
+    // Worth: every copy of the game, filled by how much of the collection is worth less (here, all of it the same).
+    expect(celeste.worth).toEqual({ cents: 1000, copies: 1, percentile: 0 });
+    expect(celeste.consoles).toEqual([expect.objectContaining({ platformKey: 'nintendo-switch', current: true, status: 'owned', released: '2017-03-03' })]);
+
+    // Hades: on three consoles' catalogs; owned twice on PS4. Release order, this console marked, the rest with their copies.
+    const hades = await game('nintendo-switch', 'Hades');
+    expect(hades.consoles.map((r: { platformKey: string; current: boolean; status: string | null; copies: unknown[] }) => [r.platformKey, r.current, r.status, r.copies.length])).toEqual([
+      ['nintendo-switch', true, 'missing', 0],
+      ['playstation-4', false, 'owned', 2],
+      // The PS5's catalog counts the PS4 copies (a cross-generation game, Settings > Catalogs and matching).
+      ['playstation-5', false, 'owned', 0],
+    ]);
+    expect(hades.consoles[2].via).toBe('PlayStation 4');
+    // Worth counts every console's copies: worth more than every other game you have.
+    expect(hades.worth).toEqual({ cents: 2000, copies: 2, percentile: 100 });
+    expect(hades.stars.map((x: { kind: string }) => x.kind)).toEqual(['top100']);
+    expect(hades.reviews).toBeNull();
+    // The other consoles' copies come with what their line and their window need.
+    expect(hades.consoles[1].copies[0]).toMatchObject({ title: 'Hades', completeness: 'complete', valueCents: 1000, copyKey: expect.any(String), location: null });
+  });
+
+  it('opens a PC game on the same page, its storefronts as its copies (D165)', async () => {
+    // The PC library off: no such page.
+    expect((await g.app.inject({ url: '/api/v1/game?platform=pc&title=Celeste', cookies })).statusCode).toBe(404);
+  });
+
   it("keeps your note on a game, under the catalog's title, for the drawer, Store Mode and the notes list", async () => {
     seedCatalogs(g, {
       owned: ['Celeste', 'Cuphead', 'Gris', 'Tunic', 'Ori', 'Inside'].map((t, i): [string, string, string] => [String(i + 1), t, 'Nintendo Switch']),

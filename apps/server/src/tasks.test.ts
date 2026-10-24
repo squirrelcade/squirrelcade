@@ -19,7 +19,9 @@ afterEach(async () => {
 describe('tasks', () => {
   it('lists the built-in tasks with schedules from settings', async () => {
     const tasks = (await g.app.inject({ url: '/api/v1/tasks', cookies })).json() as { name: string; intervalMs: number | null }[];
-    expect(tasks.map((t) => t.name).sort()).toEqual(['backup', 'catalog-build', 'export-reminder', 'game-of-the-day', 'health-check', 'housekeeping', 'igdb-sync', 'import-folder', 'loan-reminders', 'mail-import', 'orders-watch', 'pc-discover', 'pc-prices', 'pc-read', 'psn-sync', 'ra-sync', 'release-reminders', 'romm-sync', 'steam-sync', 'xbox-sync']);
+    expect(tasks.map((t) => t.name).sort()).toEqual(['backup', 'catalog-build', 'export-reminder', 'game-of-the-day', 'health-check', 'housekeeping', 'igdb-sync', 'import-folder', 'loan-reminders', 'mail-import', 'orders-watch', 'pc-discover', 'pc-prices', 'pc-read', 'psn-sync', 'ra-sync', 'release-reminders', 'romm-sync', 'roots-read', 'steam-sync', 'xbox-sync']);
+    // Roots reads at night, on to start (D165).
+    expect(tasks.find((t) => t.name === 'roots-read')!.intervalMs).toBe(24 * 3_600_000);
     // Release reminders are checked only once they're turned on.
     expect(tasks.find((t) => t.name === 'release-reminders')!.intervalMs).toBeNull();
     // The PC wishlist's search runs only once IGDB's keys are set.

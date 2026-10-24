@@ -16,7 +16,7 @@ import { clearCopy } from './offline';
 import { PasswordModal } from './Password';
 import { useFeature, usePageTitle, useSession, useSetting, useSettings } from './hooks';
 import { DEEP_BUTTON } from './look';
-import { Acorn, NutshellMark, StashMark } from './Acorn';
+import { Acorn, NutshellMark, RootsMark, StashMark } from './Acorn';
 
 /**
  * The rule the menu is sorted by, said under each section's name (the owner, 2026-10-16): the Stash is what you have,
@@ -26,6 +26,7 @@ export const SECTION_RULE = {
   stash: 'The games you have',
   acorns: 'Games coming in and going out',
   nutshell: 'Your collection, by the numbers',
+  roots: 'Games in their time, and since',
 } as const;
 
 const SYSTEM_PAGES = [
@@ -80,6 +81,7 @@ const MAIN_PAGES: Record<string, string> = {
   '/store/list': 'Check a list',
   '/updates': 'Stash updates',
   '/notes': 'Your notes',
+  '/roots': 'Roots',
 };
 
 /** The browser tab title for a page; null for a platform's, a set's or a friend's page, which shows its name. */
@@ -111,6 +113,9 @@ export function Layout({ children }: { children: ReactNode }) {
   // PC deals need PC game prices (IsThereAnyDeal or GG.deals).
   const pricesOn = useFeature('itad');
   const pcView = new URLSearchParams(location.search).get('view');
+  // Roots (the Top 100 lists and console history, D165).
+  const historyOn = useFeature('history');
+  const rootsView = pcView;
   // Deals come from PriceCharting's emails: listed while collection updates from email read them.
   const mailOn = useFeature('mail');
   const dealEmails = useSetting('mail.deals', true);
@@ -142,7 +147,7 @@ export function Layout({ children }: { children: ReactNode }) {
   const coming = useQuery({ queryKey: ['coming'], queryFn: () => api<{ items: unknown[] }>('/coming'), enabled: !!session?.authenticated && comingOn, staleTime: 60_000 });
   const comingCount = coming.data?.items.length ?? 0;
   // Statistics and Report are the Nutshell's (the Almanac's from 2026-10-06), with the consoles and sets; their addresses stay.
-  const inNutshell = path.startsWith('/platforms') || path.startsWith('/sets') || path === '/collection/statistics' || path === '/collection/report';
+  const inNutshell = path.startsWith('/platforms') || path.startsWith('/series') || path.startsWith('/sets') || path === '/collection/statistics' || path === '/collection/report';
   // The PC library is the Stash's, its wishlist and deals Acorns' (the owner's idea, 2026-10-23: D165), counted apart.
   const inCollection = (path.startsWith('/collection') || path === '/pc') && !inAcorns && !inNutshell;
   const reviewBadge =
@@ -277,10 +282,19 @@ export function Layout({ children }: { children: ReactNode }) {
               their catalogs, sets of your own, and the collection counted (Statistics) and listed to print (Report). */}
           <NavLink label="Nutshell" description={SECTION_RULE.nutshell} leftSection={<NutshellMark size={18} />} opened={inNutshell} onClick={() => navigate('/platforms')} childrenOffset={28}>
             {link('/platforms', 'Platforms')}
+            {link('/series', 'Series')}
             {link('/sets', 'Sets')}
             {link('/collection/statistics', 'Statistics')}
             {link('/collection/report', 'Report')}
           </NavLink>
+          {/* Roots (D165): games in their time and since, each console's history and Top 100, the timeline; with the
+              Top 100 lists and history on (Settings > Features). Its consoles and timeline stay linked from Platforms. */}
+          {historyOn && (
+            <NavLink label="Roots" description={SECTION_RULE.roots} leftSection={<RootsMark size={18} />} opened={path === '/roots'} onClick={() => navigate('/roots')} childrenOffset={28}>
+              <NavLink component={Link} to="/roots" label="Consoles" active={path === '/roots' && rootsView !== 'timeline'} onClick={close} />
+              <NavLink component={Link} to="/roots?view=timeline" label="Timeline" active={path === '/roots' && rootsView === 'timeline'} onClick={close} />
+            </NavLink>
+          )}
           {/* Friends (0.56.0, D131): all of them, then each by name (their page has Compare and Trades), and adding one. */}
           {owner && (
             <NavLink label="Friends" leftSection={<IconUsersGroup size={18} />} opened={path.startsWith('/friends')} onClick={() => navigate('/friends')} childrenOffset={28}>

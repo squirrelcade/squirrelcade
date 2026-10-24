@@ -35,12 +35,48 @@ export interface SeriesGame {
   preference?: string | null;
   /** For a game you don't own here: you have it on PC (the PC library). */
   onPc?: boolean;
+  /** IGDB's cover for it on this console. */
+  coverId?: string | null;
   /**
    * For a remake or remaster (IGDB's links): the game in this series it's a version of, followed back to the first
    * one, with its first release; so an opened series can show versions together. "version" when it took more than
    * one step (a remaster of a remake).
    */
   original?: { title: string; released: string | null; kind: 'remake' | 'remaster' | 'version' };
+}
+
+/**
+ * A series' game counted once, whatever consoles it came out on (the Nutshell's Series, the owner: "as long as we
+ * have one copy somewhere, it counts for that game"): had when any console's copy is yours; PC apart, never counted.
+ */
+export interface SeriesTitle {
+  /** The game across consoles: its title as matchKey(baseTitle()) makes it. */
+  key: string;
+  title: string;
+  /** Its first release on any console. */
+  released: string | null;
+  coverId: string | null;
+  had: boolean;
+  /** Not had on a console, but on PC (the PC library): shown apart. */
+  onPc: boolean;
+  /** Each console it's on, in release order, with that console's answer. */
+  consoles: { platformKey: string; platform: string; status: string }[];
+  original?: SeriesGame['original'];
+}
+
+/** A series counted by game (GET /api/v1/series?by=game). */
+export interface SeriesByGame {
+  name: string;
+  had: number;
+  total: number;
+  /** Games not had on a console that you have on PC. */
+  onPc: number;
+  percent: number;
+  /** The cover the series' card shows: its first game you have, else its first game. */
+  coverId: string | null;
+  /** How many consoles its games are on. */
+  consoles: number;
+  custom?: boolean;
 }
 
 /** Marks each remake or remaster in a series' games with the earliest version of it the series has (see SeriesGame.original). */
@@ -127,7 +163,7 @@ export class SeriesService {
         if (!name) continue;
         const list = bySeries.get(name) ?? [];
         const elsewhere = t.status === 'owned' ? [] : [...(ownedOn.get(matchKey(baseTitle(t.target.title))) ?? [])].filter((n) => n !== p.name);
-        const entry: SeriesGame = { platformKey: p.key, platform: p.name, title: t.target.title, status: t.status, released: game?.released ?? null, ownedOn: elsewhere };
+        const entry: SeriesGame = { platformKey: p.key, platform: p.name, title: t.target.title, status: t.status, released: game?.released ?? null, ownedOn: elsewhere, coverId: game?.coverId ?? null };
         if (game) igdbOf.set(entry, game);
         list.push(entry);
         bySeries.set(name, list);
@@ -146,7 +182,7 @@ export class SeriesService {
           if (t.status === 'excluded' || t.status === 'extra' || !words.some((w) => matchKey(t.target.title).includes(w))) continue;
           const game = this.igdb.find(p.platformId, t.target.title);
           const elsewhere = t.status === 'owned' ? [] : [...(ownedOn.get(matchKey(baseTitle(t.target.title))) ?? [])].filter((n) => n !== p.name);
-          const entry: SeriesGame = { platformKey: p.key, platform: p.name, title: t.target.title, status: t.status, released: game?.released ?? null, ownedOn: elsewhere };
+          const entry: SeriesGame = { platformKey: p.key, platform: p.name, title: t.target.title, status: t.status, released: game?.released ?? null, ownedOn: elsewhere, coverId: game?.coverId ?? null };
           if (game) igdbOf.set(entry, game);
           list.push(entry);
         }
@@ -187,6 +223,65 @@ export class SeriesService {
     return out.sort((a, b) => b.owned - a.owned || b.percent - a.percent || a.name.localeCompare(b.name));
   }
 
+  /** A series' games counted once each, wherever you have them (see SeriesTitle), in release order. */
+  private titlesOf(games: SeriesGame[]): SeriesTitle[] {
+    const byGame = new Map<string, SeriesGame[]>();
+    for (const g of games) {
+      const key = matchKey(baseTitle(g.title));
+      byGame.set(key, [...(byGame.get(key) ?? []), g]);
+    }
+    const out: SeriesTitle[] = [];
+    for (const [key, list] of byGame) {
+      const sorted = [...list].sort((a, b) => (a.released ?? '9999').localeCompare(b.released ?? '9999') || a.platform.localeCompare(b.platform));
+      const first = sorted[0]!;
+      const had = list.some((g) => g.status === 'owned');
+      const mine = list.find((g) => g.status === 'owned' && g.coverId);
+      out.push({
+        key,
+        title: first.title,
+        released: first.released,
+        coverId: mine?.coverId ?? sorted.find((g) => g.coverId)?.coverId ?? null,
+        had,
+        onPc: !had && list.some((g) => this.onPc(g.title)),
+        consoles: sorted.map((g) => ({ platformKey: g.platformKey, platform: g.platform, status: g.status })),
+        ...(first.original ? { original: first.original } : {}),
+      });
+    }
+    return out.sort((a, b) => (a.original?.released ?? a.released ?? '9999').localeCompare(b.original?.released ?? b.released ?? '9999') || a.title.localeCompare(b.title));
+  }
+
+  /**
+   * Every series counted by game (the Nutshell's Series): a game counts once, had when any console's copy is yours,
+   * PC apart. The same series as list() (a game had, enough games, your own), the most had first.
+   */
+  listByGame(): SeriesByGame[] {
+    const out: SeriesByGame[] = [];
+    const fewest = this.settings.get('collection.seriesMinGames');
+    const { games: all, custom } = this.worked();
+    for (const [name, games] of all) {
+      const titles = this.titlesOf(games);
+      const had = titles.filter((t) => t.had).length;
+      if (!custom.has(name) && (had === 0 || titles.length < fewest)) continue;
+      out.push({
+        name,
+        had,
+        total: titles.length,
+        onPc: titles.filter((t) => t.onPc).length,
+        percent: Math.round((had / titles.length) * 1000) / 10,
+        coverId: titles.find((t) => t.had && t.coverId)?.coverId ?? titles.find((t) => t.coverId)?.coverId ?? null,
+        consoles: new Set(games.map((g) => g.platformKey)).size,
+        ...(custom.has(name) ? { custom: true } : {}),
+      });
+    }
+    return out.sort((a, b) => b.had - a.had || b.percent - a.percent || a.name.localeCompare(b.name));
+  }
+
+  /** One series' games counted by game, in release order (each remake beside the game it remakes). */
+  detailByGame(name: string): SeriesTitle[] | null {
+    const games = this.games().get(name);
+    return games ? this.titlesOf(games) : null;
+  }
+
   /** One series' games: the ones you don't own first, each group by release date, then title. */
   detail(name: string): SeriesGame[] | null {
     const games = this.games().get(name);
@@ -199,11 +294,12 @@ export class SeriesService {
 
 /** Series: GET /api/v1/series and GET /api/v1/series/games?name=. */
 export function registerSeriesRoutes(app: FastifyInstance, series: SeriesService): void {
-  app.get('/api/v1/series', async () => series.list());
+  // ?by=game: each game counted once, wherever you have it (the Nutshell's Series); otherwise each console's apart (Sets > Series).
+  app.get('/api/v1/series', async (request) => ((request.query as { by?: string }).by === 'game' ? series.listByGame() : series.list()));
 
   app.get('/api/v1/series/games', async (request, reply) => {
-    const name = (request.query as { name?: string }).name;
-    const games = name ? series.detail(name) : null;
+    const { name, by } = request.query as { name?: string; by?: string };
+    const games = name ? (by === 'game' ? series.detailByGame(name) : series.detail(name)) : null;
     if (!games) return reply.code(404).send({ error: 'not-found', message: 'No such series in your catalogs.' });
     return games;
   });

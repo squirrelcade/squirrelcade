@@ -18,6 +18,7 @@ Each game in each storefront is **owned**, **subscription** (Game Pass, EA Play,
 
 ## What it adds
 
+- **A PC game's own page**: its title opens the same page as a console game's, its storefronts as its copies (how each owns it, your hours, a link to the store), with the console copies you have of the same game and the consoles it came out on.
 - **Stash > PC library** in the menu, with **Acorns > PC wishlist** and **Acorns > PC deals** (the PC library is games you have, the wishlist and deals games coming in). The Stash page shows your PC games' count beside your consoles', never added to it. The library (one row per game with the storefronts it's in, playtime, last played, and the console copies of the same game, in tabs: every PC game, on PC and a console, only on PC, and play it on PC, keep it sealed; **Download** gives it as a spreadsheet), the **PC wishlist**, and **PC deals** (the PC wishlist's games on sale now, with PC game prices on).
 - **You have it on PC** in Store Mode, a PC mark on console pages, and an "Owned on PC" line in where a game's acorns come from (fewer acorns by default). Owning a game on PC never counts as owning the console game.
 - Your PC games on the [Copies](collection.md#copies) page beside your console copies, where sealed console games you own on PC come first. A PC game isn't counted as a copy: "1 copy, sealed, and on PC".

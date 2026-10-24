@@ -1,11 +1,13 @@
-import { Box, Button, Group, RingProgress, Stack, Text, Tooltip, UnstyledButton, type MantineSpacing } from '@mantine/core';
+import { Box, Button, Group, Stack, Text, UnstyledButton, type MantineSpacing } from '@mantine/core';
 import { IconArrowsShuffle, IconCurrencyDollar, IconExternalLink } from '@tabler/icons-react';
 import { useMediaQuery } from '@mantine/hooks';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { api } from '../api';
 import { GameCover, useOpenGame } from '../GameDrawer';
-import { count, money, timeAgo } from '../format';
-import { Acorn, Acorns, Star } from '../Acorn';
+import { money, timeAgo } from '../format';
+import { Acorns } from '../Acorn';
+import { GameStars, ReviewsRing, RommChip, ScoreRing, type GameStar } from '../GameHeader';
+import type { RommLink } from '../Romm';
 import { notifyError, useCanEdit, useSetting } from '../hooks';
 import { DEEP_BUTTON, dot } from '../look';
 import { PreferencePicker } from '../Preference';
@@ -34,6 +36,10 @@ interface DayGame {
   links: { name: string; url: string }[];
   /** A fresh deal on it from PriceCharting's emails. */
   deal: { date: string; priceCents: number | null; saveCents: number | null; listingTitle: string | null; listingUrl: string | null } | null;
+  /** The stars beside its name, as on the game page (D165). */
+  stars?: GameStar[];
+  /** Play on RomM, when RomM has it. */
+  romm?: RommLink | null;
 }
 
 /** The card's tag: the best reason it's today's game. */
@@ -98,46 +104,13 @@ export function GameOfTheDayCard({ mb, className }: { mb?: MantineSpacing; class
             </span>
             <span className="sc-chip">#{g.rank} on your wishlist</span>
             <span className="sc-chip">{g.priority} priority</span>
+            <RommChip link={g.romm} />
           </Group>
+          <GameStars stars={g.stars ?? []} />
           <Group gap={24} align="center" wrap="wrap" mt={4}>
-            <RingProgress
-              size={104}
-              thickness={7}
-              roundCaps
-              rootColor="var(--sc-line)"
-              sections={[{ value: Math.max(0, Math.min(100, g.score)), color: 'var(--sc-cade)' }]}
-              aria-label={`${g.score} acorns`}
-              label={
-                <Stack gap={2} align="center">
-                  <span className="sc-score">{g.score}</span>
-                  <span className="sc-muted" style={{ fontSize: 10, letterSpacing: '0.06em', display: 'inline-flex', alignItems: 'center', gap: 3 }}>
-                    <Acorn size={11} />
-                    ACORNS
-                  </span>
-                </Stack>
-              }
-            />
-            {g.reviews && (
-              <Tooltip label={`IGDB's rating, from ${count(g.reviews.count)} ${g.reviews.count === 1 ? 'rating' : 'ratings'} (critics and players)`}>
-                <RingProgress
-                  size={104}
-                  thickness={7}
-                  roundCaps
-                  rootColor="var(--sc-line)"
-                  sections={[{ value: Math.max(0, Math.min(100, g.reviews.rating)), color: 'var(--sc-gold-fill)' }]}
-                  aria-label={`Reviews ${g.reviews.rating} out of 100, from ${count(g.reviews.count)} ratings`}
-                  label={
-                    <Stack gap={2} align="center">
-                      <span className="sc-score">{g.reviews.rating}</span>
-                      <span className="sc-muted" style={{ fontSize: 10, letterSpacing: '0.06em', display: 'inline-flex', alignItems: 'center', gap: 3 }}>
-                        <Star size={10} />
-                        REVIEWS
-                      </span>
-                    </Stack>
-                  }
-                />
-              </Tooltip>
-            )}
+            {/* The same circles as the game page's header (D165). */}
+            <ScoreRing kind="acorns" fill={g.score} text={String(g.score)} size={104} label={`${g.score} acorns`} />
+            {g.reviews && <ReviewsRing reviews={{ score: g.reviews.rating, count: g.reviews.count, source: 'igdb' }} size={104} />}
             {bars.length > 0 && (
               <Stack gap={8} style={{ flex: '1 1 240px', minWidth: 0 }}>
                 <span className="sc-label">Where its acorns come from</span>

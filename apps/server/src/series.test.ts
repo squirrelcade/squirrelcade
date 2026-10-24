@@ -77,6 +77,20 @@ describe('series', () => {
     // Missing on the Super Nintendo, owned on the NES: it says so.
     expect(games.find((x: { title: string; platformKey: string }) => x.title === 'Mega Man 2' && x.platformKey === 'super-nintendo').ownedOn).toEqual(['Nintendo Entertainment System']);
     expect((await g.app.inject({ url: '/api/v1/series/games?name=Nope', cookies })).statusCode).toBe(404);
+
+    // The Nutshell's Series (by game): Mega Man 2 counts once, had since the NES copy is yours, whatever the SNES says.
+    expect((await g.app.inject({ url: '/api/v1/series?by=game', cookies })).json()).toEqual([{ name: 'Mega Man', had: 2, total: 4, onPc: 0, percent: 50, coverId: null, consoles: 2 }]);
+    const byGame = (await g.app.inject({ url: '/api/v1/series/games?name=Mega%20Man&by=game', cookies })).json();
+    expect(byGame.map((x: { title: string; had: boolean; released: string }) => [x.title, x.had, x.released])).toEqual([
+      ['Mega Man 2', true, '1989-06-01'],
+      ['Mega Man 3', false, '1990-11-01'],
+      ['Mega Man X', true, '1994-01-01'],
+      ['Mega Man X2', false, '1995-01-01'],
+    ]);
+    expect(byGame[0].consoles).toEqual([
+      { platformKey: 'nintendo-entertainment-system', platform: 'Nintendo Entertainment System', status: 'owned' },
+      { platformKey: 'super-nintendo', platform: 'Super Nintendo', status: 'missing' },
+    ]);
     // Settings > Collection: a series needs this many catalog games to be listed.
     g.settings.update({ 'collection.seriesMinGames': 6 });
     expect((await g.app.inject({ url: '/api/v1/series', cookies })).json()).toEqual([]);

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { matchShelf, ShelfMatcher, withoutEdition } from './shelf.js';
+import { matchShelf, ShelfMatcher, shelfReadKey, withoutEdition } from './shelf.js';
 
 const GAMES = [
   "Assassin's Creed II",
@@ -70,6 +70,20 @@ describe('matchShelf', () => {
     const m = new ShelfMatcher(GAMES);
     expect(m.match([read('REMEMBER ME')]).sure).toHaveLength(1);
     expect(m.match([read('UNCHARTED 2 AMONG THIEVES')]).sure.map((x) => x.key)).toEqual(['3']);
+  });
+
+  it('takes a remembered fix over matching: a read you said is a game, or not a game', () => {
+    const m = new ShelfMatcher(GAMES);
+    // "UNCHARTED" alone is unsure; fixed, it is the game you said, whatever the spacing of the next read.
+    expect(m.match([read('UNCHARTED')]).sure).toEqual([]);
+    const fixes = new Map<string, string | null>([[shelfReadKey('UNCHARTED'), 'Uncharted 2: Among Thieves'], [shelfReadKey('HALO 3'), null]]);
+    const r = m.match([read('Un charted'), read('HALO 3')], fixes);
+    expect(r.sure).toEqual([{ key: '3', title: 'Uncharted 2: Among Thieves', read: 'Un charted', likeness: 1, fixed: true }]);
+    expect(r.unsure).toEqual([]);
+    // A key is its own key (a phone sends a fix it kept by its key).
+    for (const t of ['HALO 3', 'll3 Iio1', 'UNCHARTED']) expect(shelfReadKey(shelfReadKey(t))).toBe(shelfReadKey(t));
+    // A fix to a game not on the list is left out: the read is matched as usual.
+    expect(m.match([read('REMEMBER ME')], new Map([[shelfReadKey('REMEMBER ME'), 'Not On This Console']])).sure.map((x) => x.title)).toEqual(['Remember Me']);
   });
 });
 

@@ -25,11 +25,27 @@ A copy the new export no longer has isn't removed: it waits on **Review > Copies
 
 The form stays on the console for the next game, and **Added just now** lists what you added, each opening its page. Its value stays empty until a PriceCharting export has the game (see **Sending to PriceCharting** below). A console gets its catalog a few minutes after it has 6 different games (Settings > Platforms), and then suggests every one of its games. Until then, it suggests only the games you've added to it, and the page says so. Typing a collection in? Set that number to 1, and each console gets its catalog after its first game.
 
+## A game's page
+
+Click any game's title or cover to open its page (the game drawer). Every game looks the same wherever it's shown large (here, Game of the Day, Store Mode):
+
+- **At the top:** its cover; chips for its console, **Have it** (and on how many consoles, and PC), or its place on your wishlist and its priority, and a console it came out on that you don't have yet ("PlayStation 5: not yet", which opens that console's page); **Play on RomM** when your [RomM](romm.md) has the game (Open in RomM when RomM can't play it in the browser).
+- **Its name with its stars:** its place in its console's Top 100 ("★ #2 Top 100"), its place on Wikipedia's best-selling list for its console, its headline awards (from Wikidata, with [Roots](roots.md) on), **Critics' favorite** (reviews of 90 or more: **Critics' favorite from**, Settings › Interface › Game pages), **Launch title** (out the day its console launched). Three show (**Stars beside a game's name**, same place); the rest are under "+n". Each says where it comes from when you point at it, and the Top 100 and best-selling stars open their lists.
+- **Two circles**, as Game of the Day draws them: **Worth** for a game you have (what your copies are worth together, the ring filled by how much of your collection is worth less), or **Acorns** for a game you don't; and **Reviews**: Metacritic's score when the game's Wikipedia article gives it for that console (with Roots on), IGDB's rating otherwise (it says which).
+
+Then **Your copy** comes first, whatever else is on: each copy with its condition, what you paid, what it's worth, where it's kept, its photos (tap one for full size), its tests and tags, and its own **Edit this copy**. Click **Worth** (or the small line beside it) to see what that copy has been worth at each collection update, with what you paid as a dashed line; **Show as a table** lists the values.
+
+**A game on several consoles** has a row of every console it came out on, in release order: the ones you have lit with how many copies, the others dashed (tap one to open that console's page and get it), and **PC apart at the end**, after a line, since owning it on PC never counts as owning it on a console. Your copies on the console you opened it from are shown in full; the other consoles get a line each (**Edit** for one copy, **Open** for several), then **On PC** with each storefront and your hours.
+
+**A game you don't have** shows **Get it** in Your copy's place: your shops (the used marketplaces first; the rest under "more shops"), PriceCharting for what it sells for (Squirrelcade knows prices only for games you have), why it has its acorns, **I bought it**, **Add a copy**, **Snooze**, **Not a target** and your preference, and the consoles you have it on.
+
+Below them: IGDB's summary, its Roots (its Top 100 place and why it matters), what you played, the sets it's in, your note, and links (its console's page, IGDB, PriceCharting, your shops).
+
 ## Adding a copy in Squirrelcade
 
 A game's drawer has **Add a copy**: its condition, and what you paid, when and a note if you like. **I bought it** in the drawer, and **Add it** in Store Mode, add one in one tap, bought today, in the condition Settings > Collection > Adding copies gives a game just bought (Store Mode's then opens the copy's window, for what you paid, notes and photos). The copy counts at once; its value comes with the export that has it (or from another copy of the same game in that condition, if you have one from PriceCharting). Under **Your copies**, a copy added here says **Added in Squirrelcade: not on PriceCharting yet**, with **send it** and, while nothing is kept on it, **take back**.
 
-**Edit my copy**, beside **Have it** at the top of a game's drawer, opens your copy's window; with several copies it's **Edit a copy**, a list to pick which (numbered as **Your copies** numbers them). The same window opens from **Change it** under each copy (with where it is, lending and photos): its condition, what you paid, the day you bought it and notes, for any copy, one from PriceCharting's export too. What you change here stays yours: no export overwrites it, and the export still finds the copy. **Sold** or **Remove** takes it out of your collection (it stays in the history).
+**Edit this copy**, in each copy at the top of a game's page, opens that copy's window (with where it is, lending and photos): its condition, what you paid, the day you bought it and notes, for any copy, one from PriceCharting's export too. What you change here stays yours: no export overwrites it, and the export still finds the copy. **Sold** or **Remove** takes it out of your collection (it stays in the history).
 
 ## Sending to PriceCharting
 

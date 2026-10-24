@@ -7,9 +7,10 @@ import { useSearchParams } from 'react-router';
 import { api } from '../api';
 import { PageHeader } from '../components';
 import { CONDITIONS, CopyDetailsModal, TestBadge, TOUCHED, type CopyRef } from '../CopyDetails';
-import { count, date } from '../format';
+import { count, date, money } from '../format';
 import { GameTitle } from '../GameDrawer';
 import { notifyError, useSetting } from '../hooks';
+import { LookUpPrices, useFoundPrices, useOrdersOn } from '../OrderEmails';
 
 /** A copy added lately (GET /api/v1/collection/recent, D161). */
 interface RecentItem {
@@ -47,7 +48,7 @@ const OTHER_RIPS: TestResult[] = ['issues', 'broken'];
  * One copy's row: what's finished after a game comes in, in the order it's done (the owner's way, D161): its condition
  * (from the box in hand), what was paid (from the receipt), the rip, and where it's put away. Each saves on its own.
  */
-function RecentRow({ item, places, onEdit }: { item: RecentItem; places: string[]; onEdit: () => void }) {
+function RecentRow({ item, places, onEdit, prices }: { item: RecentItem; places: string[]; onEdit: () => void; prices: ReturnType<typeof useFoundPrices> | null }) {
   const queryClient = useQueryClient();
   const currency = useSetting('general.currency', 'USD');
   const dateFormat = useSetting('general.dateFormat', 'us');
@@ -178,6 +179,28 @@ function RecentRow({ item, places, onEdit }: { item: RecentItem; places: string[
           maxLength={80}
         />
       </SimpleGrid>
+      {/* The haul (the owner's yes, 2026-10-23): a price your order emails gave for it, to use or turn down. */}
+      {(() => {
+        const found = prices?.of(item.id);
+        if (!found || found.paidCents === null || item.costCents) return null;
+        return (
+          <Group gap={8} mt="xs" wrap="wrap">
+            <Text size="sm">
+              Found in your email: <b>{money(found.paidCents, currency)}</b>
+              <Text span size="xs" c="dimmed">
+                {' '}
+                {[found.store, found.date ? date(found.date, dateFormat) : null, found.itemTitle].filter(Boolean).join(' · ')}
+              </Text>
+            </Text>
+            <Button size="compact-xs" color="forest" loading={prices!.using === item.id} onClick={() => prices!.use({ id: item.id, datePurchased: item.datePurchased }, () => queryClient.invalidateQueries({ queryKey: ['recent'] }))}>
+              Use it
+            </Button>
+            <Button size="compact-xs" variant="subtle" color="gray" onClick={() => prices!.forget(item.id)}>
+              Not this
+            </Button>
+          </Group>
+        );
+      })()}
     </Card>
   );
 }
@@ -207,6 +230,10 @@ export function RecentPage() {
     [editing],
   );
   const items = list.data?.items ?? [];
+  // The haul: every new copy's price looked for in your order emails at once (Find in my email, Settings > Email).
+  const ordersOn = useOrdersOn();
+  const prices = useFoundPrices(ordersOn);
+  const unpriced = items.filter((i) => !i.costCents).length;
 
   return (
     <>
@@ -225,6 +252,17 @@ export function RecentPage() {
           </Text>
         )}
       </Group>
+      {ordersOn && unpriced > 0 && (
+        <Card withBorder padding="sm" mb="md">
+          <Group justify="space-between" gap="sm" wrap="wrap">
+            <Text size="sm" style={{ flex: '1 1 320px' }}>
+              <b>A haul?</b> {count(unpriced)} of these {unpriced === 1 ? 'copy has' : 'copies have'} no price yet. Squirrelcade can look for all of them in your order emails at once;
+              each price found waits on its copy below to use or turn down.
+            </Text>
+            <LookUpPrices platform={null} addedHere={false} recentDays={Number(days)} label="Find their prices in my email" />
+          </Group>
+        </Card>
+      )}
       {list.isLoading ? (
         <Loader />
       ) : items.length === 0 ? (
@@ -232,7 +270,7 @@ export function RecentPage() {
       ) : (
         <Stack gap="sm">
           {items.map((i) => (
-            <RecentRow key={i.id} item={i} places={places} onEdit={() => setEditing(i)} />
+            <RecentRow key={i.id} item={i} places={places} onEdit={() => setEditing(i)} prices={ordersOn ? prices : null} />
           ))}
         </Stack>
       )}

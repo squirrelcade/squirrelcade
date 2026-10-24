@@ -39,7 +39,7 @@ I'm setting up **Squirrelcade**, a free, self-hosted web app for my video game c
 - **Processor:** 64-bit: Intel or AMD (x86-64, also called x86_64 or amd64), or ARM (arm64, also called aarch64: a Raspberry Pi 4 or 5 with a 64-bit system, an ARM NAS, a Mac with Apple silicon). A 32-bit system (armv7l) isn't supported.
 - **It works on its own:** no AI, no PriceCharting, no outside account. Games can be typed in by hand; each outside service is an optional extra.
 - **Accounts:** the first is the **owner's**. Others can be invited as **viewers**, who look and change nothing.
-- **The menu:** Today (the home page: the squirrel at the top left comes back to it); Stash (Stash, Copies, Upgrades, Improve, Backlog, Loans, Stash updates); Acorns (Add a game, Acorns wishlist, Coming soon, Past releases, Deals, For sale, Sales, Acorns ranking); Almanac (Platforms, Sets, Statistics, Report); Friends; PC library (when it's on); Settings; System (Review, Status, Tasks, Backups, Logs, Users); Help.
+- **The menu:** Today (the home page: the squirrel at the top left comes back to it); Stash (Stash, Recently added, Copies, Upgrades, Improve, Backlog, Loans, Places, and PC library when it's on); Acorns (Add a game, On the way, Stash updates, Acorns wishlist, Coming soon, Past releases, Deals, For sale, Sales, Acorns ranking, and PC wishlist and PC deals with the PC library on); Nutshell (Platforms, Series, Sets, Statistics, Report); Roots (Consoles, Timeline); Friends; Settings; System (Review, Status, Tasks, Backups, Logs, Users); Help. A game's title anywhere opens its page: its header (the console, Have it or its wishlist place, Play on RomM, stars beside its name, the Worth or Acorns and Reviews circles), then my copy first, each with its own Edit this copy. Settings > Interface > Game pages sets how many stars show (Stars beside a game's name, 3) and the score for Critics' favorite (90). In Check a shelf, tapping a spine's box fixes it (remembered per console); Check a shelf knows every game on the console (Settings > Interface > Store Mode, on) adds IGDB's full list when IGDB is set up.
 - **Acorns** say how much I want a game I don't have yet. The **Acorns wishlist** ranks those games; its rules are on **Acorns ranking**.
 - **Settings** pages: General, Email, Features, Interface, Collection, Platforms, Catalogs and matching, PC library (when it's on), Sources, Notifications, Storage and backups, Tasks, Friends, Claude and AI apps, Security. Some settings show only after **Show advanced**.
 - **Each optional part** has a card on **Settings > Sources** (the PC library has its own page): its switch, its steps (under **Set it up, step by step**), its fields and **Save and test**. **Settings > Features** has the same switches. The email account is on **Settings > Email**, messages on **Settings > Notifications**.
@@ -197,7 +197,7 @@ Squirrelcade works without any export. Values (what each copy is worth) come fro
 
 **The rest of the welcome guide:** **Consoles** (which are tracked), **Catalogs** (built, a minute or two each), **Covers** (IGDB's keys, Phase 6, or **Skip for now**) and **Wishlist** (the consoles and genres I like, in my order; optional).
 
-**Check:** **System > Status** has the setup checklist. **Almanac > Platforms** lists my consoles with their completion, **Stash** my copies. **System > Review** may ask about look-alike titles: each answer counts everywhere.
+**Check:** **System > Status** has the setup checklist. **Nutshell > Platforms** lists my consoles with their completion, **Stash** my copies. **System > Review** may ask about look-alike titles: each answer counts everywhere.
 
 **Values later:** **Stash updates > Send to PriceCharting** gives my games as lines for PriceCharting's importer (free: one import and one export a week); then I export there and upload the export here.
 
@@ -291,13 +291,24 @@ On the phone: open the https address, sign in, **Add to Home Screen**. The camer
 2. That folder goes under `volumes:` in the compose file, read-only: `- /path/to/Playnite Backup:/playnite:ro`. On a Synology share only its administrators may read, add `group_add: ["101"]` under the service too. Recreate the container.
 3. **Settings > Features:** turn on **PC library (Playnite)**. In Docker, it reads `/playnite` by itself.
 
-**Check:** **PC library** lists my games within a few minutes.
+**Check:** **Stash > PC library** lists my games within a few minutes (its wishlist and deals are under **Acorns**). A PC game's title opens the same page as a console game's.
 
 ### RomM links
 
 1. In RomM: my profile > **API tokens** > a new token with the `roms.read` and `platforms.read` scopes only.
 2. **Settings > Features:** turn on **RomM links**. RomM's address as the server reaches it (such as `http://192.0.2.20:8080`) and the token show under the switch. **Save and test**.
 3. If my browser opens RomM at another address: **Settings > Sources > RomM > RomM address for links**.
+4. To see **Play on RomM** on games I don't own too (Game of the Day, the wishlist): **Settings > Sources > RomM**, links for games you don't own.
+
+**Check:** a game I own that RomM has shows **Play on RomM** at the top of its page.
+
+### Roots: games in their time
+
+On to start, nothing to set up: **Roots** in the menu has each console's history and Top 100 list and the timeline; each game's page has its Roots (its reviews of the time with each magazine's issue and page, the web and videos of its day, the games it came from and led to, later writing, awards and reference sites), read from its Wikipedia article and Wikidata the first time it's opened, and at night for the games I have and want. To use Squirrelcade for collecting only: **Settings > Features**, turn off **Roots: games in their time**.
+
+To adjust (only if I ask): **Settings > Roots**: reading the articles on or off, looking up articles the catalogs don't link, how long "At the time" lasts (18 months), and the **Reference sites** a game links to, each a name and its Wikidata properties ("MobyGames | P11688, P1933") or a search address with {title}. **Settings > Tasks > Games' Roots read each night** (400).
+
+**Check:** open a game I have from the 1990s: its Roots shows its magazines with issue and page within a few seconds.
 
 ### More extras (only when I ask)
 

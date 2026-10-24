@@ -1,0 +1,363 @@
+{{Short description|2004 video game}}
+{{Use mdy dates|date=April 2022}}
+{{Infobox video game
+| title = Half-Life 2
+| image = Half-Life 2 cover.jpg
+| alt = Cover art depicting Gordon Freeman, the series protagonist
+| developer = [[Valve Corporation|Valve]]
+| publisher = {{ubl|Valve|[[Electronic Arts]] (Xbox)}}
+| writer = [[Marc Laidlaw]]
+| artist = [[Viktor Antonov (art director)|Viktor Antonov]]
+| composer = [[Kelly Bailey (composer)|Kelly Bailey]]
+| series = ''[[Half-Life (series)|Half-Life]]''
+| engine = [[Source (game engine)|Source]]
+| platforms = {{Unbulleted list|[[Windows]]|[[Xbox (console)|Xbox]]|[[Xbox 360]]|[[PlayStation 3]]|[[Mac OS X]]|[[Linux]]|[[Nvidia Shield]]}}
+| released = {{Collapsible list|title={{nobold|November 16, 2004}}|'''Windows'''{{Video game release|WW|November 16, 2004}}'''Xbox'''{{Video game release|NA|November 15, 2005|EU|November 18, 2005}}'''Xbox 360'''{{Video game release|NA|October 10, 2007|EU|October 19, 2007|AU|October 25, 2007}}'''PlayStation 3'''{{Video game release|NA|December 11, 2007|EU|December 14, 2007|AU|December 20, 2007}}'''Mac OS X'''{{Video game release|WW|May 26, 2010}}'''Linux'''{{Video game release|WW|May 9, 2013}}'''Nvidia Shield'''{{Video game release|WW|May 12, 2014}}}}
+| genre = [[First-person shooter]]
+| modes = [[Single-player]]
+}}
+
+'''''Half-Life 2'''''<!--Do not add stylization in this since it's only used in box art and title screen.--> is a 2004 [[first-person shooter]] (FPS) game developed and published by [[Valve Corporation]]. It was published for [[Windows]] on Valve's digital distribution service, [[Steam (service)|Steam]]. Like the original ''[[Half-Life (video game)|Half-Life]]'' (1998), ''Half-Life 2'' combines combat, puzzles and storytelling, and adds features such as vehicles and [[Game physics|physics]]-based gameplay. The player controls [[Gordon Freeman]], who joins a [[Resistance movement|resistance effort]] to liberate Earth from the alien [[Combine (Half-Life)|Combine]] empire.
+
+''Half-Life 2'' was created using Valve's [[Source (game engine)|Source]] game engine, which was developed simultaneously. Development lasted five years and cost US $40{{nbsp}}million. Valve's president, [[Gabe Newell]], set his team the goal of redefining the FPS genre. They integrated the [[Havok (software)|Havok]] physics engine, which simulates real-world physics, to reinforce the sense of presence and create new gameplay. They also developed the characterization, with more detailed [[3D models|character models]] and animations.
+
+Valve announced ''Half-Life 2'' at [[E3 2003]] with a release date of September of that year. They failed to meet the release date, leading to fan backlash. In October, the unfinished source code was published online, leading to more backlash and damage to the team's morale.
+
+''Half-Life 2'' was released on Steam on November 16, 2004. It won 39 [[List of Game of the Year awards|Game of the Year]] awards and, like its predecessor, has been cited as one of the most influential FPS games and among the [[greatest games ever made]]. It was [[Video game port|ported]] to the [[Xbox (console)|Xbox]], the [[Xbox 360]], the [[PlayStation 3]], [[macOS]], and [[Linux]]. By 2011, it had sold 12 million copies. ''Half-Life 2'' was followed by the free extra level ''[[Half-Life 2: Lost Coast|Lost Coast]]'' (2005) and the [[Episodic video game|episodic]] sequels ''[[Half-Life 2: Episode One|Episode One]]'' (2006) and ''[[Half-Life 2: Episode Two|Episode Two]]'' (2007). In 2020, after canceling ''[[Half-Life 2: Episode Three|Episode Three]]'' and [[Unreleased Half-Life games|several further ''Half-Life'' projects]], Valve released a prequel, ''[[Half-Life: Alyx]]''.
+
+== Gameplay ==
+[[File:Antlions1HL2.jpg|thumb|A screenshot of the player engaging enemy antlions]]
+Like the original ''[[Half-Life (video game)|Half-Life]]'' (1998), ''Half-Life 2'' is a [[single-player]] [[first-person shooter]] (FPS) in which players control [[Gordon Freeman]].<ref name="Marcone-2004">{{Cite web |last=Marcone |first=Julian |date=2004-12-02 |title=Half-Life 2 |url=https://arstechnica.com/gaming/2004/12/hl2/ |access-date=2023-10-07 |website=[[Ars Technica]] |language=en-us}}</ref> It features combat, exploration, jumping challenges, and puzzle-solving, and narrative elements conveyed through scripted sequences.<ref name="Marcone-2004" /> Weapons include a pistol, submachine gun, shotgun, and the powerful Combine pulse rifle.<ref name="Marcone-2004" /> With the bugbait item, enemy antlions become allies and can be called to the player or sent to attack enemies.<ref name="Marcone-2004" />
+
+''Half-Life 2'' introduces detailed [[Game physics|physics simulation]].<ref name="Stanton-2014" /> With the new [[gravity gun]], players can repel objects or pull them from a distance.<ref name="Marcone-2004" /> For example, objects can be fired at enemies, held as shields, or placed to reach new areas, and enemy grenades can be caught and thrown back.<ref name="Marcone-2004" /><ref name="gamesradarreview" /> The player must also use physics to solve puzzles.<ref name="ignreview" /> ''Half-Life 2'' also adds sections in which the player controls an airboat and a dune buggy.<ref name="Marcone-2004" />
+
+== Plot ==
+After the alien invasion at the [[Black Mesa Research Facility]],{{Efn|As depicted in ''[[Half-Life (video game)|Half-Life]]'' (1998)}} a multidimensional alien empire known as the [[Combine (Half-Life)|Combine]] has conquered Earth. Approximately twenty years after being placed in stasis, [[Gordon Freeman]] is inserted into a train bound for City 17 by the [[G-Man (Half-Life)|G-Man]] ([[Michael Shapiro (actor)|Michael Shapiro]]). Helped by the undercover Resistance member [[Barney Calhoun]] (Shapiro), Gordon attempts to reach the laboratory of [[Dr. Isaac Kleiner]] ([[Harry S. Robins]]) but is subdued by Combine officers. He is rescued by [[Alyx Vance]] ([[Merle Dandridge]]), who guides him to the laboratory. Kleiner's attempt to teleport Gordon to the Resistance base fails, and Gordon is momentarily teleported to the Citadel, the skyscraper headquarters of [[Dr. Wallace Breen]] ([[Robert Culp]]), the former Black Mesa administrator and the Combine's [[puppet ruler]].  Breen recognizes Freeman, and puts City 17's Civil Protection and Combine forces on full alert to apprehend him, before Freeman is teleported onto a rooftop outside of Kleiner's lab. Gordon escapes on foot and finds an [[airboat]] to progress to the Resistance base via the city's canal system, eluding Combine forces.
+
+At the base, Gordon reunites with Alyx's father, [[Dr. Eli Vance]] ([[Robert Guillaume]]), and meets [[Dr. Judith Mossman]] ([[Michelle Forbes]]). Alyx introduces Gordon to her pet robot, [[Dog (Half-Life 2)|Dog]], and gives Gordon the gravity gun. Combine forces storm the base and capture Eli and Mossman. Gordon diverts through the zombie-infested town of [[Ravenholm]], aided by its lone inhabitant, [[Father Grigori]] ([[Jim French (radio host)|Jim French]]), to a Resistance outpost whose occupants provide him with a [[dune buggy]]. He drives along the coastline of depleted water levels to reach the Combine prison of Nova Prospekt, where Eli and Mossman are being held. Gordon and Alyx reunite, locate Eli, and discover that Mossman is a Combine spy. Before they can stop her, Mossman teleports herself and Eli to the Citadel. The teleporter explodes moments after Gordon and Alyx use it to escape Nova Prospekt.
+
+Returning to Kleiner's lab, Gordon and Alyx learn that the teleporter malfunctioned and that a week has passed, during which time the Resistance has used the attack on Nova Prospekt to launch an armed rebellion against the Combine. Aided by Barney and Dog, Gordon fights his way to the Citadel. Inside, a security system vaporizes his weapons but inadvertently super-charges the gravity gun; this helps Gordon climb the tower. He is captured and taken in a transport pod to Breen's private office, near the Citadel's apex, where he and Mossman are waiting with Eli and Alyx as captives. Breen reveals that he plans to use them as leverage to negotiate with the Combine, contradicting what he had told Mossman.<ref name="darkenergy while-face-to-face2">{{Cite video game |title=Half-Life 2 |developer=[[Valve Corporation|Valve]] |publisher=Valve |platform=[[Windows]], [[Xbox (console)|Xbox]], [[Xbox 360]], [[PlayStation 3]], [[Mac OS X]] |level=Chapter 13: Dark Energy |date=November 16, 2004 |quote='''Dr. Breen''': Having both of you in my keeping ensures I can dictate the terms of any bargain I care to make with the Combine.}}</ref> Angered, Mossman frees the captives and Breen attempts to escape using a teleporter. Gordon destroys the reactor and Breen falls into the abyss. Moments after the reactor explodes, the G-Man reappears and freezes time, praises Gordon's actions, and returns him to stasis.
+
+== Development ==
+Development of ''Half-Life 2'' began in June 1999, six months after the release of the original ''[[Half-Life (video game)|Half-Life]]''. It was developed by a team of 82, or around 100 people including voice actors.<ref name="Geoff-2016">{{Cite web |last=Geoff |first=Keighley |author-link=Geoff Keighley |date=April 28, 2016 |title=The Final Hours of Half-Life 2 |url=https://www.gamespot.com/articles/the-final-hours-of-half-life-2/1100-6112889/ |url-status=live |archive-url=https://web.archive.org/web/20191226173658/https://www.gamespot.com/articles/the-final-hours-of-half-life-2/1100-6112889/ |archive-date=December 26, 2019 |access-date=November 30, 2019 |website=[[GameSpot]] |language=en-US}}</ref><ref name="Musgrove-2004">{{Cite web |last=Musgrove |first=Mike |date=November 16, 2004 |title=Half-Life 2's Real Battle |url=https://www.washingtonpost.com/wp-dyn/articles/A52849-2004Nov15.html?nav=rss_technology |url-status=live |archive-url=https://web.archive.org/web/20121025083004/http://www.washingtonpost.com/wp-dyn/articles/A52849-2004Nov15.html?nav=rss_technology |archive-date=October 25, 2012 |access-date=September 27, 2021 |newspaper=[[The Washington Post]]}}</ref> Valve's president, [[Gabe Newell]], wanted to redefine the FPS genre, saying: "Why spend four years of your life building something that isn't innovative and is basically pointless? If ''Half-Life 2'' isn't viewed as the best PC game of all time, it's going to completely bum out most of the guys on this team."<ref name="Geoff-2016" /> Newell gave his team no deadline and a "virtually unlimited" budget, promising to fund the project himself if necessary.<ref name="Geoff-2016" /> They used Valve's new in-house [[game engine]], [[Source (game engine)|Source]], developed simultaneously.<ref name="Geoff-2016" />
+
+=== Setting and characters ===
+Whereas ''Half-Life'' was set in a single location, the Black Mesa research facility, Valve wanted "a much more epic and global feel" for the sequel. One concept had the player teleporting between planets, which was discarded as it would make continuity between levels difficult. At the suggestion of the art director, [[Viktor Antonov (art director)|Viktor Antonov]], who was Bulgarian, the team settled on a city in an Eastern European location. In this early concept, players would start at the boarding of the ''Borealis'', an [[icebreaker]] bound for the city.<ref name="Geoff-2016" /> [[Nova Prospekt]] was conceived as a small rail depot built on an old prison in the wasteland and grew from a stopping-off point to the destination itself.<ref name="raisebar2">{{Cite book |last=Hodgson |first=David |title=Half-Life 2: Raising the Bar |publisher=Prima Games |year=2004 |isbn=978-0-7615-4364-0 |page=216}}</ref>
+
+After observing how players had connected to minor characters in ''Half-Life'', the team developed the characterization, with more detailed character models and realistic animation. The animator Ken Birdwell studied the work of the psychologist [[Paul Ekman]], who had researched how facial muscles express emotion.<ref name="Geoff-2016" /> The writer [[Marc Laidlaw]] created family relationships between the characters, saying that it was a "basic dramatic unit everyone understands" but rarely used in games.<ref name="Geoff-2016" /> The voice cast included [[Louis Gossett Jr.]], [[Robert Guillaume]] and [[Robert Culp]].<ref name="Musgrove-2004" />
+
+=== Physics and design ===
+[[File:HalfLife2 City17 TrainStationSquare.jpg|thumb|A square in City 17, showing the Source engine's lighting and shadow effects]]
+Valve integrated the [[Havok physics engine]], which simulates real-world physics,<ref name="Stanton-2014">{{Cite web |last=Stanton |first=Rich |date=November 16, 2014 |title=''Half-Life 2'': 10 years on |url=https://www.eurogamer.net/articles/2014-11-16-half-life-2-10-years-on |url-status=live |archive-url=https://web.archive.org/web/20190726132459/https://www.eurogamer.net/articles/2014-11-16-half-life-2-10-years-on |archive-date=July 26, 2019 |access-date=December 1, 2019 |website=[[Eurogamer]] |language=en}}</ref> to reinforce the player's sense of presence and create new gameplay.<ref name="Geoff-2016" /> To experiment, they created a minigame, Zombie Basketball, in which players used a physics-manipulating gun to throw zombies through hoops.<ref name="Geoff-2016" /> In mid-2000,<ref>{{cite web |title=Half-Life 2 Anniversary Archive: SIGGRAPH 2000 Demo |url=https://www.youtube.com/watch?v=wU4yPEFXzo0 |publisher=Valve Corporation |date=15 November 2024}}</ref> to test the physics and [[non-player character]]s, Valve built a battle between rioting citizens and police.<ref name="Geoff-2016" />
+
+In late 2001, Valve began creating a [[showreel]], hoping to demonstrate it at [[E3]] the next year.<ref name="Geoff-2016" /> For several months, Newell let the team work without his input so he could provide unbiased feedback, and focused on developing [[Steam (service)|Steam]], Valve's upcoming digital distribution service. The team presented the showreel to Newell, showcasing physics, environments such as the ''Borealis'', and a dialogue-heavy scene with the scientist character Dr. Kleiner. Newell felt the showreel did not adequately show how the physics would affect gameplay and that the Kleiner scene was overlong. Reflecting on the feedback, Laidlaw concluded that the character drama had to support interactivity and gameplay.<ref name="Geoff-2016" />
+
+In September 2002, the team completed a second showreel, featuring a buggy race along the City 17 coast, an encounter with headcrabs on a pier, an alien strider attacking the city, and a greatly shortened Kleiner sequence. In October, Newell told the team they would announce ''Half-Life 2'' at E3 2003 and release it by the end of the year.<ref name="Geoff-2016" /> As with the original ''Half-Life'', the team split into "cabals" working on different levels. Designers created levels using placeholder shapes and surfaces, which then were worked on by the artists.<ref name="Geoff-2016" />
+
+=== Announcement and delay ===
+Valve announced ''Half-Life 2'' at E3 2003, with demonstrations of the characters, animation and physics. The reaction was positive, and the game won the E3 Game of the Show award.<ref>{{cite news |title=‘Half-Life 2’ voted best of E3 |url=https://www.nbcnews.com/id/wbna3078426 |access-date=4 November 2025 |work=NBC News |agency=The Associated Press |date=10 June 2003}}</ref> Newell also announced a release date of September 30, 2003, hoping this would motivate the team. They worked long hours to meet the deadline, but by July it was clear they would miss it. Rumors spread of a delay. On September 23, Valve released a statement targeting a release for the holiday season, leading to fan backlash.<ref name="Geoff-2016" />
+
+Newell had been hesitant to announce a delay without a new release date. He said later: "We were paralyzed. We knew we weren't going to make the date we promised, and that was going to be a huge fiasco and really embarrassing. But we didn't have a new date to give people either."<ref name="Geoff-2016" /> The [[graphics card]] manufacturer [[ATI Technologies|ATI]] had arranged a promotional event on [[Alcatraz Island]] to coincide with the planned release of ''Half-Life 2.'' Unable to pull out of the event, Newell gave a prepared speech, demonstrated the Source engine, and left without addressing questions.<ref name="Geoff-2016" />
+
+=== Leak ===
+On September 19, the ''Half-Life 2'' [[source code]] was obtained by a German hacker, Axel Gembe, who had infiltrated Valve's internal network months earlier. According to Gembe, he shared it with another person, who leaked the code online in early October.<ref name="Parkin-2014" /> Fans soon [[Compiled language|compiled]] a playable version of ''Half-Life 2'', revealing how unfinished it was. The leaks damaged morale at Valve and slowed development.<ref name="Geoff-2016" /> Fans also provided Valve with the details of people involved in the leaks.<ref name="Musgrove-2004" /> In March 2004, Gembe contacted Newell, saying he was a fan and had not acted maliciously. Newell worked with the [[FBI]] to invite Gembe to a fake job interview, planning to have him arrested in the United States; however, police arrested him in Germany.<ref name="Parkin-2014">{{Cite web |last=Parkin |first=Simon |date=May 25, 2014 |title=The boy who stole Half-Life 2 |url=https://www.eurogamer.net/articles/2011-02-21-the-boy-who-stole-half-life-2-article |url-status=live |archive-url=https://web.archive.org/web/20191128020137/https://www.eurogamer.net/articles/2011-02-21-the-boy-who-stole-half-life-2-article |archive-date=November 28, 2019 |access-date=December 1, 2019 |website=Eurogamer |language=en}}</ref> In November 2006, Gembe was sentenced to two years' [[probation]].<ref name="Parkin-2014" /> Valve implemented new policies to protect against leaks, such as requiring journalists to attend their office to play it before release.<ref name="Musgrove-2004" />
+
+=== Final months ===
+In 2004, the team returned after Christmas to long hours, stressful working conditions, and no guarantee that ''Half-Life 2'', which was costing $1 million a month to develop, would be finished soon. However, Newell felt that momentum was gathering, with the team producing about three hours of gameplay per month. In March, they created the first version playable from start to finish and stopped development for a week to play through. Major changes by this point included the cutting of the ''Borealis'', the replacement of the jet ski with an airboat, and introducing the physics-manipulating gravity gun earlier. Feedback was positive across the company. Newell recalled: "The fact that you could go from one end of the game to the other was a really big thing for us. Then we knew it just had to get better ''–'' but it was all there."<ref name="Geoff-2016" /> After several months of bug fixes and [[playtesting]], ''Half-Life 2'' was completed on October 13, 2004.<ref name="Geoff-2016" />
+
+== Release ==
+Valve made a 1&nbsp;GB portion of ''Half-Life 2'' available for download in an encrypted format through Steam on August 26, 2004. On the day of release, Steam customers were able to pay, unlock the files, and play it immediately, without having to wait for the game to download.<ref>{{Cite web |last=Adams |first=David |date=August 18, 2004 |title=Gabe Newell on CS: Source, HL2 Preloads |url=http://pc.ign.com/articles/540/540054p1.html |url-status=dead |archive-url=https://web.archive.org/web/20090113161546/http://pc.ign.com/articles/540/540054p1.html |archive-date=January 13, 2009 |access-date=September 21, 2008 |website=[[IGN]]}}</ref> In retail, distribution was handled by [[Vivendi Universal Games]] through their [[Sierra Entertainment]] subsidiary.<ref>{{Cite web |date=November 9, 2004 |title=Game industry's Steam-powered war |url=https://www.gamespot.com/articles/game-industrys-steam-powered-war/1100-6112757/ |url-status=live |archive-url=https://web.archive.org/web/20211221135802/https://www.gamespot.com/articles/game-industrys-steam-powered-war/1100-6112757/ |archive-date=December 21, 2021 |access-date=December 21, 2021 |website=[[GameSpot]]}}</ref>
+
+A [[Demoware|demo]] version with the file size of a single CD was made available in December 2004 at the website of [[graphics card]] manufacturer [[ATI Technologies]], who teamed up with Valve for the game. The demo contains a portion of two chapters: ''Point Insertion'' and ''"We Don't Go To Ravenholm..."''.<ref>{{Cite web |title=Half-Life 2 Demo now available |url=http://ati.amd.com/gitg/promotions/halflife2demo/index.html |url-status=dead |archive-url=https://web.archive.org/web/20081206061933/http://ati.amd.com/gitg/promotions/halflife2demo/index.html |archive-date=December 6, 2008 |access-date=October 3, 2008 |website=ATI}}</ref> The soundtrack was written by [[Kelly Bailey (composer)|Kelly Bailey]]. The soundtrack, containing most of the music from ''Half-Life 2'' and many tracks from the original ''Half-Life'', was included with the ''Half-Life 2'' "Gold Edition" and sold separately from Valve's online store.<ref>{{Cite web |date=September 27, 2013 |title=Half Life 2 Packages Revealed |url=http://ie.ign.com/articles/2004/09/29/half-life-2-packages-revealed |website=IGN}}</ref> In 2022, fans discovered that the [[Texture mapping|texture]] used for a corpse model originated from a photograph of a corpse published in a medical textbook, leading to criticism.<ref>{{Cite web |last=Troughton |first=James |date=2022-12-21 |title=Half-Life 2 Fans Discover That Corpse Model Was Ripped From Real Medical Book |url=https://www.thegamer.com/half-life-2-fans-discover-that-corpse-model-was-ripped-from-real-medical-book/ |access-date=2023-06-21 |website=TheGamer |language=en}}</ref><ref>{{Cite web |last=Zwiezen |first=Zack |date=2022-12-22 |title=Fans Discover Half-Life 2 Corpse Has Actual Dead Human's Face |url=https://kotaku.com/half-life-2-creepy-corpse01-mdl-face-dead-guy-explained-1849925387 |access-date=2023-06-21 |website=Kotaku |language=en}}</ref>
+
+=== Dispute with Vivendi ===
+On September 20, 2004, ''[[GameSpot]]'' reported that Sierra's parent company, [[Vivendi Universal Games]], was in a legal battle with Valve over the distribution of ''Half-Life 2'' to [[cyber cafés]]. Cyber cafés were important for the gaming market in Asia, where PC and broadband penetration per capita were much lower in most territories.<ref>{{Cite web |last=Feldman |first=Curt |date=December 15, 2004 |title=Valve vs. Vivendi dogfight heats up in US District Court |url=http://www.gamespot.com/pc/action/halflife2/news_6107712.html |url-status=live |archive-url=https://web.archive.org/web/20070930145805/http://www.gamespot.com/pc/action/halflife2/news_6107712.html |archive-date=September 30, 2007 |access-date=September 21, 2008 |website=GameSpot}}</ref>
+
+According to Vivendi, the distribution contract they signed with Valve included cyber cafés. This would mean that only Vivendi could distribute ''Half-Life 2'' to cyber cafés&nbsp;— not Valve through the Steam system. On November 29, 2004, Judge Thomas S. Zilly, of [[U.S. Federal District Court]] in Seattle, Washington, ruled that Vivendi and its affiliates were not authorized to distribute (directly or indirectly) Valve games through cyber cafés for [[pay-to-play]] activities according to the parties' current publishing agreement. Zilly also ruled in favor of the Valve motion regarding the contractual limitation of liability, allowing Valve to recover copyright damages for any infringement as allowed by law without regard to the publishing agreement's limitation of liability clause.<ref>{{Cite news |date=November 30, 2004 |title=Half-Life 2 maker wins legal case |work=BBC |url=https://news.bbc.co.uk/2/hi/technology/4054643.stm |url-status=live |access-date=October 3, 2008 |archive-url=https://web.archive.org/web/20090208192206/http://news.bbc.co.uk/2/hi/technology/4054643.stm |archive-date=February 8, 2009}}</ref>
+
+On April 29, 2005, Valve and Vivendi announced a settlement. Vivendi would cease distributing all retail packaged versions of Valve games by August 31, 2005. Vivendi was also to notify distributors and cyber cafés that had been licensed by Vivendi that only Valve had the authority to distribute cyber café licenses; their licenses were revoked and switched to Valve's.<ref>{{Cite web |title=Valve cyber café program |url=http://store.steampowered.com/?area=cybercafespPublisher=Valve |url-status=live |archive-url=https://web.archive.org/web/20080921205315/http://store.steampowered.com/?area=cybercafespPublisher%3DValve |archive-date=September 21, 2008 |access-date=March 6, 2007}}</ref> Valve partnered with Electronic Arts for the retail distribution of its games, including the Xbox version of ''Half-Life 2''.<ref name=":0">{{Cite web |last=Fahey |first=Rob |date=July 19, 2005 |title=EA to publish Half-Life 2 Xbox, distribute Valve PC titles |url=https://www.gamesindustry.biz/articles/ea-to-publish-half-life-2-xbox-distribute-valve-pc-titles |url-status=live |archive-url=https://web.archive.org/web/20181001182147/https://www.gamesindustry.biz/articles/ea-to-publish-half-life-2-xbox-distribute-valve-pc-titles |archive-date=October 1, 2018 |access-date=December 21, 2021 |website=[[GamesIndustry.biz]]}}</ref>
+
+=== Retail editions ===
+''Half-Life 2'' was simultaneously released through Steam, CD, and on DVD in several editions. Customers could order three versions: the" bronze" version includes only ''Half-Life 2'' and ''Counter-Strike: Source'', whereas the "silver" and "gold" editions also include ''[[Half-Life (video game)#Remastered version|Half-Life: Source]]'' and ''Day of Defeat: Source'' (ports of the original ''Half-Life'' and the ''Day of Defeat'' mod to the new engine). The "Gold Edition" additionally includes merchandise, such as a baseball cap, a [[strategy guide]] and a CD containing the soundtrack.<ref name=hl2pack>{{Cite web |last=Adams |first=David |date=September 29, 2004 |title=Half-Life 2 Packages Revealed |url=https://www.ign.com/articles/2004/09/29/half-life-2-packages-revealed |url-status=live |archive-url=https://web.archive.org/web/20171004090921/http://www.ign.com/articles/2004/09/29/half-life-2-packages-revealed |archive-date=October 4, 2017 |access-date=May 31, 2022 |website=IGN}}</ref>
+
+The boxed retail copies come as standard and collector's editions. The collector's edition includes a T-shirt and sample of the [[Prima Games|Prima]] strategy guide.<ref name=hl2pack/> Both the disc and Steam versions require Steam to be installed and active for play to occur.<ref>{{Cite web |last=Van Autrijve |first=Rainier |date=October 6, 2004 |title=Blow Off Some Steam and Pre-Order Half-Life 2 (PC) |url=http://pc.gamespy.com/pc/half-life-2/554654p1.html |url-status=live |archive-url=https://web.archive.org/web/20081006131105/http://pc.gamespy.com/pc/half-life-2/554654p1.html |archive-date=October 6, 2008 |access-date=October 3, 2008 |website=GameSpy}}</ref> None of the 2004 releases came with an instruction manual, though a reference card was included to guide people through installation and setup.<ref>{{Cite web |last=Howarth |first=Robert |date=November 3, 2004 |title=No Manual in Half-Life 2 |url=http://ve3d.ign.com/articles/562/562922p1.html |url-status=dead |archive-url=https://web.archive.org/web/20041103133457/http://ve3d.ign.com/articles/562/562922p1.html |archive-date=November 3, 2004 |access-date=December 18, 2025 |website=IGN}}</ref> In September 2005, [[Electronic Arts]] distributed a "Game of the Year Edition" of ''Half-Life 2'', including ''Half-Life: Source''.<ref>{{Cite web |last=Adams |first=David |date=July 18, 2005 |title=EA Picks Up Half-Life 2 |url=https://www.ign.com/articles/2005/07/18/ea-picks-up-half-life-2 |access-date=May 11, 2026 |website=IGN |language=en}}</ref>
+
+=== Ports ===
+''Half-Life 2'' was released on the [[Xbox (console)|Xbox console]] by [[Electronic Arts]] in November 2005.<ref>{{Cite web |title=Half-Life 2 Hands-On Preview |url=https://www.gamespot.com/articles/half-life-2-hands-on-preview/1100-6137124/ |access-date=2026-04-27 |website=GameSpot |language=en-US|date=November 17, 2005|last=Ocampo|first=Jason}}</ref><ref name=":0" /><ref>{{Cite web |last= |first= |title=Electronic Arts signs up Half-Life 2 publisher |url=https://www.cnet.com/tech/gaming/electronic-arts-signs-up-half-life-2-publisher/ |access-date=2026-04-27 |website=CNET Australia |language=en}}</ref> In 2006, Valve partnered with [[Taito]] to release ''Half-Life 2: Survivor'', an [[arcade game]], for the Japanese market.<ref name="gamespot">{{Cite web |date=November 29, 2005 |title=Half-Life 2 to hit Japanese arcades |url=https://www.gamespot.com/articles/half-life-2-to-hit-japanese-arcades/1100-6140527/ |url-status=live |archive-url=https://web.archive.org/web/20170411135522/https://www.gamespot.com/articles/half-life-2-to-hit-japanese-arcades/1100-6140527/ |archive-date=April 11, 2017 |access-date=April 10, 2017 |website=[[GameSpot]]}}</ref><ref>{{Cite web |last=Gantayat |first=Anoop |date=February 17, 2006 |title=AOU 2006: Half-Life 2 Survivor Debuts |url=http://www.ign.com/articles/2006/02/17/aou-2006-half-life-2-survivor-debuts |url-status=live |archive-url=https://web.archive.org/web/20170411061306/http://www.ign.com/articles/2006/02/17/aou-2006-half-life-2-survivor-debuts |archive-date=April 11, 2017 |access-date=April 10, 2017 |website=[[IGN]]}}</ref> Valve re-released ''Half-Life 2'' as part of the 2007 compilation ''[[The Orange Box]]'' for Windows, [[Xbox 360]] and [[PlayStation 3]].<ref>{{Cite news |date=October 18, 2007 |title=Orange Box packs action, value |work=USA Today |url=https://www.usatoday.com/tech/columnist/marcsaltzman/2007-10-18-orangebox_N.htm |url-status=dead |access-date=October 3, 2008 |archive-url=https://web.archive.org/web/20090106051332/http://www.usatoday.com/tech/columnist/marcsaltzman/2007-10-18-orangebox_N.htm |archive-date=January 6, 2009}}</ref> On May 26, 2010, ''Half-Life 2, Episode One'' and ''Episode Two'' were released for [[Mac OS X]].<ref name="osx announce">{{Cite web |date=May 26, 2010 |title=Steam For Mac Launch: Week 3 |url=https://store.steampowered.com/oldnews/3874 |url-status=live |archive-url=https://web.archive.org/web/20210401234032/https://store.steampowered.com/oldnews/3874 |archive-date=April 1, 2021 |access-date=August 16, 2024 |website=Steam |publisher=Valve}}</ref> In 2013, Valve ported ''Half-Life 2'' to Linux<ref>{{Cite web |date=May 10, 2013 |title='Half-Life 2' Hits Linux, Available on Steam |url=https://www.omgubuntu.co.uk/2013/05/half-life-2-steam-linux |url-status=live |archive-url=https://web.archive.org/web/20210412135230/https://www.omgubuntu.co.uk/2013/05/half-life-2-steam-linux |archive-date=April 12, 2021 |access-date=March 2, 2021 |website=OMG! Ubuntu! |language=en-GB}}</ref> and released a free update adding support for the [[Oculus Rift]] [[virtual reality]] headset.<ref name="Polygon: Valve gives">{{Cite web |last=Blagdon |first=Jeff |date=May 10, 2013 |title=Valve gives 'Half-Life 2' official Oculus Rift support |url=https://www.theverge.com/2013/5/10/4317926/half-life-2-gets-official-oculus-rift-support |url-status=live |archive-url=https://web.archive.org/web/20130607044302/http://www.theverge.com/2013/5/10/4317926/half-life-2-gets-official-oculus-rift-support |archive-date=June 7, 2013 |access-date=May 10, 2013 |website=[[Polygon (website)|Polygon]] |publisher=[[Vox Media]]}}</ref> An [[Nvidia Shield Tablet]]-exclusive port for [[Android (operating system)|Android]] was released on May 12, 2014.<ref>{{Cite web |last=Salov |first=Vlav |date=May 12, 2014 |title=''Half-Life 2'' and ''Portal'' arrive on Android, but only for the Shield |url=https://www.theverge.com/2014/5/12/5709518/half-life-2-and-portal-arrive-on-android |url-status=live |archive-url=https://web.archive.org/web/20170102040929/http://www.theverge.com/2014/5/12/5709518/half-life-2-and-portal-arrive-on-android |archive-date=January 2, 2017 |access-date=March 16, 2017 |website=[[The Verge]]}}</ref>
+
+=== Updates ===
+Valve released a [[Deathmatch (video games)|deathmatch]] mode, ''[[Half-Life 2: Deathmatch]],'' in 2004.<ref>{{Cite web |last=Adams |first=David |date=December 1, 2004 |title=Half-Life 2 Deathmatch Released |url=http://www.ign.com/articles/2004/12/01/half-life-2-deathmatch-released |url-status=live |archive-url=https://web.archive.org/web/20121108095226/http://www.ign.com/articles/2004/12/01/half-life-2-deathmatch-released |archive-date=November 8, 2012 |access-date=March 23, 2014 |website=[[IGN]]}}</ref> In 2005, Valve released an extra level, ''[[Half-Life 2: Lost Coast|Lost Coast]]'', as a free download to anyone who purchased ''Half-Life 2''.<ref>{{Cite web |last=Pinckard |first=Jane |date=October 27, 2005 |title=Lost Coast Out Now |url=http://www.1up.com/do/newsStory?cId=3145123 |url-status=dead |archive-url=https://web.archive.org/web/20071031171241/http://www.1up.com/do/newsStory?cId=3145123 |archive-date=October 31, 2007 |access-date=November 20, 2008 |publisher=1UP}}</ref> ''Lost Coast'' acted as a [[technology demonstration]], showcasing new lighting techniques and high-dynamic-range rendering in the [[Source (game engine)|Source engine]].<ref name="Marks-2020">{{Cite web |last=Marks |first=Tom |date=March 23, 2020 |title=Valve Explains Why Half-Life 2: Episode 3 Was Never Made |url=https://www.ign.com/articles/valve-explains-why-half-life-2-episode-3-was-never-made |url-status=live |archive-url=https://web.archive.org/web/20200323171744/https://www.ign.com/articles/valve-explains-why-half-life-2-episode-3-was-never-made |archive-date=March 23, 2020 |access-date=March 23, 2020 |website=[[IGN]]}}</ref>
+
+On December 22, 2005, Valve released a [[64-bit computing|64-bit]] version of the Source engine for [[x86-64]] processor-based systems running [[Windows XP Professional x64 Edition]]. This enabled ''Half-Life 2'' and other Source games to run [[Native (computing)|natively]] on 64-bit processors, bypassing the [[WOW64|32-bit compatibility layer]]. Newell said it was "an important step in the evolution of our game content and tools", and that it benefited greatly from the update.<ref name="amd64">{{Cite web |date=December 22, 2005 |title=Valve unveils 64-bit source (TM) gaming technology developed in conjunction with AMD |url=http://store.steampowered.com/news/496/ |url-status=live |archive-url=https://web.archive.org/web/20100418034254/http://store.steampowered.com/news/496/ |archive-date=April 18, 2010 |access-date=March 23, 2006 |website=Steam Powered}}</ref> Some users reported major performance improvements, though the technology site ''Techgage'' found stability problems and no notable [[frame rate]] improvement.<ref name="techgage">{{Cite web |last=Williams |first=Rob |title=Review: Half-Life 2: 64-Bit&nbsp;— Reason to get excited? |date=26 December 2005|url=http://techgage.com/article/half-life_2_64-bit_-_reason_to_get_excited |url-status=live |archive-url=https://web.archive.org/web/20061116010914/http://techgage.com/article/half-life_2_64-bit_-_reason_to_get_excited |archive-date=November 16, 2006 |access-date=March 23, 2006 |website=Techgage}}</ref> In January 2022, Valve updated ''Half-Life 2'' with a new interface designed for its portable [[Steam Deck]] device.<ref>{{Cite web |last=Subhan |first=Ishraq |date=January 27, 2022 |title=''Half-Life 2'''s UI is getting Steam Deck ready |url=https://www.eurogamer.net/articles/2022-01-27-half-life-2s-ui-is-getting-steam-deck-ready |url-status=live |archive-url=https://web.archive.org/web/20220228164310/https://www.eurogamer.net/articles/2022-01-27-half-life-2s-ui-is-getting-steam-deck-ready |archive-date=February 28, 2022 |access-date=February 28, 2022 |website=[[Eurogamer]] |language=en}}</ref>
+
+{{external media|float=right|video1=[https://www.youtube.com/watch?v=YCjNT9qGjh4 20th anniversary documentary on ''Half-Life 2'' by Valve]}}
+On the 20th anniversary in November 2024, Valve made ''Half-Life 2'' temporarily free on Steam and updated it to incorporate ''Episode One'', ''Episode Two'' and ''Lost Coast'', improve graphics and controls, restore lost content, fix bugs and add developer commentary. ''Half-Life 2'' reached a new peak of 64,085 concurrent players on Steam, surpassing the previous record of 16,101 in August 2021.<ref>{{Cite web |last=Obedkov |first=Evgeny |date=2024-11-18 |title=Half-Life 2 breaks its CCU record, peaking at over 64k concurrent players thanks to 20th anniversary celebration |url=https://gameworldobserver.com/2024/11/18/half-life-2-record-64k-concurrent-players-anniversary |access-date=2024-11-21 |website=Game World Observer |language=en-US}}</ref> Valve also released a two-hour making-of documentary.<ref>{{cite web |last=Chalk |first=Andy |date=November 15, 2024 |title=Valve gets the original Half-Life 2 development team back together for a huge 20th anniversary update—and the game is now free on Steam |url=https://www.pcgamer.com/games/fps/valve-gets-the-original-half-life-2-development-team-back-together-for-a-huge-20th-anniversary-update-and-the-game-is-now-free-on-steam/ |accessdate=November 15, 2024 |work=[[PC Gamer]]}}</ref>
+
+=== Mods ===
+{{See also|List of Source engine mods|Source SDK}}
+Since the release of the Source engine [[Software development kit|SDK]], a large number of [[mod (video gaming)|modifications]] (mods) have been developed by the ''Half-Life 2'' community. Mods vary in scale, from fan-created levels like ''[[Minerva (video game)|Minerva]]'' and weapons, to partial conversions such as ''Rock 24'', ''Half-Life 2 Substance'' and ''SMOD'' (which modify the storyline and gameplay of the pre-existing game), [[SourceForts]] and ''[[Garry's Mod]]'' (which allow the player to experiment with the physics system in a [[sandbox (videogames)|sandbox]] mode), to [[total conversion]]s such as ''[[Black Mesa (video game)|Black Mesa]]'', ''[[Dystopia (video game)|Dystopia]]'', ''Zombie Master'' or ''[[Iron Grip: The Oppression]]'', the last of which transforms from a first-person shooter into a real-time strategy game.<ref>{{Cite web |last=Young |first=Tom |date=January 27, 2006 |title=Source Forts |url=http://planethalflife.gamespy.com/View.php?view=Reviews.Detail&id=13 |url-status=dead |archive-url=https://web.archive.org/web/20110711071737/http://planethalflife.gamespy.com/View.php?view=Reviews.Detail&id=13 |archive-date=July 11, 2011 |access-date=June 3, 2010 |website=[[Planet Half-Life]]}}</ref><ref>{{Cite magazine |last=Francis |first=Tom |date=December 19, 2006 |title=Garry's Mod Review |url=http://www.computerandvideogames.com/152602/reviews/garrys-mod-review/?site=pcg |url-status=live |magazine=[[Computer and Video Games|CVG]] |archive-url=https://web.archive.org/web/20130607042507/http://www.computerandvideogames.com/152602/reviews/garrys-mod-review/?site=pcg |archive-date=June 7, 2013 |access-date=June 3, 2010}}</ref>
+
+Some mods take place in the ''Half-Life'' universe; others in completely original settings. Many more mods are still in development, including ''Lift'', ''The Myriad'', ''Operation Black Mesa'', and ''Infinite Finality''. Several multiplayer mods, such as ''[[Pirates, Vikings and Knights II]]'', a predominately sword-fighting game; ''[[Insurgency: Modern Infantry Combat]]'', which focuses on realistic modern infantry combat; and ''[[Jailbreak Source]]'' have been opened to the public as a beta.<ref>{{Cite web |last=Rogers |first=Thomas |date=February 18, 2014 |title=Pirates, Vikings, & Knights II Beta 2.0 |url=http://planethalflife.gamespy.com/View.php?view=HLMotw.Detail&id=194 |url-status=dead |archive-url=https://web.archive.org/web/20080304143009/http://planethalflife.gamespy.com/View.php?view=HLMotw.Detail&id=194 |archive-date=March 4, 2008 |access-date=June 3, 2010 |website=[[Planet Half-Life]]}}</ref><ref name="insurgencywebpage">{{Cite web |title=Insurgency: Modern Infantry Combat |url=http://www.insmod.net |url-status=dead |archive-url=https://web.archive.org/web/20080210045223/http://www.insmod.net/ |archive-date=February 10, 2008 |access-date=February 4, 2008 |website=Insurgency Team}}</ref> In September 2022, after a decade of development, fans released ''Half-Life 2: VR Mod,'' allowing ''Half-Life 2'' to be played in [[virtual reality]].<ref>{{Cite web |date=2022-10-01 |title=Half-Life 2's Excellent VR Mod Is Almost Too Good To Be True |url=https://kotaku.com/half-life-2-vr-mod-alyx-pc-valve-steam-gordon-freeman-1849603782 |url-status=live |archive-url=https://web.archive.org/web/20221209062955/https://kotaku.com/half-life-2-vr-mod-alyx-pc-valve-steam-gordon-freeman-1849603782 |archive-date=December 9, 2022 |access-date=2022-12-09 |website=Kotaku |language=en}}</ref>
+
+As part of its community support, Valve announced in September 2008 that several mods, with more planned in the future, were being integrated into the [[Steam (service)|Steamworks]] program, allowing the mods to make full use of Steam's distribution and update capabilities.<ref>{{Cite web |date=September 22, 2008 |title=Steam News Update Friday, September 26, 2008 |url=http://storefront.steampowered.com/Steam/Marketing/message/1843/ |url-status=dead |archive-url=https://web.archive.org/web/20080928091100/http://storefront.steampowered.com/Steam/Marketing/message/1843/ |archive-date=September 28, 2008 |access-date=September 22, 2008 |website=[[Steam (service)|Steam]] |publisher=[[Valve Corporation|Valve]]}}</ref> ''Half-Life 2'' introduced a community workshop as part of their 20th-anniversary update.<ref>{{cite web|last=Smith|first=Graham|date=November 16, 2024|access-date=November 17, 2024|website=RockPaperShotgun.com|url=https://www.rockpapershotgun.com/half-life-2-is-20-years-old-and-has-been-updated-with-steam-workshop-support-and-developer-commentary|title=Half-Life 2 is 20 years old and has been updated with Steam Workshop support and developer commentary}}</ref> In 2023, [[Nvidia]] announced ''Half-Life 2 RTX'', a collaboration with fan developers to add [[Ray tracing (graphics)|ray tracing]] and other graphical upgrades using Nvidia's [[RTX Remix|Remix]] tools.<ref>{{Cite web |last=Zwiezen |first=Zack |date=2024-11-14 |title=That Half-Life 2 remaster is looking really good in new trailer |url=https://kotaku.com/half-life-2-hl2-rtx-remaster-remake-mod-nvidia-trailer-1851698957 |access-date=2024-11-23 |website=[[Kotaku]] |language=en}}</ref>
+
+== Reception ==
+{{Video game reviews
+| MC = 96/100 (PC)<ref name="MC-PC" /><br />90/100 (Xbox)<ref name="MC-Xbox" />
+| 1UP = A+<ref name="1UP">{{Cite web |last=Pfister |first=Andrew |date=January 17, 2005 |title=Half-Life 2 Review |url=http://www.1up.com/reviews/half-life-2_4 |archive-url=https://web.archive.org/web/20150402222427/http://www.1up.com/reviews/half-life-2_4 |archive-date=April 2, 2015 |access-date=September 20, 2022 |publisher=[[1Up.com]]}}</ref>
+| Edge = 10/10 (PC)<ref name="edgereview" />
+| EuroG = 10/10 (PC)<ref name="europc" /><br />9/10 (Xbox)<ref name="euroxbox" />
+| GamePro = 5/5 (PC)<ref name="gameproreview" />
+| GSpot = 9.2/10 (PC)<ref name="gamespotreview" />
+| GSpy = 5/5<ref name="gamespyreview" />
+| GRadar = 4.5/5<ref name="gamesradarreview" />
+| IGN = 9.7/10 (PC)<ref name="ignreview" />
+| MaxPC = 11/10<ref name="maximumpcreview" />
+| PCGUS = 98%<ref name="pcgamerreview" />
+| VG = 10/10<ref name="vgreview" />
+| rev1 = ''[[The Cincinnati Enquirer]]''
+| rev1Score = 4/4<ref name="cincin" />
+| rev2 = ''[[The New York Times]]''
+| rev2Score = Positive<ref name="nytreview" />
+}}
+
+''Half-Life 2'' has an aggregate score of 96/100 on [[Metacritic]] based on 81 reviews. Sources such as [[1Up.com|''1UP'']],<ref name=1UP/> ''[[GameSpy]]'',<ref name="gamespyreview">{{Cite web |title=Half-Life 2 review |url=http://pc.gamespy.com/pc/half-life-2/566585p1.html |url-status=live |archive-url=https://web.archive.org/web/20060428054001/http://pc.gamespy.com/pc/half-life-2/566585p1.html |archive-date=April 28, 2006 |access-date=May 20, 2006 |website=GameSpy}}</ref> ''[[The Cincinnati Enquirer]]'',<ref name="cincin">{{Cite web |title=Half-Life 2: A Tech Masterpiece |url=http://www.cincinnati.com/freetime/games/reviews/120204_half-life2.html |archive-url=https://web.archive.org/web/20060316101825/http://www.cincinnati.com/freetime/games/reviews/120204_half-life2.html |archive-date=March 16, 2006 |access-date=May 20, 2006 |website=Cincinnati Enquirer}}</ref> ''[[The New York Times]]'',<ref name="nytreview">{{Cite news |last=Herold |first=Charles |date=November 25, 2004 |title=A Big Sequel That's Worthy of Its Lineage |work=The New York Times |url=https://www.nytimes.com/2004/11/25/technology/circuits/a-big-sequel-thats-worthy-of-its-lineage.html |url-status=live |access-date=May 20, 2006 |archive-url=https://web.archive.org/web/20161020103350/http://www.nytimes.com/2004/11/25/technology/circuits/a-big-sequel-thats-worthy-of-its-lineage.html |archive-date=October 20, 2016}}</ref> and ''VideoGamer.com''<ref name="vgreview">{{Cite web |last=Dick |first=Robert |date=December 14, 2004 |title="Half-Life 2" Review |url=http://www.videogamer.com/pc/hl2/review.html |url-status=live |archive-url=https://web.archive.org/web/20150626120537/http://www.videogamer.com/pc/hl2/review.html |archive-date=June 26, 2015 |access-date=May 26, 2015 |website=VideoGamer.com}}</ref> gave it perfect scores, and others, such as ''[[PC Gamer]]'',<ref name="pcgamerreview">{{Cite journal |date=December 2004 |title=Half-Life 2 |journal=PC Gamer |page=48}}</ref> ''[[IGN]]'',<ref name="ignreview">{{Cite web |date=November 15, 2004 |title=''Half-Life 2'' Review |url=https://www.ign.com/articles/2004/11/15/half-life-2-review |url-status=live |archive-url=https://web.archive.org/web/20060524133916/http://pc.ign.com/articles/566/566202p1.html |archive-date=May 24, 2006 |access-date=May 20, 2006 |website=IGN}}</ref> ''[[GamesRadar]]'',<ref name="gamesradarreview">{{Cite web |last=Brandon |first=John |date=December 18, 2007 |title=''Half-Life 2'' Review |url=http://www.gamesradar.com/half-life-2-review/ |url-status=live |archive-url=https://web.archive.org/web/20150527000046/http://www.gamesradar.com/half-life-2-review/ |archive-date=May 27, 2015 |access-date=May 26, 2015 |website=[[GamesRadar]]}}</ref> and ''[[Eurogamer]]'',<ref name="europc">{{Cite web |last=Reed |first=Kristan |date=November 18, 2004 |title=''Half-Life 2'' PC Review |url=http://www.eurogamer.net/articles/r_half-life2_pc |url-status=live |archive-url=https://web.archive.org/web/20150624192250/http://www.eurogamer.net/articles/r_half-life2_pc |archive-date=June 24, 2015 |access-date=May 15, 2015 |website=[[Eurogamer]]}}</ref><ref name="euroxbox">{{Cite web |last=Reed |first=Kristan |date=November 21, 2005 |title=''Half-Life 2'' Xbox Review |url=http://www.eurogamer.net/articles/r_halflife2_xbox |url-status=live |archive-url=https://web.archive.org/web/20150518085033/http://www.eurogamer.net/articles/r_halflife2_xbox |archive-date=May 18, 2015 |access-date=May 15, 2015 |website=[[Eurogamer]]}}</ref> gave near-perfect scores. It was the fifth game to receive ten out of ten from ''[[Edge (magazine)|Edge]]''.<ref name="edgereview">{{Cite web |title=Reviews Database |url=http://www.edge-online.co.uk/edgedb/ |archive-url=https://web.archive.org/web/20070429124358/http://www.edge-online.co.uk/edgedb/ |archive-date=April 29, 2007 |access-date=September 3, 2006 |website=Edge Online}}</ref> Critics praised the graphics, physics, story and gameplay.<ref name="gameproreview">{{Cite magazine |title=Half-Life 2 - Australian Review (Reviews) |url=http://www.gamepro.com.au/index.php/id;1181166017;fp;2;fpid;36 |url-status=dead |magazine=GamePro |archive-url=https://web.archive.org/web/20080917115121/http://www.gamepro.com.au/index.php/id%3B1181166017%3Bfp%3B2%3Bfpid%3B36 |archive-date=September 17, 2008 |access-date=May 21, 2006}}</ref><ref name="nytreview" /> ''[[Maximum PC]]'' awarded ''Half-Life 2'' 11 on their rating scale which normally peaks at 10, calling it "the best game ever made".<ref name="maximumpcreview">{{Cite journal |date=January 2005 |title=Half-Life 2 Review |url=http://dl.maximumpc.com/Archives/MPC0105-web.pdf |url-status=dead |journal=Maximum PC |archive-url=https://web.archive.org/web/20100401052137/http://dl.maximumpc.com/Archives/MPC0105-web.pdf |archive-date=April 1, 2010 |access-date=March 13, 2010}}</ref>
+
+In the United States, ''Half-Life 2''{{'s}} PC version sold 680,000 copies and had earned $34.3 million by August 2006. It was the country's 17th best-selling PC game between January 2000 and August 2006.<ref name="edgesales">{{Cite magazine |date=August 25, 2006 |title=The Top 100 PC Games of the 21st Century |url=http://www.edge-online.com/features/top-100-pc-games-21st-century/ |url-status=dead |magazine=[[Edge (magazine)|Edge]] |archive-url=https://web.archive.org/web/20121017165955/http://www.edge-online.com/features/top-100-pc-games-21st-century/ |archive-date=October 17, 2012}}</ref> It received a "Platinum" sales award from the [[Entertainment and Leisure Software Publishers Association]] (ELSPA),<ref name="platinumelspa">{{Cite web |title=ELSPA Sales Awards: Platinum |url=http://www.elspa.com:80/?i=3944 |url-status=dead |archive-url=https://web.archive.org/web/20090515224703/http://www.elspa.com/?i=3944 |archive-date=May 15, 2009 |website=[[Entertainment and Leisure Software Publishers Association]]}}</ref> indicating sales of at least 300,000 copies in the United Kingdom.<ref name="gamasutrasales">{{Cite web |last=Caoili |first=Eric |date=November 26, 2008 |title=ELSPA: ''Wii Fit'', ''Mario Kart'' Reach Diamond Status In UK |url=https://www.gamasutra.com/view/news/112220/ELSPA_Wii_Fit_Mario_Kart_Reach_Diamond_Status_In_UK.php |url-status=dead |archive-url=https://web.archive.org/web/20170918063107/https://www.gamasutra.com/view/news/112220/ELSPA_Wii_Fit_Mario_Kart_Reach_Diamond_Status_In_UK.php |archive-date=September 18, 2017 |website=[[Gamasutra]]}}</ref> ''[[Forbes]]'' reported on February 9, 2011, that it had sold 12 million copies worldwide.<ref>{{Cite news |last=Chiang |first=Oliver |date=February 28, 2011 |title=The Master of Online Mayhem |work=Forbes |url=https://www.forbes.com/forbes/2011/0228/technology-gabe-newell-videogames-valve-online-mayhem.html |url-status=live |archive-url=https://web.archive.org/web/20110213025041/http://www.forbes.com/forbes/2011/0228/technology-gabe-newell-videogames-valve-online-mayhem.html |archive-date=February 13, 2011}}</ref>
+
+In a review of ''The Orange Box'', ''IGN'' stated that although ''Half-Life 2'' has already been released through other media, the game itself is still enjoyable on a console. They also noted that the physics of ''Half-Life 2'' are impressive despite it being a console game. However, it was noted that the graphics on the Xbox 360 version of ''Half-Life 2'' were not as impressive as when it was released on the PC.<ref>{{Cite web |last=Goldstein |first=Hilary |date=October 9, 2007 |title=The Orange Box Review |url=http://xbox360.ign.com/articles/826/826062p1.html |url-status=live |archive-url=https://web.archive.org/web/20100418163632/http://xbox360.ign.com/articles/826/826062p1.html |archive-date=April 18, 2010 |access-date=May 29, 2010 |website=IGN}}</ref> ''[[GameSpot]]'' identified framerate problems on PlayStation 3 version.<ref name="gamespotreview">{{Cite web |last=Ocampo |first=Jason |date=December 12, 2007 |title=The Orange Box Review for PlayStation 3 |url=http://www.gamespot.com/reviews/the-orange-box-review/1900-6183951/ |url-status=live |archive-url=https://web.archive.org/web/20140302002221/http://www.gamespot.com/reviews/the-orange-box-review/1900-6183951/ |archive-date=March 2, 2014 |access-date=May 29, 2010 |website=GameSpot}}</ref>
+
+Several critics complained about the required usage of the program Steam, the requirement to create an account, register the products, and permanently lock them to the account before being allowed to play, along with installation difficulties and lack of support.<ref name="nytreview" />
+
+=== Awards ===
+''Half-Life 2'' earned 39 [[List of Game of the Year awards|Game of the Year]] awards,<ref name="valve">{{Cite web |title=Valve Awards |url=http://www.valvesoftware.com/awards.html |url-status=live |archive-url=https://web.archive.org/web/20140108083038/http://www.valvesoftware.com/awards.html |archive-date=January 8, 2014 |access-date=September 22, 2008 |website=Valve}}</ref> including Overall Game of the Year at ''IGN'', ''GameSpot''{{'s}} Award for Best Shooter, ''GameSpot''{{'s}} Reader's Choice&nbsp;— PC Game of the Year Award, "[[D.I.C.E. Award for Game of the Year|Game of the Year]]" and "Computer Game of the Year" from the [[8th Annual Interactive Achievement Awards|Interactive Achievement Awards]], and "Best Game" with the [[Game Developers Choice Awards]], where it was also given various awards for technology, characters, and writing.
+
+The editors of ''[[Computer Gaming World]]'' nominated ''Half-Life 2'' for their 2004 "Single-Player Shooter of the Year" and overall "Game of the Year" awards, although it lost to ''[[Painkiller (video game)|Painkiller]]'' and ''[[World of Warcraft]]''. They wrote, "''Half-Life 2'', everyone's default pick to win this year, is indeed a fantastic roller coaster of a ride, not as great as the original but still leagues above most other shooters."<ref name="cgwpremier2004">{{Cite magazine |date=March 2005 |title=2004 Games of the Year |magazine=[[Computer Gaming World]] |issue=249 |pages=56–67}}</ref>
+
+''Edge'' gave ''Half-Life 2'' its top honor of the year with the award for Best Game, as well as awards for Innovation and Visual Design. It also had a strong showing at the 2004 [[British Academy Video Games Awards]], picking up six awards, more than any other game that night, with awards including "Best Game" and "Best Online and Multiplayer".<ref name="BBC">{{Cite news |date=March 1, 2005 |title=Half-Life 2 sweeps Bafta awards |work=BBC News |url=https://news.bbc.co.uk/2/hi/technology/4308315.stm |url-status=live |access-date=May 22, 2006 |archive-url=https://web.archive.org/web/20051113120121/http://news.bbc.co.uk/2/hi/technology/4308315.stm |archive-date=November 13, 2005}}</ref> ''[[Computer Games Magazine]]'' named ''Half-Life 2'' the fourth-best computer game of 2004 and gave it the awards for "Best Technology" (beating ''[[Doom 3]]'') and "Best Writing", and runner-up awards for "Best Sound Effects", "Best AI" and "Best Voice Acting".<ref name="cgm14th">{{Cite magazine |date=March 2005 |title=The Best of 2004; The 14th Annual ''Computer Games'' Awards |magazine=[[Computer Games Magazine]] |issue=172 |pages=48–56}}</ref> The editors called it "a masterful single-player experience that plays a constant game of one-upmanship with itself".
+
+In 2008, ''[[Guinness World Records]]'' awarded ''Half-Life 2'' the records for "Highest-rated Shooter by ''PC Gamer''" and "First game to feature a gravity gun".<ref>{{Cite magazine |last=Snow |first=Blake |date=January 28, 2008 |title=Guinness World Records: Gamer's Edition comes Mar. 11 |url=http://www.gamepro.com/article/news/158708/guinness-world-records-gamers-edition-comes-mar-11/ |magazine=GamePro |archive-url=https://web.archive.org/web/20090219133531/http://www.gamepro.com/article/news/158708/guinness-world-records-gamers-edition-comes-mar-11/ |archive-date=February 19, 2009 |access-date=September 22, 2008}}</ref> In 2009, ''[[Game Informer]]'' named ''Half-Life 2'' the fifth-best game, writing that "Valve redefined the way first-person shooters were created".<ref name="gi best">{{Cite magazine |date=December 2009 |title=The Top 200 Games of All Time |magazine=[[Game Informer]] |issue=200 |pages=44–79 |issn=1067-6392 |oclc=27315596}}</ref> ''Half-Life 2'' was selected by readers of ''[[The Guardian]]'' as the best game of the decade, with particular praise for the environment design. The ''Guardian'' journalist Keith Stuart wrote that it "pushed the envelope for the genre, and set a new high watermark for FPS narrative".<ref name="guardian1">{{Cite news |last=Stuart |first=Keith |date=December 17, 2009 |title=The Gamesblog 50 games of the Noughties: number one |url=https://www.theguardian.com/technology/gamesblog/2009/dec/16/games-events2 |url-status=live |archive-url=https://web.archive.org/web/20131104210109/http://www.theguardian.com/technology/gamesblog/2009/dec/16/games-events2 |archive-date=November 4, 2013 |access-date=March 31, 2010 |work=[[The Guardian]] |location=London}}</ref> ''Half-Life 2'' won ''[[Crispy Gamer]]''{{'}}s Game of the Decade<ref name="crispygamer1">{{Cite web |date=December 11, 2009 |title=Game of the Decade: Championship Round |url=http://www.crispygamer.com/features/2009-12-11/game-of-the-decade-championship-round.aspx |url-status=usurped |archive-url=https://web.archive.org/web/20100421081351/http://www.crispygamer.com/features/2009-12-11/game-of-the-decade-championship-round.aspx |archive-date=April 21, 2010 |access-date=April 2, 2010 |website=CrispyGamer}}</ref> tournament style poll. It also won [[Reviews on the Run]]'s,<ref name="reviewsontherun1">{{cite web |date=October 27, 2011 |title=Video Game Awards 2004 Winners |url=http://www.spike.com/articles/jhwbki/video-game-awards-video-game-awards-2004-winners |url-status=dead |archive-url=https://web.archive.org/web/20141223172214/http://www.spike.com/articles/jhwbki/video-game-awards-video-game-awards-2004-winners |archive-date=December 23, 2014 |access-date=December 12, 2024 |website=spike.com}}</ref> ''IGN''{{'s}}<ref>{{Cite web |title=Best Games Overall |url=http://uk.ign.com/decade/best-games-decade.html |url-status=dead |archive-url=https://web.archive.org/web/20100619022832/http://uk.ign.com/decade/best-games-decade.html |archive-date=June 19, 2010 |access-date=April 5, 2010 |website=IGN}}</ref> Best Game of the Decade and [[Spike Video Game Awards]] 2012 Game of the Decade.<ref name="spikeaward">{{Cite web |date=December 7, 2012 |title=Backstage with Game of the Decade and Game of the Year Winners |url=http://www.spike.com/video-clips/wek7t4/video-game-awards-backstage-with-game-of-the-decade-and-game-of-the-year-winners |url-status=live |archive-url=https://web.archive.org/web/20150622045721/http://www.spike.com/video-clips/wek7t4/video-game-awards-backstage-with-game-of-the-decade-and-game-of-the-year-winners |archive-date=June 22, 2015 |access-date=May 21, 2015 |website=[[Spike (TV network)|Spike]]}}</ref> In December 2021, ''IGN'' named ''Half-Life 2'' the ninth-best game of all time.<ref name="I. G. N. Staff">{{Cite web |last= |date=December 31, 2021 |title=The Top 100 Video Games of All Time |url=https://www.ign.com/articles/the-best-100-video-games-of-all-time |archive-url=https://web.archive.org/web/20220406155741/https://www.ign.com/articles/the-best-100-video-games-of-all-time?amp=1 |archive-date=April 6, 2022 |access-date=April 6, 2022 |website=[[IGN]] |language=en}}</ref>
+
+{| class="wikitable plainrowheaders sortable"
+|- 
+! scope="col"| Award
+! scope="col"| Category
+! scope="col"| Recipient(s) and nominee(s)
+! scope="col"| Result
+! scope="col" class="unsortable" | {{Refh}}
+|-
+! scope="row" rowspan="4" | [[Game Critics Awards]] 2003
+| Best of Show
+| rowspan="4" | ''Half-Life 2''
+| {{Won}}
+| align="center" rowspan="12" | <ref>{{cite web |url=https://www.imdb.com/title/tt0374692/awards/ |title=Half-Life 2 Awards |publisher=[[IMDb]] |access-date=30 October 2023}}</ref>
+|-
+| Best PC Game
+| {{Won}}
+|-
+| Best Action Game
+| {{Won}}
+|-
+| Special Commendation for Graphics
+| {{Won}}
+|-
+! scope="row" rowspan="1" |[[Game Critics Awards]] 2004
+| Best of Show
+| ''Half-Life 2''
+| {{Nominated}}
+|-
+! scope="row"| [[Spike Video Game Awards]] 2003
+| Most Anticipated Game
+| ''Half-Life 2''
+| {{Nominated}}
+|-
+! scope="row" rowspan="4"| [[Spike Video Game Awards]] 2004
+| Game of the Year
+| rowspan="4" | ''Half-Life 2''
+| {{Nominated}}
+|-
+| Best PC Game 
+| {{Won}}
+|- 
+| Best First-Person Action
+| {{Nominated}}
+|-
+| Best Graphics
+| {{Won}}
+|-
+! rowspan="1" scope="row" | [[Spike Video Game Awards]] 2012
+| Best Game of the Decade
+| ''Half-Life 2''
+| {{Won}}
+|-
+! rowspan="1" scope="row" | [[Golden Joystick Awards]] 2005
+| PC Game of the Year
+| ''Half-Life 2''
+| {{Won}}
+|-
+! rowspan="11" scope="row" | [[8th Annual Interactive Achievement Awards]]
+| [[D.I.C.E. Award for Game of the Year|Game of the Year]]
+| rowspan="4" | ''Half-Life 2''
+| {{Won}}
+| align="center" rowspan="11"| <ref>{{cite web |url=https://www.interactive.org/games/video_game_details.asp?idAward=2005&idGame=100 |title=D.I.C.E. Awards By Video Game Details Half-Life 2 |publisher=[[Academy of Interactive Arts & Sciences]] |website=interactive.org |access-date=30 October 2023}}</ref>
+|- 
+| Computer Game of the Year
+| {{Won}}
+|- 
+| [[D.I.C.E. Award for Action Game of the Year|Computer First-Person Action Game of the Year]]
+| {{Won}}
+|- 
+| Outstanding Innovation in Computer Gaming
+| {{Won}}
+|- 
+| [[D.I.C.E. Award for Outstanding Achievement in Character|Outstanding Character Performance - Male]]
+| [[Robert Guillaume]] as [[Dr. Eli Vance]]
+| {{Won}}
+|- 
+| [[D.I.C.E. Award for Outstanding Achievement in Story|Outstanding Achievement in Character or Story Development]]
+| rowspan="6" | ''Half-Life 2''
+| {{Nom}}
+|- 
+| [[D.I.C.E. Award for Outstanding Achievement in Animation|Outstanding Achievement in Animation]]
+| {{Won}}
+|- 
+| [[D.I.C.E. Award for Outstanding Achievement in Art Direction|Outstanding Achievement in Art Direction]]
+| {{Won}}
+|- 
+| [[D.I.C.E. Award for Outstanding Achievement in Game Design|Outstanding Achievement in Game Design]]
+| {{Nom}}
+|- 
+| [[D.I.C.E. Award for Outstanding Technical Achievement|Outstanding Achievement in Gameplay Engineering]]
+| {{Won}}
+|- 
+| [[D.I.C.E. Award for Outstanding Technical Achievement|Outstanding Achievement in Visual Engineering]]
+| {{Won}}
+|-
+! rowspan="6" scope="row" | [[Game Developers Choice Awards|5th Annual Game Developers Choice Awards]]
+| [[Game Developers Choice Award for Game of the Year|Best Game]]
+| rowspan="6" | ''Half-Life 2''
+| {{Won}}
+| align="center" rowspan="6"| <ref>{{cite web |url=https://gamechoiceawards.com/archive/gdca_5th |title=Finalists & Winners: Honoring the Best Games of 2004 |publisher=[[Game Developers Conference]] |website=gamechoiceawards.com |access-date=30 October 2023}}</ref>
+|-
+| Character Design
+| {{Won}}
+|- 
+| Game Design
+| {{Nominated}}
+|- 
+| Technology
+| {{Won}}
+|- 
+| Visual Arts
+| {{Nominated}}
+|- 
+| Writing
+| {{Won}}
+|- 
+! rowspan="8" scope="row" | [[2nd British Academy Games Awards]]
+| [[British Academy Games Award for Best Game|Best Game]]
+| rowspan="8" | ''Half-Life 2''
+| {{Won}}
+| align="center" rowspan="8"| <ref>{{cite web |url=http://awards.bafta.org/award/2005/games? |title=BAFTA Games in 2005 |publisher=[[BAFTA]] |website=awards.bafta.org |access-date=30 October 2023}}</ref>
+|- 
+| PC
+| {{Won}}
+|-
+| Action Game
+| {{Won}}
+|-
+| Sunday Times Reader Award for Games
+| {{Nom}}
+|-
+| [[British Academy Games Award for Animation|Animation]]
+| {{Won}}
+|-
+| [[British Academy Games Award for Artistic Achievement|Art Direction]]
+| {{Won}}
+|-
+| [[British Academy Games Award for Multiplayer|Online Multiplayer]]
+| {{Won}}
+|-
+| Technical Direction
+| {{Nom}}
+|-
+! scope="row" rowspan="3" | [[Game Audio Network Guild Awards]]
+| Audio of the Year
+| rowspan="3" | ''Half-Life 2''
+| {{Nom}}
+| align="center" rowspan="3" | <ref>{{cite web |url=https://www.audiogang.org/awards-archive-old/2005-awards/ |title=3rd Annual GANG Awards - 2004 Released Games |publisher=[[Game Audio Network Guild]] |website=audiogang.org |access-date=30 October 2023}}</ref>
+|-
+| Sound Design of the Year
+| {{Nom}}
+|-
+| Best Dialogue
+| {{Nom}}
+|}
+
+== Sequels ==
+''Half-Life 2'' was followed by the [[Episodic video game|episodic]] sequels ''[[Half-Life 2: Episode One|Episode One]]'' (2006) and ''[[Half-Life 2: Episode Two|Episode Two]]'' (2007).<ref name="Marks-2020" /> After canceling ''[[Half-Life 2: Episode Three|Episode Three]]'' and [[Unreleased Half-Life games|several further ''Half-Life'' projects]],<ref>{{Citation |title=Details of Multiple Cancelled Valve Projects Revealed, Including Half-Life 3 - IGN |date=July 9, 2020 |url=https://www.ign.com/articles/half-life-3-left-4-dead-3-details-cancelled-valve |access-date=July 19, 2020 |archive-url=https://web.archive.org/web/20200713154054/https://www.ign.com/articles/half-life-3-left-4-dead-3-details-cancelled-valve |url-status=live |language=en |archive-date=July 13, 2020}}</ref> Valve released a prequel, ''[[Half-Life: Alyx]]'', in 2020.<ref>{{Cite web |last=McWhertor |first=Michael |date=November 18, 2019 |title=Valve's Half-Life series continues with Half-Life: Alyx for VR |url=https://www.polygon.com/2019/11/18/20970733/half-life-alyx-vr-release-date-valve-announcement |url-status=live |archive-url=https://web.archive.org/web/20191119134619/https://www.polygon.com/2019/11/18/20970733/half-life-alyx-vr-release-date-valve-announcement |archive-date=November 19, 2019 |access-date=November 21, 2019 |website=Polygon}}</ref>
+
+== Notes ==
+{{notelist}}
+
+== References ==
+{{Duplicated citations|reason=DuplicateReferences script detected:
+* https://www.ign.com/articles/2004/09/29/half-life-2-packages-revealed (refs: 22, 23)
+|date=October 2026}}
+
+{{reflist|30em|refs=
+
+<ref name="MC-PC">{{Cite web |title=Half-Life 2 |url=https://www.metacritic.com/game/half-life-2/critic-reviews/?platform=pc |url-status=live |archive-url=https://web.archive.org/web/20100817224301/http://www.metacritic.com/game/pc/half-life-2 |archive-date=August 17, 2010 |access-date=September 22, 2008 |website=Metacritic}}</ref>
+
+<ref name="MC-Xbox">{{Cite web |title=Half-Life 2 (Xbox) |url=https://www.metacritic.com/game/half-life-2/critic-reviews/?platform=xbox |url-status=live |archive-url=https://web.archive.org/web/20110830150538/http://www.metacritic.com/game/xbox/half-life-2 |archive-date=August 30, 2011 |access-date=September 12, 2011 |website=[[Metacritic]]}}</ref>
+}}
+
+== External links ==
+{{Spoken Wikipedia|date=2024-04-17|Half-Life_2_Wikipedia_Article_Recording.ogg}}
+* {{Official website|https://www.half-life.com/en/halflife2}}
+* [https://www.hl2rtx.com/ Official website of ''Half-Life 2 RTX'']
+
+{{Half-Life}}
+{{Valve}}
+{{DICE GOTY}}
+{{BAFTA Games BG}}
+{{GDCA GOTY}}
+{{Subject bar|Horror|Science fiction|Video games|d=yes|q=Half-Life#Half-Life_2_(2004)|auto=yes}}
+{{Authority control}}
+
+[[Category:2004 video games]]
+[[Category:Android (operating system) games]]
+[[Category:British Academy Games Award for Best Game winners]]
+[[Category:British Academy Games Award for Multiplayer winners]]
+[[Category:Dystopian video games]]
+[[Category:Fiction about rebellions]]
+[[Category:First-person shooters]]
+[[Category:Game Developers Choice Award for Game of the Year winners]]
+[[Category:Golden Joystick Award winners]]
+[[Category:Half-Life (series) games|2]]
+[[Category:Linux games]]
+[[Category:MacOS games]]
+[[Category:Oculus Rift games]]
+[[Category:PlayStation 3 games]]
+[[Category:Post-apocalyptic video games]]
+[[Category:Propaganda in fiction]]
+[[Category:Science fiction video games]]
+[[Category:Sequel video games]]
+[[Category:Sierra Entertainment games]]
+[[Category:Single-player video games]]
+[[Category:Source (game engine) games]]
+[[Category:Spike Video Game Award winners]]
+[[Category:Valve Corporation games]]
+[[Category:Video games about alien invasions]]
+[[Category:Video games about mass surveillance]]
+[[Category:Video games about science]]
+[[Category:Video games developed in the United States]]
+[[Category:Video games scored by Kelly Bailey]]
+[[Category:Video games set in Europe]]
+[[Category:Video games set in the 2020s]]
+[[Category:Video games using Havok]]
+[[Category:Video games with commentaries]]
+[[Category:Video games with Steam Workshop support]]
+[[Category:Windows games]]
+[[Category:Xbox 360 games]]
+[[Category:Xbox games]]

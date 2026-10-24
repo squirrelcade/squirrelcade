@@ -32,6 +32,8 @@ export interface OfflineCopy {
   platforms: { key: string; name: string }[];
   games: OfflineGame[];
   barcodes: [string, number, string][];
+  /** Check a shelf's fixes: [the platform's place, the read's key, the game's title or null for no game]. */
+  fixes?: [number, string, string | null][];
 }
 
 /** The copy as this browser keeps it: its tag, and when Squirrelcade last confirmed it was current. */

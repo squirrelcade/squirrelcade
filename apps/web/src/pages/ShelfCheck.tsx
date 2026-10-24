@@ -1,4 +1,5 @@
-import { Alert, Anchor, Badge, Button, Card, Checkbox, FileButton, Group, Progress, Select, Stack, Text, Title } from '@mantine/core';
+import { Alert, Anchor, Autocomplete, Badge, Button, Card, Checkbox, FileButton, Group, Modal, Progress, Select, Stack, Text, Title } from '@mantine/core';
+import { shelfReadKey } from '@squirrelcade/core';
 import { IconCamera, IconPhoto } from '@tabler/icons-react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useEffect, useMemo, useRef, useState } from 'react';
@@ -15,10 +16,15 @@ import {
   allReads,
   checklist,
   doubtText,
+  keepOwnFix,
+  keepTitles,
+  keptTitles,
+  ownFixes,
   photoReader,
   progressText,
   progressValue,
   shelfConsoles,
+  shelfFixes,
   shelfMatcher,
   type ReadLine,
   type ReaderProgress,
@@ -62,10 +68,13 @@ async function loadCopy(): Promise<OfflineCopy> {
 }
 
 /** The colors of the boxes drawn on the photo, by group. */
-const BOX = { need: '#2f9e44', own: '#1c7ed6', elsewhere: '#f59f00', other: '#868e96', unsure: '#e8590c' } as const;
+const BOX = { need: '#2f9e44', own: '#1c7ed6', elsewhere: '#f59f00', other: '#868e96', unsure: '#e8590c', unread: '#ffffff' } as const;
 
-/** The photo with a box around each spine read as a game, colored by its answer (unsure ones dashed). */
-function PhotoBoxes({ url, width, height, lines, list }: { url: string; width: number; height: number; lines: ReadLine[]; list: ShelfChecklist }) {
+/**
+ * The photo with a box around each spine read as a game, colored by its answer (unsure ones dashed), and a faint
+ * one around the other text read: tap any box to say which game it is (or that it's none).
+ */
+function PhotoBoxes({ url, width, height, lines, list, fixes, onTap }: { url: string; width: number; height: number; lines: ReadLine[]; list: ShelfChecklist; fixes: Map<string, string | null>; onTap: (read: string) => void }) {
   const color = new Map<string, { color: string; dashed: boolean }>();
   for (const group of ['need', 'own', 'elsewhere', 'other'] as const) for (const f of list[group]) color.set(f.read, { color: BOX[group], dashed: false });
   for (const u of list.unsure) if (!color.has(u.read)) color.set(u.read, { color: BOX.unsure, dashed: true });
@@ -75,16 +84,62 @@ function PhotoBoxes({ url, width, height, lines, list }: { url: string; width: n
       <img src={url} alt="Your shelf photo, with a box around each game read" style={{ width: '100%', display: 'block', borderRadius: 6 }} />
       <svg viewBox={`0 0 ${width} ${height}`} style={{ position: 'absolute', inset: 0, width: '100%', height: '100%' }} aria-hidden>
         {lines.map((l, i) => {
+          // Only reads long enough to be a game can be fixed (the matcher's own rule).
+          if (l.score < 0.5 || shelfReadKey(l.text).length < 4) return null;
           const c = color.get(l.text);
-          if (!c) return null;
-          return <polygon key={i} points={l.box.map(([x, y]) => `${x},${y}`).join(' ')} fill="none" stroke={c.color} strokeWidth={stroke} strokeDasharray={c.dashed ? `${stroke * 3} ${stroke * 2}` : undefined} />;
+          const none = fixes.get(shelfReadKey(l.text)) === null;
+          return (
+            <polygon
+              key={i}
+              points={l.box.map(([x, y]) => `${x},${y}`).join(' ')}
+              fill="transparent"
+              stroke={c ? c.color : none ? BOX.other : BOX.unread}
+              strokeOpacity={c ? 1 : 0.55}
+              strokeWidth={c ? stroke : Math.max(1, stroke / 2)}
+              strokeDasharray={c?.dashed ? `${stroke * 3} ${stroke * 2}` : !c ? `${stroke} ${stroke * 2}` : undefined}
+              style={{ cursor: 'pointer', pointerEvents: 'all' }}
+              onClick={() => onTap(l.text)}
+            />
+          );
         })}
       </svg>
     </div>
   );
 }
 
-function FoundRow({ f, platformKey, canEdit, bought, onBuy }: { f: ShelfFound; platformKey: string; canEdit: boolean; bought: boolean; onBuy?: () => void }) {
+/** Which game a spine is: one of the console's games, or none; remembered for the next photo of it. */
+function FixSpine({ read, titles, current, saved, onSave, onClose }: { read: string; titles: string[]; current: string | null | undefined; saved: boolean; onSave: (title: string | null | undefined) => void; onClose: () => void }) {
+  const [value, setValue] = useState(current ?? '');
+  const known = useMemo(() => new Set(titles), [titles]);
+  return (
+    <Modal opened onClose={onClose} title="Which game is this?" centered>
+      <Stack gap="sm">
+        <Text size="sm">
+          Read on the photo: <b>“{read}”</b>
+        </Text>
+        <Autocomplete label="The game" placeholder="Start typing its title" data={titles} limit={30} value={value} onChange={setValue} />
+        <Group gap="xs">
+          <Button color="forest" disabled={!known.has(value)} onClick={() => onSave(value)}>
+            This is it
+          </Button>
+          <Button variant="default" onClick={() => onSave(null)}>
+            Not a game
+          </Button>
+          {current !== undefined && (
+            <Button variant="subtle" color="gray" onClick={() => onSave(undefined)}>
+              Forget the fix
+            </Button>
+          )}
+        </Group>
+        <Text size="xs" c="dimmed">
+          Remembered for this console: the next photo with this spine reads it this way{saved ? ', on every phone' : ', on this phone'}.
+        </Text>
+      </Stack>
+    </Modal>
+  );
+}
+
+function FoundRow({ f, platformKey, canEdit, bought, onBuy, onFix }: { f: ShelfFound; platformKey: string; canEdit: boolean; bought: boolean; onBuy?: () => void; onFix: () => void }) {
   const g = f.game;
   return (
     <Group justify="space-between" wrap="nowrap" align="flex-start" gap="xs">
@@ -102,7 +157,10 @@ function FoundRow({ f, platformKey, canEdit, bought, onBuy }: { f: ShelfFound; p
           {g.n ? ` · Your note: ${g.n}` : ''}
         </Text>
         <Text size="xs" c="dimmed" fs="italic">
-          read “{f.read}”
+          read “{f.read}”{f.fixed ? ', as you said' : ''} ·{' '}
+          <Anchor component="button" type="button" size="xs" onClick={onFix}>
+            {f.fixed ? 'Change' : 'Not it?'}
+          </Anchor>
         </Text>
       </Stack>
       {canEdit && onBuy && g.e !== undefined && (
@@ -136,14 +194,67 @@ export function ShelfCheckPage() {
   const [modelTitles, setModelTitles] = useState<string[]>([]);
   const [modelNote, setModelNote] = useState<string | null>(null);
   const [bought, setBought] = useState<Set<string>>(new Set());
+  // Fixes: the copy's (saved in Squirrelcade) and this phone's own (a viewer's, or ones made with no connection).
+  const [own, setOwn] = useState(ownFixes);
+  const [fixing, setFixing] = useState<string | null>(null);
   const run = useRef(0);
+  // The console's full list (Settings > Interface > Store Mode), kept on the phone for shelves with no signal.
+  const fullList = useQuery({
+    queryKey: ['shelf', 'titles', chosen?.key],
+    enabled: Boolean(chosen),
+    staleTime: 10 * 60_000,
+    networkMode: 'always',
+    retry: false,
+    queryFn: async () => {
+      const key = chosen!.key;
+      try {
+        const { titles } = await api<{ titles: string[] }>(`/shelf/titles/${encodeURIComponent(key)}`);
+        keepTitles(key, titles);
+        return titles;
+      } catch {
+        return keptTitles(key) ?? [];
+      }
+    },
+  });
 
   useEffect(() => () => {
     if (photo) URL.revokeObjectURL(photo.url);
   }, [photo]);
 
-  const matched = useMemo(() => (copy.data && chosen ? shelfMatcher(copy.data, chosen.index) : null), [copy.data, chosen]);
-  const list = useMemo(() => (matched && photo ? checklist(matched.matcher.match(allReads(photo.lines, modelTitles)), matched.games) : null), [matched, photo, modelTitles]);
+  const matched = useMemo(() => (copy.data && chosen ? shelfMatcher(copy.data, chosen.index, fullList.data ?? []) : null), [copy.data, chosen, fullList.data]);
+  const fixes = useMemo(() => (copy.data && chosen ? shelfFixes(copy.data, chosen.index, own[chosen.key] ?? {}) : new Map<string, string | null>()), [copy.data, chosen, own]);
+  const list = useMemo(() => (matched && photo ? checklist(matched.matcher.match(allReads(photo.lines, modelTitles), fixes), matched.games) : null), [matched, photo, modelTitles, fixes]);
+  const titles = useMemo(() => [...new Set([...(matched?.games.values() ?? [])].map((g) => g.t))].sort((a, b) => a.localeCompare(b)), [matched]);
+
+  /** Sends this phone's fixes to Squirrelcade, for the owner: each one sent leaves the phone's list (the copy has it). */
+  const sendOwn = async (platformKey: string, readKey: string, read: string, title: string | null | undefined) => {
+    if (title === undefined) await api(`/shelf/fixes?platform=${encodeURIComponent(platformKey)}&read=${encodeURIComponent(read)}`, { method: 'DELETE' });
+    else await api('/shelf/fixes', { method: 'PUT', json: { platform: platformKey, read, title } });
+    await queryClient.invalidateQueries({ queryKey: ['shelf', 'copy'] });
+    if (title !== undefined) setOwn(keepOwnFix(platformKey, readKey, undefined));
+  };
+
+  // Fixes made with no connection go to Squirrelcade once it answers (the read's key stands for the read).
+  useEffect(() => {
+    if (!canEdit || !copy.data) return;
+    for (const [platformKey, mine] of Object.entries(ownFixes())) for (const [readKey, title] of Object.entries(mine)) void sendOwn(platformKey, readKey, readKey, title).catch(() => undefined);
+    // Once per page, when the copy is first there.
+  }, [canEdit, Boolean(copy.data)]);
+
+  const fix = async (read: string, title: string | null | undefined) => {
+    if (!chosen) return;
+    const readKey = shelfReadKey(read);
+    setFixing(null);
+    // On this phone at once, so the checklist changes now (and keeps it with no connection); then in Squirrelcade.
+    setOwn(keepOwnFix(chosen.key, readKey, title));
+    if (!canEdit) return;
+    try {
+      await sendOwn(chosen.key, readKey, read, title);
+    } catch (err) {
+      if (!unreachable(err)) notifyError(err);
+      else if (title === undefined) notifyError(new Error('Forgetting a fix saved in Squirrelcade needs a connection.'));
+    }
+  };
 
   const check = async (file: File | null) => {
     if (!file || !chosen) return;
@@ -224,7 +335,7 @@ export function ShelfCheckPage() {
         ) : (
           <Stack gap="xs">
             {items.map((f) => (
-              <FoundRow key={f.key} f={f} platformKey={chosen!.key} canEdit={canEdit} bought={bought.has(f.key)} onBuy={title === 'Need it' ? () => buy.mutate(f) : undefined} />
+              <FoundRow key={f.key} f={f} platformKey={chosen!.key} canEdit={canEdit} bought={bought.has(f.key)} onBuy={title === 'Need it' ? () => buy.mutate(f) : undefined} onFix={() => setFixing(f.read)} />
             ))}
           </Stack>
         )}
@@ -332,16 +443,27 @@ export function ShelfCheckPage() {
                         {' '}
                         If it is: {ANSWERS[u.answer].label}
                       </Text>
-                    )}
+                    )}{' '}
+                    <Anchor component="button" type="button" size="xs" onClick={() => void fix(u.read, u.title)}>
+                      It is
+                    </Anchor>
+                    {' · '}
+                    <Anchor component="button" type="button" size="xs" onClick={() => setFixing(u.read)}>
+                      It's another
+                    </Anchor>
                   </Text>
                 ))}
               </Stack>
             </Card>
           )}
-          <PhotoBoxes url={photo.url} width={photo.width} height={photo.height} lines={photo.lines} list={list} />
+          <PhotoBoxes url={photo.url} width={photo.width} height={photo.height} lines={photo.lines} list={list} fixes={fixes} onTap={setFixing} />
           <Text size="xs" c="dimmed">
-            Spines with no box weren't read well enough to name a game (stylized logos and very small print are the hardest). A closer photo of part of the shelf reads more.
+            Tap a box to say which game it is, or that it's none: the fix is remembered for the next photo. A faint box is text read that named no game; spines with no box weren't read well enough
+            (stylized logos and very small print are the hardest), and a closer photo of part of the shelf reads more.
           </Text>
+          {fixing !== null && (
+            <FixSpine key={fixing} read={fixing} titles={titles} current={fixes.get(shelfReadKey(fixing))} saved={canEdit} onSave={(t) => void fix(fixing, t)} onClose={() => setFixing(null)} />
+          )}
         </>
       )}
     </Stack>

@@ -222,6 +222,9 @@ export async function uiTest(target, account, check) {
       '/sets',
       '/sets/smoke-set',
       '/sets?tab=series',
+      '/series',
+      '/roots',
+      '/roots?view=timeline',
       '/pc',
       '/pc/wishlist',
       '/pc/wishlist?view=deals',
@@ -305,7 +308,7 @@ export async function uiTest(target, account, check) {
     found = await pageProblems();
     // Section titles are upper case on the page, and innerText gives them as shown.
     const shown = await drawer.innerText();
-    check('ui: a title opens the game drawer', found.length === 0 && /your copies/i.test(shown), found.join(' | ') || (/your copies/i.test(shown) ? '' : shown.slice(0, 200)));
+    check('ui: a title opens the game drawer', found.length === 0 && /your cop(y|ies)/i.test(shown), found.join(' | ') || (/your cop(y|ies)/i.test(shown) ? '' : shown.slice(0, 200)));
     // The chest before "Have it" and "You own it" in the drawer, and on the console's Owned tab (D142).
     const drawerChests = await drawer.locator('svg[viewBox="0 0 7 6"]').count();
     const tabChest = await page.getByRole('tab', { name: 'Owned', exact: true }).locator('svg[viewBox="0 0 7 6"]').count();
@@ -1066,14 +1069,38 @@ export async function uiTest(target, account, check) {
     found = await pageProblems();
     check('ui: the search opens a game', found.length === 0 && new URL(page.url()).searchParams.get('game') === 'playstation-3|Demons Souls', `${page.url()} ${found.join(' | ')}`);
 
-    // Edit my copy beside Have it (the owner's ask, 2026-10-11): one copy opens its window; several, a list to pick from.
+    // A game's page (D165): the shared header (chips, the Worth and Reviews circles), Your copy first with its own Edit
+    // this copy (no Edit my copy at the top any more), and its worth over time a click away.
     await page.goto(`${base}/collection?game=${encodeURIComponent('playstation-3|Tearaway')}`);
-    await page.getByRole('button', { name: /^Edit (my|a) copy/ }).click();
-    if (await page.getByRole('menuitem').first().isVisible().catch(() => false)) await page.getByRole('menuitem').first().click();
+    const gameHead = page.locator('.sc-game-head');
+    await gameHead.waitFor({ timeout: 10000 });
+    const haveChip = await gameHead.getByText(/Have it/).count();
+    const worthRing = await gameHead.getByLabel(/^Worth /).count();
+    const oldTop = await page.getByRole('button', { name: /^Edit (my|a) copy/ }).count();
+    await page.getByRole('button', { name: /^Worth .*: show its value over time/ }).first().click();
+    const graph = await page.getByText('What your copy is worth').waitFor({ timeout: 10000 }).then(
+      () => true,
+      () => false,
+    );
+    // Escape would close the page under the graph too: open the page afresh.
+    await page.goto(`${base}/collection?game=${encodeURIComponent('playstation-3|Tearaway')}`);
+    await page.getByRole('button', { name: 'Edit this copy' }).first().click();
     await page.getByRole('button', { name: 'Save and close' }).first().waitFor({ timeout: 10000 });
     found = await pageProblems();
-    check('ui: Edit my copy, beside Have it, opens the copy', found.length === 0, found.join(' | '));
+    check(
+      "ui: a game's page has the shared header, Edit this copy in the copy, and its worth over time",
+      found.length === 0 && haveChip > 0 && worthRing > 0 && oldTop === 0 && graph,
+      found.join(' | ') || `have: ${haveChip}, worth: ${worthRing}, old button: ${oldTop}, graph: ${graph}`,
+    );
     await page.keyboard.press('Escape');
+
+    // Roots (D165): the menu's section opens the consoles' histories and the timeline.
+    await page.goto(`${base}/roots`);
+    await page.getByRole('heading', { name: 'Roots' }).waitFor({ timeout: 10000 });
+    await settle();
+    found = await pageProblems();
+    const timelineTab = await page.getByRole('radio', { name: 'Timeline' }).count();
+    check('ui: the Roots section shows', found.length === 0 && timelineTab === 1, found.join(' | ') || `timeline tab: ${timelineTab}`);
 
     // Check a list: several games at once, with and without their console, and a barcode Store Mode knows
     // (saved for Okami here), as a handheld scanner types it.
@@ -1133,6 +1160,21 @@ export async function uiTest(target, account, check) {
     const photoPlaced = (await (await page.request.get(`${base}/api/v1/collection/items?location=${encodeURIComponent('shelf photo bag')}`)).json()).items.map((i) => i.title).sort();
     found = await pageProblems();
     check('ui: a shelf photo puts the games you have in a place', found.length === 0 && photoPlaced.join(',') === 'Demons Souls,Puppeteer,Tearaway', found.join(' | ') || photoPlaced.join(', '));
+
+    // A spine fixed (Check a shelf's next steps): Not it? on Puppeteer, then Not a game: off the list at once, and
+    // remembered in Squirrelcade (in Store Mode's offline copy) for the next photo. Forgotten again after.
+    const puppeteerRow = page.locator('.mantine-Stack-root').filter({ has: page.getByText('Puppeteer', { exact: true }) }).filter({ has: page.getByRole('button', { name: 'Not it?' }) }).last();
+    await puppeteerRow.getByRole('button', { name: 'Not it?' }).click();
+    await page.getByRole('dialog').getByRole('button', { name: 'Not a game' }).click();
+    await page.getByText(/2 games for sure/).waitFor({ timeout: 10000 });
+    let shelfFixes = [];
+    for (let i = 0; i < 20 && shelfFixes.length === 0; i++) {
+      shelfFixes = (await (await page.request.get(`${base}/api/v1/lookup/offline`)).json()).fixes ?? [];
+      if (shelfFixes.length === 0) await page.waitForTimeout(250);
+    }
+    found = await pageProblems();
+    check('ui: a spine fixed as no game leaves the list and is remembered', found.length === 0 && shelfFixes.length === 1 && shelfFixes[0][2] === null, found.join(' | ') || JSON.stringify(shelfFixes));
+    await page.request.delete(`${base}/api/v1/shelf/fixes?platform=playstation-3&read=${encodeURIComponent(shelfFixes[0]?.[1] ?? '')}`);
 
     // Pack a place (D157): two games into a place by typed title, a label read as a handheld scanner types it, the place
     // renamed on the Places page, and the Stash's filter finding both under the new name.

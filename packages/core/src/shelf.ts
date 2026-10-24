@@ -37,6 +37,8 @@ export interface ShelfMatch {
   /** Set when unsure: why, and the other game it could be. */
   doubt?: ShelfDoubt;
   other?: string;
+  /** Said by you: a fix remembered for this read. */
+  fixed?: true;
 }
 
 export interface ShelfResult {
@@ -141,6 +143,17 @@ function compare(read: string, form: Form): { likeness: number; numberRead: bool
   return { likeness, numberRead: ok };
 }
 
+/**
+ * The key a fix is remembered by (the shelf's next steps: "this spine's text is that game"): the read as compact
+ * text, so the same spine read again, spaced or cased otherwise, finds its fix. A key is its own key, so a phone
+ * can send a fix it kept by its key alone.
+ */
+export function shelfReadKey(text: string): string {
+  let key = compact(text);
+  for (let i = 0, next = compact(key); next !== key && i < 5; i++, next = compact(key)) key = next;
+  return key;
+}
+
 /** A read as compact text: spaces gone, O read for 0 and l or I for 1 beside a digit. */
 function compact(text: string): string {
   return normalizeTitle(text.replace(/['’`]s\b/gi, 's'))
@@ -159,9 +172,12 @@ export class ShelfMatcher {
   private readonly index: Indexed[];
   /** For each pair of letters, the games whose forms have it. */
   private readonly byPair = new Map<string, number[]>();
+  /** The games by their title, for fixes (the first of a title wins). */
+  private readonly byTitle = new Map<string, Indexed>();
 
   constructor(games: ShelfGame[]) {
     this.index = games.map((game) => ({ game, forms: allForms(game.title) }));
+    for (const x of this.index) if (!this.byTitle.has(normalizeTitle(x.game.title))) this.byTitle.set(normalizeTitle(x.game.title), x);
     this.index.forEach((x, n) => {
       const seen = new Set<string>();
       for (const f of x.forms) for (const p of f.pairs!.keys()) seen.add(p);
@@ -185,8 +201,12 @@ export class ShelfMatcher {
     return [...shared].filter(([, k]) => k >= need).map(([n]) => this.index[n]!);
   }
 
-  /** Each line read on one photo matched to the games: sure ones, and unsure ones with their best guess. */
-  match(lines: ShelfRead[]): ShelfResult {
+  /**
+   * Each line read on one photo matched to the games: sure ones, and unsure ones with their best guess. A fix wins
+   * over matching: by the read's key (shelfReadKey), the title you said it is, or null for "not a game". A fix to a
+   * game not in the list is left out, and the read is matched as usual.
+   */
+  match(lines: ShelfRead[], fixes?: ReadonlyMap<string, string | null>): ShelfResult {
     const sure = new Map<string, ShelfMatch>();
     const unsure = new Map<string, ShelfMatch>();
     let count = 0;
@@ -195,6 +215,13 @@ export class ShelfMatcher {
       const read = compact(line.text);
       if (read.length < 4) continue;
       count++;
+      const fix = fixes?.size ? fixes.get(shelfReadKey(line.text)) : undefined;
+      if (fix === null) continue;
+      const fixedTo = fix === undefined ? undefined : this.byTitle.get(normalizeTitle(fix));
+      if (fixedTo) {
+        sure.set(fixedTo.game.key, { key: fixedTo.game.key, title: fixedTo.game.title, read: line.text, likeness: 1, fixed: true });
+        continue;
+      }
       // The read as it is, and without an edition at its end ("... Deluxe Edition" on the spine, not in the list).
       const bare = normalizeTitle(withoutEdition(line.text).replace(/['’`]s\b/gi, 's')).replace(/ /g, '');
       const tries = bare && bare !== read && bare.length >= 4 ? [read, bare] : [read];

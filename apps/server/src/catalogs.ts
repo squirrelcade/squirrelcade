@@ -63,6 +63,8 @@ export interface SourceEntry extends NewEntry {
   source?: string;
   /** Why the source counts it as a physical release (list: the user's own list), if it does. */
   evidence?: string | null;
+  /** The Wikipedia article the source's list links it to (Roots, D165). */
+  wikiArticle?: string | null;
 }
 
 /** What syncing a source into a console's catalog changed. */
@@ -216,6 +218,7 @@ export class CatalogService {
           targetStatus: e.targetStatus ?? 'required',
           source: e.source ?? sources[0]!,
           evidence: e.evidence ?? null,
+          wikiArticle: e.wikiArticle?.trim() || null,
           updatedAt: now,
         };
         if (row) {

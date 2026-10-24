@@ -1,7 +1,10 @@
 import { aroundThisDate, dayIn, normalizeTitle, pickOfTheDay, priceChartingUrl, shopLinksFor, SHOPS_IN_LISTS, shopUrl, type DayPick, type ScoreComponent } from '@squirrelcade/core';
 import { eq } from 'drizzle-orm';
-import type { FastifyInstance } from 'fastify';
+import type { FastifyInstance, FastifyRequest } from 'fastify';
+import { shown } from './access.js';
 import type { Db } from './db/index.js';
+import type { GameStar, HeaderReviews } from './gameHeader.js';
+import type { RommLink } from './romm.js';
 import type { DealsService, DealView } from './deals.js';
 import { appState } from './db/schema.js';
 import type { HistoryService } from './history.js';
@@ -16,6 +19,12 @@ import type { WishlistService } from './wishlist.js';
  * no repeats for a while), shown on the Wishlist page and, if you like, sent as a message at an hour you choose.
  * "Another one" passes it over and draws again. No AI and no outside service: the wishlist's own points decide.
  */
+
+/** What Game of the Day shares with the game page's header (D165): its stars, and RomM's link to play it. */
+export interface GotdLook {
+  romm(platformKey: string, title: string): RommLink | null;
+  stars(platformKey: string, platform: string, title: string, reviews: HeaderReviews | null): GameStar[];
+}
 
 /** Today's game, with what the Wishlist page's card and the message show. */
 export interface GotdView {
@@ -44,6 +53,10 @@ export interface GotdView {
   links: { name: string; url: string }[];
   /** A fresh deal on it from PriceCharting's emails (an eBay listing below the market value), when there is one. */
   deal: Pick<DealView, 'date' | 'priceCents' | 'saveCents' | 'listingTitle' | 'listingUrl'> | null;
+  /** The header's stars beside its name (D165). */
+  stars: GameStar[];
+  /** Play on RomM, when RomM has it (Settings > Sources > RomM links games you don't own). */
+  romm: RommLink | null;
 }
 
 const HISTORY_KEY = 'gotd.history';
@@ -60,6 +73,7 @@ export class GameOfTheDayService {
     private readonly history: HistoryService | null,
     private readonly notifications: Pick<NotificationService, 'notice'> | null,
     private readonly deals: DealsService | null = null,
+    private readonly look: GotdLook | null = null,
   ) {}
 
   enabled(): boolean {
@@ -198,6 +212,8 @@ export class GameOfTheDayService {
       preference: this.wishlist.preferences().get(`${entry.platformKey}|${normalizeTitle(entry.title)}`) ?? null,
       links: [{ name: 'PriceCharting', url: priceChartingUrl(entry.title, entry.platformName) }, ...shops],
       deal: pickDeal(this.deals?.forGame(entry.platformKey, entry.title) ?? null),
+      stars: this.look?.stars(entry.platformKey, entry.platformName, entry.title, igdbGame?.rating != null ? { score: Math.round(igdbGame.rating), count: igdbGame.ratingCount ?? null, source: 'igdb' } : null) ?? [],
+      romm: this.look?.romm(entry.platformKey, entry.title) ?? null,
     };
   }
 
@@ -217,12 +233,14 @@ function pickDeal(d: DealView | null): GotdView['deal'] {
 
 export function registerGotdRoutes(app: FastifyInstance, gotd: GameOfTheDayService): void {
   const off = { error: 'off', message: 'The game of the day is off (Settings > Notifications > Game of the day).' };
-  app.get('/api/v1/gotd', async (_request, reply) => {
+  // A viewer sees RomM's link only when the owner shares it (Settings > Security > Viewers).
+  const forViewer = (request: FastifyRequest, game: GotdView | null) => (game && !shown(request).romm ? { ...game, romm: null } : game);
+  app.get('/api/v1/gotd', async (request, reply) => {
     if (!gotd.enabled()) return reply.code(404).send(off);
-    return { game: gotd.current() };
+    return { game: forViewer(request, gotd.current()) };
   });
-  app.post('/api/v1/gotd/another', async (_request, reply) => {
+  app.post('/api/v1/gotd/another', async (request, reply) => {
     if (!gotd.enabled()) return reply.code(404).send(off);
-    return { game: gotd.another() };
+    return { game: forViewer(request, gotd.another()) };
   });
 }

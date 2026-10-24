@@ -39,6 +39,8 @@
   --sc-info-bg: #e3eefa;
   --sc-info: #1d4f86;
   --sc-info-line: #a9c5e8;
+  --sc-romm-bg: #ece6ff;
+  --sc-romm: #4b2fb3;
 }
 
 [data-mantine-color-scheme='dark'] {
@@ -71,6 +73,8 @@
   --sc-info-bg: #15263a;
   --sc-info: #9cc7f5;
   --sc-info-line: #26466a;
+  --sc-romm-bg: #2a2140;
+  --sc-romm: #d9ccff;
 }
 
 /* Cards and windows on the ground: the kit's surface (the page itself is Mantine's body, the ground). */
@@ -470,6 +474,98 @@
 .sc-release:focus-visible {
   outline: 2px solid var(--sc-cade);
   outline-offset: 1px;
+}
+
+/* One header for a game (D165): the chips' tones (have it, wanted, not yet, RomM) and links shaped as chips. */
+.sc-chip[data-tone='have'] {
+  background: var(--sc-have-bg);
+  color: var(--sc-have);
+}
+.sc-chip[data-tone='want'] {
+  background: var(--sc-gold-bg);
+  color: var(--sc-gold);
+}
+.sc-chip[data-tone='missing'] {
+  background: transparent;
+  border: 1px dashed var(--sc-gold);
+  color: var(--sc-gold);
+  padding: 3px 9px;
+}
+.sc-chip[data-tone='info'] {
+  background: var(--sc-info-bg);
+  color: var(--sc-info);
+}
+.sc-chip[data-tone='romm'] {
+  background: var(--sc-romm-bg);
+  color: var(--sc-romm);
+}
+a.sc-chip,
+button.sc-chip {
+  border: 0;
+  cursor: pointer;
+  font-family: inherit;
+  text-decoration: none;
+}
+button.sc-chip[data-tone='missing'] {
+  border: 1px dashed var(--sc-gold);
+}
+a.sc-chip:hover,
+button.sc-chip:hover {
+  filter: brightness(1.08);
+}
+a.sc-chip:focus-visible,
+button.sc-chip:focus-visible {
+  outline: 2px solid var(--sc-cade);
+  outline-offset: 2px;
+}
+
+/* A game's stars beside its name: Top 100 with its place, best-selling, an award, critics' favorite, launch title. */
+.sc-star {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 9px;
+  border-radius: 999px;
+  border: 1px solid var(--sc-gold-line);
+  background: var(--sc-gold-bg);
+  color: var(--sc-gold);
+  font-family: inherit;
+  font-size: 12.5px;
+  font-weight: 700;
+  line-height: 1.5;
+  white-space: nowrap;
+  text-decoration: none;
+  vertical-align: middle;
+}
+a.sc-star,
+button.sc-star {
+  cursor: pointer;
+}
+.sc-star[data-more] {
+  background: transparent;
+  border-color: var(--sc-line-strong);
+  color: var(--sc-muted);
+}
+
+/* The game page's head: cover, chips, the name with its stars, then its two circles (they wrap under on a phone). */
+.sc-game-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 14px 18px;
+}
+.sc-game-head-main {
+  display: flex;
+  gap: 14px;
+  flex: 1 1 300px;
+  min-width: 0;
+}
+.sc-game-name {
+  margin: 0;
+  font-family: Fredoka, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+  font-weight: 700;
+  font-size: 24px;
+  line-height: 1.15;
 }
 
 /* The game of the day's name: the card's headline. */

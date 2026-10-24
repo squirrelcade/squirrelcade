@@ -1,4 +1,6 @@
+import { eq } from 'drizzle-orm';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { igdbGames, platforms } from './db/schema.js';
 import type { FetchLike } from './igdb.js';
 import { seedCatalogs, setUp, testApp } from './test-helpers.js';
 import { titlesOf } from './vision.js';
@@ -193,6 +195,36 @@ describe('the vision model, signed in', () => {
     expect((await g.app.inject({ url: '/api/v1/helper/next?wait=10', headers: { 'x-api-key': key } })).statusCode).toBe(204);
     expect((await g.app.inject({ method: 'POST', url: '/api/v1/helper/answer', headers: { 'x-api-key': key }, payload: { id: work.id, titles: [] } })).statusCode).toBe(404);
     expect((await g.app.inject({ url: '/api/v1/helper/next?wait=10' })).statusCode).toBe(401);
+  });
+});
+
+describe("a shelf's fixes and the console's full list", () => {
+  it('remembers a read fixed to a game, or to no game, in the offline copy', async () => {
+    const put = (payload: object) => g.app.inject({ method: 'PUT', url: '/api/v1/shelf/fixes', cookies, payload });
+    expect((await put({ platform: 'wii', read: 'XENO  BLADE', title: 'Xenoblade Chronicles' })).json()).toEqual({ ok: true });
+    expect((await put({ platform: 'wii', read: 'WII SPORTS', title: null })).json()).toEqual({ ok: true });
+    expect((await put({ platform: 'wii', read: 'abc', title: 'Okami' })).statusCode).toBe(400);
+    expect((await put({ platform: 'no-such-console', read: 'OKAMI', title: 'Okami' })).statusCode).toBe(400);
+    const copy = (await g.app.inject({ url: '/api/v1/lookup/offline', cookies })).json();
+    const wii = copy.platforms.findIndex((p: { key: string }) => p.key === 'wii');
+    expect(copy.fixes).toEqual([
+      [wii, 'xenoblade', 'Xenoblade Chronicles'],
+      [wii, 'wiisports', null],
+    ]);
+    // Fixed again: replaced; forgotten: gone.
+    await put({ platform: 'wii', read: 'xenoblade', title: 'Okami' });
+    expect((await g.app.inject({ method: 'DELETE', url: '/api/v1/shelf/fixes?platform=wii&read=WII%20SPORTS', cookies })).json()).toEqual({ removed: true });
+    expect((await g.app.inject({ url: '/api/v1/lookup/offline', cookies })).json().fixes).toEqual([[wii, 'xenoblade', 'Okami']]);
+  });
+
+  it("lists IGDB's games for the console that the checklist and your copies don't have", async () => {
+    const wii = g.db.select({ id: platforms.id }).from(platforms).where(eq(platforms.key, 'wii')).get()!.id;
+    const game = (id: number, name: string, gameType: string | null = 'Main Game') => ({ platformId: wii, igdbId: id, data: JSON.stringify({ id, name, altNames: [], coverId: null, genres: [], themes: [], perspectives: [], franchise: null, japanese: null, released: null, gameType }) });
+    g.db.insert(igdbGames).values([game(1, 'Okami'), game(2, 'Super Mario Galaxy'), game(3, 'Xenoblade Chronicles: Extra Pack', 'DLC'), game(4, 'Wii Sports')]).run();
+    expect((await g.app.inject({ url: '/api/v1/shelf/titles/wii', cookies })).json()).toEqual({ titles: ['Super Mario Galaxy', 'Wii Sports'] });
+    g.settings.update({ 'interface.shelfFullList': false });
+    expect((await g.app.inject({ url: '/api/v1/shelf/titles/wii', cookies })).json()).toEqual({ titles: [] });
+    expect((await g.app.inject({ url: '/api/v1/shelf/titles/no-such-console', cookies })).statusCode).toBe(404);
   });
 });
 

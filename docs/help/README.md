@@ -14,6 +14,7 @@ The same guides are in the app: **Help** in the menu, and the **?** on each page
 - [The Acorns wishlist](wishlist.md): acorns and how they're given, Coming soon, Past releases, the PC wishlist, shop links.
 - [Store Mode](store-mode.md): your phone in a store, barcodes, no signal, checking a list.
 - [Sets and series](sets.md).
+- [Roots](roots.md): games in their time, and since: the Roots section and each game's Roots.
 - [Top 100 and history](top100-history.md): each console's best games and its history, and the timeline.
 - [Optional parts](features.md): Settings > Features, IGDB keys, and what leaves your server.
 - [Services and tools](services.md): every outside service, program and tool Squirrelcade works with or recommends, with links: what each does, what you need, what it costs, and where it's set up.

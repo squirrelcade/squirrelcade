@@ -231,12 +231,12 @@ export function useFoundPrices(on: boolean) {
  * Look up prices in my email (Collection › Improve, D155): the copies still missing a price, on the console and with
  * Added here as the page has them, looked for in the mailbox one after another; each found waits beside its copy.
  */
-export function LookUpPrices({ platform, addedHere }: { platform: string | null; addedHere: boolean }) {
+export function LookUpPrices({ platform, addedHere, recentDays, label = 'Look up prices in my email' }: { platform: string | null; addedHere: boolean; recentDays?: number; label?: string }) {
   const queryClient = useQueryClient();
   const [job, setJob] = useState<BatchJob | null>(null);
   const start = useMutation({
     mutationFn: async () => {
-      let j = await api<BatchJob>('/orders/batch', { method: 'POST', json: { ...(platform ? { platform } : {}), ...(addedHere ? { added: 'here' } : {}) } });
+      let j = await api<BatchJob>('/orders/batch', { method: 'POST', json: { ...(platform ? { platform } : {}), ...(addedHere ? { added: 'here' } : {}), ...(recentDays ? { recentDays } : {}) } });
       setJob(j);
       const until = Date.now() + 30 * 60_000;
       while (j.state === 'reading' && Date.now() < until) {
@@ -255,7 +255,7 @@ export function LookUpPrices({ platform, addedHere }: { platform: string | null;
   return (
     <Group gap={6} wrap="wrap">
       <Button size="compact-sm" variant="light" leftSection={start.isPending ? <Loader size={12} /> : <IconMailSearch size={14} />} onClick={() => start.mutate()} disabled={start.isPending}>
-        Look up prices in my email
+        {label}
       </Button>
       {job && job.state !== 'failed' && (
         <Text size="xs" c="dimmed" role="status">

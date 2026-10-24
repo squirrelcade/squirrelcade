@@ -63,6 +63,7 @@ const ReportPage = page(() => import('./pages/Report').then((m) => m.ReportPage)
 const ImportsPage = page(() => import('./pages/Imports').then((m) => m.ImportsPage));
 const PlatformDetailPage = page(() => import('./pages/PlatformDetail').then((m) => m.PlatformDetailPage));
 const PlatformsPage = page(() => import('./pages/Platforms').then((m) => m.PlatformsPage));
+const RootsPage = page(() => import('./pages/Roots').then((m) => m.RootsPage));
 const PcLibraryPage = page(() => import('./pages/PcLibrary').then((m) => m.PcLibraryPage));
 const PcWishlistPage = page(() => import('./pages/PcWishlist').then((m) => m.PcWishlistPage));
 const ComingSoonPage = page(() => import('./pages/ComingSoon').then((m) => m.ComingSoonPage));
@@ -70,6 +71,7 @@ const SettingsPage = page(() => import('./pages/Settings').then((m) => m.Setting
 const StorePage = page(() => import('./pages/Store').then((m) => m.StorePage));
 const ReviewPage = page(() => import('./pages/Review').then((m) => m.ReviewPage));
 const SetsPage = page(() => import('./pages/Sets').then((m) => m.SetsPage));
+const SeriesShelfPage = page(() => import('./pages/SeriesShelf').then((m) => m.SeriesShelfPage));
 const SetDetailPage = page(() => import('./pages/Sets').then((m) => m.SetDetailPage));
 const BackupsPage = page(() => import('./pages/system/Backups').then((m) => m.BackupsPage));
 const LogsPage = page(() => import('./pages/system/Logs').then((m) => m.LogsPage));
@@ -323,9 +325,11 @@ function Shell({ noConnection = false }: { noConnection?: boolean }) {
             <Route path="/collection/sale" element={<SharedWithViewers setting="security.viewersSeeCopyDetails"><ForSalePage /></SharedWithViewers>} />
             <Route path="/collection/statistics" element={<StatisticsPage />} />
             <Route path="/collection/report" element={<ReportPage />} />
+            <Route path="/roots" element={<RootsPage />} />
             <Route path="/platforms" element={<PlatformsPage />} />
             <Route path="/platforms/:key" element={<PlatformDetailPage />} />
             <Route path="/sets" element={<SetsPage />} />
+            <Route path="/series" element={<SeriesShelfPage />} />
             <Route path="/sets/:key" element={<SetDetailPage />} />
             <Route path="/pc" element={<FeatureOn feature="pc" name="The PC library"><PcLibraryPage /></FeatureOn>} />
             <Route path="/wishlist" element={<WishlistPage />} />

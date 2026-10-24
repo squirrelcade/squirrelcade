@@ -14,6 +14,7 @@ Turn on **Find what you paid in your order emails**. Then:
 
 - **Find in my email**, under a copy's Price paid (its window): Squirrelcade searches your mailbox for order or receipt emails that name the game, from the last year (**Look at order emails from the last**), reads the newest few, and shows what it found: the store, the day of the order, the item's price, its share of the tax and shipping, and a link to the listing or order where it has one. The best one fills in the price paid and the day bought; another can be used instead. **Nothing is saved until you save the copy.**
 - **Look up prices in my email**, on Stash > Improve: the same for the copies still missing a price (none paid and no estimate), the newest first, up to 30 at a time. Each one found waits beside its copy: **Use it** saves it, **Not this** forgets it, and **Fill in** opens the copy's window with it filled in. After a store haul (Improve's **Added here**), it's one click for all of them.
+- **Find their prices in my email**, on Stash > Recently added (and from Store Mode's **Added here** card): the same for the copies added in the days shown there, each price found waiting on its copy to use or turn down.
 
 On Gmail, the search is Gmail's own (the game's title as a phrase, with one of the words "order", "receipt", "purchase", "purchased", "bought" or "invoice"), so it's quick and finds the right emails. On other mailboxes it's the standard IMAP text search, and the reader decides which emails are orders.
 

@@ -1,4 +1,6 @@
+import { eq } from 'drizzle-orm';
 import { afterEach, describe, expect, it } from 'vitest';
+import { copies } from './db/schema.js';
 import type { FoundMail, MailboxOpener, MailSearch } from './mailImport.js';
 import { fakeTransports, seedCatalogs, setUp, testApp, type TestApp } from './test-helpers.js';
 
@@ -127,6 +129,19 @@ describe('prices from your order emails', () => {
     await g!.app.inject({ method: 'DELETE', url: `/api/v1/orders/found/${okami.id}`, cookies });
     await g!.app.inject({ method: 'PUT', url: `/api/v1/collection/copies/${shantae.id}`, cookies, payload: { costCents: 4000 } });
     expect((await g!.app.inject({ url: '/api/v1/orders/found', cookies })).json().found).toEqual([]);
+  });
+
+  it('looks up only the copies added in the last few days for a haul', async () => {
+    const { cookies } = await owner([EBAY_OKAMI, SHOP_TWO]);
+    g!.settings.update({ 'orders.find': true });
+    const okami = await addCopy(cookies, 'playstation-2', 'Okami');
+    const shantae = await addCopy(cookies, 'game-boy-color', 'Shantae');
+    g!.db.update(copies).set({ addedAt: new Date(Date.now() - 30 * 86_400_000).toISOString() }).where(eq(copies.id, shantae.id)).run();
+    const started = (await g!.app.inject({ method: 'POST', url: '/api/v1/orders/batch', cookies, payload: { recentDays: 7 } })).json();
+    const job = await settle<{ state: string; total: number; found: number }>(`/api/v1/orders/batch/${started.id}`, cookies);
+    expect(job).toMatchObject({ state: 'done', total: 1, found: 1 });
+    const kept = (await g!.app.inject({ url: '/api/v1/orders/found', cookies })).json().found as { copyId: number }[];
+    expect(kept.map((f) => f.copyId)).toEqual([okami.id]);
   });
 
   it("asks the AI model when one is set up, once for each email, with addresses left out; and the plain reader when it fails", async () => {

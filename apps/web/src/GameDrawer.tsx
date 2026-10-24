@@ -1,8 +1,9 @@
-import { DrawerHistory, type HistoryText } from './pages/History';
+import { type HistoryText } from './pages/History';
+import { RootsPart } from './RootsPart';
 import { COMPLETENESS_LABELS, missingParts, partsSearch, priceChartingUrl, shopLinksFor, shopUrl, type Completeness, type SettingsValues, type ShopLink, SHOPS_IN_LISTS } from '@squirrelcade/core';
-import { Anchor, Badge, Box, Button, Divider, Drawer, Group, Loader, Menu, Modal, Spoiler, Stack, Table, Text, Textarea, Tooltip } from '@mantine/core';
+import { Anchor, Badge, Box, Button, Divider, Drawer, Group, Loader, Menu, Modal, SimpleGrid, Spoiler, Stack, Text, Textarea, Tooltip, VisuallyHidden } from '@mantine/core';
 import { useMediaQuery } from '@mantine/hooks';
-import { IconCheck, IconChevronDown, IconClock, IconEyeOff, IconNotes, IconPencil, IconPlus, IconRestore, IconShoppingCart, IconX } from '@tabler/icons-react';
+import { IconCheck, IconClock, IconEyeOff, IconNotes, IconPencil, IconPlus, IconRestore, IconShoppingCart, IconX } from '@tabler/icons-react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Fragment, useEffect, useState, type ReactNode } from 'react';
 import { Link, useSearchParams } from 'react-router';
@@ -12,17 +13,19 @@ import { Cover } from './components';
 import { SellHelper } from './SellHelper';
 import { AddCopyModal, CopyDetailLine, CopyDetailsModal, TestBadge, type CopyDetail, type CopyRef, type CopyTest, type Loan, type PhotoInfo } from './CopyDetails';
 import { PlayPicker, type Play } from './Playing';
-import { count, date, money, releaseDate } from './format';
+import { count, date, money, releaseDate, wholeMoney } from './format';
 import { overGoalNote } from './Goal';
 import { notifyError, notifySuccess, useCanEdit, useSetting } from './hooks';
 import { NOTE_MAX, useGameNotes } from './notes';
 import { PreferencePicker } from './Preference';
 import { RegionBadge } from './Region';
-import { RommLinks, type RommLink } from './Romm';
-import { Acorns, Have, Reviews, StashMark } from './Acorn';
+import { type RommLink } from './Romm';
+import { Acorn, Acorns, Reviews, StashMark } from './Acorn';
+import { ConsoleChip, GameHeader, ReviewsRing, RommChip, ScoreRing, type GameStar, type HeaderReviews } from './GameHeader';
+import { ConsoleRowChips, CopiesFrame, Fact, GetItCard, KeptIn, OnPc, OtherConsoles, Thumbs, WorthGraph, WorthValue, type ConsoleCopy, type ConsoleRow } from './CopiesCard';
 
 /** One game on one console (GET /api/v1/game). */
-interface GameView {
+export interface GameView {
   platformKey: string;
   platform: string;
   title: string;
@@ -94,29 +97,20 @@ interface GameView {
   retroAchievements: RaGame | null;
   /** Your progress on it on Xbox and PlayStation (with those parts on). */
   achievements: AchievementView[];
+  /** The header's stars (D165): Top 100 place, critics' favorite, launch title (best-selling and awards with Roots). */
+  stars: GameStar[];
+  /** What its copies are worth together on every console, and the share of your games worth less. */
+  worth: { cents: number; copies: number; percentile: number } | null;
+  /** The Reviews circle: Metacritic's score when known, IGDB's rating otherwise. */
+  reviews: HeaderReviews | null;
+  /** Every console it's on or you have it on, in release order, this one marked. */
+  consoles: ConsoleRow[];
+  /** A PC game's storefront links ("Open in Steam"). */
+  pcLinks: { storefront: string; name: string; url: string }[];
 }
 
-/** A game's progress on Xbox or PlayStation (GET /api/v1/game). */
-type DrawerCopy = GameView['copies'][number];
-
-/**
- * A copy as the "Edit a copy" list names it, numbered as Your copies lists them: its title if it differs, condition,
- * where it's kept, what it's worth and what you paid, when added (two loose copies added the same day still differ by
- * their number).
- */
-function copyLabel(x: DrawerCopy, n: number, gameTitle: string, currency: string, dateFormat: Parameters<typeof date>[1]): string {
-  return [
-    `Copy ${n}`,
-    x.title !== gameTitle ? x.title : null,
-    COMPLETENESS_LABELS[x.completeness as Completeness] ?? x.completeness,
-    x.details?.location ? `in ${x.details.location}` : null,
-    x.valueCents ? `worth ${money(x.valueCents, currency)}` : null,
-    x.costCents ? `paid ${money(x.costCents, currency)}` : null,
-    x.dateEntered ? `added ${date(x.dateEntered, dateFormat)}` : null,
-  ]
-    .filter(Boolean)
-    .join(' · ');
-}
+/** A copy on the game page (GET /api/v1/game's copies). */
+export type DrawerCopy = GameView['copies'][number];
 
 interface AchievementView {
   source: 'xbox' | 'playstation';
@@ -195,13 +189,14 @@ const STATUS: Record<string, { label: string; color: string }> = {
 /** Where a catalog's game came from, as the drawer says it. */
 const SOURCES: Record<string, string> = { list: 'From your list', wikipedia: 'From Wikipedia', 'nintendo-life': 'From Nintendo Life', user: 'Added by you' };
 
-const OWNERSHIP: Record<string, string> = { permanent: 'owned', subscription: 'subscription', historical: 'not verified' };
-
 /** The catalog statuses of a game you don't have yet, where "I bought it" applies. */
 const WANTED = new Set(['missing', 'unconfirmed', 'review', 'upcoming']);
 
 /** Everything a change in the drawer can touch, refreshed after it. */
 const TOUCHED = ['game', 'catalogs', 'wishlist', 'lookup', 'purchases', 'sets', 'review', 'notes', 'collection', 'send', 'copy', 'improve'];
+
+/** Two names of the same game, as written apart only by punctuation or case ("Uncharted 2 Among Thieves"). */
+const sameName = (a: string, b: string) => a.toLowerCase().replace(/[^\p{L}\p{N}]+/gu, '') === b.toLowerCase().replace(/[^\p{L}\p{N}]+/gu, '');
 
 /** The URL parameter the drawer reads: "platform key|title". */
 const PARAM = 'game';
@@ -442,43 +437,6 @@ function Section({ title, children }: { title: ReactNode; children: ReactNode })
   );
 }
 
-/** A copy's value over its collection updates: a small line, and how much it moved since the first (every value on hover). */
-function PriceTrend({ history, currency, dateFormat }: { history: { date: string; cents: number }[]; currency: string; dateFormat: SettingsValues['general.dateFormat'] }) {
-  if (history.length < 2) return null;
-  const width = 64;
-  const height = 18;
-  const values = history.map((p) => p.cents);
-  const low = Math.min(...values);
-  const span = Math.max(...values) - low || 1;
-  const points = values.map((v, i) => `${((i / (values.length - 1)) * width).toFixed(1)},${(height - 2 - ((v - low) / span) * (height - 4)).toFixed(1)}`).join(' ');
-  const first = history[0]!;
-  const change = history.at(-1)!.cents - first.cents;
-  const color = change > 0 ? 'teal' : change < 0 ? 'red' : 'dimmed';
-  return (
-    <Tooltip
-      label={
-        <Stack gap={0}>
-          {history.map((p) => (
-            <Text key={p.date} size="xs">
-              {date(p.date, dateFormat)}: {money(p.cents, currency)}
-            </Text>
-          ))}
-        </Stack>
-      }
-    >
-      <Group gap={4} justify="flex-end" wrap="nowrap">
-        <svg width={width} height={height} aria-hidden="true">
-          <polyline points={points} fill="none" stroke={`var(--mantine-color-${color === 'dimmed' ? 'gray' : color}-6)`} strokeWidth={1.5} />
-        </svg>
-        <Text size="xs" c={color}>
-          {change > 0 ? '+' : ''}
-          {money(change, currency)} since {date(first.date, dateFormat)}
-        </Text>
-      </Group>
-    </Tooltip>
-  );
-}
-
 /** A change the drawer makes through the API, with what to say once it's done. */
 interface Change {
   path: string;
@@ -540,16 +498,8 @@ export function GameDrawer() {
     if (g) remember({ platformKey: g.platformKey, platform: g.platform, title: g.title });
   }, [g?.platformKey, g?.title]);
   const status = c ? STATUS[c.status] : undefined;
-  // The redesign's status tags (0.50.0): how many you have, its place in the console's Top 100, on the wishlist.
+  // How many copies of it you have on this console.
   const owned = g ? g.copies.reduce((n, x) => n + x.quantity, 0) : 0;
-  const tags = g
-    ? [
-        owned > 0 ? { label: owned > 1 ? `Have it ×${owned}` : 'Have it', tone: 'have' } : null,
-        g.history?.top100 ? { label: `Top 100 · #${g.history.top100.rank}`, tone: 'deep' } : null,
-        owned === 0 && g.wishlist?.rank ? { label: `Wishlist #${g.wishlist.rank}`, tone: 'want' } : null,
-        owned === 0 && c?.status === 'missing' && !g.wishlist?.rank ? { label: 'Missing', tone: 'missing' } : null,
-      ].filter((t): t is { label: string; tone: string } => t !== null)
-    : [];
   // A second copy that could go: the least valuable one.
   const spare = owned > 1 && g ? [...g.copies].sort((a, b) => (a.valueCents ?? 0) - (b.valueCents ?? 0))[0] : undefined;
   const busy = change.isPending;
@@ -558,6 +508,9 @@ export function GameDrawer() {
   // What the owner played, and their copies' details, show to viewers only when the owner shares them.
   const seesPlay = useSetting('security.viewersSeePlay', true) || canEdit;
   const [editing, setEditing] = useState<CopyRef | null>(null);
+  // The copy whose worth over time is shown (its Worth opens it).
+  const [graphing, setGraphing] = useState<DrawerCopy | null>(null);
+  const openGame = useOpenGame();
   /** A copy's window: its condition, what you paid, when, notes, photos, where it is, lending. */
   const editRef = (x: DrawerCopy): CopyRef => ({
     copyKey: x.copyKey,
@@ -566,6 +519,39 @@ export function GameDrawer() {
     condition: COMPLETENESS_LABELS[x.completeness as Completeness] ?? x.completeness,
     copy: { id: x.id, completeness: x.completeness, costCents: x.costCents, datePurchased: x.datePurchased, notes: x.notes, slots: x.slots, estimatedCents: x.estimatedCents, platformKey: g!.platformKey, gradingCompany: x.gradingCompany, gradingCertId: x.gradingCertId },
   });
+  /** A copy on another console, opened from its line (the game page shows every console's copies). */
+  const otherRef = (r: ConsoleRow, x: ConsoleCopy): CopyRef => ({
+    copyKey: x.copyKey,
+    title: x.title,
+    platform: r.platform,
+    condition: COMPLETENESS_LABELS[x.completeness as Completeness] ?? x.completeness,
+    copy: { id: x.id, completeness: x.completeness, costCents: x.costCents, datePurchased: x.datePurchased, notes: x.notes, slots: x.slots, estimatedCents: x.estimatedCents, platformKey: r.platformKey, gradingCompany: x.gradingCompany, gradingCertId: x.gradingCertId },
+  });
+  // Copies on every console, the consoles you have it on besides this one, the ones it's on that you don't have yet.
+  const copiesCount = g ? g.consoles.reduce((n, r) => n + r.copies.reduce((m, x) => m + x.quantity, 0), 0) : 0;
+  const otherConsoles = g ? g.consoles.filter((r) => !r.current && r.copies.length > 0).length : 0;
+  const notYet = g && (owned > 0 || otherConsoles > 0) ? g.consoles.filter((r) => !r.current && r.copies.length === 0 && r.status !== null && WANTED.has(r.status)) : [];
+  const consolesHad = g ? g.consoles.filter((r) => r.copies.length > 0).length : 0;
+  const pcStores = g ? [...new Set(g.pc.map((x) => x.storefront))] : [];
+  const haveLabel = !g
+    ? null
+    : g.platformKey === 'pc'
+      ? pcStores.length > 0
+        ? `Have it · ${pcStores.join(', ')}`
+        : null
+      : owned > 0
+        ? [owned > 1 ? `Have it ×${owned}` : 'Have it', consolesHad > 1 ? `${consolesHad} consoles` : null, pcStores.length > 0 ? 'and PC' : null].filter(Boolean).join(' · ')
+        : null;
+  const copiesAside = !g
+    ? null
+    : [
+        copiesCount > 0 ? `${count(copiesCount)} ${copiesCount === 1 ? 'copy' : 'copies'}${consolesHad > 1 ? ` on ${consolesHad} consoles` : ''}` : null,
+        g.worth && consolesHad > 1 ? `worth ${money(g.worth.cents, currency)}` : null,
+        pcStores.length > 0 ? 'and on PC' : null,
+        g.copies.length === 1 && g.copies[0]!.dateEntered ? `added ${date(g.copies[0]!.dateEntered, dateFormat)}` : null,
+      ]
+        .filter(Boolean)
+        .join(' · ');
   // The windows opened from the drawer keep what they were opened for, and live outside its content: a refresh that
   // redraws the content (WebKit showed one) must not close a window or lose what was typed in it.
   const [adding, setAdding] = useState<{ platformKey: string; platform: string; title: string } | null>(null);
@@ -584,93 +570,400 @@ export function GameDrawer() {
   const snooze = (until: string | null) => g && change.mutate({ path: '/wishlist/snooze', method: 'PUT', json: { platformKey: g.platformKey, title: g.title, until } });
 
   return (
-    <Drawer opened={Boolean(platformKey && title)} onClose={close} position="right" size={narrow ? '100%' : 'lg'} title={<Text fw={700}>{title}</Text>}>
+    <Drawer
+      opened={Boolean(platformKey && title)}
+      onClose={close}
+      position="right"
+      // Wide enough for the header's circles beside the name and Roots' two columns (the mockups' 820 pixels).
+      size={narrow ? '100%' : 'xl'}
+      title={<VisuallyHidden>{title}</VisuallyHidden>}
+      // Escape closes the window on top (a copy's, its worth over time), not the page under it.
+      closeOnEscape={graphing === null && editing === null && adding === null && selling === null && confirming === null}
+    >
       {view.isLoading || !g ? (
         view.isError ? <Text c="red">This game couldn't be shown.</Text> : <Loader />
       ) : (
         <Stack gap="md">
-          <Group align="flex-start" wrap="nowrap" gap="md">
-            <Cover id={g.coverId} width={90} placeholder />
-            <Stack gap={4}>
-              {tags.length > 0 && (
-                <Group gap={6}>
-                  {tags.map((t) => (
-                    <span key={t.label} className="sc-tag" data-tone={t.tone}>
-                      {t.tone === 'have' ? <Have>{t.label}</Have> : t.label}
-                    </span>
-                  ))}
-                  {/* Your copy's window (condition, what you paid, photos, where it is...) right beside "Have it"; with
-                      several copies, a list to pick which (the owner, 2026-10-11). */}
-                  {canEdit && g.copies.length === 1 && (
-                    <button type="button" className="sc-tag" data-tone="edit" onClick={() => setEditing(editRef(g.copies[0]!))}>
-                      <IconPencil size={13} aria-hidden /> Edit my copy
-                    </button>
+          {/* One header for a game (D165): the console, Have it or its wishlist place, Play on RomM, the name with its
+              stars, then Worth (a game you have) or Acorns (one you don't) and Reviews, as Game of the Day draws them. */}
+          <GameHeader
+            coverId={g.coverId}
+            title={g.title}
+            stars={g.stars}
+            chips={
+              <>
+                <ConsoleChip platformKey={g.platformKey} platform={g.platform} />
+                {haveLabel && (
+                  <span className="sc-chip" data-tone="have">
+                    <StashMark size={13} /> {haveLabel}
+                  </span>
+                )}
+                {owned === 0 && g.wishlist?.rank ? (
+                  <span className="sc-chip" data-tone="want">
+                    <Acorn size={13} /> #{g.wishlist.rank} on your wishlist
+                  </span>
+                ) : null}
+                {owned === 0 && g.wishlist && <span className="sc-chip">{g.wishlist.priority} priority</span>}
+                {owned === 0 && !g.wishlist && c?.status === 'missing' && (
+                  <span className="sc-chip" data-tone="missing">
+                    Missing
+                  </span>
+                )}
+                {notYet.slice(0, 2).map((r) => (
+                  <button key={r.platformKey} type="button" className="sc-chip" data-tone="missing" onClick={() => openGame(r.platformKey, g.title)}>
+                    {r.platform}: not yet
+                  </button>
+                ))}
+                <RommChip link={g.romm} />
+              </>
+            }
+            sub={
+              <Stack gap={4}>
+                {g.igdb && (
+                  <Text size="sm" c="dimmed">
+                    {[g.igdb.genres.join(', '), g.igdb.released?.slice(0, 4)].filter(Boolean).join(' · ')}
+                    {g.igdb.franchise && (
+                      <>
+                        {' · '}
+                        <Anchor component={Link} to={`/sets?tab=series&series=${encodeURIComponent(g.igdb.franchise)}`} size="sm" underline="hover">
+                          {g.igdb.franchise}
+                        </Anchor>
+                      </>
+                    )}
+                  </Text>
+                )}
+                {g.platformKey !== 'pc' && (
+                  <Group gap={6}>
+                    {status ? (
+                      <Badge color={status.color} variant="light" style={{ textTransform: 'none' }} leftSection={c?.status === 'owned' ? <StashMark size={12} /> : undefined}>
+                        {status.label}
+                      </Badge>
+                    ) : (
+                      <Badge color="gray" variant="outline" style={{ textTransform: 'none' }} leftSection={g.copies.length > 0 ? <StashMark size={12} /> : undefined}>
+                        {g.copies.length > 0 ? 'You own it; not in the catalog' : "Not in the console's catalog"}
+                      </Badge>
+                    )}
+                    {c?.format && /game[\s-]*key/i.test(c.format) && (
+                      <Badge color="cyan" variant="light" style={{ textTransform: 'none' }}>
+                        Game-Key Card
+                      </Badge>
+                    )}
+                    {c?.releaseDate && (
+                      <Text size="xs" c="dimmed">
+                        Released {/^\d{4}/.test(c.releaseDate) ? releaseDate(c.releaseDate, dateFormat) : c.releaseDate}
+                      </Text>
+                    )}
+                  </Group>
+                )}
+                {c && (
+                  <Text size="xs" c="dimmed">
+                    {[SOURCES[c.source] ?? `From ${c.source}`, c.yourChoice && (c.targetStatus === 'excluded' ? 'you excluded it' : 'you said it counts'), c.notes].filter(Boolean).join(' · ')}
+                  </Text>
+                )}
+              </Stack>
+            }
+            rings={
+              <>
+                {owned === 0 && g.wishlist ? (
+                  <ScoreRing kind="acorns" fill={g.wishlist.score} text={String(g.wishlist.score)} size={92} label={`${g.wishlist.score} acorns`} />
+                ) : g.worth ? (
+                  <ScoreRing
+                    kind="worth"
+                    fill={g.worth.percentile}
+                    text={wholeMoney(g.worth.cents, currency)}
+                    size={92}
+                    label={`Worth ${money(g.worth.cents, currency)}`}
+                    tooltip={`${money(g.worth.cents, currency)} for ${g.worth.copies === 1 ? 'your copy' : `your ${count(g.worth.copies)} copies`}${otherConsoles > 0 ? ' on every console' : ''}: more than ${g.worth.percentile}% of your games`}
+                  />
+                ) : null}
+                {g.reviews && <ReviewsRing reviews={g.reviews} size={92} />}
+              </>
+            }
+          />
+
+          {/* Your copy first, whatever else is on (the owner: "this is still primarily a collecting application"); each
+              copy with its own Edit this copy (the owner, 2026-10-23: "move that edit my copy to the actual copy"). */}
+          {g.copies.length > 0 || g.platformKey === 'pc' ? (
+            <CopiesFrame title={copiesCount === 1 ? 'Your copy' : 'Your copies'} aside={copiesAside}>
+              <ConsoleRowChips rows={g.consoles} pc={g.pc} pcCurrent={g.platformKey === 'pc'} onOpen={(k) => openGame(k, g.title)} />
+              {g.copies.map((x, i) => (
+                <Box key={x.copyKey || `${x.productId}|${i}`} style={i > 0 ? { borderTop: '1px solid var(--sc-line)', paddingTop: 8 } : undefined}>
+                  <Group justify="space-between" align="flex-start" wrap="wrap" gap="sm">
+                    <SimpleGrid cols={{ base: 2, xs: 4 }} spacing="xs" verticalSpacing={6} style={{ flex: '1 1 300px' }}>
+                      <Fact label={g.copies.length > 1 ? `Copy ${i + 1}${sameName(x.title, g.title) ? '' : ` · ${x.title}`}` : sameName(x.title, g.title) ? 'Condition' : x.title}>
+                        <Text fw={600}>{COMPLETENESS_LABELS[x.completeness as Completeness] ?? x.completeness}</Text>
+                      </Fact>
+                      <Fact label="Paid">
+                        {x.costCents ? (
+                          <Text fw={600}>{money(x.costCents, currency)}</Text>
+                        ) : x.estimatedCents !== null ? (
+                          <Tooltip label="Your estimate of what it cost: never a price paid, never sent anywhere">
+                            <Text fw={600} fs="italic">
+                              estimated {money(x.estimatedCents, currency)}
+                            </Text>
+                          </Tooltip>
+                        ) : (
+                          <Text fw={600}>—</Text>
+                        )}
+                      </Fact>
+                      <Fact label="Worth">
+                        <WorthValue valueCents={x.valueCents} history={x.history} currency={currency} onGraph={() => setGraphing(x)} />
+                      </Fact>
+                      <Fact label="Kept in">
+                        <KeptIn location={x.details?.location ?? null} />
+                      </Fact>
+                    </SimpleGrid>
+                    <Thumbs photos={x.photos} />
+                  </Group>
+                  <Group gap={6} mt={6} wrap="wrap">
+                    <RegionBadge region={x.region} consoleLabel={x.consoleLabel} platformKey={g.platformKey} />
+                    {x.quantity > 1 && (
+                      <Text size="xs" c="dimmed">
+                        {x.quantity} copies
+                      </Text>
+                    )}
+                    {x.tests.find((t) => t.kind === 'test') && <TestBadge {...x.tests.find((t) => t.kind === 'test')!} dateFormat={dateFormat} />}
+                    {x.tests.find((t) => t.kind === 'rip') && <TestBadge {...x.tests.find((t) => t.kind === 'rip')!} dateFormat={dateFormat} />}
+                    <CopyDetailLine details={x.details} loans={x.loans} photos={x.photos} currency={currency} dateFormat={dateFormat} without={['place', 'photos']} />
+                    {x.dateEntered && g.copies.length > 1 && (
+                      <Text size="xs" c="dimmed">
+                        added {date(x.dateEntered, dateFormat)}
+                      </Text>
+                    )}
+                    <span style={{ flex: '1 1 0' }} />
+                    {canEdit && (
+                      <Button size="compact-sm" color="forest" leftSection={<IconPencil size={14} />} onClick={() => setEditing(editRef(x))}>
+                        Edit this copy
+                      </Button>
+                    )}
+                  </Group>
+                  {x.source === 'squirrelcade' && !x.missingSince && (
+                    <Text size="xs" c="dimmed" mt={4}>
+                      {x.sentAt ? `Sent to PriceCharting ${date(x.sentAt, dateFormat)}: waiting for an export that has it` : 'Added in Squirrelcade: not on PriceCharting yet'}
+                      {canEdit && !x.sentAt && (
+                        <>
+                          {' '}
+                          (
+                          <Anchor component={Link} to="/updates#send" size="xs">
+                            send it
+                          </Anchor>
+                          {' · '}
+                          <Anchor component="button" type="button" size="xs" onClick={() => change.mutate({ path: `/purchases/${x.id}`, method: 'DELETE', done: `Took back the copy of ${x.title} just added.` })}>
+                            take back
+                          </Anchor>
+                          )
+                        </>
+                      )}
+                    </Text>
                   )}
-                  {canEdit && g.copies.length > 1 && (
+                  {x.missingSince && (
+                    <Text size="xs" c="yellow.8" mt={4}>
+                      {x.source === 'spreadsheet' ? 'Not in your spreadsheet' : "Not in PriceCharting's export"} since {date(x.missingSince, dateFormat)}:{' '}
+                      {canEdit ? (
+                        <Anchor component={Link} to="/review?tab=copies" size="xs" c="inherit" td="underline">
+                          answer on Review
+                        </Anchor>
+                      ) : (
+                        'waiting on Review'
+                      )}
+                    </Text>
+                  )}
+                  {canEdit && (
+                    <Group gap={10} mt={4}>
+                      <Anchor
+                        component="button"
+                        type="button"
+                        size="xs"
+                        onClick={() => change.mutate({ path: '/copy/tests', method: 'POST', json: { key: x.copyKey, result: 'works' }, done: `${x.title}: tested, it works.` })}
+                      >
+                        {x.tests.some((t) => t.kind === 'test') ? 'tested again: it works' : 'tested: it works'}
+                      </Anchor>
+                      <Anchor component="button" type="button" size="xs" onClick={() => setSelling({ id: x.id, title: x.title })}>
+                        ready to sell
+                      </Anchor>
+                    </Group>
+                  )}
+                  {/* A copy that isn't complete: its missing parts looked for on your used marketplaces (D160). */}
+                  {canEdit &&
+                    (() => {
+                      const parts = missingParts(x.completeness, g.platformKey);
+                      const markets = shopLinksFor(shops ?? [], g.platformKey)
+                        .filter((sh) => sh.group === 'Used marketplaces')
+                        .slice(0, SHOPS_IN_LISTS);
+                      if (parts.length === 0 || markets.length === 0) return null;
+                      return (
+                        <Text size="xs" mt={2}>
+                          Find its {parts.join(' and ')}:{' '}
+                          {markets.map((sh, k) => (
+                            <span key={sh.name}>
+                              {k > 0 && ' · '}
+                              <Anchor href={shopUrl(sh.template, partsSearch(g.title, parts), g.platform)} target="_blank" rel="noreferrer" size="xs">
+                                {sh.name}
+                              </Anchor>
+                            </span>
+                          ))}
+                        </Text>
+                      );
+                    })()}
+                  {c && x.countsAs !== 'exact' && (
+                    <Text size="xs" c="dimmed" mt={2}>
+                      {x.countsAs ? `Counts as this game: ${MATCH_METHODS[x.countsAs].toLowerCase()}` : "Doesn't count as this game"}
+                      {canEdit && x.countsAs && REJECTABLE.has(x.countsAs) && (
+                        <>
+                          {' · '}
+                          <Anchor size="xs" onClick={() => decide(x.productId, 'rejected')}>
+                            not the same
+                          </Anchor>
+                        </>
+                      )}
+                      {canEdit && x.countsAs === 'confirmed' && (
+                        <>
+                          {' · '}
+                          <Anchor size="xs" onClick={() => decide(x.productId, 'undo')}>
+                            undo
+                          </Anchor>
+                        </>
+                      )}
+                    </Text>
+                  )}
+                </Box>
+              ))}
+              <OtherConsoles rows={g.consoles} currency={currency} canEdit={canEdit} onEdit={(r, x) => setEditing(otherRef(r, x))} onOpen={(k) => openGame(k, g.title)} />
+              <OnPc pc={g.pc} links={g.pcLinks} current={g.platformKey === 'pc'} onOpen={() => openGame('pc', g.title)} />
+              {canEdit && (
+                <Group gap="xs">
+                  {g.platformKey !== 'pc' && (
+                    <Button size="compact-sm" variant="subtle" leftSection={<IconPlus size={14} />} onClick={() => setAdding({ platformKey: g.platformKey, platform: g.platform, title: g.title })}>
+                      Add a copy
+                    </Button>
+                  )}
+                  {spare && (
+                    <Text size="xs" c="dimmed">
+                      You have {owned} copies of it.{' '}
+                      <Anchor component="button" type="button" size="xs" onClick={() => setSelling({ id: spare.id, title: spare.title })}>
+                        List one for sale
+                      </Anchor>
+                    </Text>
+                  )}
+                </Group>
+              )}
+            </CopiesFrame>
+          ) : (
+            <GetItCard
+              platformKey={g.platformKey}
+              platform={g.platform}
+              title={g.title}
+              shops={shops ?? []}
+              wishlist={g.wishlist}
+              actions={
+                <>
+                  {c && canEdit && WANTED.has(c.status) && !c.purchase && (
+                    <Button
+                      size="compact-sm"
+                      leftSection={<IconShoppingCart size={14} />}
+                      loading={busy}
+                      onClick={() => change.mutate({ path: '/purchases', method: 'POST', json: { entryId: c.entryId }, done: `${g.title} is in your collection. Its condition and price are under Your copy.` })}
+                    >
+                      I bought it
+                    </Button>
+                  )}
+                  {canEdit && (
+                    <Button size="compact-sm" variant="default" leftSection={<IconPlus size={14} />} onClick={() => setAdding({ platformKey: g.platformKey, platform: g.platform, title: g.title })}>
+                      Add a copy
+                    </Button>
+                  )}
+                  {canEdit && g.wishlist && !g.snoozedUntil && (
                     <Menu position="bottom-start" withinPortal>
                       <Menu.Target>
-                        <button type="button" className="sc-tag" data-tone="edit">
-                          <IconPencil size={13} aria-hidden /> Edit a copy <IconChevronDown size={12} aria-hidden />
-                        </button>
+                        <Button size="compact-sm" variant="default" leftSection={<IconClock size={14} />} disabled={busy}>
+                          Snooze
+                        </Button>
                       </Menu.Target>
                       <Menu.Dropdown>
-                        <Menu.Label>Which copy?</Menu.Label>
-                        {g.copies.map((x, i) => (
-                          <Menu.Item key={x.copyKey || `${x.productId}|${i}`} onClick={() => setEditing(editRef(x))}>
-                            {copyLabel(x, i + 1, g.title, currency, dateFormat)}
+                        <Menu.Label>Leave it off the wishlist for</Menu.Label>
+                        {SNOOZES.map(([label, months]) => (
+                          <Menu.Item key={label} onClick={() => snooze(monthsFromNow(months))}>
+                            {label}
                           </Menu.Item>
                         ))}
                       </Menu.Dropdown>
                     </Menu>
                   )}
-                </Group>
-              )}
-              <Text size="sm" c="dimmed">
-                {g.platform}
-              </Text>
-              {g.igdb && (
-                <Text size="sm">
-                  {[g.igdb.genres.join(', '), g.igdb.released?.slice(0, 4), g.igdb.rating !== null ? `IGDB ${Math.round(g.igdb.rating)} (${count(g.igdb.ratingCount ?? 0)} ratings)` : null]
-                    .filter(Boolean)
-                    .join(' · ')}
-                  {g.igdb.franchise && (
-                    <>
-                      {' · '}
-                      <Anchor component={Link} to={`/sets?tab=series&series=${encodeURIComponent(g.igdb.franchise)}`} size="sm" underline="hover">
-                        {g.igdb.franchise}
-                      </Anchor>
-                    </>
+                  {canEdit && c && WANTED.has(c.status) && (
+                    <Button size="compact-sm" variant="subtle" color="red" leftSection={<IconEyeOff size={14} />} onClick={() => setConfirming('exclude')}>
+                      Not a target
+                    </Button>
                   )}
-                </Text>
+                  <PreferencePicker platformKey={g.platformKey} title={g.title} value={g.preference} width={190} disabled={busy} />
+                </>
+              }
+              versions={
+                <Stack gap={6}>
+                  {c?.purchase && (
+                    <Text size="xs" c="dimmed">
+                      You marked it bought on {date(c.purchase.createdAt, dateFormat)}: it counts until an export has it.
+                    </Text>
+                  )}
+                  {g.snoozedUntil && (
+                    <Text size="sm">
+                      Snoozed until {date(g.snoozedUntil, dateFormat)}.{' '}
+                      {canEdit && (
+                        <Anchor size="sm" onClick={() => snooze(null)}>
+                          Wake it up
+                        </Anchor>
+                      )}
+                    </Text>
+                  )}
+                  {!g.wishlist && g.wishlistNote && (
+                    <Text size="xs" c="dimmed">
+                      {g.wishlistNote}
+                    </Text>
+                  )}
+                  <ConsoleRowChips rows={g.consoles} pc={g.pc} onOpen={(k) => openGame(k, g.title)} />
+                  <OtherConsoles rows={g.consoles} currency={currency} canEdit={canEdit} onEdit={(r, x) => setEditing(otherRef(r, x))} onOpen={(k) => openGame(k, g.title)} />
+                  <OnPc pc={g.pc} links={g.pcLinks} current={false} onOpen={() => openGame('pc', g.title)} />
+                </Stack>
+              }
+            />
+          )}
+
+          {c && canEdit && (c.status === 'unconfirmed' || (c.status === 'review' && c.targetStatus === 'review' && c.suggestions.length === 0)) && (
+            <Group gap="xs">
+              {c.status === 'unconfirmed' && (
+                <Button size="compact-sm" variant="light" leftSection={<IconCheck size={14} />} loading={busy} onClick={() => setStatus('required', `${g.title} had a physical release: it counts now.`)}>
+                  It's physical
+                </Button>
               )}
-              <Group gap={6}>
-                {status ? (
-                  <Badge color={status.color} variant="light" style={{ textTransform: 'none' }} leftSection={c?.status === 'owned' ? <StashMark size={12} /> : undefined}>
-                    {status.label}
-                  </Badge>
-                ) : (
-                  <Badge color="gray" variant="outline" style={{ textTransform: 'none' }} leftSection={g.copies.length > 0 ? <StashMark size={12} /> : undefined}>
-                    {g.copies.length > 0 ? 'You own it; not in the catalog' : "Not in the console's catalog"}
-                  </Badge>
-                )}
-                {c?.format && /game[\s-]*key/i.test(c.format) && (
-                  <Badge color="cyan" variant="light" style={{ textTransform: 'none' }}>
-                    Game-Key Card
-                  </Badge>
-                )}
-                {c?.releaseDate && (
-                  <Text size="xs" c="dimmed">
-                    Released {/^\d{4}/.test(c.releaseDate) ? releaseDate(c.releaseDate, dateFormat) : c.releaseDate}
+              {c.status === 'review' && c.targetStatus === 'review' && c.suggestions.length === 0 && (
+                <Button size="compact-sm" variant="light" loading={busy} onClick={() => setStatus('required', `${g.title} counts on ${g.platform}.`)}>
+                  It's a target
+                </Button>
+              )}
+            </Group>
+          )}
+
+          {c && canEdit && c.suggestions.length > 0 && (
+            <Section title="Look-alikes you own">
+              {c.suggestions.map((sg) => (
+                <Group key={sg.productId} gap={6} wrap={narrow ? 'wrap' : 'nowrap'} justify="space-between">
+                  <Text size="sm">
+                    {sg.title}{' '}
+                    <Text span size="xs" c="dimmed">
+                      ({sg.reason})
+                    </Text>
                   </Text>
-                )}
-              </Group>
-              {c && (
-                <Text size="xs" c="dimmed">
-                  {[SOURCES[c.source] ?? `From ${c.source}`, c.yourChoice && (c.targetStatus === 'excluded' ? 'you excluded it' : 'you said it counts'), c.notes].filter(Boolean).join(' · ')}
-                </Text>
-              )}
-            </Stack>
-          </Group>
+                  <Group gap={6} wrap="nowrap">
+                    <Button size="compact-xs" color="green" variant="light" leftSection={<IconCheck size={12} />} disabled={busy} onClick={() => decide(sg.productId, 'confirmed')}>
+                      Same game
+                    </Button>
+                    <Button size="compact-xs" variant="default" leftSection={<IconX size={12} />} disabled={busy} onClick={() => decide(sg.productId, 'rejected')}>
+                      Different
+                    </Button>
+                  </Group>
+                </Group>
+              ))}
+            </Section>
+          )}
 
           {summary.data?.summary && (
             <Spoiler maxHeight={66} showLabel="More" hideLabel="Less" styles={{ control: { fontSize: 'var(--mantine-font-size-sm)' } }}>
@@ -678,7 +971,8 @@ export function GameDrawer() {
             </Spoiler>
           )}
 
-          <DrawerHistory platformKey={g.platformKey} title={g.title} history={g.history} />
+          {/* Roots (D165): the game in its own time and since, its Top 100 place and why it matters first. */}
+          <RootsPart platformKey={g.platformKey} title={g.title} history={g.platformKey === 'pc' ? null : g.history} />
 
           {/* What you played of it: for games you own (a status for a game you don't have yet is a wish, not a play). */}
           {seesPlay && (g.copies.length > 0 || g.play) && (canEdit || g.play) && (
@@ -699,270 +993,45 @@ export function GameDrawer() {
             </Section>
           )}
 
-          {c && canEdit && (
-            <Group gap="xs">
-              {c.status === 'unconfirmed' && (
-                <Button size="compact-sm" variant="light" leftSection={<IconCheck size={14} />} loading={busy} onClick={() => setStatus('required', `${g.title} had a physical release: it counts now.`)}>
-                  It's physical
-                </Button>
-              )}
-              {c.status === 'review' && c.targetStatus === 'review' && c.suggestions.length === 0 && (
-                <Button size="compact-sm" variant="light" loading={busy} onClick={() => setStatus('required', `${g.title} counts on ${g.platform}.`)}>
-                  It's a target
-                </Button>
-              )}
-              {WANTED.has(c.status) && !c.purchase && (
-                <Button
-                  size="compact-sm"
-                  variant="default"
-                  leftSection={<IconShoppingCart size={14} />}
-                  loading={busy}
-                  onClick={() => change.mutate({ path: '/purchases', method: 'POST', json: { entryId: c.entryId }, done: `${g.title} is in your collection. Its condition and price are under Your copies.` })}
-                >
-                  I bought it
-                </Button>
-              )}
-            </Group>
-          )}
-          {canEdit && (
-            <Group gap="xs">
-              <Button size="compact-sm" variant="subtle" leftSection={<IconPlus size={14} />} onClick={() => setAdding({ platformKey: g.platformKey, platform: g.platform, title: g.title })}>
-                Add a copy
-              </Button>
-            </Group>
-          )}
-
-          {c && canEdit && c.suggestions.length > 0 && (
-            <Section title="Look-alikes you own">
-              {c.suggestions.map((s) => (
-                <Group key={s.productId} gap={6} wrap={narrow ? 'wrap' : 'nowrap'} justify="space-between">
-                  <Text size="sm">
-                    {s.title}{' '}
-                    <Text span size="xs" c="dimmed">
-                      ({s.reason})
-                    </Text>
-                  </Text>
-                  <Group gap={6} wrap="nowrap">
-                    <Button size="compact-xs" color="green" variant="light" leftSection={<IconCheck size={12} />} disabled={busy} onClick={() => decide(s.productId, 'confirmed')}>
-                      Same game
-                    </Button>
-                    <Button size="compact-xs" variant="default" leftSection={<IconX size={12} />} disabled={busy} onClick={() => decide(s.productId, 'rejected')}>
-                      Different
-                    </Button>
-                  </Group>
-                </Group>
-              ))}
+          {g.sets.length > 0 && (
+            <Section title="In your sets">
+              <Text size="sm">
+                {g.sets.map((st, i) => (
+                  <Fragment key={st.key || st.name}>
+                    {i > 0 && ', '}
+                    <Anchor component={Link} to={st.key ? `/sets/${st.key}` : '/sets'} size="sm">
+                      {st.name}
+                    </Anchor>
+                    {canEdit && st.key && (
+                      <>
+                        {' ('}
+                        <Anchor
+                          component="button"
+                          type="button"
+                          size="xs"
+                          c="dimmed"
+                          disabled={busy}
+                          onClick={() =>
+                            change.mutate({
+                              path: `/sets/${st.key}/games`,
+                              method: 'POST',
+                              json: { platformKey: g.platformKey, title: g.title, action: 'remove' },
+                              done: `${g.title} is out of ${st.name}; the set's page can put it back.`,
+                            })
+                          }
+                        >
+                          take out
+                        </Anchor>
+                        {')'}
+                      </>
+                    )}
+                  </Fragment>
+                ))}
+              </Text>
             </Section>
           )}
 
-          {g.copies.length > 0 && (
-            <Section title="Your copies">
-              <Table verticalSpacing={4}>
-                <Table.Tbody>
-                  {g.copies.map((x, i) => (
-                    <Table.Tr key={x.copyKey || `${x.productId}|${i}`}>
-                      <Table.Td>
-                        <Group gap={6} wrap="nowrap">
-                          <Text size="sm">
-                            {/* Numbered as the "Edit a copy" list names them, when there are several. */}
-                            {g.copies.length > 1 && (
-                              <Text span size="xs" c="dimmed">
-                                Copy {i + 1} ·{' '}
-                              </Text>
-                            )}
-                            {x.title}
-                          </Text>
-                          <RegionBadge region={x.region} consoleLabel={x.consoleLabel} platformKey={g.platformKey} />
-                        </Group>
-                        <Text size="xs" c="dimmed">
-                          {[COMPLETENESS_LABELS[x.completeness as Completeness] ?? x.completeness, x.quantity > 1 ? `${x.quantity} copies` : null, x.dateEntered ? `added ${date(x.dateEntered, dateFormat)}` : null]
-                            .filter(Boolean)
-                            .join(' · ')}
-                        </Text>
-                        {x.source === 'squirrelcade' && !x.missingSince && (
-                          <Text size="xs" c="dimmed">
-                            {x.sentAt ? `Sent to PriceCharting ${date(x.sentAt, dateFormat)}: waiting for an export that has it` : 'Added in Squirrelcade: not on PriceCharting yet'}
-                            {canEdit && !x.sentAt && (
-                              <>
-                                {' '}
-                                (
-                                <Anchor component={Link} to="/updates#send" size="xs">
-                                  send it
-                                </Anchor>
-                                {' · '}
-                                <Anchor component="button" type="button" size="xs" onClick={() => change.mutate({ path: `/purchases/${x.id}`, method: 'DELETE', done: `Took back the copy of ${x.title} just added.` })}>
-                                  take back
-                                </Anchor>
-                                )
-                              </>
-                            )}
-                          </Text>
-                        )}
-                        {x.missingSince && (
-                          <Text size="xs" c="yellow.8">
-                            {x.source === 'spreadsheet' ? 'Not in your spreadsheet' : "Not in PriceCharting's export"} since {date(x.missingSince, dateFormat)}:{' '}
-                            {canEdit ? (
-                              <Anchor component={Link} to="/review?tab=copies" size="xs" c="inherit" td="underline">
-                                answer on Review
-                              </Anchor>
-                            ) : (
-                              'waiting on Review'
-                            )}
-                          </Text>
-                        )}
-                        <CopyDetailLine details={x.details} loans={x.loans} photos={x.photos} currency={currency} dateFormat={dateFormat} />
-                        {(x.tests[0] || canEdit) && (
-                          <Group gap={6} mt={2}>
-                            {x.tests.find((t) => t.kind === 'test') && <TestBadge {...x.tests.find((t) => t.kind === 'test')!} dateFormat={dateFormat} />}
-                            {x.tests.find((t) => t.kind === 'rip') && <TestBadge {...x.tests.find((t) => t.kind === 'rip')!} dateFormat={dateFormat} />}
-                            {canEdit && (
-                              <Anchor
-                                component="button"
-                                type="button"
-                                size="xs"
-                                onClick={() => change.mutate({ path: '/copy/tests', method: 'POST', json: { key: x.copyKey, result: 'works' }, done: `${x.title}: tested, it works.` })}
-                              >
-                                {x.tests.some((t) => t.kind === 'test') ? 'tested again: it works' : 'tested: it works'}
-                              </Anchor>
-                            )}
-                            {canEdit && (
-                              <Anchor component="button" type="button" size="xs" onClick={() => setSelling({ id: x.id, title: x.title })}>
-                                ready to sell
-                              </Anchor>
-                            )}
-                          </Group>
-                        )}
-                        {/* A copy that isn't complete: its missing parts looked for on your used marketplaces (D160). */}
-                        {canEdit &&
-                          (() => {
-                            const parts = missingParts(x.completeness, g.platformKey);
-                            const markets = shopLinksFor(shops ?? [], g.platformKey)
-                              .filter((s) => s.group === 'Used marketplaces')
-                              .slice(0, SHOPS_IN_LISTS);
-                            if (parts.length === 0 || markets.length === 0) return null;
-                            return (
-                              <Text size="xs" mt={2}>
-                                Find its {parts.join(' and ')}:{' '}
-                                {markets.map((s, i) => (
-                                  <span key={s.name}>
-                                    {i > 0 && ' · '}
-                                    <Anchor href={shopUrl(s.template, partsSearch(g.title, parts), g.platform)} target="_blank" rel="noreferrer" size="xs">
-                                      {s.name}
-                                    </Anchor>
-                                  </span>
-                                ))}
-                              </Text>
-                            );
-                          })()}
-                        {/* The copy's own window (what you paid, where it's kept, lending, photos...), as the button
-                            beside Have it looks (the owner, 2026-10-16). */}
-                        {canEdit && (
-                          <Group mt={4}>
-                            <button type="button" className="sc-tag" data-tone="edit" onClick={() => setEditing(editRef(x))}>
-                              <IconPencil size={13} aria-hidden /> Edit this copy
-                            </button>
-                          </Group>
-                        )}
-                        {c && x.countsAs !== 'exact' && (
-                          <Text size="xs" c="dimmed">
-                            {x.countsAs ? `Counts as this game: ${MATCH_METHODS[x.countsAs].toLowerCase()}` : "Doesn't count as this game"}
-                            {canEdit && x.countsAs && REJECTABLE.has(x.countsAs) && (
-                              <>
-                                {' · '}
-                                <Anchor size="xs" onClick={() => decide(x.productId, 'rejected')}>
-                                  not the same
-                                </Anchor>
-                              </>
-                            )}
-                            {canEdit && x.countsAs === 'confirmed' && (
-                              <>
-                                {' · '}
-                                <Anchor size="xs" onClick={() => decide(x.productId, 'undo')}>
-                                  undo
-                                </Anchor>
-                              </>
-                            )}
-                          </Text>
-                        )}
-                      </Table.Td>
-                      <Table.Td ta="right">
-                        <Text size="sm">{money(x.valueCents, currency)}</Text>
-                        {x.costCents ? (
-                          <Text size="xs" c="dimmed">
-                            paid {money(x.costCents, currency)}
-                          </Text>
-                        ) : x.estimatedCents !== null ? (
-                          <Tooltip label="Your estimate of what it cost: never a price paid, never sent anywhere">
-                            <Text size="xs" c="dimmed" fs="italic">
-                              estimated {money(x.estimatedCents, currency)}
-                            </Text>
-                          </Tooltip>
-                        ) : null}
-                        <PriceTrend history={x.history} currency={currency} dateFormat={dateFormat} />
-                      </Table.Td>
-                    </Table.Tr>
-                  ))}
-                </Table.Tbody>
-              </Table>
-              {canEdit && spare && (
-                <Text size="xs" c="dimmed">
-                  You have {owned} copies of it.{' '}
-                  <Anchor component="button" type="button" size="xs" onClick={() => setSelling({ id: spare.id, title: spare.title })}>
-                    List one for sale
-                  </Anchor>
-                </Text>
-              )}
-            </Section>
-          )}
-
-          {(g.ownedOn.length > 0 || g.pc.length > 0 || g.sets.length > 0) && (
-            <Section title="Also">
-              {g.ownedOn.length > 0 && <Text size="sm">You have it on {g.ownedOn.join(', ')}</Text>}
-              {g.pc.length > 0 && (
-                <Text size="sm">
-                  On PC: {g.pc.map((p) => `${p.storefront} (${OWNERSHIP[p.ownership] ?? p.ownership}${p.playtimeHours > 0 ? `, ${p.playtimeHours} h played` : ''})`).join(', ')}
-                </Text>
-              )}
-              {g.sets.length > 0 && (
-                <Text size="sm">
-                  In your {g.sets.length === 1 ? 'set' : 'sets'}{' '}
-                  {g.sets.map((s, i) => (
-                    <Fragment key={s.key || s.name}>
-                      {i > 0 && ', '}
-                      <Anchor component={Link} to={s.key ? `/sets/${s.key}` : '/sets'} size="sm">
-                        {s.name}
-                      </Anchor>
-                      {canEdit && s.key && (
-                        <>
-                          {' ('}
-                          <Anchor
-                            component="button"
-                            type="button"
-                            size="xs"
-                            c="dimmed"
-                            disabled={busy}
-                            onClick={() =>
-                              change.mutate({
-                                path: `/sets/${s.key}/games`,
-                                method: 'POST',
-                                json: { platformKey: g.platformKey, title: g.title, action: 'remove' },
-                                done: `${g.title} is out of ${s.name}; the set's page can put it back.`,
-                              })
-                            }
-                          >
-                            take out
-                          </Anchor>
-                          {')'}
-                        </>
-                      )}
-                    </Fragment>
-                  ))}
-                </Text>
-              )}
-            </Section>
-          )}
-
-          {(g.wishlist || g.snoozedUntil || g.preference || g.wishlistNote) && (
+          {g.copies.length > 0 && g.platformKey !== 'pc' && (g.wishlist || g.preference || g.wishlistNote) && (
             <Section
               title={
                 g.wishlist ? (
@@ -1050,9 +1119,15 @@ export function GameDrawer() {
 
           <Divider />
           <Group gap="md">
-            <Anchor component={Link} to={`/platforms/${g.platformKey}?${c ? `tab=${c.status}&` : ''}q=${encodeURIComponent(g.title)}`} size="sm" onClick={close}>
-              On its console's page
-            </Anchor>
+            {g.platformKey === 'pc' ? (
+              <Anchor component={Link} to={`/pc?q=${encodeURIComponent(g.title)}`} size="sm" onClick={close}>
+                In the PC library
+              </Anchor>
+            ) : (
+              <Anchor component={Link} to={`/platforms/${g.platformKey}?${c ? `tab=${c.status}&` : ''}q=${encodeURIComponent(g.title)}`} size="sm" onClick={close}>
+                On its console's page
+              </Anchor>
+            )}
             <Anchor href={`https://www.igdb.com/search?type=1&q=${encodeURIComponent(g.title)}`} target="_blank" rel="noreferrer" size="sm">
               IGDB
             </Anchor>
@@ -1062,7 +1137,6 @@ export function GameDrawer() {
             </Anchor>
             {/* Your shop links (Settings > Interface), each a search for the game in a shop: folded under "Shop for it". */}
             <ShopFor links={shopLinksFor(shops ?? [], g.platformKey)} title={g.title} platform={g.platform} />
-            <RommLinks link={g.romm} />
             {canEdit && (allSets.data ?? []).some((s) => !g.sets.some((x) => x.key === s.key)) && (
               <Menu position="top-start" withinPortal>
                 <Menu.Target>
@@ -1173,6 +1247,7 @@ export function GameDrawer() {
       <AddCopyModal game={adding} onClose={() => setAdding(null)} />
       <SellHelper copy={selling} onClose={() => setSelling(null)} />
       <CopyDetailsModal copy={editing} onClose={() => setEditing(null)} />
+      <WorthGraph copy={graphing} onClose={() => setGraphing(null)} currency={currency} dateFormat={dateFormat} />
     </Drawer>
   );
 }

@@ -309,6 +309,20 @@
       "when": 1792091701712,
       "tag": "0043_place_notes",
       "breakpoints": true
+    },
+    {
+      "idx": 44,
+      "version": "6",
+      "when": 1792801947028,
+      "tag": "0044_roots",
+      "breakpoints": true
+    },
+    {
+      "idx": 45,
+      "version": "6",
+      "when": 1792803575420,
+      "tag": "0045_shelf_fixes",
+      "breakpoints": true
     }
   ]
 }

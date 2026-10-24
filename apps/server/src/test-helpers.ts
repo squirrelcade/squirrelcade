@@ -117,6 +117,7 @@ export async function testApp(
     transports?: Transports;
     igdbFetch?: FetchLike;
     wikipediaFetch?: FetchLike;
+    wikidataFetch?: FetchLike;
     rommFetch?: FetchLike;
     nintendoLifeFetch?: FetchLike;
     listFetch?: FetchLike;
@@ -163,6 +164,7 @@ export async function testApp(
       transports,
       igdbFetch: options.igdbFetch ?? noNetwork,
       wikipediaFetch: options.wikipediaFetch ?? noNetwork,
+      wikidataFetch: options.wikidataFetch ?? noNetwork,
       rommFetch: options.rommFetch ?? noNetwork,
       nintendoLifeFetch: options.nintendoLifeFetch ?? noNetwork,
       listFetch: options.listFetch ?? noNetwork,

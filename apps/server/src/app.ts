@@ -17,7 +17,10 @@ import { registerSellingRoutes, SellingService } from './selling.js';
 import { registerRommRoutes, RommClient, RommService } from './romm.js';
 import { CollectionService, registerCollectionRoutes } from './collection.js';
 import { applyPendingRestore, openDatabase, type Db } from './db/index.js';
-import { appState } from './db/schema.js';
+import { appState, catalogEntries, platforms } from './db/schema.js';
+import { headerStars, LaunchDays, type HeaderReviews } from './gameHeader.js';
+import { registerRootsRoutes, RootsService } from './roots.js';
+import { WikidataClient } from './wikidata.js';
 import { APP_VERSION, readEnv, type Env } from './env.js';
 import { IgdbClient, IgdbService, registerIgdbRoutes, type FetchLike } from './igdb.js';
 import { CatalogBuilder, registerCatalogSourceRoutes, WikipediaClient } from './wikipedia.js';
@@ -71,7 +74,7 @@ const FEATURE_ROUTES: [RegExp, FeatureKey, string][] = [
   [/^\/api\/v1\/pc\/prices(\/|$)/, 'itad', 'PC game prices'],
   [/^\/api\/v1\/sources\/romm(\/|$)/, 'romm', 'RomM'],
   [/^\/api\/v1\/sources\/igdb(\/|$)/, 'igdb', 'IGDB'],
-  [/^\/api\/v1\/history(\/|$)/, 'history', 'Top 100 lists and console history'],
+  [/^\/api\/v1\/history(\/|$)/, 'history', 'Roots (Top 100 lists and console history)'],
   [/^\/api\/v1\/sources\/retroachievements(\/|$)/, 'retroachievements', 'RetroAchievements'],
   [/^\/api\/v1\/sources\/xbox(\/|$)/, 'xbox', 'Xbox achievements'],
   [/^\/api\/v1\/sources\/playstation(\/|$)/, 'playstation', 'PlayStation trophies'],
@@ -106,6 +109,8 @@ export interface BuildOptions {
   igdbFetch?: FetchLike;
   /** Replaces the network for Wikipedia (tests use a fake). */
   wikipediaFetch?: FetchLike;
+  /** Wikidata's API, for Roots (tests stand it in). */
+  wikidataFetch?: FetchLike;
   rommFetch?: FetchLike;
   /** Replaces the network for Nintendo Life (tests use a fake). */
   nintendoLifeFetch?: FetchLike;
@@ -157,6 +162,8 @@ export interface SquirrelcadeApp {
   mail: MailImportService;
   orders: OrderService;
   gotd: GameOfTheDayService;
+  /** Roots: games' Wikipedia articles, read for their time (D165). */
+  roots: RootsService;
   ra: RetroAchievementsService;
   achievements: AchievementsService;
   aiAuth: AiAuthService;
@@ -277,6 +284,21 @@ export async function buildApp(options: BuildOptions = {}): Promise<Squirrelcade
     return found ? { status: found.status, rating: found.rating } : null;
   };
   const history = new HistoryService(db, settings, titles, { igdb, wishlist, pc, romm: rommLink, rommEnabled: () => romm.enabled(), play: playOfNames }, log, { top100: options.top100Data, history: options.historyData });
+  // Roots (D165): each game's Wikipedia article, read for its own time and since.
+  const roots = new RootsService(db, settings, catalogs, wishlist, titles, wikipedia, new WikidataClient(options.wikidataFetch, options.wikidataFetch ? 0 : undefined), log);
+  // The stars beside a game's name (D165), for the game page's header wherever it's shown: Game of the Day, Store Mode.
+  const launchDays = new LaunchDays(db);
+  const starsFor = (platformKey: string, platform: string, title: string, given: HeaderReviews | null) => {
+    const read = roots.header(platformKey, platform, title);
+    // Metacritic's score when the article's table has it for this console, IGDB's rating otherwise.
+    const reviews: HeaderReviews | null = read.metacritic !== null ? { score: read.metacritic, count: null, source: 'metacritic' } : given;
+    const p = db.select({ id: platforms.id }).from(platforms).where(eq(platforms.key, platformKey)).get();
+    const target = catalogTarget(catalogs, platformKey, title);
+    const released = target ? (db.select({ releaseDate: catalogEntries.releaseDate }).from(catalogEntries).where(eq(catalogEntries.id, target.target.id)).get()?.releaseDate ?? null) : null;
+    const top100 = history.enabled() ? history.gameHistory(platformKey, [title, ...(target?.target.altTitles ?? [])]).top100 : null;
+    return headerStars({ platformKey, platform, top100, reviews, released, launchDay: p ? launchDays.of(p.id) : null, criticsFavorite: settings.get('interface.criticsFavorite'), read });
+  };
+  lookup.setStars(starsFor);
   collection.events.on('imported', (outcome) => {
     if (outcome.import.status === 'applied') {
       catalogs.clearFulfilledPurchases();
@@ -469,7 +491,11 @@ export async function buildApp(options: BuildOptions = {}): Promise<Squirrelcade
     await deals.alert(added);
   });
   registerDealRoutes(app, deals, settings);
-  const gotd = new GameOfTheDayService(db, settings, wishlist, igdb, history, notifications, deals);
+  // Game of the Day wears the game page's header (D165): its stars, and RomM's Play when RomM has the game.
+  const gotd = new GameOfTheDayService(db, settings, wishlist, igdb, history, notifications, deals, {
+    romm: (platformKey, title) => (settings.get('sources.rommLinkUnowned') ? rommLink(platformKey, [title]) : null),
+    stars: starsFor,
+  });
   registerGotdRoutes(app, gotd);
   registerTodayRoutes(app, { settings, gotd, deals, catalogs, details, collection, history, sets });
   registerSetRoutes(app, sets);
@@ -521,7 +547,10 @@ export async function buildApp(options: BuildOptions = {}): Promise<Squirrelcade
     care,
     ra: (key, titles) => ra.forGame(key, titles),
     achievements: (key, titles) => achievements.forGame(key, titles),
+    titles,
+    roots,
   });
+  registerRootsRoutes(app, roots, db);
   registerPlayRoutes(app, play, (platformKey, title) => catalogTarget(catalogs, platformKey, title)?.target.title ?? null);
   registerCopyDetailRoutes(app, details, settings);
   // Storage locations made quick (D157): Pack a place, a shelf photo's games in one place, the Places page.
@@ -553,6 +582,14 @@ export async function buildApp(options: BuildOptions = {}): Promise<Squirrelcade
   const friendsService = new FriendsService(db, settings, details, wishlist, log);
   registerFriendRoutes(app, friendsService);
 
+  tasks.register({
+    name: 'roots-read',
+    title: "Read games' Roots",
+    description: "Reads the Wikipedia articles of the games you have and want, for their Roots: reviews of the time, where each came from, its awards and reference sites (Settings > Roots). An article read before is read again only when it changed.",
+    interval: () => (roots.enabled() && settings.get('tasks.rootsPerNight') > 0 ? 86_400_000 : null),
+    firstRunDelayMs: 20 * 60_000,
+    run: async (_log, progress) => roots.readMany(progress, settings.get('tasks.rootsPerNight')),
+  });
   tasks.register({
     name: 'ra-sync',
     title: 'Read RetroAchievements',
@@ -919,6 +956,7 @@ export async function buildApp(options: BuildOptions = {}): Promise<Squirrelcade
     mail,
     orders,
     gotd,
+    roots,
     ra,
     achievements,
     aiAuth,

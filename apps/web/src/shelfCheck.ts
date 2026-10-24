@@ -69,13 +69,71 @@ export function shelfConsoles(copy: OfflineCopy): { key: string; name: string; i
     .sort((a, b) => a.name.localeCompare(b.name));
 }
 
-/** A console's games from the copy, and a matcher for them (keyed by each game's place in the copy). */
-export function shelfMatcher(copy: OfflineCopy, platformIndex: number): { matcher: ShelfMatcher; games: Map<string, OfflineGame> } {
+/**
+ * A console's games from the copy, and a matcher for them (keyed by each game's place in the copy); with the
+ * console's full list (IGDB's games the copy doesn't have, GET /api/v1/shelf/titles), as games not on your list.
+ */
+export function shelfMatcher(copy: OfflineCopy, platformIndex: number, more: readonly string[] = []): { matcher: ShelfMatcher; games: Map<string, OfflineGame> } {
   const games = new Map<string, OfflineGame>();
   copy.games.forEach((g, i) => {
     if (g.p === platformIndex) games.set(String(i), g);
   });
+  more.forEach((t, i) => games.set(`x${i}`, { p: platformIndex, t, a: 'not-tracked' }));
   return { matcher: new ShelfMatcher([...games].map(([key, g]) => ({ key, title: g.t }))), games };
+}
+
+/** A console's fixes: the ones in the copy (saved in Squirrelcade), then this phone's own, which win. */
+export function shelfFixes(copy: OfflineCopy, platformIndex: number, own: Readonly<Record<string, string | null>>): Map<string, string | null> {
+  const fixes = new Map<string, string | null>();
+  for (const [p, key, title] of copy.fixes ?? []) if (p === platformIndex) fixes.set(key, title);
+  for (const [key, title] of Object.entries(own)) fixes.set(key, title);
+  return fixes;
+}
+
+const OWN_FIXES = 'squirrelcade.shelfFixes';
+
+/** This phone's own fixes, by console key: a viewer's, or the owner's made with no connection (sent when there's one). */
+export function ownFixes(): Record<string, Record<string, string | null>> {
+  try {
+    const kept = JSON.parse(localStorage.getItem(OWN_FIXES) ?? '{}') as unknown;
+    return kept && typeof kept === 'object' ? (kept as Record<string, Record<string, string | null>>) : {};
+  } catch {
+    return {};
+  }
+}
+
+/** A fix kept on this phone (undefined forgets it); the fixes as they are now. */
+export function keepOwnFix(platformKey: string, readKey: string, title: string | null | undefined): Record<string, Record<string, string | null>> {
+  const all = ownFixes();
+  const mine = { ...(all[platformKey] ?? {}) };
+  if (title === undefined) delete mine[readKey];
+  else mine[readKey] = title;
+  const next = { ...all, [platformKey]: mine };
+  if (Object.keys(mine).length === 0) delete next[platformKey];
+  try {
+    localStorage.setItem(OWN_FIXES, JSON.stringify(next));
+  } catch {
+    // Storage is off: the fix lasts for this page only.
+  }
+  return next;
+}
+
+/** A console's full list as last fetched, for shelves with no signal. */
+export function keptTitles(platformKey: string): string[] | null {
+  try {
+    const kept = JSON.parse(localStorage.getItem(`squirrelcade.shelfTitles.${platformKey}`) ?? 'null') as unknown;
+    return Array.isArray(kept) ? (kept as string[]) : null;
+  } catch {
+    return null;
+  }
+}
+
+export function keepTitles(platformKey: string, titles: string[]): void {
+  try {
+    localStorage.setItem(`squirrelcade.shelfTitles.${platformKey}`, JSON.stringify(titles));
+  } catch {
+    // Too big or storage off: fetched again next time.
+  }
 }
 
 /** A game found on the shelf, with Store Mode's answer for it. */
@@ -85,6 +143,8 @@ export interface ShelfFound {
   answer: Answer;
   read: string;
   game: OfflineGame;
+  /** Said by you (a fix remembered). */
+  fixed?: boolean;
 }
 
 /** A spine that could be a game, not surely. */
@@ -122,7 +182,7 @@ export function checklist(result: ShelfResult, games: Map<string, OfflineGame>):
   const out: ShelfChecklist = { need: [], own: [], elsewhere: [], other: [], unsure: [], reads: result.reads };
   for (const m of result.sure) {
     const game = games.get(m.key);
-    if (game) out[GROUP[game.a]].push({ key: m.key, title: game.t, answer: game.a, read: m.read, game });
+    if (game) out[GROUP[game.a]].push({ key: m.key, title: game.t, answer: game.a, read: m.read, game, ...(m.fixed ? { fixed: true } : {}) });
   }
   // The wishlist's order first (its rank, then its acorns), then the rest by title.
   out.need.sort((a, b) => (a.game.w?.rank ?? 1e9) - (b.game.w?.rank ?? 1e9) || (b.game.w?.score ?? -1) - (a.game.w?.score ?? -1) || a.title.localeCompare(b.title));

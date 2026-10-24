@@ -10,6 +10,7 @@ import {
   productNameWords,
   productPlatform,
   searchRank,
+  shelfReadKey,
   wordOverlap,
 } from '@squirrelcade/core';
 import { createHash } from 'node:crypto';
@@ -20,8 +21,9 @@ import { isViewer, shown } from './access.js';
 import type { Logger } from 'pino';
 import type { CatalogService, RommLinker } from './catalogs.js';
 import type { Db } from './db/index.js';
+import type { GameStar, HeaderReviews } from './gameHeader.js';
 import type { IgdbService } from './igdb.js';
-import { barcodeNames, barcodes, copies, platforms } from './db/schema.js';
+import { barcodeNames, barcodes, copies, platforms, shelfFixes } from './db/schema.js';
 import type { SettingsService } from './settings.js';
 import type { WishlistService } from './wishlist.js';
 
@@ -111,7 +113,12 @@ export interface OfflineCopy {
   games: OfflineGame[];
   /** Saved barcodes: [digits, the platform's place in platforms, title]. */
   barcodes: [string, number, string][];
+  /** Check a shelf's fixes: [the platform's place in platforms, the read's key (shelfReadKey), the game's title or null for no game]. */
+  fixes?: [number, string, string | null][];
 }
+
+/** IGDB's kinds of game that never have a box of their own on a shelf. */
+const NOT_ON_SHELVES = new Set(['DLC', 'Expansion', 'Mod', 'Episode', 'Season', 'Pack', 'Update']);
 
 /** How long a built offline copy is handed out before it's built again, in milliseconds. */
 const OFFLINE_FRESH_MS = 60_000;
@@ -269,6 +276,12 @@ const UNKNOWN_RETRY_MS = 7 * 86_400_000;
  */
 export class LookupService {
   private rommLink?: RommLinker;
+  private starsOf?: (platformKey: string, platform: string, title: string, reviews: HeaderReviews | null) => GameStar[];
+
+  /** The stars beside a game's name, as the game page's header shows them (D165). */
+  setStars(starsOf: (platformKey: string, platform: string, title: string, reviews: HeaderReviews | null) => GameStar[]): void {
+    this.starsOf = starsOf;
+  }
 
   /** Where owned games link to the user's RomM (see romm.ts). */
   setRommLinks(link: RommLinker): void {
@@ -655,7 +668,9 @@ export class LookupService {
       .map((r) => {
         if (options.brief) return r;
         const romm = (r.answer === 'own' || r.answer === 'own-not-in-catalog') && this.rommLink ? this.rommLink(r.platformKey, [r.title, ...r.ownedAs]) : null;
-        return { ...r, coverId: this.igdb?.coverOf(r.platformKey, r.title) ?? null, reviews: this.igdb?.reviewsOf(r.platformKey, r.title) ?? null, romm, note: notes.get(`${r.platformKey}|${normalizeTitle(r.title)}`) ?? null, onTheWay: coming.get(`${r.platformKey}|${normalizeTitle(r.title)}`) ?? null };
+        const reviews = this.igdb?.reviewsOf(r.platformKey, r.title) ?? null;
+        const stars = this.starsOf?.(r.platformKey, r.platform, r.title, reviews ? { score: reviews.rating, count: reviews.count, source: 'igdb' } : null) ?? [];
+        return { ...r, coverId: this.igdb?.coverOf(r.platformKey, r.title) ?? null, reviews, stars, romm, note: notes.get(`${r.platformKey}|${normalizeTitle(r.title)}`) ?? null, onTheWay: coming.get(`${r.platformKey}|${normalizeTitle(r.title)}`) ?? null };
       });
   }
 
@@ -698,11 +713,16 @@ export class LookupService {
       const p = placeById.get(b.platformId);
       if (p !== undefined) saved.push([normalizeBarcode(b.code) ?? b.code, p, b.title]);
     }
-    const content = JSON.stringify({ platforms: platformList.map((p) => ({ key: p.key, name: p.name })), games, barcodes: saved });
+    const fixes: [number, string, string | null][] = [];
+    for (const f of this.db.select({ platformId: shelfFixes.platformId, readKey: shelfFixes.readKey, title: shelfFixes.title }).from(shelfFixes).all()) {
+      const p = placeById.get(f.platformId);
+      if (p !== undefined) fixes.push([p, f.readKey, f.title]);
+    }
+    const content = JSON.stringify({ platforms: platformList.map((p) => ({ key: p.key, name: p.name })), games, barcodes: saved, fixes });
     const etag = `"${createHash('sha1').update(content).digest('base64url').slice(0, 20)}"`;
     // The build time changes only with the answers, so the tag and the copy agree.
     const builtAt = last?.etag === etag ? last.copy.builtAt : new Date().toISOString();
-    const copy: OfflineCopy = { version: 1, builtAt, platforms: platformList.map((p) => ({ key: p.key, name: p.name })), games, barcodes: saved };
+    const copy: OfflineCopy = { version: 1, builtAt, platforms: platformList.map((p) => ({ key: p.key, name: p.name })), games, barcodes: saved, fixes };
     const built = { at: Date.now(), stamp, copy, body: JSON.stringify(copy), etag };
     this.offlineCopies.set(withNotes, built);
     return this.withGzip(built);
@@ -981,6 +1001,62 @@ export class LookupService {
   forgetBarcode(raw: string): boolean {
     const code = normalizeBarcode(raw);
     return code ? this.db.delete(barcodes).where(inArray(barcodes.code, barcodeForms(code))).run().changes > 0 : false;
+  }
+
+  /**
+   * Check a shelf's fix (D147's next steps): this read on this console's shelf is this game, or no game (null). Kept
+   * for the next photo, in Store Mode's offline copy, which is built again at once.
+   */
+  saveShelfFix(platformKey: string, read: string, title: string | null): boolean {
+    const platform = this.db.select({ id: platforms.id }).from(platforms).where(eq(platforms.key, platformKey)).get();
+    const readKey = shelfReadKey(read);
+    if (!platform || readKey.length < 4 || (title !== null && !title.trim())) return false;
+    const now = new Date().toISOString();
+    this.db
+      .insert(shelfFixes)
+      .values({ platformId: platform.id, readKey, title: title?.trim() ?? null, updatedAt: now })
+      .onConflictDoUpdate({ target: [shelfFixes.platformId, shelfFixes.readKey], set: { title: title?.trim() ?? null, updatedAt: now } })
+      .run();
+    this.offlineCopies.clear();
+    return true;
+  }
+
+  /** A fix forgotten: the read is matched as usual again. */
+  forgetShelfFix(platformKey: string, read: string): boolean {
+    const platform = this.db.select({ id: platforms.id }).from(platforms).where(eq(platforms.key, platformKey)).get();
+    if (!platform) return false;
+    const gone = this.db.delete(shelfFixes).where(and(eq(shelfFixes.platformId, platform.id), eq(shelfFixes.readKey, shelfReadKey(read)))).run().changes > 0;
+    if (gone) this.offlineCopies.clear();
+    return gone;
+  }
+
+  /**
+   * A console's full list for Check a shelf: IGDB's games for it that Store Mode's copy doesn't have already (its
+   * checklist and your copies), so a spine of a game off your checklist is named for what it is instead of taken for
+   * one that's on it. Null for a console Squirrelcade doesn't know; empty when IGDB isn't set up or the setting is off.
+   */
+  shelfTitles(platformKey: string): string[] | null {
+    const platform = this.db.select({ id: platforms.id }).from(platforms).where(eq(platforms.key, platformKey)).get();
+    if (!platform) return null;
+    if (!this.igdb || !this.settings.get('interface.shelfFullList') || !this.settings.get('features.igdb')) return [];
+    const { copy } = this.offlineCopy(false);
+    const place = copy.platforms.findIndex((p) => p.key === platformKey);
+    const known = new Set<number>();
+    const titles = new Set<string>();
+    for (const g of copy.games) {
+      if (g.p !== place) continue;
+      for (const t of [g.t, ...(g.as ?? [])]) {
+        titles.add(normalizeTitle(t));
+        const found = this.igdb.find(platform.id, t);
+        if (found) known.add(found.id);
+      }
+    }
+    const out = new Set<string>();
+    for (const game of this.igdb.games(platform.id)) {
+      if (known.has(game.id) || titles.has(normalizeTitle(game.name)) || (game.gameType && NOT_ON_SHELVES.has(game.gameType))) continue;
+      out.add(game.name);
+    }
+    return [...out].sort((a, b) => a.localeCompare(b));
   }
 }
 

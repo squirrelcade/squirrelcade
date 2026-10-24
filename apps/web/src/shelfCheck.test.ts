@@ -1,6 +1,7 @@
+import { shelfReadKey } from '@squirrelcade/core';
 import { describe, expect, it } from 'vitest';
 import type { OfflineCopy } from './offline';
-import { allReads, checklist, doubtText, progressText, progressValue, shelfConsoles, shelfMatcher } from './shelfCheck';
+import { allReads, checklist, doubtText, progressText, progressValue, shelfConsoles, shelfFixes, shelfMatcher } from './shelfCheck';
 
 const copy: OfflineCopy = {
   version: 1,
@@ -36,6 +37,18 @@ describe('Check a shelf on the page', () => {
     // DARKSIDERS could be Darksiders II cut off: unsure, with what it is if it is Darksiders.
     expect(list.unsure).toEqual([{ title: 'Darksiders', read: 'DARKSIDERS', doubt: 'cut-off', other: 'Darksiders II', answer: 'own' }]);
     expect(doubtText(list.unsure[0]!)).toBe('or Darksiders II, if the end was cut off');
+  });
+
+  it("takes your fixes, the copy's and this phone's, and names a game off your checklist from the console's full list", () => {
+    const line = (text: string) => ({ text, score: 0.9, turn: 'ccw', box: [] as [number, number][] });
+    const fixed: OfflineCopy = { ...copy, fixes: [[0, shelfReadKey('DARKSIDERS'), 'Darksiders'], [0, shelfReadKey('PUPPETEER'), 'Flower']] };
+    // This phone's own fix wins over the copy's: PUPPETEER is no game at all.
+    const fixes = shelfFixes(fixed, 0, { [shelfReadKey('PUPPETEER')]: null });
+    const { matcher, games } = shelfMatcher(fixed, 0, ['Heavy Rain']);
+    const list = checklist(matcher.match(allReads([line('DARKSIDERS'), line('PUPPETEER'), line('HEAVY RAIN')], []), fixes), games);
+    expect(list.own).toEqual([expect.objectContaining({ title: 'Darksiders', fixed: true })]);
+    expect(list.unsure).toEqual([]);
+    expect(list.other.map((f) => [f.title, f.answer])).toEqual([['Heavy Rain', 'not-tracked']]);
   });
 
   it('says how far along the reader is', () => {

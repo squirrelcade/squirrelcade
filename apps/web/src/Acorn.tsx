@@ -71,6 +71,29 @@ export function NutshellMark({ size = 14 }: { size?: number }) {
   );
 }
 
+/**
+ * Roots' mark (D165): an acorn putting down roots, a sprout on top, for games in their time and since (an acorn grows
+ * into an oak), beside the Stash's chest, the acorn and the Nutshell's peanut. Decorative.
+ */
+export function RootsMark({ size = 14 }: { size?: number }) {
+  return (
+    <svg
+      viewBox="0 0 7 8"
+      width={Math.round((size * 7) / 8)}
+      height={size}
+      shapeRendering="crispEdges"
+      aria-hidden="true"
+      focusable="false"
+      style={{ display: 'inline-block', flex: 'none', verticalAlign: '-0.12em' }}
+    >
+      <path d="M2 0h2v1H2zM3 1h1v1H3z" fill="#46a36b" />
+      <path d="M2 2h3v1H2zM1 3h5v1H1z" fill="#6b3a10" />
+      <path d="M2 4h3v2H2zM3 6h1v1H3z" fill="#d9a05b" />
+      <path d="M1 6h1v1H1zM5 6h1v1H5zM0 7h1v1H0zM3 7h1v1H3zM6 7h1v1H6z" fill="#a8652a" />
+    </svg>
+  );
+}
+
 /** Words that say you have a game ("Have it", "Owned") with the Stash's mark before them (D142). */
 export function Have({ children, size = 12 }: { children: ReactNode; size?: number }) {
   return (

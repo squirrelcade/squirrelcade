@@ -29,7 +29,8 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 async function main() {
   let r = await call('GET', '/auth/session');
   if (!r.data.setupRequired) throw new Error('This install is set up already: the demo runs only on a fresh one.');
-  const account = { username: 'demo', password: `demo-only-${Math.random().toString(36).slice(2)}` };
+  // DEMO_PASSWORD keeps the account usable after the run (to look around the demo); a throwaway one otherwise.
+  const account = { username: 'demo', password: process.env.DEMO_PASSWORD || `demo-only-${Math.random().toString(36).slice(2)}` };
   r = await call('POST', '/setup', account);
   if (r.status !== 201) throw new Error(`Setup failed: ${r.status}`);
   await call('PUT', '/settings', { changes: { 'general.timeZone': 'America/New_York', 'general.instanceName': 'Squirrelcade', 'gotd.enabled': true, 'gotd.send': false, 'interface.theme': 'dark' } });

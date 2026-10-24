@@ -12,6 +12,7 @@ export const SETTINGS_PAGES = [
   { id: 'catalogs', title: 'Catalogs and matching', description: 'Where catalogs come from and what counts as owning a catalog game.' },
   { id: 'pc', title: 'PC library', description: 'Your PC games from Playnite, and how each storefront counts.' },
   { id: 'wishlist', title: 'Acorns', description: 'Your tastes, as the acorns behind every recommendation (Acorns, in the menu).' },
+  { id: 'roots', title: 'Roots', description: "Games in their time: what Squirrelcade reads from each game's Wikipedia article and Wikidata, how long At the time lasts, and the reference sites a game links to." },
   { id: 'sources', title: 'Sources', description: 'Outside services Squirrelcade may ask for information.' },
   { id: 'notifications', title: 'Notifications', description: 'Messages after collection updates and when something fails: by email, a phone app, a chat, a webhook or Apprise. Turn one on for its setup steps.' },
   { id: 'storage', title: 'Storage and backups', description: 'Folders and automatic backups.' },

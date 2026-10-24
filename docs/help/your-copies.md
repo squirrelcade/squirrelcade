@@ -6,7 +6,7 @@ Each copy you own has its own details: your complete copy of a game and your loo
 
 ## A copy's details
 
-Open a game you own, and click **Edit my copy** beside **Have it** at the top, or **Edit this copy** under a copy in **Your copies**:
+Open a game you own, and click **Edit this copy** in the copy, at the top of its page (each copy has its own; a copy on another console has **Edit** on its line):
 
 - **The copy**: its condition, what you paid, the day you bought it and notes (see [Your collection](collection.md#adding-a-copy-in-squirrelcade)); **Sold** or **Remove** takes it out of your collection. Without a price paid, it has an **Estimated price** of your own, empty unless you fill it in (below).
 - **Tested**: **It works**, **Works, with problems** or **Doesn't work**, with a note if you like ("the battery's dead"): each test is kept with its day and time, the newest first. Under Your copies, **tested: it works** records one in a tap. On the consoles whose games you rip, **Ripped** records how a full read of the disc went (see [Selling your games](selling.md#tested-and-ripped)).
@@ -31,6 +31,8 @@ The drawer then shows each copy's details under it, and the Stash page shows the
 4. **Storage location**, as you put it away: the places you've used come up as you type.
 
 Each change saves as you make it ("Saved" shows by the copy). **Edit this copy** opens its window for the rest: photos, notes, the day you bought it.
+
+**A haul's prices at once.** With [order emails](orders.md) on, the page says how many of its copies have no price yet, with **Find their prices in my email**: Squirrelcade looks for each one's order in your mailbox, and each price it finds waits on its copy ("Found in your email: $24.99 · eBay · ..."), **Use it** to save it or **Not this** to forget it. Store Mode's **Added here** card has the same button after a store run (it opens this page on the last 7 days).
 
 **Completing a copy.** A copy that isn't complete in its box has a line under it in **Your copies**, such as "Find its manual: eBay · Mercari · FB Marketplace". Each link searches that marketplace for exactly what the copy lacks: the manual, the case (a disc's or a card's) or box (a cartridge's), or the game itself. The marketplaces are your shop links in the "Used marketplaces" group (Settings › Interface › Shop links). Once you have the missing part, change the copy's condition (to Complete in box, say) in its window. Its filters narrow the list to a place, a tag, the games lent out, the ones for sale or trade, or the digital copies claimed (or not yet).
 

@@ -53,6 +53,7 @@ export function sees(request: FastifyRequest, settings: SettingsService): Sees {
 const VIEWER_READS: RegExp[] = [
   /^\/api\/v1\/auth\/session$/,
   /^\/api\/v1\/shelf\/model$/,
+  /^\/api\/v1\/shelf\/titles\/[a-z0-9-]+$/,
   /^\/api\/v1\/shelf\/read\/[0-9a-f-]{36}$/,
   /^\/api\/v1\/talk\/(status|[0-9a-f-]{36})$/,
   /^\/api\/v1\/health$/,

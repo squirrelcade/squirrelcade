@@ -201,14 +201,30 @@ export async function shrinkPhoto(file: Blob, maxSide: number, size?: { width: n
 }
 
 /** A copy's details in a line under it: where it is, tags, for sale, who has it, and its photos (each opens full size). */
-export function CopyDetailLine({ details, loans, photos, currency, dateFormat }: { details: CopyDetail | null; loans: Loan[]; photos: PhotoInfo[]; currency: string; dateFormat: 'us' | 'iso' | 'eu' }) {
+export function CopyDetailLine({
+  details,
+  loans,
+  photos,
+  currency,
+  dateFormat,
+  without = [],
+}: {
+  details: CopyDetail | null;
+  loans: Loan[];
+  photos: PhotoInfo[];
+  currency: string;
+  dateFormat: 'us' | 'iso' | 'eu';
+  /** Parts shown elsewhere (the game page's copy card has the place and the photos as its own). */
+  without?: ('place' | 'photos')[];
+}) {
   // Where the place itself is (D157), beside it.
   const placeNote = usePlaceNotes(Boolean(details?.location))(details?.location);
+  if (without.includes('photos')) photos = [];
   if (!details && loans.length === 0 && photos.length === 0) return null;
   return (
     <Stack gap={4} mt={4}>
       <Group gap={6} wrap="wrap">
-        {details?.location && (
+        {details?.location && !without.includes('place') && (
           <Badge size="sm" variant="outline" color="gray" leftSection={<IconMapPin size={11} />} style={{ textTransform: 'none' }}>
             {details.location}
             {placeNote ? ` · ${placeNote}` : ''}

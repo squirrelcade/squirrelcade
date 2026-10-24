@@ -370,6 +370,26 @@ export const settingDefinitions = {
       { value: 'wishlist', label: 'Acorns wishlist' },
     ],
   }),
+  'interface.headerStars': num({
+    page: 'interface',
+    section: 'Game pages',
+    label: "Stars beside a game's name",
+    description:
+      "How many stars a game's header shows beside its name, on its page, on Game of the Day and in Store Mode: its Top 100 place, best-selling, awards, critics' favorite, a launch title, most telling first. The rest fold under \"+n\". 0 shows none.",
+    default: 3,
+    min: 0,
+    max: 8,
+  }),
+  'interface.criticsFavorite': num({
+    page: 'interface',
+    section: 'Game pages',
+    label: "Critics' favorite from",
+    description:
+      "A game whose reviews score this much or more gets the Critics' favorite star: Metacritic's score when Wikipedia or Wikidata has it, otherwise IGDB's rating when it rests on at least 5 ratings.",
+    default: 90,
+    min: 50,
+    max: 100,
+  }),
   'interface.shopLinks': {
     ...list({
       page: 'interface',
@@ -440,6 +460,14 @@ export const settingDefinitions = {
       "Store Mode keeps a copy of its answers (your consoles' catalogs, what you own, your saved barcodes and notes) in the browser of the phone or computer it opens on, updated each time it opens, and answers from that copy when Squirrelcade can't be reached (no signal in a store, say). Signing out removes the copy. Off keeps nothing in the browser.",
     default: true,
   }),
+  'interface.shelfFullList': bool({
+    page: 'interface',
+    section: 'Store Mode',
+    label: 'Check a shelf knows every game on the console',
+    description:
+      "Check a shelf matches the spines against the console's checklist and your copies, and with this on also against IGDB's full list of the console's games (with IGDB set up), so a game that isn't on your checklist shows as Not on your list instead of being taken for one that is. The list is kept on the phone, for shelves with no signal.",
+    default: true,
+  }),
 
   'interface.timelineGames': num({
     page: 'interface',
@@ -478,10 +506,58 @@ export const settingDefinitions = {
   'features.history': bool({
     page: 'features',
     section: 'Optional features',
-    label: 'Top 100 lists and console history',
+    label: 'Roots: games in their time',
     description:
-      "Each console's best games in ranked order with what you have of them, each console's history with a few games to start with, why games matter, and a timeline of consoles and landmark games. Ships with Squirrelcade: nothing to set up.",
+      "The Roots section and each game's Roots: each console's best games in ranked order with what you have of them (the Top 100 lists, a game's place in them shown as a star beside its name), each console's history with a few games to start with, why games matter, and a timeline of consoles and landmark games. Ships with Squirrelcade: nothing to set up. Off, Squirrelcade is for collecting only.",
     default: FEATURE_DEFAULTS.history,
+  }),
+  // Roots (D165): each game's article read for its own time and since.
+  'roots.read': bool({
+    page: 'roots',
+    section: 'Reading',
+    label: "Read each game's Wikipedia article",
+    description:
+      "For each game's Roots: its reviews of the time (with each magazine's issue and page), the sources cited with their dates, the games it came from and led to, its reference sites, awards and best-selling place, from Wikipedia and Wikidata. Read when you open a game, and at night for the games you have and want. Off, a game's Roots has only what comes with Squirrelcade (its Top 100 place and why it matters), and nothing is asked of Wikipedia for it.",
+    default: true,
+  }),
+  'roots.findArticles': bool({
+    page: 'roots',
+    section: 'Reading',
+    label: "Look up the articles the catalogs don't link",
+    description: "A game whose console catalog doesn't link its article (a game you added, or one from your own list) is looked up on Wikipedia by its title, once. Off, those games have no article.",
+    default: true,
+  }),
+  'roots.atTimeMonths': num({
+    page: 'roots',
+    section: 'At the time',
+    label: 'At the time lasts',
+    description: "A review, an article or a video belongs to a game's At the time when it came out within this many months of the game's first release (and previews up to a year before). Later ones are Looking back. A review table the article calls contemporary or retrospective says so itself.",
+    default: 18,
+    min: 6,
+    max: 60,
+    unit: 'months',
+  }),
+  'roots.referenceSites': list({
+    page: 'roots',
+    section: 'Learn more',
+    label: 'Reference sites',
+    description:
+      "The sites a game's Roots links to, in this order (Wikipedia is always first). Each is a name, a bar and the Wikidata properties that hold the game's identifier there (\"MobyGames | P11688, P1933\"): the link is made from the site's own format on Wikidata. A site with a search address works too, with {title} where the game's title goes (\"Retro Gamer | https://www.retrogamer.net/?s={title}\").",
+    default: [
+      'MobyGames | P11688, P1933',
+      'GameFAQs | P4769',
+      'HowLongToBeat | P2816',
+      'StrategyWiki | P9075',
+      'speedrun.com | P6783',
+      'VGMdb | P5659',
+      'The Cover Project | P8076',
+      'Retromags | P12948',
+      'PCGamingWiki | P6337',
+      'Giant Bomb | P14470, P5247',
+      'IGDB | P5794',
+      'Metacritic | P12054',
+    ],
+    maxItems: 40,
   }),
   'features.pc': bool({
     page: 'features',
@@ -2924,6 +3000,16 @@ export const settingDefinitions = {
     min: 0,
     max: 720,
     unit: 'minutes',
+  }),
+  'tasks.rootsPerNight': num({
+    page: 'tasks',
+    section: 'Schedules',
+    label: "Games' Roots read each night",
+    description: "How many games' Wikipedia articles Squirrelcade reads (or looks up) each night for Roots, the games you have first, then your wishlist's. At about one a second, 400 takes under ten minutes; an article read before is read again only when Wikipedia has changed it.",
+    default: 400,
+    min: 0,
+    max: 5000,
+    unit: 'games',
   }),
   'tasks.achievementsReadDays': num({
     page: 'tasks',

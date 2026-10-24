@@ -106,6 +106,51 @@ export class WikipediaClient {
   }
 
   /**
+   * An article's wikitext, its revision and its Wikidata item (Roots, D165), redirects followed; null when there's no
+   * such article.
+   */
+  async article(title: string): Promise<{ title: string; revision: number; wikitext: string; wikidataId: string | null } | null> {
+    try {
+      type Body = { parse?: { title: string; revid: number; wikitext: string; properties?: Record<string, string> | { name: string; value: string }[] } };
+      const body = (await this.api({ action: 'parse', page: title, prop: 'wikitext|revid|properties', redirects: '1' })) as Body;
+      if (!body.parse) return null;
+      const props = body.parse.properties;
+      const wikidataId = Array.isArray(props) ? (props.find((p) => p.name === 'wikibase_item')?.value ?? null) : (props?.wikibase_item ?? null);
+      return { title: body.parse.title, revision: body.parse.revid, wikitext: body.parse.wikitext, wikidataId };
+    } catch (err) {
+      if (err instanceof WikipediaError && /doesn't exist|missingtitle/i.test(err.message)) return null;
+      throw err;
+    }
+  }
+
+  /** Each article's latest revision, 50 at a time (redirects followed): a cheap check before reading one again. */
+  async revisions(titles: string[]): Promise<Map<string, number>> {
+    const out = new Map<string, number>();
+    const unique = [...new Set(titles)];
+    for (let i = 0; i < unique.length; i += 50) {
+      const batch = unique.slice(i, i + 50);
+      type Body = { query?: { normalized?: { from: string; to: string }[]; redirects?: { from: string; to: string }[]; pages?: { title: string; revisions?: { revid: number }[] }[] } };
+      const body = (await this.api({ action: 'query', prop: 'revisions', rvprop: 'ids', titles: batch.join('|'), redirects: '1' })) as Body;
+      const alias = new Map<string, string>();
+      for (const a of [...(body.query?.normalized ?? []), ...(body.query?.redirects ?? [])]) alias.set(a.from, a.to);
+      const revs = new Map((body.query?.pages ?? []).filter((p) => p.revisions?.[0]).map((p) => [p.title, p.revisions![0]!.revid]));
+      for (const t of batch) {
+        let to = t;
+        for (let hops = 0; hops < 5 && alias.has(to); hops++) to = alias.get(to)!;
+        const rev = revs.get(to);
+        if (rev !== undefined) out.set(t, rev);
+      }
+    }
+    return out;
+  }
+
+  /** Article titles a search finds, best first. */
+  async search(query: string, limit = 5): Promise<string[]> {
+    const body = (await this.api({ action: 'query', list: 'search', srsearch: query, srlimit: String(limit), srnamespace: '0', srprop: '' })) as { query?: { search?: { title: string }[] } };
+    return (body.query?.search ?? []).map((s) => s.title);
+  }
+
+  /**
    * Which of the given categories each article is in (redirects followed), asked about 50 articles at a
    * time. Articles in none of them, or missing from Wikipedia, are left out.
    */
@@ -281,6 +326,8 @@ export function wikiCatalogEntries(
       releaseDate: wikiDate(game.releases[region] ?? Object.values(game.releases)[0]),
       notes: kind === 'special' ? `Wikipedia lists it under "${game.section}"` : download,
       targetStatus,
+      // The article the list links the game to, for its Roots (D165).
+      wikiArticle: game.article ?? null,
     });
   }
   return { entries: [...byKey.values()], skipped };
