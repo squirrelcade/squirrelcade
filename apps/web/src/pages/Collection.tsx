@@ -15,7 +15,7 @@ import { PriceMovers } from './PriceMovers';
 import { Spending } from './Spending';
 import { ValueHistory } from './ValueHistory';
 import { count, date, money, wholeMoney } from '../format';
-import { useCanEdit, useSetting } from '../hooks';
+import { useCanEdit, useFeature, useSetting } from '../hooks';
 import { GameCover, GameTitle, useOpenGame } from '../GameDrawer';
 import { useGameNotes } from '../notes';
 import { usePlaceNotes, type Vocabulary } from '../places';
@@ -224,6 +224,9 @@ export function CollectionPage() {
   const dateFormat = useSetting('general.dateFormat', 'us');
   const density = useSetting('interface.tableDensity', 'compact');
   const summary = useCollectionSummary();
+  // The PC library sits in the Stash but counts apart (D165): its games beside the consoles', never added to them.
+  const pcOn = useFeature('pc');
+  const pc = useQuery({ queryKey: ['pc', 'status'], queryFn: () => api<{ families: number }>('/pc'), enabled: pcOn });
   // On a phone the table keeps title and value; platform and condition go under the title.
   const narrow = useMediaQuery('(max-width: 48em)');
 
@@ -319,7 +322,19 @@ export function CollectionPage() {
       />
       {totals && (
         <SimpleGrid cols={{ base: 2, sm: 3, lg: 6 }} mb="md">
-          <StatCard label="Unique games" value={count(totals.games)} hint="Each game once, however many copies" />
+          <StatCard
+            label="Unique games"
+            value={count(totals.games)}
+            hint={
+              pcOn && (pc.data?.families ?? 0) > 0 ? (
+                <Anchor component={Link} to="/pc" size="xs" c="dimmed" underline="always">
+                  On consoles · {count(pc.data!.families)} more on PC, apart
+                </Anchor>
+              ) : (
+                'Each game once, however many copies'
+              )
+            }
+          />
           <StatCard
             label="Copies"
             value={count(totals.copies)}

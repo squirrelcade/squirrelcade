@@ -1,7 +1,7 @@
 import { SETTINGS_PAGES } from '@squirrelcade/core';
 import { ActionIcon, Anchor, AppShell, Badge, Burger, Button, Group, Menu, NavLink, ScrollArea, Text, Tooltip, UnstyledButton } from '@mantine/core';
 import { useDisclosure, useMediaQuery } from '@mantine/hooks';
-import { IconSun, IconVideoFilled, IconChevronDown, IconDeviceDesktop, IconHelp, IconListCheck, IconLogout, IconMenu2, IconPlus, IconServer, IconSettings, IconUser, IconUsersGroup } from '@tabler/icons-react';
+import { IconSun, IconVideoFilled, IconChevronDown, IconHelp, IconListCheck, IconLogout, IconMenu2, IconPlus, IconServer, IconSettings, IconUser, IconUsersGroup } from '@tabler/icons-react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useState, type ReactNode } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router';
@@ -129,14 +129,22 @@ export function Layout({ children }: { children: ReactNode }) {
   // The menu's sections (0.58.0, the owner's layout): the Stash is what you have; Acorns is games coming in and going out
   // (For sale and Sales; Stash updates too since 2026-10-16, PriceCharting's exports in and your new copies out).
   const inAcorns =
-    path.startsWith('/wishlist') || path === '/acorns' || path === '/collection/add' || path === '/coming' || path === '/collection/sale' || path === '/collection/sales' || path === '/updates';
+    path.startsWith('/wishlist') ||
+    path === '/acorns' ||
+    path === '/collection/add' ||
+    path === '/coming' ||
+    path === '/collection/sale' ||
+    path === '/collection/sales' ||
+    path === '/updates' ||
+    path === '/pc/wishlist';
   // On the way (D156): games bought that haven't arrived, while Settings > Email watches for them.
   const comingOn = useSetting('orders.watch', false) === true && owner;
   const coming = useQuery({ queryKey: ['coming'], queryFn: () => api<{ items: unknown[] }>('/coming'), enabled: !!session?.authenticated && comingOn, staleTime: 60_000 });
   const comingCount = coming.data?.items.length ?? 0;
   // Statistics and Report are the Nutshell's (the Almanac's from 2026-10-06), with the consoles and sets; their addresses stay.
   const inNutshell = path.startsWith('/platforms') || path.startsWith('/sets') || path === '/collection/statistics' || path === '/collection/report';
-  const inCollection = path.startsWith('/collection') && !inAcorns && !inNutshell;
+  // The PC library is the Stash's, its wishlist and deals Acorns' (the owner's idea, 2026-10-23: D165), counted apart.
+  const inCollection = (path.startsWith('/collection') || path === '/pc') && !inAcorns && !inNutshell;
   const reviewBadge =
     reviewCount > 0 ? (
       <Badge size="xs" variant="light" color="yellow">
@@ -246,6 +254,7 @@ export function Layout({ children }: { children: ReactNode }) {
             {playShown && link('/collection/backlog', 'Backlog')}
             {detailsShown && link('/collection/loans', 'Loans')}
             {detailsShown && link('/collection/places', 'Places')}
+            {pcOn && link('/pc', 'PC library')}
           </NavLink>
           {/* Acorns: games coming in (the Acorns wishlist and its pages, On the way, Stash updates' exports) and going out
               (for sale, sold, Stash updates' sends to PriceCharting), and the ranking: the rules that give acorns (D121;
@@ -261,6 +270,8 @@ export function Layout({ children }: { children: ReactNode }) {
             {detailsShown && link('/collection/sale', 'For sale')}
             {owner && link('/collection/sales', 'Sales')}
             {owner && link('/acorns', 'Acorns ranking')}
+            {pcOn && <NavLink component={Link} to="/pc/wishlist" label="PC wishlist" active={path === '/pc/wishlist' && pcView !== 'deals'} onClick={close} />}
+            {pcOn && pricesOn && <NavLink component={Link} to="/pc/wishlist?view=deals" label="PC deals" active={path === '/pc/wishlist' && pcView === 'deals'} onClick={close} />}
           </NavLink>
           {/* The Nutshell (D163; Data until 2026-10-06, then the Almanac): your collection in a nutshell, the consoles with
               their catalogs, sets of your own, and the collection counted (Statistics) and listed to print (Report). */}
@@ -278,14 +289,6 @@ export function Layout({ children }: { children: ReactNode }) {
                 <NavLink key={f.id} component={Link} to={`/friends/${f.id}`} label={f.name} description={f.file ? undefined : 'No file yet'} active={path === `/friends/${f.id}`} onClick={close} />
               ))}
               <NavLink component={Link} to="/friends?add=1" label="Add a friend" leftSection={<IconPlus size={14} />} active={false} onClick={close} />
-            </NavLink>
-          )}
-          {/* The PC library and its pages: its wishlist, and the wishlist's games on sale now (0.45.0). */}
-          {pcOn && (
-            <NavLink label="PC library" leftSection={<IconDeviceDesktop size={18} />} opened={path.startsWith('/pc')} onClick={() => navigate('/pc')} childrenOffset={28}>
-              {link('/pc', 'PC library')}
-              <NavLink component={Link} to="/pc/wishlist" label="PC wishlist" active={path === '/pc/wishlist' && pcView !== 'deals'} onClick={close} />
-              {pricesOn && <NavLink component={Link} to="/pc/wishlist?view=deals" label="PC deals" active={path === '/pc/wishlist' && pcView === 'deals'} onClick={close} />}
             </NavLink>
           )}
           {owner && (

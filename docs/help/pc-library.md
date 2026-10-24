@@ -18,10 +18,10 @@ Each game in each storefront is **owned**, **subscription** (Game Pass, EA Play,
 
 ## What it adds
 
-- **PC library** in the menu, with its pages under it: the library (one row per game with the storefronts it's in, playtime, last played, and the console copies of the same game, in tabs: every PC game, on PC and a console, only on PC, and play it on PC, keep it sealed; **Download** gives it as a spreadsheet), the **PC wishlist**, and **PC deals** (the PC wishlist's games on sale now, with PC game prices on).
+- **Stash > PC library** in the menu, with **Acorns > PC wishlist** and **Acorns > PC deals** (the PC library is games you have, the wishlist and deals games coming in). The Stash page shows your PC games' count beside your consoles', never added to it. The library (one row per game with the storefronts it's in, playtime, last played, and the console copies of the same game, in tabs: every PC game, on PC and a console, only on PC, and play it on PC, keep it sealed; **Download** gives it as a spreadsheet), the **PC wishlist**, and **PC deals** (the PC wishlist's games on sale now, with PC game prices on).
 - **You have it on PC** in Store Mode, a PC mark on console pages, and an "Owned on PC" line in where a game's acorns come from (fewer acorns by default). Owning a game on PC never counts as owning the console game.
 - Your PC games on the [Copies](collection.md#copies) page beside your console copies, where sealed console games you own on PC come first. A PC game isn't counted as a copy: "1 copy, sealed, and on PC".
-- **PC library > PC wishlist:** PC games worth buying, found through IGDB (needs IGDB keys), ranked with Steam's review scores; everything you own on PC is left out.
+- **Acorns > PC wishlist:** PC games worth buying, found through IGDB (needs IGDB keys), ranked with Steam's review scores; everything you own on PC is left out.
 
 Health checks warn when the backup folder empties or its newest backup is old (Settings > PC library).
 

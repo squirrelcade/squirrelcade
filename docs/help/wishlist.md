@@ -49,7 +49,7 @@ Prices for new copies in shops aren't read anywhere (no shop or price site offer
 
 ## The PC wishlist
 
-With the [PC library](pc-library.md) on, **PC library > PC wishlist** lists PC games worth buying, found through IGDB (the genres you like, the series you collect, and the PC versions of console games you keep sealed), ranked with Steam's review scores. Everything you own on PC is left out. With **PC game prices** on (Settings > Features, and a free IsThereAnyDeal key), it shows each game's best price now, how much off it is, and its lowest price ever, and can tell you when one drops (see [PC library](pc-library.md)).
+With the [PC library](pc-library.md) on, **Acorns > PC wishlist** lists PC games worth buying, found through IGDB (the genres you like, the series you collect, and the PC versions of console games you keep sealed), ranked with Steam's review scores. Everything you own on PC is left out. With **PC game prices** on (Settings > Features, and a free IsThereAnyDeal key), it shows each game's best price now, how much off it is, and its lowest price ever, and can tell you when one drops (see [PC library](pc-library.md)).
 
 ## Shop links
 

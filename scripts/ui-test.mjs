@@ -276,7 +276,7 @@ export async function uiTest(target, account, check) {
     const reviewUnderSystem = await systemPages.getByRole('link', { name: /^Review/ }).count();
     await page.goto(`${base}/wishlist/pc`);
     const pcWishlistMoved = await page.waitForURL(/\/pc\/wishlist$/, { timeout: 10000 }).then(() => true, () => false);
-    check('ui: Review is under System, and the PC wishlist under the PC library', reviewUnderSystem === 1 && pcWishlistMoved, `review under System: ${reviewUnderSystem}; moved: ${pcWishlistMoved} (${page.url()})`);
+    check('ui: Review is under System, and the old PC wishlist address leads to its page', reviewUnderSystem === 1 && pcWishlistMoved, `review under System: ${reviewUnderSystem}; moved: ${pcWishlistMoved} (${page.url()})`);
 
     // The same in light mode (Settings > Interface), then back to the default.
     const theme = async (value) => {
@@ -432,21 +432,34 @@ export async function uiTest(target, account, check) {
       await page.getByRole('button', { name: 'Save changes' }).click();
       await page.getByRole('button', { name: 'Save changes' }).waitFor({ state: 'detached', timeout: 10000 });
     };
-    const pcEntry = page.locator('nav.mantine-AppShell-navbar').getByText('PC library', { exact: true });
+    // The PC library is the Stash's (D165), its wishlist Acorns': looked for with the Stash open.
+    const pcEntry = page.locator('nav.mantine-AppShell-navbar a[href="/pc"]');
+    const pcWishEntry = page.locator('nav.mantine-AppShell-navbar a[href="/pc/wishlist"]');
     await pcSwitch.click({ force: true });
     await saveFeatures();
-    const pcHidden = await pcEntry.first().waitFor({ state: 'detached', timeout: 10000 }).then(
-      () => true,
-      () => false,
-    );
+    await page.goto(`${base}/collection`);
+    await settle();
+    const pcHidden = (await pcEntry.count()) === 0;
+    await page.goto(`${base}/settings/features`);
+    await page.getByText('What Squirrelcade needs').waitFor({ timeout: 15000 });
     await pcSwitch.click({ force: true });
     await saveFeatures();
+    await page.goto(`${base}/collection`);
     const pcBack = await pcEntry.first().waitFor({ timeout: 10000 }).then(
       () => true,
       () => false,
     );
+    await page.goto(`${base}/wishlist`);
+    const pcWishBack = await pcWishEntry.first().waitFor({ timeout: 10000 }).then(
+      () => true,
+      () => false,
+    );
     found = await pageProblems();
-    check('ui: switching the PC library off takes it out of the menu, and on brings it back', found.length === 0 && pcHidden && pcBack, found.join(' | ') || `hidden: ${pcHidden}, back: ${pcBack}`);
+    check(
+      'ui: switching the PC library off takes it out of the menu, and on brings it back under the Stash, its wishlist under Acorns',
+      found.length === 0 && pcHidden && pcBack && pcWishBack,
+      found.join(' | ') || `hidden: ${pcHidden}, back: ${pcBack}, wishlist: ${pcWishBack}`,
+    );
 
     // Each part has one home: on Settings > Features its switch links to its card, with no key boxes there; the card
     // on Sources has the switch, the steps (folded under "Set it up") and the key, off or on (PC game prices: its key).

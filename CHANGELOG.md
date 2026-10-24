@@ -2,6 +2,12 @@
 
 What changed in each version of Squirrelcade (called Gamefolio before 0.35.0). The decisions behind these (D01, D02...) are in [docs/DECISIONS.md](docs/DECISIONS.md), each with a tag to roll it back.
 
+## 1.3.0 (not released yet): the game page, and games in their time
+
+### Changed
+
+- **The PC library is in the Stash, its wishlist and deals in Acorns** (D165, the owner's idea): Stash > PC library, Acorns > PC wishlist and Acorns > PC deals, as the menu's rule says (the games you have; games coming in and going out). The Stash page counts your PC games beside your consoles' ("on consoles · 4,900 more on PC, apart"), never added to them. Their addresses stay.
+
 ## 1.2.2 (2026-10-21): Recently added, the Nutshell, search by console, the camera, and quieter failures
 
 ### Added
