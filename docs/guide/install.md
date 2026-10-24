@@ -47,6 +47,8 @@ docker compose up -d
 3. Let Squirrelcade save files there. The easy way: in **File Station**, right-click the `squirrelcade` folder, choose **Properties**, and on **Permission** click **Create**: pick **Everyone**, tick read and write, and apply it to the folders and files inside too. Then keep `"1000:1000"` in the compose file. (Or use your own account's numbers: turn on SSH in **Control Panel > Terminal & SNMP**, sign in with `ssh you@your-nas` and run `id`. Synology accounts start at 1026 and the group is usually `100`, so `"1026:100"`.)
 4. **Container Manager > Project > Create:** name `squirrelcade`, path `docker/squirrelcade`, source **Create docker-compose.yml**; paste the file, then **Next** (the web portal page needs nothing: **Next** again) and **Done**. It downloads the image and starts it.
 
+**Older models** run it too, more slowly. On a 2017 Synology with an Intel Atom C2538 (the processor in many 2014 to 2017 Plus models), pages open in about a second and Squirrelcade uses under 400 MB of memory, but the work it does in the background, such as a collection update or Acorns, takes 8 to 12 times as long as on a recent mini PC (8 seconds for a 3,000-copy update instead of under one). The first start, download included, takes about 2 minutes.
+
 ## On Unraid
 
 The quickest way is the template:
