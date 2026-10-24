@@ -572,7 +572,7 @@ export async function buildApp(options: BuildOptions = {}): Promise<Squirrelcade
   registerAiSetupRoutes(app, { env, settings, collection, catalogs, backups, tasks, pc, auth, shares, health: () => computeHealth({ env, settings, backups, pc, problems: () => achievements.problems() }).health });
   registerReportRoutes(app, { db, settings, collection, catalogs, wishlist, igdb, notes, play, details, pc, history, care });
   registerHistoryRoutes(app, history);
-  registerCopiesRoutes(app, copies);
+  registerCopiesRoutes(app, copies, (platformKey, title) => igdb.coverOf(platformKey, title));
   registerSeriesRoutes(app, new SeriesService(catalogs, igdb, settings, () => wishlist.preferences(), (title) => pc.ownedOnPc(title).length > 0));
   registerCollectionExport(app, { collection, catalogs, igdb, settings, notes: () => notes.index(), extras: itemExtras });
   // Claude and other AI apps (0.55.0, D127): their sign-in (with guests) and the connector's read-only tools at /mcp.

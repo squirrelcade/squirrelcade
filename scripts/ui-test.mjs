@@ -227,6 +227,7 @@ export async function uiTest(target, account, check) {
       '/platforms/playstation-3?as=covers',
       '/wishlist?as=covers',
       '/collection/upgrades?as=covers',
+      '/collection/copies?view=all&as=covers',
       '/collection/backlog?as=covers',
       '/collection/sale?as=covers',
       '/wishlist/past?as=covers',

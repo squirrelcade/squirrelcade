@@ -1,5 +1,5 @@
 import { COMPLETENESS_SHORT, type Completeness } from '@squirrelcade/core';
-import { Badge, Button, Group, Loader, Menu, Modal, Pagination, SegmentedControl, Select, Stack, Table, Text, TextInput } from '@mantine/core';
+import { Badge, Button, Group, Loader, Menu, Modal, Pagination, SegmentedControl, Select, SimpleGrid, Stack, Table, Text, TextInput } from '@mantine/core';
 import { useDebouncedValue, useMediaQuery } from '@mantine/hooks';
 import { IconDeviceDesktop, IconExternalLink, IconSearch } from '@tabler/icons-react';
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
@@ -9,6 +9,7 @@ import { api } from '../api';
 import { PageHeader, type SortDirection } from '../components';
 import { count } from '../format';
 import { GameTitle, useOpenGame } from '../GameDrawer';
+import { COVER_COLS, CoverTile, jumpMark, LetterBar, useListView, ViewSwitch } from '../GameViews';
 import { notifyError, notifySuccess, useCanEdit, useSetting } from '../hooks';
 import { useSort } from '../sort';
 
@@ -39,6 +40,8 @@ interface CopiesGroup {
   total: number;
   sealed: number;
   playable: { kind: 'pc' | 'copy' | 'romm'; label: string; url?: string }[];
+  /** IGDB's box art, by its first console's copy. */
+  coverId?: string | null;
 }
 
 type View = 'sealed-playable' | 'sealed-only' | 'repeats' | 'multiple' | 'all';
@@ -54,6 +57,8 @@ interface CopiesList {
   pageSize: number;
   pcOn: boolean;
   items: CopiesGroup[];
+  /** In title order, where each letter starts (the A–Z bar). */
+  letters?: Record<string, number>;
 }
 
 const VIEWS: { value: View; label: string; about: string }[] = [
@@ -93,6 +98,8 @@ export function CopiesPage() {
   const pageSize = useSetting('interface.pageSize', 100);
   const how = view === 'sealed-playable' ? params.get('how') : null;
   const sorting = useSort(SORTS, 'title');
+  // Box art or a table (the owner, 2026-10-24); ?view= is the page's tabs here, so the switch keeps ?as=.
+  const [shown, setShown] = useListView('copies', 'table');
   const query = new URLSearchParams({ view, sort: sorting.by, dir: sorting.dir, page: String(page), pageSize: String(pageSize) });
   if (q) query.set('q', q);
   if (how) query.set('how', how);
@@ -179,11 +186,38 @@ export function CopiesPage() {
               ]}
             />
           )}
+          <ViewSwitch value={shown} onChange={setShown} />
           {list.isFetching && <Loader size="xs" />}
         </Group>
         {list.isError && <Text c="red">{(list.error as Error).message}</Text>}
+        {d && (
+          <LetterBar
+            firsts={sorting.by === 'title' ? (d.letters ?? null) : null}
+            total={d.total}
+            inTitleOrder={sorting.by === 'title' && Boolean(d.letters)}
+            sortByTitle={() => sorting.set('title', 'asc')}
+            pageSize={d.pageSize}
+            setPage={(p) => setParam({ page: String(p) })}
+          />
+        )}
         {!d ? (
           <Loader />
+        ) : shown === 'covers' ? (
+          <SimpleGrid cols={COVER_COLS} spacing="sm" verticalSpacing="md">
+            {d.items.map((g, i) => {
+              const first = g.consoles[0];
+              return (
+                <CoverTile
+                  key={g.key}
+                  platformKey={first ? first.platformKey : g.pc.length > 0 ? 'pc' : null}
+                  title={first ? first.title : g.title}
+                  coverId={g.coverId ?? null}
+                  jump={(page - 1) * d.pageSize + i}
+                  sub={[...g.consoles.map((c) => (c.copies > 1 ? `${c.platform} ×${c.copies}` : c.platform)), ...(g.pc.length > 0 ? ['PC'] : [])].join(' · ')}
+                />
+              );
+            })}
+          </SimpleGrid>
         ) : (
           <Table.ScrollContainer minWidth={narrow ? 0 : 720}>
             <Table striped verticalSpacing={6}>
@@ -195,10 +229,10 @@ export function CopiesPage() {
                 </Table.Tr>
               </Table.Thead>
               <Table.Tbody>
-                {d.items.map((g) => {
+                {d.items.map((g, rowIndex) => {
                   const first = g.consoles[0];
                   return (
-                    <Table.Tr key={g.key}>
+                    <Table.Tr key={g.key} {...jumpMark((page - 1) * d.pageSize + rowIndex)}>
                       <Table.Td valign="top">
                         {first ? (
                           <GameTitle platformKey={first.platformKey} title={first.title} fw={600}>

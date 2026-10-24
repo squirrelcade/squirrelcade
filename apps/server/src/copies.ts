@@ -1,4 +1,4 @@
-import { normalizeTitle, pcFamilyKey, type Completeness } from '@squirrelcade/core';
+import { jumpFirsts, normalizeTitle, pcFamilyKey, type Completeness } from '@squirrelcade/core';
 import { eq, isNull } from 'drizzle-orm';
 import type { FastifyInstance } from 'fastify';
 import type { Logger } from 'pino';
@@ -200,7 +200,8 @@ export class CopiesService {
     const sorted = byCopies ? [...rows].sort((a, b) => (dir === 'asc' ? a.total - b.total : b.total - a.total) || a.title.localeCompare(b.title)) : dir === 'asc' ? rows : [...rows].reverse();
     const pageSize = Math.min(Math.max(query.pageSize ?? 100, 1), 500);
     const page = Math.max(query.page ?? 1, 1);
-    return { view, counts, total: sorted.length, page, pageSize, pcOn: withPc, items: sorted.slice((page - 1) * pageSize, page * pageSize) };
+    // In title order, where each letter starts (the A–Z bar turns to the page with a letter).
+    return { view, counts, total: sorted.length, page, pageSize, pcOn: withPc, items: sorted.slice((page - 1) * pageSize, page * pageSize), ...(byCopies ? {} : { letters: jumpFirsts(sorted.map((g) => g.title)) }) };
   }
 
   /** Games to move a copy to ("Same game as..."), by title. */
@@ -230,11 +231,13 @@ export class CopiesService {
 }
 
 /** The Copies page's games, the search for "Same game as...", and the owner's answers. */
-export function registerCopiesRoutes(app: FastifyInstance, copies: CopiesService): void {
+export function registerCopiesRoutes(app: FastifyInstance, copies: CopiesService, coverOf: (platformKey: string, title: string) => string | null = () => null): void {
   app.get('/api/v1/copies', async (request) => {
     const q = request.query as { view?: string; how?: string; q?: string; sort?: string; dir?: string; page?: string; pageSize?: string };
     const may = shown(request);
-    return copies.list({ view: q.view, how: q.how, q: q.q, sort: q.sort, dir: q.dir, page: Number(q.page) || 1, pageSize: Number(q.pageSize) || 100 }, { pc: may.pc, romm: may.romm });
+    const list = copies.list({ view: q.view, how: q.how, q: q.q, sort: q.sort, dir: q.dir, page: Number(q.page) || 1, pageSize: Number(q.pageSize) || 100 }, { pc: may.pc, romm: may.romm });
+    // Each game's box art (IGDB's, by its first console's copy), for the list as box art.
+    return { ...list, items: list.items.map((g) => ({ ...g, coverId: g.consoles[0] ? coverOf(g.consoles[0].platformKey, g.consoles[0].title) : null })) };
   });
 
   app.get('/api/v1/copies/search', async (request) => {
