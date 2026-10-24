@@ -168,7 +168,7 @@ describe("IGDB's franchises and collections", () => {
     seedCatalogs(g, {
       owned: [['1', 'Super Mario Bros 3', 'NES'], ['2', 'Super Mario Odyssey', 'Nintendo Switch'], ['3', 'Judgement', 'PlayStation 4'], ...fill('NES', 10), ...fill('Nintendo Switch', 20), ...fill('PlayStation 4', 30), ...fill('PlayStation 5', 40)],
       catalogs: {
-        'nintendo-entertainment-system': ['Super Mario Bros 3'],
+        'nintendo-entertainment-system': ['Super Mario Bros 3', 'Mario Bros.'],
         'nintendo-switch': ['Super Mario Odyssey', 'Super Mario Bros. Wonder', 'Mario Kart 8 Deluxe'],
         'playstation-4': ['Judgement', 'Yakuza 0'],
         'playstation-5': ['Judgment'],
@@ -188,7 +188,11 @@ describe("IGDB's franchises and collections", () => {
         )
         .run();
     };
-    put('nintendo-entertainment-system', [{ id: 1, name: 'Super Mario Bros. 3', main: 'Mario Bros.', franchises: ['Mario Bros.', 'Mario'], collections: ['Super Mario'], released: '1990-02-12' }]);
+    put('nintendo-entertainment-system', [
+      { id: 1, name: 'Super Mario Bros. 3', main: 'Mario Bros.', franchises: ['Mario Bros.', 'Mario'], collections: ['Super Mario'], released: '1990-02-12' },
+      // "Mario Bros." is a collection too (the 1983 game's): it still folds, being older games' main franchise.
+      { id: 7, name: 'Mario Bros.', franchises: ['Mario'], collections: ['Mario Bros.'], released: '1986-06-01' },
+    ]);
     put('nintendo-switch', [
       { id: 2, name: 'Super Mario Odyssey', franchises: ['Mario'], collections: ['Super Mario'], released: '2017-10-27' },
       { id: 3, name: 'Super Mario Bros. Wonder', franchises: ['Mario'], collections: ['Super Mario Bros.', 'Super Mario'], released: '2023-10-20' },
@@ -203,17 +207,17 @@ describe("IGDB's franchises and collections", () => {
 
     type ByGame = { name: string; had: number; total: number };
     const list = async () => ((await g.app.inject({ url: '/api/v1/series?by=game', cookies })).json() as ByGame[]).map((s) => [s.name, s.had, s.total]);
-    // Mario has all three of its games (Super Mario Bros. 3 through Mario Bros.), which isn't listed apart; Super
+    // Mario has all four of its games (Super Mario Bros. 3 through Mario Bros.), which isn't listed apart; Super
     // Mario is IGDB's collection; Judgment counts once in Yakuza. Collections of one game aren't series.
     expect(await list()).toEqual([
-      ['Mario', 2, 3],
       ['Super Mario', 2, 3],
+      ['Mario', 2, 4],
       ['Yakuza', 1, 2],
     ]);
     const games = async (name: string) => (await g.app.inject({ url: `/api/v1/series/games?name=${encodeURIComponent(name)}&by=game`, cookies })).json() as { title: string; had: boolean; consoles: { platformKey: string; status: string }[] }[];
-    expect((await games('Mario')).map((x) => x.title)).toEqual(['Super Mario Bros 3', 'Super Mario Odyssey', 'Super Mario Bros. Wonder']);
+    expect((await games('Mario')).map((x) => x.title)).toEqual(['Mario Bros.', 'Super Mario Bros 3', 'Super Mario Odyssey', 'Super Mario Bros. Wonder']);
     // The folded name opens the series it joined.
-    expect((await games('Mario Bros.')).map((x) => x.title)).toEqual(['Super Mario Bros 3', 'Super Mario Odyssey', 'Super Mario Bros. Wonder']);
+    expect((await games('Mario Bros.')).map((x) => x.title)).toEqual(['Mario Bros.', 'Super Mario Bros 3', 'Super Mario Odyssey', 'Super Mario Bros. Wonder']);
     const judgment = (await games('Yakuza')).find((x) => /^Judge?ment$/.test(x.title))!;
     expect(judgment.had).toBe(true);
     expect(judgment.consoles.map((c) => [c.platformKey, c.status])).toEqual([
@@ -223,14 +227,14 @@ describe("IGDB's franchises and collections", () => {
     // A game's page asks for its series, the biggest first.
     expect((await g.app.inject({ url: '/api/v1/series/of?platform=nintendo-switch&title=Super%20Mario%20Odyssey', cookies })).json()).toEqual({
       series: [
-        { name: 'Mario', had: 2, total: 3 },
+        { name: 'Mario', had: 2, total: 4 },
         { name: 'Super Mario', had: 2, total: 3 },
       ],
     });
     // Collections off: franchises only.
     g.settings.update({ 'collection.seriesCollections': false });
     expect(await list()).toEqual([
-      ['Mario', 2, 3],
+      ['Mario', 2, 4],
       ['Yakuza', 1, 2],
     ]);
   });

@@ -144,9 +144,8 @@ export class SeriesService {
     const withCollections = this.settings.get('collection.seriesCollections');
     const key = `${this.catalogs.stamp()}|${this.igdb.stamp()}|${own.join('\n')}|${withCollections}`;
     if (this.cache?.key === key) return this.cache;
-    // The names IGDB gives as franchises, and as collections: only a franchise folds into another.
-    const franchiseNames = new Set<string>();
-    const collectionNames = new Set<string>();
+    // The names IGDB gives as some games' main franchise: only those fold into another (see below).
+    const mainNames = new Set<string>();
     const bySeries = new Map<string, SeriesGame[]>();
     const igdbOf = new Map<SeriesGame, IgdbGame>();
     const matches = this.catalogs.allMatches();
@@ -167,8 +166,7 @@ export class SeriesService {
         // Each of its franchises and (with the setting) its collections (seriesNamesOf).
         const names = game ? seriesNamesOf(game, withCollections) : [];
         if (names.length === 0) continue;
-        for (const f of game!.franchises ?? [game!.franchise ?? '']) if (f) franchiseNames.add(f);
-        for (const c of game!.collections ?? []) collectionNames.add(c);
+        if (game!.mainFranchise) mainNames.add(game!.mainFranchise);
         const elsewhere = t.status === 'owned' ? [] : [...(ownedOn.get(matchKey(baseTitle(t.target.title))) ?? [])].filter((n) => n !== p.name);
         for (const name of names) {
           // One entry for each series, since each series links its own remakes (linkVersions).
@@ -179,14 +177,15 @@ export class SeriesService {
       }
     }
     // IGDB's older franchise names inside its newer ones (the owner: the Mario series lacked Super Mario Bros. 2 and 3,
-    // which IGDB files under "Mario Bros." as well as "Mario"): a franchise whose name begins with a bigger
-    // franchise's, with most of its games in that one too, joins it and isn't listed apart. Collections never fold.
+    // which IGDB files under "Mario Bros." as well as "Mario"): a name IGDB gives as older games' main franchise, which
+    // begins with a bigger series' name and has most of its games in it too, joins it and isn't listed apart. A
+    // collection that's never a main franchise (Mario Kart) stays a series of its own.
     const folded = new Map<string, string>();
     const gameKey = (g: SeriesGame) => `${g.platformKey}|${normalizeTitle(g.title)}`;
     for (const [name, list] of bySeries) {
-      if (!franchiseNames.has(name) || collectionNames.has(name)) continue;
+      if (!mainNames.has(name)) continue;
       for (const [other, into] of bySeries) {
-        if (other === name || !franchiseNames.has(other) || into.length <= list.length || !matchKey(name).startsWith(matchKey(other))) continue;
+        if (other === name || into.length <= list.length || !matchKey(name).startsWith(matchKey(other))) continue;
         const inOther = new Set(into.map(gameKey));
         if (list.filter((g) => inOther.has(gameKey(g))).length >= 0.8 * list.length) {
           folded.set(name, other);
