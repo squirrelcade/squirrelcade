@@ -135,6 +135,10 @@ export interface TimelineView {
     tracked: boolean;
     hasHistory: boolean;
     hasTop100: boolean;
+    /** A console you don't collect that Squirrelcade follows (D169): IGDB's box art, RomM, its games' pages. */
+    followed: boolean;
+    /** Your RomM's ROMs for it, with RomM on. */
+    romm: number | null;
   }[];
   games: {
     platformKey: string;
@@ -200,6 +204,8 @@ export class HistoryService {
       pc: PcService;
       romm: RommLinker;
       rommEnabled: () => boolean;
+      /** How many ROMs your RomM has for a console (null: none of its platforms is that console). */
+      rommCount?: (platformKey: string) => number | null;
       /** What the owner played of a game on a console, by its names. */
       play?: (platformKey: string, names: string[]) => { status: PlayStatus | null; rating: number | null } | null;
     },
@@ -496,6 +502,26 @@ export class HistoryService {
     };
   }
 
+  /** Every console Roots knows: the ones with a history (shipped or the owner's) or a Top 100 list. */
+  consoleKeys(): string[] {
+    return [...new Set([...this.shippedConsoles.keys(), ...this.lists.keys(), ...this.db.select({ key: historyNotes.platformKey }).from(historyNotes).where(eq(historyNotes.kind, 'console')).all().map((r) => r.key)])];
+  }
+
+  /** A console's name, as Roots shows it. */
+  consoleName(key: string): string {
+    return this.platformName(key);
+  }
+
+  /** Forgets the platforms' names read last (a console's record was just made). */
+  forgetNames(): void {
+    this.names = null;
+  }
+
+  /** A console's Top 100 titles (for matching videos to the games of a console you follow). */
+  top100Titles(key: string): string[] {
+    return (this.lists.get(key)?.entries ?? []).flatMap((e) => [e.title, ...e.altTitles]);
+  }
+
   /** Every console with a history or a Top 100 list, by the year it came out, and each one's landmark games. */
   timeline(): TimelineView {
     const owned = this.titles.ownedByConsole();
@@ -523,6 +549,8 @@ export class HistoryService {
         tracked,
         hasHistory: Boolean(found),
         hasTop100: Boolean(list),
+        followed: !tracked && this.settings.get('platforms.followRoots') && !this.settings.get('platforms.unfollowed').includes(key),
+        romm: this.deps.rommEnabled() ? (this.deps.rommCount?.(key) ?? null) : null,
       });
       if (perConsole === 0) continue;
       const family = this.family(key);

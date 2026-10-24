@@ -143,6 +143,8 @@ export class VideosService {
     private readonly youtube: YouTubeClient,
     private readonly thumbsDir: string,
     private readonly log: Logger,
+    /** Titles beyond the catalogs' to match videos to: the Top 100 games of the consoles you follow (D169). */
+    private readonly extraTitles: () => string[] = () => [],
   ) {}
 
   enabled(): boolean {
@@ -252,6 +254,7 @@ export class VideosService {
     if (channels.length === 0) return 'No video channel is on (Settings > Roots > Video channels).';
     const titles: string[] = [];
     for (const p of this.catalogs.allMatches()) for (const t of p.match.targets) titles.push(t.target.title, ...(t.target.altTitles ?? []));
+    titles.push(...this.extraTitles());
     const index = videoTitleIndex(titles);
     const keyed = Boolean(this.youtube.key());
     const said: string[] = [];

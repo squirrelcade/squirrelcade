@@ -578,6 +578,21 @@ export class LookupService {
       }
     }
 
+    // A game of a console you follow but don't collect (D169): IGDB's list, "Not tracked" there; never in the offline copy.
+    if (!options.every) {
+      for (const key of this.followed()) {
+        if (options.platformKey && key !== options.platformKey) continue;
+        const row = this.db.select({ id: platforms.id, name: platforms.name }).from(platforms).where(eq(platforms.key, key)).get();
+        if (!row || !this.igdb) continue;
+        for (const g of this.igdb.games(row.id)) {
+          const relevance = rankOf([g.name, ...g.altNames]);
+          if (relevance === 0 || (options.exact && relevance < 3)) continue;
+          const elsewhere = [...(owned.get(matchKey(baseTitle(g.name))) ?? [])];
+          results.push({ platformKey: key, platform: row.name, title: g.name, answer: 'not-tracked', ownedAs: [], ownedOn: elsewhere, ownedOnPc: this.pcOwnership(g.name), maybe: [], wishlist: null, relevance });
+        }
+      }
+    }
+
     // A set's missing games that no console catalog has (a publisher's download-era release, say).
     for (const g of this.sets.missingOutsideCatalogs()) {
       if (options.platformKey && g.platformKey !== options.platformKey) continue;
@@ -673,6 +688,9 @@ export class LookupService {
         return { ...r, coverId: this.igdb?.coverOf(r.platformKey, r.title) ?? null, reviews, stars, romm, note: notes.get(`${r.platformKey}|${normalizeTitle(r.title)}`) ?? null, onTheWay: coming.get(`${r.platformKey}|${normalizeTitle(r.title)}`) ?? null };
       });
   }
+
+  /** The consoles you follow without collecting them (D169), set by the app: their games answer "Not tracked". */
+  followed: () => string[] = () => [];
 
   /** The offline copies built last: with your notes (the owner's), and without (a viewer's, when notes aren't shared). */
   private offlineCopies = new Map<boolean, { at: number; stamp: string; copy: OfflineCopy; body: string; etag: string; gzip?: Buffer }>();

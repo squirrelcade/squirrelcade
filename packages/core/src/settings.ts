@@ -1401,6 +1401,23 @@ export const settingDefinitions = {
     max: 1000,
     unit: 'games',
   }),
+  'platforms.followRoots': bool({
+    page: 'platforms',
+    section: 'Consoles you follow',
+    label: "Follow the consoles in Roots you don't collect",
+    description:
+      "The consoles Roots has a history or a Top 100 list for that you don't collect (the Vectrex, the Game Boy, the Saturn...) get what helps you know them: IGDB's box art and details, your RomM's games, and a page for each game (its Roots, videos, series and shops); never a checklist, a percentage or acorns. Each takes a few megabytes for IGDB's list of its games (the pictures aren't kept). Off, they have only Roots' history and list.",
+    default: true,
+  }),
+  'platforms.unfollowed': list({
+    page: 'platforms',
+    section: 'Consoles you follow',
+    label: "Consoles you don't follow",
+    description: "Consoles left out of following, by key (\"arcade\"): the Follow button on a console's Roots page changes this.",
+    default: [],
+    maxItems: 100,
+    advanced: true,
+  }),
   'platforms.regionLocked': list({
     page: 'platforms',
     section: 'Recognition',

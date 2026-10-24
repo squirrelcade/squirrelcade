@@ -105,9 +105,10 @@ describe('RomM links', () => {
     const fake = await start();
     turnOn();
     const run = await g.tasks.runNow('romm-sync');
-    expect(run).toMatchObject({ status: 'success', message: '9 ROMs on 2 RomM platforms' });
-    // Only mapped platforms are read (SNES by its IGDB number, Game Boy too); the arcade isn't one of Squirrelcade's.
-    expect(fake.state.calls.some((c) => c.includes('platform_ids=20'))).toBe(false);
+    // A third RomM platform, the arcade's: a console Roots follows (D169).
+    expect(run).toMatchObject({ status: 'success', message: '10 ROMs on 3 RomM platforms' });
+    // Mapped platforms are read (SNES by its IGDB number, Game Boy too), the arcade too: a console Roots follows (D169).
+    expect(fake.state.calls.some((c) => c.includes('platform_ids=20'))).toBe(true);
 
     const snes = await items('super-nintendo');
     // The USA release wins over Japan's and the beta, and RomM can play it in the browser.
@@ -131,7 +132,8 @@ describe('RomM links', () => {
     expect(lookup.find((r: { platformKey: string }) => r.platformKey === 'super-nintendo').romm).toMatchObject({ romId: 102 });
 
     const status = (await g.app.inject({ url: '/api/v1/sources/romm', cookies })).json();
-    expect(status).toMatchObject({ configured: true, roms: 9, error: null, owned: { matched: 2, possible: 2, owned: 8 } });
+    // The arcade's ROM counts too (a console Roots follows, D169).
+    expect(status).toMatchObject({ configured: true, roms: 10, error: null, owned: { matched: 2, possible: 2, owned: 8 } });
     expect(status.platforms.find((p: { key: string }) => p.key === 'super-nintendo')).toMatchObject({ romm: [{ slug: 'snes' }], via: 'igdb', roms: 9 });
   });
 

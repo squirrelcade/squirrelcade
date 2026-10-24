@@ -74,7 +74,8 @@ async function start(fake: ReturnType<typeof fakeIgdb>, more: string[] = []) {
   });
 }
 
-const keys = () => g.settings.update({ 'sources.igdbClientId': 'my-client-id', 'sources.igdbClientSecret': 'my-secret' });
+// The consoles Roots follows (D169) are left out here: these tests are about the catalogs' consoles.
+const keys = () => g.settings.update({ 'sources.igdbClientId': 'my-client-id', 'sources.igdbClientSecret': 'my-secret', 'platforms.followRoots': false });
 
 describe('IGDB', () => {
   it('tests the keys', async () => {

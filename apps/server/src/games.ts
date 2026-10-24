@@ -157,6 +157,8 @@ export function registerGameRoutes(
     db: Db;
     settings: SettingsService;
     catalogs: CatalogService;
+    /** Makes a console's record for a console Roots knows (a game of one you don't collect can be opened, D169). */
+    rootsPlatform?: (key: string) => boolean;
     collection: CollectionService;
     wishlist: WishlistService;
     igdb: IgdbService;
@@ -193,7 +195,7 @@ export function registerGameRoutes(
       const may = shown(request);
       return may.pc === false ? reply.code(404).send({ error: 'not-found', message: 'No such game in the PC library.' }) : view;
     }
-    const p = db.select().from(platforms).where(eq(platforms.key, key)).get();
+    const p = db.select().from(platforms).where(eq(platforms.key, key)).get() ?? (deps.rootsPlatform?.(key) ? db.select().from(platforms).where(eq(platforms.key, key)).get() : undefined);
     if (!p) return reply.code(404).send({ error: 'not-found', message: 'No such platform.' });
     const keys = new Set([matchKey(title), matchKey(baseTitle(title)), matchKey(editionBase(title))].filter(Boolean));
     const same = (t: string) => keys.has(matchKey(t)) || keys.has(matchKey(baseTitle(t)));

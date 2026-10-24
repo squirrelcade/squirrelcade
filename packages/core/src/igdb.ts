@@ -58,6 +58,15 @@ export const IGDB_PLATFORM_IDS: Record<string, number> = {
   'neo-geo': 80,
   '3do': 50,
   'n-gage': 42,
+  // Consoles only Roots has (followed, D169): IGDB's numbers, checked on 2026-10-24.
+  vectrex: 70,
+  astrocade: 91,
+  'arcadia-2001': 473,
+  'epoch-super-cassette-vision': 376,
+  'sega-sg-1000': 84,
+  'neo-geo-pocket': 119,
+  'neo-geo-pocket-color': 120,
+  arcade: 52,
 };
 
 /**

@@ -4,7 +4,7 @@ A console's **catalog** is the list of games there are to collect for it. Squirr
 
 ## Which consoles get a catalog
 
-A console is **tracked** once you own a few different games for it (6 by default; Settings > Platforms > "Unique games to track a console"). Tracked consoles get a catalog and count for the wishlist.
+A console is **tracked** once you own a few different games for it (6 by default; Settings > Platforms > "Unique games to track a console"). Tracked consoles get a catalog and count for the wishlist. The other consoles Roots knows are **followed** instead (box art, RomM, their games' pages, never a checklist): see [Roots](roots.md).
 
 ## Where catalogs come from
 

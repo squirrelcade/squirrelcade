@@ -204,6 +204,19 @@ export class RommService {
     return mapPlatforms(this.ownPlatforms(), romm, rommOverrides(this.settings.get('sources.rommPlatforms')));
   }
 
+  /** How many ROMs RomM's index holds for a console (its RomM platforms together); null when none is that console. */
+  romCount(platformKey: string): number | null {
+    const match = this.mapping(this.storedPlatforms()).get(platformKey);
+    if (!match || match.platforms.length === 0) return null;
+    const ids = new Set(match.platforms.map((p) => p.id));
+    return this.db
+      .select({ id: rommPlatforms.id, n: rommPlatforms.romCount })
+      .from(rommPlatforms)
+      .all()
+      .filter((p) => ids.has(p.id))
+      .reduce((sum, p) => sum + p.n, 0);
+  }
+
   private storedPlatforms(): RommPlatform[] {
     return this.db
       .select()

@@ -288,7 +288,28 @@ export async function buildApp(options: BuildOptions = {}): Promise<Squirrelcade
     const found = play.of(platformKey, names);
     return found ? { status: found.status, rating: found.rating } : null;
   };
-  const history = new HistoryService(db, settings, titles, { igdb, wishlist, pc, romm: rommLink, rommEnabled: () => romm.enabled(), play: playOfNames }, log, { top100: options.top100Data, history: options.historyData });
+  const history = new HistoryService(db, settings, titles, { igdb, wishlist, pc, romm: rommLink, rommEnabled: () => romm.enabled(), rommCount: (key) => romm.romCount(key), play: playOfNames }, log, { top100: options.top100Data, history: options.historyData });
+  // Consoles you follow (D169, the owner: on for everyone, off for whoever minds the disk space): the consoles Roots
+  // knows that aren't collected, each with a record (so IGDB's list and RomM's games come for it), never a catalog.
+  const followed = () => {
+    if (!settings.get('platforms.followRoots')) return [];
+    const off = new Set(settings.get('platforms.unfollowed'));
+    return history.consoleKeys().filter((k) => !off.has(k));
+  };
+  /** A console's record, made when Roots knows the console (a game of one you don't collect opens, followed or not). */
+  const rootsPlatform = (key: string) => {
+    if (db.select({ id: platforms.id }).from(platforms).where(eq(platforms.key, key)).get()) return true;
+    if (!history.consoleKeys().includes(key)) return false;
+    db.insert(platforms).values({ key, name: history.consoleName(key), source: 'builtin', createdAt: new Date().toISOString() }).onConflictDoNothing().run();
+    igdb.forgetPlatforms();
+    history.forgetNames();
+    return true;
+  };
+  const followRows = () => {
+    for (const k of followed()) rootsPlatform(k);
+  };
+  igdb.followed = followed;
+  followRows();
   // Roots (D165): each game's Wikipedia article, read for its own time and since.
   const roots = new RootsService(db, settings, catalogs, wishlist, titles, wikipedia, new WikidataClient(options.wikidataFetch, options.wikidataFetch ? 0 : undefined), log);
   // The stars beside a game's name (D165), for the game page's header wherever it's shown: Game of the Day, Store Mode.
@@ -450,7 +471,14 @@ export async function buildApp(options: BuildOptions = {}): Promise<Squirrelcade
   collection.events.on('changed', catalogsSoon);
   settings.events.on('changed', (keys) => {
     if (keys.includes('platforms.minUniqueGames')) catalogsSoon();
+    // Following changed: the consoles' records now, their IGDB lists and RomM's games soon.
+    if (keys.includes('platforms.followRoots') || keys.includes('platforms.unfollowed')) {
+      followRows();
+      if (igdb.client.configured()) tasks.soon('igdb-sync');
+      if (romm.client.configured()) tasks.soon('romm-sync');
+    }
   });
+  lookup.followed = followed;
   registerWishlistRoutes(app, wishlist, () => notes.index());
   registerLookupRoutes(app, lookup);
   registerCheckRoutes(app, lookup, settings);
@@ -539,6 +567,7 @@ export async function buildApp(options: BuildOptions = {}): Promise<Squirrelcade
     db,
     settings,
     catalogs,
+    rootsPlatform,
     collection,
     wishlist,
     igdb,
@@ -557,7 +586,7 @@ export async function buildApp(options: BuildOptions = {}): Promise<Squirrelcade
   });
   registerRootsRoutes(app, roots, db);
   // Roots' videos (D168): pasted, IGDB's trailers, and the video channels' (with a YouTube key).
-  const videos = new VideosService(db, settings, catalogs, igdb, new YouTubeClient(settings, options.youtubeFetch), join(env.configDir, 'video-thumbs'), log);
+  const videos = new VideosService(db, settings, catalogs, igdb, new YouTubeClient(settings, options.youtubeFetch), join(env.configDir, 'video-thumbs'), log, () => followed().flatMap((k) => history.top100Titles(k)));
   registerVideoRoutes(app, videos);
   registerPlayRoutes(app, play, (platformKey, title) => catalogTarget(catalogs, platformKey, title)?.target.title ?? null);
   registerCopyDetailRoutes(app, details, settings);

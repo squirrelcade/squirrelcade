@@ -1,18 +1,67 @@
 import { Anchor, Card, Group, Loader, SimpleGrid, Stack, Switch, Tabs, Text } from '@mantine/core';
 import { useMediaQuery } from '@mantine/hooks';
 import { IconArrowLeft } from '@tabler/icons-react';
-import { useQuery } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router';
 import { RootsMark } from '../Acorn';
 import { api } from '../api';
 import { PageHeader } from '../components';
-import { useFeature, usePageTitle, useSettings } from '../hooks';
+import { notifyError, useCanEdit, useFeature, usePageTitle, useSetting, useSettings } from '../hooks';
 import { dot } from '../look';
 import { ConsoleHistoryTab, generationName, TimelinePanel, Top100Tab, useAllConsoles } from './History';
 
 /** The consoles as the timeline knows them (GET /api/v1/history/timeline). */
 interface Consoles {
-  consoles: { platformKey: string; name: string; manufacturer: string | null; generation: number | null; launched: number | null; ended: number | null; tracked: boolean; hasHistory: boolean; hasTop100: boolean }[];
+  consoles: {
+    platformKey: string;
+    name: string;
+    manufacturer: string | null;
+    generation: number | null;
+    launched: number | null;
+    ended: number | null;
+    tracked: boolean;
+    hasHistory: boolean;
+    hasTop100: boolean;
+    /** Followed without collecting it (D169): box art, RomM and its games' pages. */
+    followed: boolean;
+    /** Your RomM's ROMs for it, with RomM on. */
+    romm: number | null;
+  }[];
+}
+
+/** Follow or stop following a console you don't collect (Settings > Platforms > Consoles you follow, D169). */
+function useFollow() {
+  const queryClient = useQueryClient();
+  const unfollowed = useSetting('platforms.unfollowed', [] as string[]);
+  return useMutation({
+    mutationFn: ({ key, follow }: { key: string; follow: boolean }) =>
+      api('/settings', { method: 'PUT', json: { changes: { 'platforms.unfollowed': follow ? unfollowed.filter((k) => k !== key) : [...new Set([...unfollowed, key])] } } }),
+    onSuccess: () => Promise.all([queryClient.invalidateQueries({ queryKey: ['settings'] }), queryClient.invalidateQueries({ queryKey: ['history'] })]),
+    onError: (err) => notifyError(err),
+  });
+}
+
+/** A console you don't collect: whether it's followed (with a button to change it) and what your RomM has of it. */
+function FollowLine({ c, canEdit, followOn }: { c: Consoles['consoles'][number]; canEdit: boolean; followOn: boolean }) {
+  const follow = useFollow();
+  if (c.tracked) return null;
+  return (
+    <Group gap={8} mt={4} wrap="wrap" onClick={(e) => e.stopPropagation()}>
+      {c.romm !== null && c.romm > 0 && (
+        <Text size="xs" c="dimmed">
+          In RomM {c.romm}
+        </Text>
+      )}
+      <Text size="xs" c="dimmed">
+        {c.followed ? 'Followed' : "You don't collect it"}
+      </Text>
+      {canEdit && followOn && (
+        <Anchor component="button" type="button" size="xs" onClick={() => follow.mutate({ key: c.platformKey, follow: !c.followed })}>
+          {c.followed ? 'Stop following' : 'Follow'}
+        </Anchor>
+      )}
+    </Group>
+  );
 }
 
 /**
@@ -30,6 +79,8 @@ export function RootsPage() {
   const listed = (timeline.data?.consoles ?? []).filter((c) => c.hasHistory || c.hasTop100);
   // The consoles you collect, or all of them with the switch (remembered; the timeline follows it).
   const [all, setAll] = useAllConsoles();
+  const canEdit = useCanEdit();
+  const followOn = useSetting('platforms.followRoots', true);
   const collected = listed.filter((c) => c.tracked);
   const consoles = all || collected.length === 0 ? listed : collected;
   const generations = [...new Set(consoles.map((c) => c.generation ?? 0))].sort((a, b) => a - b);
@@ -109,6 +160,7 @@ export function RootsPage() {
                               </Anchor>
                             )}
                           </Group>
+                          <FollowLine c={c} canEdit={canEdit} followOn={followOn} />
                         </Card>
                       ))}
                   </SimpleGrid>

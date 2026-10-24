@@ -180,15 +180,23 @@ export class IgdbService {
   }
 
   /** Platforms that have a catalog and count now (see consoleInUse): the ones worth an IGDB list. */
+  /** The consoles followed without a catalog (Roots' consoles you don't collect, D169), set by the app. */
+  followed: () => string[] = () => [];
+
   private catalogPlatforms() {
     const home = this.settings.get('general.homeRegion');
     const locked = this.settings.get('platforms.regionLocked');
-    return this.db
+    const withCatalog = this.db
       .selectDistinct({ id: platforms.id, key: platforms.key, name: platforms.name })
       .from(platforms)
       .innerJoin(catalogEntries, eq(catalogEntries.platformId, platforms.id))
       .all()
       .filter((p) => consoleInUse(p.key, home, locked));
+    // A followed console's list too: its box art and details for Roots and its games' pages.
+    const followed = new Set(this.followed());
+    const have = new Set(withCatalog.map((p) => p.key));
+    const more = followed.size === 0 ? [] : this.db.select({ id: platforms.id, key: platforms.key, name: platforms.name }).from(platforms).all().filter((p) => followed.has(p.key) && !have.has(p.key));
+    return [...withCatalog, ...more];
   }
 
   status(): { configured: boolean; platforms: IgdbPlatformStatus[] } {

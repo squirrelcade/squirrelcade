@@ -32,6 +32,10 @@ A game's **stars** beside its name come partly from Roots: **#2 best-selling** o
 
 Both show the consoles you collect; **Consoles you don't collect too**, on Roots › Consoles, adds the others, and is remembered on that device (the timeline follows it).
 
+### Consoles you follow
+
+A console Roots knows that you don't collect (the Vectrex, the Game Boy, the Saturn, the arcade...) is **followed**: it gets what helps you know it, never what counts it. IGDB's list of its games (box art on its Top 100, details and ratings), your RomM's games for it (**In RomM**, **Play on RomM**, and its count on its card here), a page for each of its games (its Roots, videos, series and shops), and its games in the header's search and Store Mode, marked **Not tracked**. Never a checklist, a percentage, the Stash's numbers or acorns. Each card says **Followed** with **Stop following** (and **Follow** back); **Settings › Platforms › Consoles you follow** turns following off for all of them, for whoever minds the disk space (IGDB's list takes a few megabytes a console; the pictures aren't kept). A console becomes collected as before: own a few different games of it (Settings › Platforms › Unique games to track a console).
+
 ## Videos
 
 With **Settings › Roots › Videos on a game's page** on (it's off to start), a game's Roots plays its videos: **Videos of the day** under At the time (its trailers, commercials, the reviews of its first months), **Videos since** under Looking back. Tap one to play it right there, in YouTube's privacy-enhanced player (the whole screen on a phone; full screen from the player's own button), or **Watch on YouTube**. The thumbnails come from your server, which keeps a copy of each; YouTube's player loads only when you press play.
