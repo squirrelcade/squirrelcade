@@ -20,6 +20,7 @@ import { applyPendingRestore, openDatabase, type Db } from './db/index.js';
 import { appState, catalogEntries, platforms } from './db/schema.js';
 import { headerStars, LaunchDays, type HeaderReviews } from './gameHeader.js';
 import { registerRootsRoutes, RootsService } from './roots.js';
+import { registerVideoRoutes, VideosService, YouTubeClient } from './videos.js';
 import { WikidataClient } from './wikidata.js';
 import { APP_VERSION, readEnv, type Env } from './env.js';
 import { IgdbClient, IgdbService, registerIgdbRoutes, type FetchLike } from './igdb.js';
@@ -111,6 +112,8 @@ export interface BuildOptions {
   wikipediaFetch?: FetchLike;
   /** Wikidata's API, for Roots (tests stand it in). */
   wikidataFetch?: FetchLike;
+  /** YouTube's calls (Roots' videos), replaced in tests. */
+  youtubeFetch?: FetchLike;
   rommFetch?: FetchLike;
   /** Replaces the network for Nintendo Life (tests use a fake). */
   nintendoLifeFetch?: FetchLike;
@@ -164,6 +167,8 @@ export interface SquirrelcadeApp {
   gotd: GameOfTheDayService;
   /** Roots: games' Wikipedia articles, read for their time (D165). */
   roots: RootsService;
+  /** Roots' videos (D168). */
+  videos: VideosService;
   ra: RetroAchievementsService;
   achievements: AchievementsService;
   aiAuth: AiAuthService;
@@ -551,6 +556,9 @@ export async function buildApp(options: BuildOptions = {}): Promise<Squirrelcade
     roots,
   });
   registerRootsRoutes(app, roots, db);
+  // Roots' videos (D168): pasted, IGDB's trailers, and the video channels' (with a YouTube key).
+  const videos = new VideosService(db, settings, catalogs, igdb, new YouTubeClient(settings, options.youtubeFetch), join(env.configDir, 'video-thumbs'), log);
+  registerVideoRoutes(app, videos);
   registerPlayRoutes(app, play, (platformKey, title) => catalogTarget(catalogs, platformKey, title)?.target.title ?? null);
   registerCopyDetailRoutes(app, details, settings);
   // Storage locations made quick (D157): Pack a place, a shelf photo's games in one place, the Places page.
@@ -589,6 +597,14 @@ export async function buildApp(options: BuildOptions = {}): Promise<Squirrelcade
     interval: () => (roots.enabled() && settings.get('tasks.rootsPerNight') > 0 ? 86_400_000 : null),
     firstRunDelayMs: 20 * 60_000,
     run: async (_log, progress) => roots.readMany(progress, settings.get('tasks.rootsPerNight')),
+  });
+  tasks.register({
+    name: 'videos-read',
+    title: 'Read video channels',
+    description: "Reads the video channels (Settings > Roots > Video channels) for videos about your consoles' games: with a YouTube key, each channel's whole list once and every 30 days (as YouTube asks), and its newest videos each night.",
+    interval: () => (videos.enabled() ? 86_400_000 : null),
+    firstRunDelayMs: 30 * 60_000,
+    run: async (_log, progress) => videos.readChannels(progress),
   });
   tasks.register({
     name: 'ra-sync',
@@ -957,6 +973,7 @@ export async function buildApp(options: BuildOptions = {}): Promise<Squirrelcade
     orders,
     gotd,
     roots,
+    videos,
     ra,
     achievements,
     aiAuth,

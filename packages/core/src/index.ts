@@ -37,3 +37,4 @@ export * from './shelf.js';
 export * from './friends.js';
 export * from './orders.js';
 export * from './roots.js';
+export * from './videos.js';

@@ -1281,3 +1281,35 @@ export const bestSellingLists = sqliteTable('best_selling_lists', {
   data: text('data').notNull(),
   readAt: text('read_at').notNull(),
 });
+
+/**
+ * Roots' videos (D168): a YouTube video about a game, kept by the game's title (normalized) so every console's page of
+ * it shows it: pasted by the owner, a trailer from IGDB, or matched from a video channel's list (seen_at: when YouTube
+ * last listed it; a channel's are read again within 30 days, as YouTube asks, or dropped).
+ */
+export const gameVideos = sqliteTable(
+  'game_videos',
+  {
+    id: integer('id').primaryKey({ autoIncrement: true }),
+    titleKey: text('title_key').notNull(),
+    videoId: text('video_id').notNull(),
+    title: text('title').notNull(),
+    channel: text('channel'),
+    publishedAt: text('published_at'),
+    /** pasted, igdb or channel */
+    source: text('source').notNull(),
+    /** The owner's say for a pasted one (time or later); null: by its date. */
+    era: text('era'),
+    kind: text('kind'),
+    seenAt: text('seen_at').notNull(),
+  },
+  (t) => [uniqueIndex('game_videos_idx').on(t.titleKey, t.videoId)],
+);
+
+/** What was asked of IGDB and YouTube for videos and when ("igdb:1234" a game's trailers, "channel:@IGN" a channel). */
+export const videoLookups = sqliteTable('video_lookups', {
+  key: text('key').primaryKey(),
+  /** JSON: a channel's id and its last full read. */
+  value: text('value'),
+  at: text('at').notNull(),
+});

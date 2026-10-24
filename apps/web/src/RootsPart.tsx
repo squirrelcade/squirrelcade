@@ -1,14 +1,15 @@
-import { Anchor, AspectRatio, Box, Center, Group, Image, Loader, SimpleGrid, Stack, Tabs, Text, Tooltip, UnstyledButton } from '@mantine/core';
-import { igdbCoverUrl, matchKey } from '@squirrelcade/core';
-import { IconExternalLink } from '@tabler/icons-react';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { Anchor, AspectRatio, Box, Button, Center, Group, Image, Loader, Modal, SegmentedControl, SimpleGrid, Stack, Tabs, Text, TextInput, Tooltip, UnstyledButton } from '@mantine/core';
+import { useMediaQuery } from '@mantine/hooks';
+import { igdbCoverUrl, matchKey, youtubeVideoId } from '@squirrelcade/core';
+import { IconExternalLink, IconPlayerPlayFilled, IconX } from '@tabler/icons-react';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useEffect, useState, type ReactNode } from 'react';
 import { Link } from 'react-router';
 import { RootsMark, StashMark } from './Acorn';
 import { api } from './api';
 import { count } from './format';
 import { useOpenGame } from './GameDrawer';
-import { useSetting } from './hooks';
+import { notifyError, useCanEdit, useSetting } from './hooks';
 import { DrawerHistory, type HistoryText } from './pages/History';
 
 /** A review of the game (GET /api/v1/game/roots). */
@@ -165,6 +166,137 @@ function SourceLine({ s }: { s: RootsSource }) {
       </Stack>
       <Out link={linkOf(s)} />
     </Group>
+  );
+}
+
+/** A video on a game's page (GET /api/v1/game/videos). */
+interface GameVideo {
+  videoId: string;
+  title: string;
+  channel: string | null;
+  publishedAt: string | null;
+  source: 'pasted' | 'igdb' | 'channel' | 'cited';
+  kind: string | null;
+}
+
+interface GameVideos {
+  status: 'off' | 'ready';
+  time: GameVideo[];
+  later: GameVideo[];
+  keyed: boolean;
+}
+
+/**
+ * The player (D168): YouTube's privacy-enhanced player in a window (the whole screen on a phone), full screen too; the
+ * frame sends its origin, as YouTube's player needs (Squirrelcade's own pages send only same-origin referrers).
+ */
+function VideoPlayer({ video, onClose }: { video: GameVideo | null; onClose: () => void }) {
+  const narrow = useMediaQuery('(max-width: 48em)');
+  return (
+    <Modal opened={video !== null} onClose={onClose} size="xl" fullScreen={Boolean(narrow)} title={video?.title} centered>
+      {video && (
+        <Stack gap="xs">
+          <AspectRatio ratio={16 / 9}>
+            <iframe
+              src={`https://www.youtube-nocookie.com/embed/${video.videoId}?autoplay=1&rel=0`}
+              title={video.title}
+              allow="autoplay; encrypted-media; picture-in-picture; fullscreen"
+              allowFullScreen
+              referrerPolicy="strict-origin-when-cross-origin"
+              style={{ border: 0, borderRadius: 8 }}
+            />
+          </AspectRatio>
+          <Group justify="space-between" gap="xs">
+            <Text size="xs" c="dimmed">
+              {[video.channel, when(video.publishedAt)].filter(Boolean).join(' · ')}
+            </Text>
+            <Anchor href={`https://www.youtube.com/watch?v=${video.videoId}`} target="_blank" rel="noreferrer" size="xs">
+              Watch on YouTube <IconExternalLink size={11} />
+            </Anchor>
+          </Group>
+        </Stack>
+      )}
+    </Modal>
+  );
+}
+
+/** Videos as a list: the thumbnail (kept on the server) with a play mark, the title, the channel and day. */
+function VideoList({ videos, onPlay, onRemove, shownAtFirst }: { videos: GameVideo[]; onPlay: (v: GameVideo) => void; onRemove?: (v: GameVideo) => void; shownAtFirst: number }) {
+  const [all, setAll] = useState(false);
+  const shown = all ? videos : videos.slice(0, shownAtFirst);
+  return (
+    <Stack gap={6}>
+      {shown.map((v) => (
+        <Group key={v.videoId} gap={8} wrap="nowrap" align="flex-start" style={{ borderTop: '1px solid var(--sc-line)', paddingTop: 6 }}>
+          <UnstyledButton onClick={() => onPlay(v)} aria-label={`Play ${v.title}`} style={{ position: 'relative', flex: 'none', width: 112 }}>
+            <AspectRatio ratio={16 / 9}>
+              <Image src={`/api/v1/videos/thumb/${v.videoId}`} radius="sm" alt="" loading="lazy" fit="cover" />
+            </AspectRatio>
+            <Center style={{ position: 'absolute', inset: 0 }}>
+              <span style={{ background: 'rgba(0,0,0,.6)', borderRadius: 999, padding: 6, display: 'inline-flex' }}>
+                <IconPlayerPlayFilled size={14} color="white" />
+              </span>
+            </Center>
+          </UnstyledButton>
+          <Stack gap={0} style={{ minWidth: 0, flex: 1 }}>
+            <Anchor component="button" type="button" size="sm" ta="left" lineClamp={2} onClick={() => onPlay(v)} c="var(--sc-text)">
+              {v.title}
+            </Anchor>
+            <Text size="xs" c="dimmed">
+              {[v.channel, when(v.publishedAt), v.source === 'igdb' ? 'from IGDB' : v.source === 'cited' ? 'cited in its article' : v.source === 'pasted' ? 'added by you' : null].filter(Boolean).join(' · ')}
+            </Text>
+          </Stack>
+          {onRemove && v.source !== 'cited' && (
+            <Tooltip label="Take it off this game">
+              <UnstyledButton aria-label={`Take ${v.title} off this game`} onClick={() => onRemove(v)} c="dimmed">
+                <IconX size={14} />
+              </UnstyledButton>
+            </Tooltip>
+          )}
+        </Group>
+      ))}
+      {videos.length > shownAtFirst && (
+        <Anchor component="button" type="button" size="xs" onClick={() => setAll(!all)}>
+          {all ? 'Show fewer' : `Show all ${videos.length}`}
+        </Anchor>
+      )}
+    </Stack>
+  );
+}
+
+/** A video pasted onto the game (the owner): its address, and whether it's from the game's time. */
+function AddVideo({ platformKey, title, era }: { platformKey: string; title: string; era: 'time' | 'later' }) {
+  const queryClient = useQueryClient();
+  const [url, setUrl] = useState('');
+  const [when, setWhen] = useState<'time' | 'later' | 'date'>(era);
+  const add = useMutation({
+    mutationFn: () => api('/game/videos', { method: 'POST', json: { platform: platformKey, title, url, era: when === 'date' ? null : when } }),
+    onSuccess: async () => {
+      setUrl('');
+      await queryClient.invalidateQueries({ queryKey: ['game', 'videos', platformKey, title] });
+    },
+    onError: (err) => notifyError(err),
+  });
+  return (
+    <Stack gap={4} mt={6}>
+      <Group gap={6} wrap="nowrap">
+        <TextInput size="xs" placeholder="Paste a YouTube video's address" aria-label="A YouTube video's address" value={url} onChange={(e) => setUrl(e.currentTarget.value)} style={{ flex: 1 }} />
+        <Button size="compact-sm" variant="light" disabled={!youtubeVideoId(url)} loading={add.isPending} onClick={() => add.mutate()}>
+          Add
+        </Button>
+      </Group>
+      <SegmentedControl
+        size="xs"
+        value={when}
+        onChange={(v) => setWhen(v as 'time' | 'later' | 'date')}
+        aria-label="Where the video goes"
+        data={[
+          { value: 'time', label: 'Of its time' },
+          { value: 'later', label: 'Since' },
+          { value: 'date', label: 'By its date' },
+        ]}
+      />
+    </Stack>
   );
 }
 
@@ -348,6 +480,31 @@ export function RootsPart({ platformKey, title, history }: { platformKey: string
     retry: false,
   });
   const inSeries = series.data?.series ?? [];
+  // Its videos (D168): pasted, IGDB's trailers, the channels'; with the videos its article cites, made playable.
+  const videosQuery = useQuery({
+    queryKey: ['game', 'videos', platformKey, title],
+    queryFn: () => api<GameVideos>(`/game/videos?platform=${encodeURIComponent(platformKey)}&title=${encodeURIComponent(title)}`),
+    enabled: platformKey !== 'pc',
+    staleTime: 5 * 60_000,
+    retry: false,
+  });
+  const canEdit = useCanEdit();
+  const queryClient2 = useQueryClient();
+  const shownAtFirst = useSetting('roots.videosShown', 6);
+  const [playing, setPlaying] = useState<GameVideo | null>(null);
+  const videosOn = videosQuery.data?.status === 'ready';
+  const removeVideo = (video: GameVideo) =>
+    void api(`/game/videos?platform=${encodeURIComponent(platformKey)}&title=${encodeURIComponent(title)}&video=${video.videoId}`, { method: 'DELETE' })
+      .then(() => queryClient2.invalidateQueries({ queryKey: ['game', 'videos', platformKey, title] }))
+      .catch((err: unknown) => notifyError(err));
+  // The videos its article cites, as videos when they're YouTube's; the rest stay links.
+  const cited = (v?.time.videos ?? []).flatMap((s) => {
+    const id = s.url ? youtubeVideoId(s.url) : null;
+    return id ? [{ videoId: id, title: s.title ?? s.work ?? 'Video', channel: s.work, publishedAt: s.date, source: 'cited' as const, kind: null }] : [];
+  });
+  const citedLinks = (v?.time.videos ?? []).filter((s) => !(s.url && youtubeVideoId(s.url)));
+  const timeVideos = [...(videosQuery.data?.time ?? []), ...cited.filter((c) => !(videosQuery.data?.time ?? []).some((x) => x.videoId === c.videoId))];
+  const laterVideos = videosQuery.data?.later ?? [];
   // Read just now (the first time the game is opened): the header's Metacritic score and stars come from it too.
   useEffect(() => {
     if (v?.status === 'ready' && v.readAt && Date.now() - new Date(v.readAt).getTime() < 60_000) {
@@ -378,6 +535,7 @@ export function RootsPart({ platformKey, title, history }: { platformKey: string
         </Anchor>
       </Group>
       <DrawerHistory platformKey={platformKey} title={title} history={history} />
+      <VideoPlayer video={playing} onClose={() => setPlaying(null)} />
       {roots.isLoading && (
         <Group gap="xs">
           <Loader size="xs" />
@@ -390,6 +548,16 @@ export function RootsPart({ platformKey, title, history }: { platformKey: string
         <Text size="sm" c="dimmed">
           Squirrelcade didn't find this game's Wikipedia article, so its reviews of the time aren't here.
         </Text>
+      )}
+      {/* No article read: its videos still show. */}
+      {v?.status !== 'ready' && videosOn && (timeVideos.length > 0 || laterVideos.length > 0 || canEdit) && (
+        <>
+          <Text size="sm" fw={700}>
+            Its videos
+          </Text>
+          {timeVideos.length + laterVideos.length > 0 && <VideoList videos={[...timeVideos, ...laterVideos]} onPlay={setPlaying} onRemove={canEdit ? removeVideo : undefined} shownAtFirst={shownAtFirst} />}
+          {canEdit && <AddVideo platformKey={platformKey} title={title} era="time" />}
+        </>
       )}
       {v?.status !== 'ready' && inSeries.length > 0 && (
         <>
@@ -446,14 +614,23 @@ export function RootsPart({ platformKey, title, history }: { platformKey: string
                       v.time.web.slice(0, 10).map((s, i) => <SourceLine key={`${s.url}|${i}`} s={s} />)
                     )}
                   </Card>
-                  <Card title="Videos of the day">
-                    {v.time.videos.length > 0 ? (
-                      v.time.videos.map((s, i) => <SourceLine key={`${s.url}|${i}`} s={s} />)
-                    ) : year !== null && year < 2005 ? (
-                      <Empty>{year} is before YouTube: commercials and TV segments of its day will come with Roots' video channels.</Empty>
-                    ) : (
-                      <Empty>The video reviews of its day will come with Roots' video channels.</Empty>
+                  <Card title="Videos of the day" aside={timeVideos.length > 0 ? `${timeVideos.length}` : undefined}>
+                    {timeVideos.length > 0 && <VideoList videos={timeVideos} onPlay={setPlaying} onRemove={canEdit ? removeVideo : undefined} shownAtFirst={shownAtFirst} />}
+                    {citedLinks.map((s, i) => (
+                      <SourceLine key={`${s.url}|${i}`} s={s} />
+                    ))}
+                    {timeVideos.length === 0 && citedLinks.length === 0 && (
+                      <Empty>
+                        {!videosOn
+                          ? 'Videos are off: Settings › Roots › Videos turns them on.'
+                          : year !== null && year < 2005
+                            ? `${year} is before YouTube: paste a commercial or a TV segment of its day, or turn on a channel of old ones (Settings › Roots).`
+                            : videosQuery.data?.keyed
+                              ? "No video of its day yet: the video channels are read at night."
+                              : 'No video of its day yet. With a YouTube key (Settings › Sources), the video channels are matched to your games.'}
+                      </Empty>
                     )}
+                    {canEdit && videosOn && <AddVideo platformKey={platformKey} title={title} era="time" />}
                   </Card>
                 </Stack>
               </SimpleGrid>
@@ -474,6 +651,12 @@ export function RootsPart({ platformKey, title, history }: { platformKey: string
                   <Card title="Reviews since">
                     {v.later.reviews.length === 0 ? <Empty>No later review in its article's table.</Empty> : v.later.reviews.map((r, i) => <ReviewLine key={`${r.outlet}|${i}`} r={r} />)}
                   </Card>
+                  {videosOn && (laterVideos.length > 0 || canEdit) && (
+                    <Card title="Videos since" aside={laterVideos.length > 0 ? `${laterVideos.length}` : undefined}>
+                      {laterVideos.length > 0 ? <VideoList videos={laterVideos} onPlay={setPlaying} onRemove={canEdit ? removeVideo : undefined} shownAtFirst={shownAtFirst} /> : <Empty>No later video yet.</Empty>}
+                      {canEdit && <AddVideo platformKey={platformKey} title={title} era="later" />}
+                    </Card>
+                  )}
                   {(v.awards.length > 0 || v.bestSelling) && (
                     <Card title="Honors">
                       {v.bestSelling && (

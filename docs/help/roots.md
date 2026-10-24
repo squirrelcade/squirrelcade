@@ -32,11 +32,36 @@ A game's **stars** beside its name come partly from Roots: **#2 best-selling** o
 
 Both show the consoles you collect; **Consoles you don't collect too**, on Roots › Consoles, adds the others, and is remembered on that device (the timeline follows it).
 
+## Videos
+
+With **Settings › Roots › Videos on a game's page** on (it's off to start), a game's Roots plays its videos: **Videos of the day** under At the time (its trailers, commercials, the reviews of its first months), **Videos since** under Looking back. Tap one to play it right there, in YouTube's privacy-enhanced player (the whole screen on a phone; full screen from the player's own button), or **Watch on YouTube**. The thumbnails come from your server, which keeps a copy of each; YouTube's player loads only when you press play.
+
+Where they come from:
+
+- **Pasted by you:** under either list, paste a YouTube video's address, choose **Of its time**, **Since** or **By its date**, and **Add**. The × beside a video takes it off the game.
+- **IGDB's trailers** for the game (with IGDB set up).
+- **The videos its Wikipedia article cites**, playable when they're YouTube's.
+- **Video channels** (Settings › Roots): IGN, GameSpot and Gaming Historian to start, others listed off (Game Informer, Nintendo Life, Push Square, Pure Xbox, Digital Foundry, Classic Game Room, Game Sack, Metal Jesus Rocks, LGR, My Life in Gaming, DidYouKnowGaming, GameTrailers). Each line is a name, the channel's @handle or address, and on or off; add "| archive" for a channel of old commercials or TV shows, whose videos count as their games' own time. **Read video channels** (System › Tasks) reads them at night and keeps each video whose title says what it is (a review, a trailer, a preview, a history, gameplay) and names one of your consoles' games. **It needs a YouTube key**: YouTube's public channel feeds, which need none, weren't answering in October 2026 (Squirrelcade tries them anyway).
+
+### A YouTube key
+
+Free, about five minutes, in your Google account:
+
+1. Go to **console.cloud.google.com** and sign in.
+2. In the project picker at the top, **New project**, name it Squirrelcade, **Create**, and choose it.
+3. **APIs & Services › Library**: search **YouTube Data API v3**, open it, **Enable**.
+4. **APIs & Services › Credentials › Create credentials › API key**. Copy the key.
+5. Click the key to edit it: under **API restrictions** choose **Restrict key**, tick **YouTube Data API v3**, **Save**.
+6. In Squirrelcade, **Settings › Sources › YouTube (videos)**: paste it into **YouTube API key** and save.
+
+With the key, each channel's whole list of videos is read once (a big channel like IGN's takes a few thousand of the day's 10,000 free units, and a while), then its newest videos each night; every 30 days the whole list is read again, as YouTube asks of what's kept from it, and a video gone from the channel goes from Squirrelcade too. Only the videos about your games are kept. A pasted video gets its date with the key too.
+
 ## Settings > Roots
 
 - **Read each game's Wikipedia article** (on): off, a game's Roots has only what comes with Squirrelcade, and Wikipedia isn't asked about games.
 - **Look up the articles the catalogs don't link** (on): a game whose catalog doesn't link its article (one you added, or from your own list) is looked up on Wikipedia by its title, once.
 - **At the time lasts** (18 months).
+- **Videos on a game's page** (off), **Video channels**, and **Videos shown at first** (6): see [Videos](roots.md#videos).
 - **Reference sites:** the sites **Learn more** links to, in order, each with the Wikidata properties that hold the game's identifier there ("MobyGames | P11688, P1933"), or a search address with {title}.
 
 **Read games' Roots** (System > Tasks) reads the articles of the games you have and want at night, a few hundred at a time (Settings > Tasks), and an article read before only when Wikipedia changed it. It asks Wikipedia and Wikidata about one request a second, as they ask.

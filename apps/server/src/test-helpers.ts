@@ -118,6 +118,7 @@ export async function testApp(
     igdbFetch?: FetchLike;
     wikipediaFetch?: FetchLike;
     wikidataFetch?: FetchLike;
+    youtubeFetch?: FetchLike;
     rommFetch?: FetchLike;
     nintendoLifeFetch?: FetchLike;
     listFetch?: FetchLike;
@@ -165,6 +166,7 @@ export async function testApp(
       igdbFetch: options.igdbFetch ?? noNetwork,
       wikipediaFetch: options.wikipediaFetch ?? noNetwork,
       wikidataFetch: options.wikidataFetch ?? noNetwork,
+      youtubeFetch: options.youtubeFetch ?? noNetwork,
       rommFetch: options.rommFetch ?? noNetwork,
       nintendoLifeFetch: options.nintendoLifeFetch ?? noNetwork,
       listFetch: options.listFetch ?? noNetwork,

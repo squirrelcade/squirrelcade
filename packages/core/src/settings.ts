@@ -561,6 +561,48 @@ export const settingDefinitions = {
     max: 60,
     unit: 'months',
   }),
+  'roots.videos': bool({
+    page: 'roots',
+    section: 'Videos',
+    label: "Videos on a game's page",
+    description:
+      "A game's Roots shows its videos, played right there (YouTube's privacy-enhanced player, full screen too): the ones you paste onto it, its trailers from IGDB, the videos its Wikipedia article cites, and, with a YouTube key (Settings > Sources), the video channels' reviews and histories of it. At the time has the ones from its own time, Looking back the rest. Off, nothing is asked of YouTube.",
+    default: false,
+  }),
+  'roots.videoChannels': list({
+    page: 'roots',
+    section: 'Videos',
+    label: 'Video channels',
+    description:
+      "The YouTube channels whose videos are matched to your consoles' games (with a YouTube key), each a name, a bar, its @handle or address, a bar and on or off (and \"| archive\" for a channel of old commercials or TV shows, whose videos count as their games' own time). A video is matched when its title says what it is (a review, a trailer, a preview, a history, gameplay) and names a game.",
+    default: [
+      'IGN | @IGN | on',
+      'GameSpot | @GameSpot | on',
+      'Gaming Historian | @GamingHistorian | on',
+      'Game Informer | @gameinformer | off',
+      'Nintendo Life | @NintendoLife | off',
+      'Push Square | @pushsquare | off',
+      'Pure Xbox | @PureXbox | off',
+      'Digital Foundry | @DigitalFoundry | off',
+      'Classic Game Room | @ClassicGameRoomHD | off',
+      'Game Sack | @GameSack | off',
+      'Metal Jesus Rocks | @MetalJesusRocks | off',
+      'LGR | @LGR | off',
+      'My Life in Gaming | @mylifeingaming | off',
+      'DidYouKnowGaming | @DidYouKnowGaming | off',
+      'GameTrailers | @GameTrailers | off',
+    ],
+    maxItems: 60,
+  }),
+  'roots.videosShown': num({
+    page: 'roots',
+    section: 'Videos',
+    label: 'Videos shown at first',
+    description: "How many videos each part of a game's Roots shows before Show all.",
+    default: 6,
+    min: 1,
+    max: 50,
+  }),
   'roots.referenceSites': list({
     page: 'roots',
     section: 'Learn more',
@@ -2427,6 +2469,13 @@ export const settingDefinitions = {
     advanced: true,
   }),
 
+  'sources.youtubeKey': secret({
+    page: 'sources',
+    section: 'YouTube (videos)',
+    label: 'YouTube API key',
+    description:
+      "Optional, for Roots' videos: with a key, Squirrelcade reads each video channel's whole list of videos (Settings > Roots > Video channels) and keeps the ones about your consoles' games, and dates the videos you paste. Free: in Google Cloud's console, make a project, enable YouTube Data API v3, and create an API key (Help > Roots says each click). A day's allowance (10,000 units) reads about half a million videos. Without one, videos still come from what you paste, IGDB's trailers and the videos Wikipedia cites.",
+  }),
   'sources.itadKey': secret({
     page: 'sources',
     section: 'IsThereAnyDeal (PC game prices)',
