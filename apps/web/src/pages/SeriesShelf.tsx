@@ -119,9 +119,16 @@ function SeriesGames({ name }: { name: string }) {
               <Box aria-hidden="true" style={{ cursor: 'pointer' }} onClick={() => open(at.platformKey, g.title)}>
                 <Art coverId={g.coverId} name={g.title} dim={!g.had} />
               </Box>
-              <Text size="xs" lineClamp={2} component="div" fw={g.had ? 600 : undefined}>
-                {g.had && <StashMark size={11} />} <GameTitle platformKey={at.platformKey} title={g.title} size="xs" />
-              </Text>
+              <Group gap={4} wrap="nowrap" align="flex-start">
+                {g.had && (
+                  <span style={{ flex: 'none', marginTop: 2 }}>
+                    <StashMark size={11} />
+                  </span>
+                )}
+                <Text size="xs" lineClamp={2} component="div" fw={g.had ? 600 : undefined}>
+                  <GameTitle platformKey={at.platformKey} title={g.title} size="xs" />
+                </Text>
+              </Group>
               <Text size="xs" c="dimmed" lineClamp={3}>
                 {[
                   g.released?.slice(0, 4) ?? null,
