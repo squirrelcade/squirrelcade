@@ -30,7 +30,7 @@ Values come from a PriceCharting export, or from a Value column in a spreadsheet
    - **Covers (optional):** free IGDB keys give covers, genres and series. See [Optional parts](features.md).
    - **Wishlist (optional):** put the consoles and genres you like in your own order.
 
-After that, the menu on the left has everything (on a phone, the bar at the bottom has Today, Stash, Scan and Acorns, and **More** opens the menu). Its three main sections each say what they're for under their names: the **Stash** is the games you have, **Acorns** is games coming in and going out, and the **Nutshell** is your collection by the numbers.
+After that, the menu on the left has everything (on a phone, the bar at the bottom has Today, Stash, Scan and Acorns, and **More** opens the menu). At its bottom, in small grey type, is the version your server runs (Squirrelcade 1.2.2 · f6b0323), to check that an update arrived. Its three main sections each say what they're for under their names: the **Stash** is the games you have, **Acorns** is games coming in and going out, and the **Nutshell** is your collection by the numbers.
 
 | Page | What it's for |
 | --- | --- |

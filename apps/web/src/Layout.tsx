@@ -100,6 +100,8 @@ export function Layout({ children }: { children: ReactNode }) {
   const location = useLocation();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+  // The version this server runs (shown at the menu's bottom, D170).
+  const version = useQuery({ queryKey: ['health'], queryFn: () => api<{ version: string }>('/health'), staleTime: 10 * 60_000 }).data?.version ?? null;
   const { data: session } = useSession();
   const { data: settings } = useSettings();
   const path = location.pathname;
@@ -325,12 +327,18 @@ export function Layout({ children }: { children: ReactNode }) {
           )}
           <NavLink component={Link} to="/help" label="Help" leftSection={<IconHelp size={18} />} active={path.startsWith('/help')} onClick={close} />
           {/* PriceCharting supports Squirrelcade's use of its values on one condition: credit it, with a link (2026-10-06). */}
-          <Text size="xs" className="sc-muted" px="sm" pt="md" pb="xs">
+          <Text size="xs" className="sc-muted" px="sm" pt="md" pb={0}>
             Values from{' '}
             <Anchor href="https://www.pricecharting.com" target="_blank" rel="noreferrer" size="xs" inherit>
               PriceCharting
             </Anchor>
           </Text>
+          {/* The version this server runs, small and grey (D170, the owner: "visible, but not conspicuous"), so an update can be checked at a glance. */}
+          {version && (
+            <Text size="10px" className="sc-muted" px="sm" pb="xs" style={{ opacity: 0.7 }} title="The version of Squirrelcade this server runs">
+              Squirrelcade {version.replace(/-([0-9a-f]{7,})$/, ' · $1')}
+            </Text>
+          )}
         </AppShell.Section>
       </AppShell.Navbar>
       <PasswordModal opened={password} onClose={() => setPassword(false)} />

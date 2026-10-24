@@ -35,6 +35,10 @@ squirrelcade.com is the one-page site in `site/`. When a feature is added or cha
 
 A change that adds or changes something to set up or configure updates, in the same piece of work: Help, the README and install guides, and both AI setup prompts (`docs/ai/setup-prompt.md`, for before installing, and the one an install writes, `apps/server/src/aiSetup.ts`), including the settings file the AI can write. The prompts are meant to take someone through setup and configuration from start to finish, by pasting them into any AI chat.
 
+## The version shows
+
+The version a server runs shows at the bottom of the menu, small and grey ("Squirrelcade 1.2.2 · f6b0323", from `/api/v1/health`; D170), so the owner can tell at a glance that an update arrived. Keep it there, quiet but visible, through any redesign of the menu.
+
 ## Hard rule
 
 - Never handle passwords: the person types them.
