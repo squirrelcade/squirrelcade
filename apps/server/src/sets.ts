@@ -482,7 +482,7 @@ export class SetsService {
 }
 
 /** Sets: list, make (from a Wikipedia list, or then a CSV), read, change, read again, remove, download. */
-export function registerSetRoutes(app: FastifyInstance, sets: SetsService): void {
+export function registerSetRoutes(app: FastifyInstance, sets: SetsService, coverOf: (platformKey: string, title: string) => string | null = () => null): void {
   const failed = (reply: { code: (n: number) => { send: (b: unknown) => unknown } }, err: unknown) => {
     if (err instanceof SetError) return reply.code(400).send({ error: 'invalid-set', message: err.message });
     throw err;
@@ -504,7 +504,8 @@ export function registerSetRoutes(app: FastifyInstance, sets: SetsService): void
   app.get('/api/v1/sets/:key', async (request, reply) => {
     const detail = sets.detail((request.params as { key: string }).key);
     if (!detail) return reply.code(404).send({ error: 'not-found', message: 'No such set.' });
-    return detail;
+    // Each game's box art (IGDB's), for the set's games shown as box art.
+    return { ...detail, games: detail.games.map((g) => ({ ...g, coverId: coverOf(g.platformKey, g.catalogTitle ?? g.title) })) };
   });
 
   app.put('/api/v1/sets/:key/list', async (request, reply) => {

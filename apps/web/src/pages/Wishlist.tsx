@@ -1,4 +1,4 @@
-import { ActionIcon, Alert, Anchor, Badge, Button, Card, Group, Loader, Menu, Select, Stack, Table, Tabs, Text, TextInput, Tooltip } from '@mantine/core';
+import { ActionIcon, Alert, Anchor, Badge, Button, Card, Group, Loader, Menu, Select, SimpleGrid, Stack, Table, Tabs, Text, TextInput, Tooltip } from '@mantine/core';
 import { useMediaQuery } from '@mantine/hooks';
 import { IconChevronDown, IconChevronRight, IconClock, IconDownload, IconSearch } from '@tabler/icons-react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
@@ -10,6 +10,7 @@ import { sortRows, useSort } from '../sort';
 import { count, date, dateTime } from '../format';
 import { notifyError, useCanEdit, useSetting, useSettingsState } from '../hooks';
 import { GameCover, GameTitle } from '../GameDrawer';
+import { COVER_COLS, CoverTile, jumpMark, LetterBar, useListView, ViewSwitch } from '../GameViews';
 import { PreferencePicker, preferenceLevels } from '../Preference';
 import { monthsFromNow, SNOOZES } from '../choices';
 import { ShareButton } from '../ShareLinks';
@@ -208,22 +209,41 @@ function EntryTable({ entries: all, ranked }: { entries: Entry[]; ranked?: boole
   const narrow = useMediaQuery('(max-width: 48em)');
   const columns = (ranked ? 1 : 0) + (narrow ? 3 : 7);
   const preferenceSelect = (e: Entry) => <PreferencePicker platformKey={e.platformKey} title={e.title} value={e.preference} width={170} />;
+  // Box art or a table (the owner, 2026-10-24), and the A–Z bar.
+  const [view, setView] = useListView('wishlist', 'table');
 
   return (
     <>
-    <TextInput
-      placeholder="Filter by title, platform or series"
-      leftSection={<IconSearch size={16} />}
-      value={filter}
-      onChange={(e) => setFilter(e.currentTarget.value)}
-      w={320}
-      mb="sm"
-    />
+    <Group gap="sm" mb="sm" wrap="wrap">
+      <TextInput placeholder="Filter by title, platform or series" leftSection={<IconSearch size={16} />} value={filter} onChange={(e) => setFilter(e.currentTarget.value)} w={320} />
+      <ViewSwitch value={view} onChange={setView} />
+    </Group>
+    <LetterBar titles={entries.map((e) => e.title)} inTitleOrder={sorting.by === 'title' && sorting.dir === 'asc'} sortByTitle={() => sorting.set('title', 'asc')} />
     {entries.length === 0 && (
       <Text c="dimmed" size="sm">
         Nothing matches “{filter}”.
       </Text>
     )}
+    {view === 'covers' ? (
+      <SimpleGrid cols={COVER_COLS} spacing="sm" verticalSpacing="md">
+        {entries.map((e, i) => (
+          <CoverTile
+            key={`${e.platformKey}|${e.title}`}
+            platformKey={e.platformKey}
+            title={e.title}
+            coverId={e.coverId}
+            jump={i}
+            sub={
+              <Group gap={6} component="span" wrap="nowrap">
+                {ranked && e.rank ? <b>#{e.rank}</b> : null}
+                <Acorns n={e.masterScore ?? e.score} size={11} />
+                <span>{e.platform}</span>
+              </Group>
+            }
+          />
+        ))}
+      </SimpleGrid>
+    ) : (
     <Table.ScrollContainer minWidth={narrow ? 0 : 760}>
       <Table verticalSpacing={6} highlightOnHover>
         <Table.Thead>
@@ -239,13 +259,13 @@ function EntryTable({ entries: all, ranked }: { entries: Entry[]; ranked?: boole
           </Table.Tr>
         </Table.Thead>
         <Table.Tbody>
-          {entries.map((e, _i, shown) => {
+          {entries.map((e, rowIndex, shown) => {
             const anyCover = shown.some((x) => x.coverId);
             const key = `${e.platformKey}|${e.title}`;
             const expanded = open === key;
             return (
               <Fragment key={key}>
-                <Table.Tr style={{ cursor: 'pointer' }} onClick={() => setOpen(expanded ? null : key)}>
+                <Table.Tr style={{ cursor: 'pointer' }} onClick={() => setOpen(expanded ? null : key)} {...jumpMark(rowIndex)}>
                   {ranked && <Table.Td>{e.rank}</Table.Td>}
                   <Table.Td>
                     <Group gap={6} wrap="nowrap">
@@ -374,6 +394,7 @@ function EntryTable({ entries: all, ranked }: { entries: Entry[]; ranked?: boole
         </Table.Tbody>
       </Table>
     </Table.ScrollContainer>
+    )}
     </>
   );
 }

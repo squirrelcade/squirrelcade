@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { latinTitle, matchKey, normalizeTitle, romajiKey, slugify } from './text.js';
+import { latinTitle, matchKey, normalizeTitle, romajiKey, slugify, JUMP_LETTERS, jumpFirsts, jumpLetterOf } from './text.js';
 
 describe('normalizeTitle', () => {
   it('ignores case, accents, apostrophes and punctuation', () => {
@@ -108,5 +108,13 @@ describe('romajiKey', () => {
   it('keeps numbers and other words apart', () => {
     expect(romajiKey('Jikkyou Powerful Pro Yakyuu 2')).not.toBe(romajiKey('Jikkyō Powerful Pro Yakyū 3'));
     expect(romajiKey('Super Kokou Yakyuu')).not.toBe(romajiKey('Super Kyousouba'));
+  });
+});
+
+describe('the A–Z bar', () => {
+  it("files a title under its first letter without accents, or # for a digit or a sign, and finds where each letter starts", () => {
+    expect(['Okami', 'éclair', '007 Legends', '.hack', 'the Last of Us'].map(jumpLetterOf)).toEqual(['O', 'E', '#', '#', 'T']);
+    expect(jumpFirsts(['1942', 'Asteroids', 'Atari', 'Banjo', 'Zelda'])).toEqual({ '#': 0, A: 1, B: 3, Z: 4 });
+    expect(JUMP_LETTERS).toHaveLength(27);
   });
 });

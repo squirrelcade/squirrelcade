@@ -1,4 +1,4 @@
-import { Anchor, AspectRatio, Badge, Box, Card, Center, Group, Image, Loader, Progress, SegmentedControl, SimpleGrid, Stack, Text, TextInput, UnstyledButton } from '@mantine/core';
+import { Anchor, AspectRatio, Badge, Box, Card, Center, Group, Image, Loader, Progress, SegmentedControl, SimpleGrid, Stack, Table, Text, TextInput, UnstyledButton } from '@mantine/core';
 import { igdbCoverUrl } from '@squirrelcade/core';
 import { IconArrowLeft, IconSearch } from '@tabler/icons-react';
 import { useQuery } from '@tanstack/react-query';
@@ -9,6 +9,7 @@ import { api } from '../api';
 import { PageHeader } from '../components';
 import { count } from '../format';
 import { GameTitle, useOpenGame } from '../GameDrawer';
+import { jumpMark, LetterBar, useListView, ViewSwitch } from '../GameViews';
 import { usePageTitle, useSetting, useSettings } from '../hooks';
 
 /** A series counted by game (GET /api/v1/series?by=game). */
@@ -85,6 +86,7 @@ function HadBar({ had, total, onPc }: { had: number; total: number; onPc: number
 function SeriesGames({ name }: { name: string }) {
   const open = useOpenGame();
   const [order, setOrder] = useState<keyof typeof GAME_ORDERS>('year');
+  const [view, setView] = useListView('series-games', 'covers');
   const games = useQuery({ queryKey: ['series', 'by-game', name], queryFn: () => api<SeriesTitle[]>(`/series/games?name=${encodeURIComponent(name)}&by=game`) });
   if (games.isLoading) return <Loader />;
   if (!games.data) return <Text size="sm">No series of that name in your catalogs.</Text>;
@@ -98,24 +100,74 @@ function SeriesGames({ name }: { name: string }) {
         <Box w={260}>
           <HadBar had={had} total={games.data.length} onPc={onPc} />
         </Box>
-        <SegmentedControl
-          size="xs"
-          value={order}
-          onChange={(v) => setOrder(v as keyof typeof GAME_ORDERS)}
-          aria-label="Order of the series' games"
-          data={[
-            { value: 'year', label: 'Release order' },
-            { value: 'missing', label: 'Missing first' },
-            { value: 'name', label: 'A to Z' },
-          ]}
-        />
+        <Group gap="xs">
+          <SegmentedControl
+            size="xs"
+            value={order}
+            onChange={(v) => setOrder(v as keyof typeof GAME_ORDERS)}
+            aria-label="Order of the series' games"
+            data={[
+              { value: 'year', label: 'Release order' },
+              { value: 'missing', label: 'Missing first' },
+              { value: 'name', label: 'A to Z' },
+            ]}
+          />
+          <ViewSwitch value={view} onChange={setView} />
+        </Group>
       </Group>
+      <LetterBar titles={sorted.map((g) => g.title)} inTitleOrder={order === 'name'} sortByTitle={() => setOrder('name')} />
+      {view === 'table' ? (
+        <Table.ScrollContainer minWidth={560}>
+          <Table striped highlightOnHover verticalSpacing={6}>
+            <Table.Thead>
+              <Table.Tr>
+                <Table.Th>Game</Table.Th>
+                <Table.Th>Year</Table.Th>
+                <Table.Th>Consoles</Table.Th>
+                <Table.Th>Yours</Table.Th>
+              </Table.Tr>
+            </Table.Thead>
+            <Table.Tbody>
+              {sorted.map((g, i) => {
+                const at = g.consoles.find((c) => c.status === 'owned') ?? g.consoles[0]!;
+                return (
+                  <Table.Tr key={g.key} {...jumpMark(i)}>
+                    <Table.Td>
+                      <GameTitle platformKey={at.platformKey} title={g.title} fw={g.had ? 600 : undefined} />
+                      {g.original && (
+                        <Text size="xs" c="dimmed">
+                          {g.original.kind === 'version' ? 'a version' : g.original.kind} of {g.original.title}
+                        </Text>
+                      )}
+                    </Table.Td>
+                    <Table.Td>{g.released?.slice(0, 4) ?? ''}</Table.Td>
+                    <Table.Td>
+                      <Text size="sm">{g.consoles.map((c) => (c.status === 'owned' ? `${c.platform} ✓` : c.platform)).join(', ')}</Text>
+                    </Table.Td>
+                    <Table.Td>
+                      {g.had ? (
+                        <Badge size="sm" variant="light" color="teal" leftSection={<StashMark size={11} />} style={{ textTransform: 'none' }}>
+                          Have it
+                        </Badge>
+                      ) : g.onPc ? (
+                        <Badge size="sm" variant="light" color="blue" style={{ textTransform: 'none' }}>
+                          On PC
+                        </Badge>
+                      ) : null}
+                    </Table.Td>
+                  </Table.Tr>
+                );
+              })}
+            </Table.Tbody>
+          </Table>
+        </Table.ScrollContainer>
+      ) : (
       <SimpleGrid cols={{ base: 3, xs: 4, sm: 5, md: 6, lg: 8 }} spacing="sm" verticalSpacing="md">
-        {sorted.map((g) => {
+        {sorted.map((g, i) => {
           // The page it opens: a console you have it on, else its first.
           const at = g.consoles.find((c) => c.status === 'owned') ?? g.consoles[0]!;
           return (
-            <Stack key={g.key} gap={4}>
+            <Stack key={g.key} gap={4} {...jumpMark(i)}>
               <Box aria-hidden="true" style={{ cursor: 'pointer' }} onClick={() => open(at.platformKey, g.title)}>
                 <Art coverId={g.coverId} name={g.title} dim={!g.had} />
               </Box>
@@ -147,6 +199,7 @@ function SeriesGames({ name }: { name: string }) {
           );
         })}
       </SimpleGrid>
+      )}
     </Stack>
   );
 }
@@ -165,6 +218,7 @@ export function SeriesShelfPage() {
   const hidden = useSetting('collection.seriesHidden', [] as string[]);
   const [filter, setFilter] = useState('');
   const [order, setOrder] = useState<keyof typeof ORDERS>('had');
+  const [view, setView] = useListView('series', 'covers');
 
   if (named) {
     return (
@@ -208,13 +262,56 @@ export function SeriesShelfPage() {
                 { value: 'name', label: 'A to Z' },
               ]}
             />
+            <ViewSwitch value={view} onChange={setView} />
             <Text size="xs" c="dimmed">
               {count(shown.length)} series
             </Text>
           </Group>
+          <LetterBar titles={shown.map((s) => s.name)} inTitleOrder={order === 'name'} sortByTitle={() => setOrder('name')} />
+          {view === 'table' ? (
+            <Table.ScrollContainer minWidth={520}>
+              <Table striped highlightOnHover verticalSpacing={6}>
+                <Table.Thead>
+                  <Table.Tr>
+                    <Table.Th>Series</Table.Th>
+                    <Table.Th>Yours</Table.Th>
+                    <Table.Th w={200}>How much</Table.Th>
+                    <Table.Th>Consoles</Table.Th>
+                  </Table.Tr>
+                </Table.Thead>
+                <Table.Tbody>
+                  {shown.map((s, i) => (
+                    <Table.Tr key={s.name} {...jumpMark(i)} style={{ cursor: 'pointer' }} onClick={() => setParams({ series: s.name })}>
+                      <Table.Td>
+                        <Anchor component="button" type="button" fw={600} size="sm" onClick={() => setParams({ series: s.name })}>
+                          {s.name}
+                        </Anchor>
+                        {s.custom && (
+                          <Badge size="xs" variant="light" color="gray" ml={6}>
+                            Yours
+                          </Badge>
+                        )}
+                      </Table.Td>
+                      <Table.Td>
+                        {count(s.had)} of {count(s.total)}
+                        {s.onPc > 0 ? ` · +${count(s.onPc)} on PC` : ''}
+                      </Table.Td>
+                      <Table.Td>
+                        <Progress.Root size="sm" aria-label={`${s.had} of ${s.total} games`}>
+                          <Progress.Section value={(s.had / Math.max(1, s.total)) * 100} color="teal" />
+                          <Progress.Section value={(s.onPc / Math.max(1, s.total)) * 100} color="blue" />
+                        </Progress.Root>
+                      </Table.Td>
+                      <Table.Td>{count(s.consoles)}</Table.Td>
+                    </Table.Tr>
+                  ))}
+                </Table.Tbody>
+              </Table>
+            </Table.ScrollContainer>
+          ) : (
           <SimpleGrid cols={{ base: 2, xs: 3, sm: 4, md: 5, lg: 7 }} spacing="sm" verticalSpacing="md">
-            {shown.map((s) => (
-              <UnstyledButton key={s.name} onClick={() => setParams({ series: s.name })} aria-label={`${s.name}: ${s.had} of ${s.total} games`}>
+            {shown.map((s, i) => (
+              <UnstyledButton key={s.name} {...jumpMark(i)} onClick={() => setParams({ series: s.name })} aria-label={`${s.name}: ${s.had} of ${s.total} games`}>
                 <Stack gap={4}>
                   <Art coverId={s.coverId} name={s.name} />
                   <Text size="sm" fw={600} lineClamp={2}>
@@ -230,6 +327,7 @@ export function SeriesShelfPage() {
               </UnstyledButton>
             ))}
           </SimpleGrid>
+          )}
         </Stack>
       )}
     </>

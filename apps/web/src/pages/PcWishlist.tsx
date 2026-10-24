@@ -1,4 +1,4 @@
-import { ActionIcon, Anchor, Badge, Button, Card, Group, Loader, Menu, SegmentedControl, Select, Stack, Table, Text, TextInput, Tooltip } from '@mantine/core';
+import { ActionIcon, Anchor, Badge, Button, Card, Group, Loader, Menu, SegmentedControl, Select, SimpleGrid, Stack, Table, Text, TextInput, Tooltip } from '@mantine/core';
 import { useMediaQuery } from '@mantine/hooks';
 import { IconChevronDown, IconChevronRight, IconClock, IconDownload, IconEyeOff, IconRefresh, IconSearch, IconTag } from '@tabler/icons-react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
@@ -12,6 +12,7 @@ import { notifyError, notifySuccess, useCanEdit, useSetting } from '../hooks';
 import { monthsFromNow, SNOOZES } from '../choices';
 import { preferenceLevels } from '../Preference';
 import { Acorns } from '../Acorn';
+import { COVER_COLS, CoverTile, jumpMark, LetterBar, useListView, ViewSwitch } from '../GameViews';
 
 /** A game on the PC wishlist (GET /api/v1/pc/wishlist). */
 export interface PcEntry {
@@ -132,6 +133,9 @@ export function PcWishlistPage() {
   // "PC deals": the wishlist's games on sale now (with PC game prices on).
   const [params, setParams] = useSearchParams();
   const sorting = useSort(SORTS, 'rank');
+  // Box art or a table (the owner, 2026-10-24); ?view= is deals here, so the switch keeps ?as=.
+  const [shown, setShown] = useListView('pc-wishlist', 'table');
+  const currency = useSetting('general.currency', 'USD');
   const list = useQuery({ queryKey: ['pc', 'wishlist'], queryFn: () => api<PcWishlist>('/pc/wishlist') });
   const refresh = () => queryClient.invalidateQueries({ queryKey: ['pc', 'wishlist'] });
   const discover = useMutation({
@@ -223,9 +227,31 @@ export function PcWishlistPage() {
             aria-label="Which games"
           />
         )}
+        <ViewSwitch value={shown} onChange={setShown} />
       </Group>
+      <LetterBar titles={rows.map((e) => e.title)} inTitleOrder={sorting.by === 'title' && sorting.dir === 'asc'} sortByTitle={() => sorting.set('title', 'asc')} />
       {list.isLoading ? (
         <Loader />
+      ) : shown === 'covers' ? (
+        <SimpleGrid cols={COVER_COLS} spacing="sm" verticalSpacing="md">
+          {rows.map((e, i) => (
+            <CoverTile
+              key={e.key}
+              platformKey={null}
+              title={e.title}
+              coverId={e.coverId ?? null}
+              imageUrl={e.steamAppId ? `https://cdn.cloudflare.steamstatic.com/steam/apps/${e.steamAppId}/library_600x900.jpg` : null}
+              jump={i}
+              sub={
+                <Group gap={6} component="span" wrap="nowrap">
+                  <b>#{e.rank}</b>
+                  <Acorns n={e.score} size={11} />
+                  {e.price && !e.price.missing && e.price.currentCents !== null ? <span>{money(e.price.currentCents, currency)}</span> : null}
+                </Group>
+              }
+            />
+          ))}
+        </SimpleGrid>
       ) : (
         <Card withBorder p={0}>
           <Table highlightOnHover>
@@ -241,11 +267,11 @@ export function PcWishlistPage() {
               </Table.Tr>
             </Table.Thead>
             <Table.Tbody>
-              {rows.map((e) => {
+              {rows.map((e, rowIndex) => {
                 const expanded = open === e.key;
                 return (
                   <Fragment key={e.key}>
-                    <Table.Tr onClick={() => setOpen(expanded ? null : e.key)} style={{ cursor: 'pointer' }}>
+                    <Table.Tr onClick={() => setOpen(expanded ? null : e.key)} style={{ cursor: 'pointer' }} {...jumpMark(rowIndex)}>
                       <Table.Td>
                         <Group gap={2} wrap="nowrap">
                           {expanded ? <IconChevronDown size={14} /> : <IconChevronRight size={14} />}

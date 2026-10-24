@@ -11,6 +11,7 @@ import {
   KNOWN_PLATFORMS,
   matchCatalog,
   matchKey,
+  jumpFirsts,
   normalizeTitle,
   parseOwnershipMappings,
   regionalConsole,
@@ -775,6 +776,8 @@ export class CatalogService {
       });
     }
     const total = rows.length;
+    // In title order, where each letter starts (the A–Z bar turns to the page with a letter).
+    const letters = sortBy === 'title' ? jumpFirsts(rows.map((r) => r.target.title)) : undefined;
     const pageSize = query.all ? Math.max(rows.length, 1) : Math.min(Math.max(query.pageSize ?? 100, 1), 1000);
     const page = Math.max(query.page ?? 1, 1);
     rows = rows.slice((page - 1) * pageSize, page * pageSize);
@@ -788,6 +791,7 @@ export class CatalogService {
       // The games and copies owned on the platform per region and PriceCharting console name.
       regions: this.collection.regionCounts(platform.id),
       total,
+      ...(letters ? { letters } : {}),
       entries: rows.map((r) => {
         const e = entryRows.get(r.target.id)!;
         return {

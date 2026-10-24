@@ -1074,3 +1074,50 @@ button.sc-star {
 .sc-card-link:hover {
   border-color: var(--sc-cade);
 }
+
+/* The A–Z bar at a game list's right side (GameViews.tsx): fixed to the window, a letter a button. */
+.sc-letters {
+  position: fixed;
+  right: 4px;
+  top: calc(50% + 30px);
+  transform: translateY(-50%);
+  z-index: 150;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  max-height: calc(100vh - 140px);
+  padding: 4px 2px;
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--sc-raised) 85%, transparent);
+}
+.sc-letter {
+  border: 0;
+  background: none;
+  color: var(--sc-cade);
+  font: 700 11px/1 var(--mantine-font-family);
+  padding: 2px 5px;
+  cursor: pointer;
+  border-radius: 6px;
+}
+.sc-letter:hover,
+.sc-letter:focus-visible {
+  background: var(--sc-line);
+  outline: none;
+}
+.sc-letter[data-empty] {
+  color: var(--sc-muted, #8a8f98);
+  opacity: 0.45;
+}
+@media (max-height: 640px) {
+  .sc-letter {
+    font-size: 9px;
+    padding: 1px 4px;
+  }
+}
+/* Room for the bar, so it never covers the list's last column; a jump lands below the header. */
+.mantine-AppShell-main:has(.sc-letters) {
+  padding-right: calc(var(--app-shell-padding, 16px) + 22px);
+}
+[data-jump] {
+  scroll-margin-top: 84px;
+}

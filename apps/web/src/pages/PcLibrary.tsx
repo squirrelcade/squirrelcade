@@ -11,12 +11,15 @@ import { PageHeader, SortableTh, StatCard, type SortDirection } from '../compone
 import { count, date, dateTime } from '../format';
 import { notifyError, notifySuccess, useCanEdit, useFeature, useSetting } from '../hooks';
 import { GameTitle } from '../GameDrawer';
+import { COVER_COLS, CoverTile, jumpMark, LetterBar, useListView, ViewSwitch } from '../GameViews';
 import { sortRows, useSort } from '../sort';
 
 /** One game in one storefront (GET /api/v1/pc/games). */
 interface PcRecord {
   recordKey: string;
   storefront: string;
+  /** The game's id in its storefront (a Steam game's app id). */
+  storefrontGameId?: string;
   name: string;
   ownership: PcOwnership;
   audited: boolean;
@@ -104,7 +107,13 @@ export function PcLibraryPage() {
   if (view === 'both' || view === 'pc-only') query.set('view', view);
 
   const status = useQuery({ queryKey: ['pc', 'status'], queryFn: () => api<PcStatus>('/pc') });
-  const games = useQuery({ queryKey: ['pc', 'games', query.toString()], queryFn: () => api<{ total: number; page: number; pageSize: number; items: PcFamily[] }>(`/pc/games?${query}`), enabled: view !== 'sealed' });
+  const games = useQuery({
+    queryKey: ['pc', 'games', query.toString()],
+    queryFn: () => api<{ total: number; page: number; pageSize: number; items: PcFamily[]; letters?: Record<string, number> }>(`/pc/games?${query}`),
+    enabled: view !== 'sealed',
+  });
+  // Box art or a table (the owner, 2026-10-24); ?view= is the library's tabs here, so the switch keeps ?as=.
+  const [shown, setShown] = useListView('pc-library', 'table');
   const sealed = useQuery({
     queryKey: ['pc', 'sealed'],
     queryFn: () => api<{ title: string; key: string; consoles: { platform: string; platformKey: string; title: string; copies: number; sealed: number }[] }[]>('/pc/sealed'),
@@ -338,7 +347,18 @@ export function PcLibraryPage() {
             w={250}
           />
         )}
+        {view !== 'sealed' && <ViewSwitch value={shown} onChange={setShown} />}
       </Group>
+      {view !== 'sealed' && (
+        <LetterBar
+          firsts={by === 'title' ? (games.data?.letters ?? null) : null}
+          total={games.data?.total ?? 0}
+          inTitleOrder={by === 'title' && Boolean(games.data?.letters)}
+          sortByTitle={() => set({ sort: 'title', dir: 'asc' })}
+          pageSize={games.data?.pageSize ?? 100}
+          setPage={(p) => set({ page: String(p) })}
+        />
+      )}
 
       {view === 'sealed' ? (
         <Card withBorder p={0}>
@@ -385,6 +405,32 @@ export function PcLibraryPage() {
             </Table.Tbody>
           </Table>
         </Card>
+      ) : shown === 'covers' ? (
+        <>
+          <SimpleGrid cols={COVER_COLS} spacing="sm" verticalSpacing="md">
+            {(games.data?.items ?? []).map((f, i) => {
+              // Steam's own portrait box art for a Steam game (PC games have no IGDB art here).
+              const steam = f.records.find((r) => r.storefront.toLowerCase() === 'steam' && r.storefrontGameId)?.storefrontGameId;
+              return (
+                <CoverTile
+                  key={f.key}
+                  platformKey="pc"
+                  title={f.title}
+                  coverId={null}
+                  imageUrl={steam ? `https://cdn.cloudflare.steamstatic.com/steam/apps/${steam}/library_600x900.jpg` : null}
+                  dim={!f.owned}
+                  jump={(page - 1) * (games.data?.pageSize ?? 100) + i}
+                  sub={[f.records.map((r) => r.storefront).filter((x, j, all) => all.indexOf(x) === j).join(', '), f.playtimeHours > 0 ? `${f.playtimeHours} h` : null].filter(Boolean).join(' · ')}
+                />
+              );
+            })}
+          </SimpleGrid>
+          {games.data && games.data.total > games.data.pageSize && (
+            <Group justify="center" p="sm">
+              <Pagination total={Math.ceil(games.data.total / games.data.pageSize)} value={page} onChange={(p) => set({ page: String(p) })} size="sm" />
+            </Group>
+          )}
+        </>
       ) : (
         <Card withBorder p={0}>
           <Table striped highlightOnHover>
@@ -398,8 +444,8 @@ export function PcLibraryPage() {
               </Table.Tr>
             </Table.Thead>
             <Table.Tbody>
-              {(games.data?.items ?? []).map((f) => (
-                <Table.Tr key={f.key}>
+              {(games.data?.items ?? []).map((f, rowIndex) => (
+                <Table.Tr key={f.key} {...jumpMark((page - 1) * (games.data?.pageSize ?? 100) + rowIndex)}>
                   <Table.Td>
                     <Stack gap={4}>
                       {/* A PC game opens the same game page as a console game (D165): its storefronts are its copies. */}

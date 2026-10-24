@@ -1,4 +1,4 @@
-import { Anchor, Badge, Button, Card, Group, Loader, Pagination, Stack, Table, Tabs, Text, TextInput, Tooltip } from '@mantine/core';
+import { Anchor, Badge, Button, Card, Group, Loader, Pagination, SimpleGrid, Stack, Table, Tabs, Text, TextInput, Tooltip } from '@mantine/core';
 import { useDebouncedValue, useMediaQuery } from '@mantine/hooks';
 import { IconCheck, IconEyeOff, IconLink, IconPlus, IconSearch, IconX } from '@tabler/icons-react';
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
@@ -15,6 +15,7 @@ import { AddGameModal, EntryMenu, LinkModal } from './CatalogActions';
 import { CatalogSourceCard } from './CatalogSource';
 import { ConsoleHead } from './ConsoleHead';
 import { GameCover, GameTitle } from '../GameDrawer';
+import { COVER_COLS, CoverTile, jumpMark, LetterBar, useListView, ViewSwitch } from '../GameViews';
 import { MATCH_METHODS, REJECTABLE, type MatchMethod } from '../choices';
 import { PreferencePicker } from '../Preference';
 import { Acorns, Reviews, StashMark, type ReviewsOf } from '../Acorn';
@@ -57,6 +58,8 @@ interface Detail {
   /** The games and copies owned here per region and PriceCharting console name (Super Famicom, Super Nintendo...). */
   regions: { region: string; consoleLabel: string; games: number; copies: number }[];
   total: number;
+  /** In title order, where each letter starts (the A–Z bar). */
+  letters?: Record<string, number>;
   entries: Entry[];
   notInCatalog: { productId: string; title: string; copies: number; region: string | null; consoleLabel: string | null }[];
   ignored: { productId: string; title: string }[];
@@ -79,6 +82,14 @@ export function PlatformDetailPage() {
   const historyOn = useFeature('history');
   const available = useQuery({ queryKey: ['history', 'available'], queryFn: () => api<{ top100: string[]; history: string[] }>('/history'), enabled: historyOn, staleTime: 5 * 60_000 });
   const page = Number(params.get('page') ?? 1);
+  // Box art or a table (the owner, 2026-10-24), remembered on this device.
+  const [gamesView, setGamesView] = useListView('console-games', 'table');
+  /** Turns to a page, keeping the sort and the rest of the address. */
+  const toPage = (p: number) => {
+    const next = new URLSearchParams(params);
+    next.set('page', String(p));
+    setParams(next, { replace: true });
+  };
   // The sort lives in the address (?sort=score&dir=desc): click a heading, click again to reverse.
   const sortColumn: SortColumn = (params.get('sort') ?? '') in SORTS ? (params.get('sort') as SortColumn) : 'title';
   const sortDir: SortDirection = params.get('dir') === 'asc' || params.get('dir') === 'desc' ? (params.get('dir') as SortDirection) : SORTS[sortColumn];
@@ -200,8 +211,19 @@ export function PlatformDetailPage() {
       <>
       <Group mb="sm">
         <TextInput placeholder="Search" leftSection={<IconSearch size={16} />} value={search} onChange={(e) => setSearch(e.currentTarget.value)} w={280} />
+        {tab !== 'unmatched' && <ViewSwitch value={gamesView} onChange={setGamesView} />}
         {detail.isFetching && <Loader size="xs" />}
       </Group>
+      {tab !== 'unmatched' && (
+        <LetterBar
+          firsts={sortColumn === 'title' ? (d.letters ?? null) : null}
+          total={d.total}
+          inTitleOrder={sortColumn === 'title' && Boolean(d.letters)}
+          sortByTitle={() => setParams({ tab, sort: 'title', dir: 'asc' }, { replace: true })}
+          pageSize={pageSize}
+          setPage={toPage}
+        />
+      )}
 
       {tab === 'unmatched' ? (
         <Stack gap={4}>
@@ -287,6 +309,33 @@ export function PlatformDetailPage() {
               has every console's questions in one place.
             </Text>
           )}
+          {gamesView === 'covers' ? (
+            <SimpleGrid cols={COVER_COLS} spacing="sm" verticalSpacing="md">
+              {d.entries.map((e, i) => (
+                <CoverTile
+                  key={e.id}
+                  platformKey={key}
+                  title={e.title}
+                  coverId={e.coverId}
+                  dim={e.status !== 'owned'}
+                  jump={(page - 1) * pageSize + i}
+                  sub={
+                    e.status === 'owned' ? (
+                      <Group gap={4} component="span">
+                        <StashMark size={11} /> Have it
+                      </Group>
+                    ) : e.wishlist ? (
+                      <Acorns n={e.wishlist.score} size={11} />
+                    ) : (
+                      [e.releaseDate?.slice(0, 4), (e.pc?.length ?? 0) > 0 ? 'on PC' : null].filter(Boolean).join(' · ')
+                    )
+                  }
+                >
+                  <RommLinks link={e.romm} />
+                </CoverTile>
+              ))}
+            </SimpleGrid>
+          ) : (
           <Table.ScrollContainer minWidth={narrow ? 0 : 640}>
             <Table striped verticalSpacing={6}>
               <Table.Thead>
@@ -302,8 +351,8 @@ export function PlatformDetailPage() {
                 </Table.Tr>
               </Table.Thead>
               <Table.Tbody>
-                {d.entries.map((e) => (
-                  <Table.Tr key={e.id}>
+                {d.entries.map((e, rowIndex) => (
+                  <Table.Tr key={e.id} {...jumpMark((page - 1) * pageSize + rowIndex)}>
                     <Table.Td>
                       <Group gap="sm" wrap="nowrap" align="flex-start">
                       <GameCover platformKey={key} title={e.title} id={e.coverId} placeholder={anyCover} />
@@ -451,6 +500,7 @@ export function PlatformDetailPage() {
               </Table.Tbody>
             </Table>
           </Table.ScrollContainer>
+          )}
         </>
       )}
       {tab !== 'unmatched' && d.entries.length === 0 && (
@@ -460,7 +510,7 @@ export function PlatformDetailPage() {
       )}
       {tab !== 'unmatched' && d.total > pageSize && (
         <Group justify="center" mt="md">
-          <Pagination total={Math.ceil(d.total / pageSize)} value={page} onChange={(p) => setParams({ tab, page: String(p) }, { replace: true })} />
+          <Pagination total={Math.ceil(d.total / pageSize)} value={page} onChange={toPage} />
         </Group>
       )}
       </>

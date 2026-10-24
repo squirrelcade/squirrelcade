@@ -1,19 +1,4 @@
-import {
-  normalizeTitle,
-  parsePcAudit,
-  searchRank,
-  parsePlayniteSnapshot,
-  pcFamilyKey,
-  pcOwnership,
-  PC_OWNERSHIP_LABELS,
-  playtimeHours,
-  SnapshotError,
-  toCsv,
-  storefrontOwnership,
-  type PcAuditEntry,
-  type PcOwnership,
-  type PlayniteSnapshot,
-} from '@squirrelcade/core';
+import { jumpFirsts, normalizeTitle, parsePcAudit, parsePlayniteSnapshot, PC_OWNERSHIP_LABELS, type PcAuditEntry, pcFamilyKey, pcOwnership, type PcOwnership, type PlayniteSnapshot, playtimeHours, searchRank, SnapshotError, storefrontOwnership, toCsv } from '@squirrelcade/core';
 import { and, desc, eq, isNull } from 'drizzle-orm';
 import type { FastifyInstance } from 'fastify';
 import { execFile } from 'node:child_process';
@@ -519,7 +504,8 @@ export class PcService {
     const pageSize = Math.min(Math.max(query.pageSize ?? 100, 1), 500);
     const page = Math.max(query.page ?? 1, 1);
     const items = (query.all ? rows : rows.slice((page - 1) * pageSize, page * pageSize)).map((f) => ({ ...f, records: f.records.map((r) => ({ ...r, achievements: achievementsOf(r) })) }));
-    return { total: rows.length, page, pageSize, items };
+    // In title order, where each letter starts (the A–Z bar turns to the page with a letter).
+    return { total: rows.length, page, pageSize, items, ...((query.sort ?? 'title') === 'title' ? { letters: jumpFirsts(rows.map((f) => f.title)) } : {}) };
   }
 
   /**

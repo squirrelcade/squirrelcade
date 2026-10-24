@@ -498,7 +498,7 @@ export async function buildApp(options: BuildOptions = {}): Promise<Squirrelcade
   });
   registerGotdRoutes(app, gotd);
   registerTodayRoutes(app, { settings, gotd, deals, catalogs, details, collection, history, sets });
-  registerSetRoutes(app, sets);
+  registerSetRoutes(app, sets, (platformKey, title) => igdb.coverOf(platformKey, title));
   // RetroAchievements' games are matched to the games Squirrelcade knows by title, as Store Mode compares titles.
   const ra = new RetroAchievementsService(
     db,

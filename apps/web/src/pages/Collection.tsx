@@ -17,6 +17,7 @@ import { ValueHistory } from './ValueHistory';
 import { count, date, money, wholeMoney } from '../format';
 import { useCanEdit, useFeature, useSetting } from '../hooks';
 import { GameCover, GameTitle, useOpenGame } from '../GameDrawer';
+import { jumpMark, LetterBar } from '../GameViews';
 import { useGameNotes } from '../notes';
 import { usePlaceNotes, type Vocabulary } from '../places';
 import { PlayBadge, type Play } from '../Playing';
@@ -155,12 +156,12 @@ function rememberedView(): 'list' | 'grid' {
  * A copy in the grid view: its cover art (or its title on a plain tile when there's none) and its title under it.
  * The cover opens the game's drawer for the mouse and touch; the title is the way in for keyboards and screen readers.
  */
-function CoverTile({ item }: { item: Item }) {
+function CoverTile({ item, jump }: { item: Item; jump: number }) {
   const open = useOpenGame();
   const covers = useSetting('interface.showCoverArt', true);
   const art = covers && item.coverId;
   return (
-    <Stack gap={4}>
+    <Stack gap={4} {...jumpMark(jump)}>
       <Box
         aria-hidden="true"
         style={{ cursor: item.platformKey ? 'pointer' : undefined }}
@@ -241,7 +242,7 @@ export function CollectionPage() {
   const standing = params.get('lent') === '1' ? 'lent' : params.get('digital') ? `digital-${params.get('digital')}` : (params.get('sale') ?? '');
   const items = useQuery({
     queryKey: ['collection', 'items', query.toString()],
-    queryFn: () => api<{ total: number; items: Item[] }>(`/collection/items?${query}`),
+    queryFn: () => api<{ total: number; items: Item[]; letters?: Record<string, number> }>(`/collection/items?${query}`),
     placeholderData: keepPreviousData,
   });
 
@@ -541,9 +542,18 @@ export function CollectionPage() {
         />
         {items.isFetching && <Loader size="xs" />}
       </Group>
+      {/* The A–Z bar (the owner, 2026-10-24): where each letter starts comes with the items, in title order. */}
+      <LetterBar
+        firsts={sorting.by === 'title' ? (items.data?.letters ?? null) : null}
+        total={items.data?.total ?? 0}
+        inTitleOrder={sorting.by === 'title' && Boolean(items.data?.letters)}
+        sortByTitle={() => sorting.set('title', 'asc')}
+        pageSize={pageSize}
+        setPage={(p) => set('page', String(p))}
+      />
       {view === 'grid' ? (
         <SimpleGrid cols={{ base: 3, xs: 4, sm: 5, md: 6, lg: 8 }} spacing="sm" verticalSpacing="md">
-          {items.data?.items.map((item) => <CoverTile key={item.id} item={item} />)}
+          {items.data?.items.map((item, i) => <CoverTile key={item.id} item={item} jump={(page - 1) * pageSize + i} />)}
         </SimpleGrid>
       ) : (
       <Table.ScrollContainer minWidth={narrow ? 0 : 760}>
@@ -559,7 +569,7 @@ export function CollectionPage() {
             </Table.Tr>
           </Table.Thead>
           <Table.Tbody>
-            {items.data?.items.map((item, _i, all) => {
+            {items.data?.items.map((item, rowIndex, all) => {
               const platformLink = (
                 <Anchor size={narrow ? 'xs' : 'sm'} component={Link} to={`/collection?platform=${item.platformKey ?? ''}`}>
                   {item.platform ?? '—'}
@@ -574,7 +584,7 @@ export function CollectionPage() {
                 </Tooltip>
               );
               return (
-                <Table.Tr key={item.id}>
+                <Table.Tr key={item.id} {...jumpMark((page - 1) * pageSize + rowIndex)}>
                   <Table.Td>
                     <Group gap="sm" wrap="nowrap" align="flex-start">
                       {item.platformKey ? (

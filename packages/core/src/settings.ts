@@ -335,6 +335,30 @@ export const settingDefinitions = {
     min: 25,
     max: 1000,
   }),
+  'interface.gameListView': select({
+    page: 'interface',
+    section: 'Tables',
+    label: 'Game lists open as',
+    description:
+      "Lists of games (the Stash, Series, a console's games, the Acorns wishlist, sets...) switch between box art and a table at their top, and each remembers its choice on the device. This is how one opens the first time.",
+    default: 'page',
+    options: [
+      { value: 'page', label: "Each list's own way (box art for Series, a table for most)" },
+      { value: 'covers', label: 'Box art' },
+      { value: 'table', label: 'A table' },
+    ],
+  }),
+  'interface.letterBarFrom': num({
+    page: 'interface',
+    section: 'Tables',
+    label: 'A–Z bar from',
+    description:
+      "A list of games this long or longer has the A–Z bar at its right side: tap a letter to jump to the first game starting with it (a list in another order is put in A to Z order first). 0 shows it on none.",
+    default: 40,
+    min: 0,
+    max: 1000,
+    unit: 'games',
+  }),
   'interface.regionBadges': select({
     page: 'interface',
     section: 'Tables',

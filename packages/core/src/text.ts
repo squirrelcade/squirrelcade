@@ -102,3 +102,22 @@ export function romajiTokens(tokens: readonly string[]): string[] {
 export function slugify(text: string): string {
   return normalizeTitle(text).replace(/ /g, '-');
 }
+
+/** The A–Z bar's letters: "#" for a title starting with a digit or a sign, then A to Z. */
+export const JUMP_LETTERS: readonly string[] = ['#', ...'ABCDEFGHIJKLMNOPQRSTUVWXYZ'];
+
+/** A title's letter on the A–Z bar: its first letter without accents ("É" is E), or "#". */
+export function jumpLetterOf(title: string): string {
+  const c = title.normalize('NFD').replace(/[̀-ͯ]/g, '').trim().charAt(0).toUpperCase();
+  return c >= 'A' && c <= 'Z' ? c : '#';
+}
+
+/** Where each letter starts in a list of titles in title order: the first place of each letter it has. */
+export function jumpFirsts(titles: readonly string[]): Record<string, number> {
+  const out: Record<string, number> = {};
+  titles.forEach((t, i) => {
+    const l = jumpLetterOf(t);
+    if (!(l in out)) out[l] = i;
+  });
+  return out;
+}

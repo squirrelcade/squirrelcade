@@ -1,5 +1,5 @@
 import { KNOWN_PLATFORMS, priceChartingUrl, READY_SETS, setKey } from '@squirrelcade/core';
-import { ActionIcon, Anchor, Badge, Button, Card, Checkbox, FileButton, FileInput, Group, Loader, Menu, Modal, Progress, SegmentedControl, Select, Stack, Table, Tabs, Text, TextInput, Tooltip } from '@mantine/core';
+import { ActionIcon, Anchor, Badge, Button, Card, Checkbox, FileButton, FileInput, Group, Loader, Menu, Modal, Progress, SegmentedControl, Select, SimpleGrid, Stack, Table, Tabs, Text, TextInput, Tooltip } from '@mantine/core';
 import { useDisclosure } from '@mantine/hooks';
 import { IconDeviceGamepad2, IconDots, IconDownload, IconPlus, IconRefresh, IconSearch, IconUpload, IconX } from '@tabler/icons-react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
@@ -11,6 +11,7 @@ import { PageHeader, type SortDirection } from '../components';
 import { count, dateTime, money } from '../format';
 import { notifyError, notifySuccess, useCanEdit, usePageTitle, useSetting, useSettings } from '../hooks';
 import { GameTitle } from '../GameDrawer';
+import { COVER_COLS, CoverTile, jumpMark, LetterBar, useListView, ViewSwitch } from '../GameViews';
 import { PreferencePicker } from '../Preference';
 import { sortRows, useSort } from '../sort';
 import { SeriesList } from './Series';
@@ -61,6 +62,8 @@ interface SetGame {
   /** Added by you, not from the set's list. */
   byHand?: boolean;
   notes: string | null;
+  /** IGDB's box art for it. */
+  coverId?: string | null;
   /** The console catalog's title for it, which your preference is kept under. */
   catalogTitle?: string;
   /** Your wishlist preference for it (a game its console's catalog has). */
@@ -373,6 +376,8 @@ export function SetDetailPage() {
   const tab = chosenTab ?? (numbered ? 'all' : 'missing');
   // A heading sorts the games by its column (D144), on every tab: a numbered set by its numbers at first.
   const sorting = useSort(GAME_SORTS, numbered ? 'number' : 'title');
+  // Box art or a table (the owner, 2026-10-24), and the A–Z bar.
+  const [view, setView] = useListView('set-games', 'table');
   usePageTitle(detail.data?.set.name ?? 'Sets', settings?.['general.instanceName'] || 'Squirrelcade');
   const refresh = () => queryClient.invalidateQueries({ queryKey: ['sets'] });
   const rebuild = useMutation({
@@ -604,7 +609,11 @@ export function SetDetailPage() {
           ))}
         </Group>
       )}
-      <TextInput placeholder="Search" leftSection={<IconSearch size={16} />} value={search} onChange={(e) => setSearch(e.currentTarget.value)} w={260} mb="sm" />
+      <Group gap="sm" mb="sm" wrap="wrap">
+        <TextInput placeholder="Search" leftSection={<IconSearch size={16} />} value={search} onChange={(e) => setSearch(e.currentTarget.value)} w={260} />
+        <ViewSwitch value={view} onChange={setView} />
+      </Group>
+      <LetterBar titles={of(tab as SetGame['status'] | 'all').map((g) => g.title)} inTitleOrder={sorting.by === 'title' && sorting.dir === 'asc'} sortByTitle={() => sorting.set('title', 'asc')} />
       <Tabs value={tab} onChange={setTab}>
         <Tabs.List mb="sm">
           <Tabs.Tab value="all">All ({count(of('all').length)})</Tabs.Tab>
@@ -615,6 +624,21 @@ export function SetDetailPage() {
           {set.review > 0 && <Tabs.Tab value="review">To review ({count(of('review').length)})</Tabs.Tab>}
         </Tabs.List>
       </Tabs>
+      {view === 'covers' ? (
+        <SimpleGrid cols={COVER_COLS} spacing="sm" verticalSpacing="md">
+          {of(tab as SetGame['status'] | 'all').map((g, i) => (
+            <CoverTile
+              key={g.id}
+              platformKey={g.platformKey}
+              title={g.catalogTitle ?? g.title}
+              coverId={g.coverId ?? null}
+              dim={g.status !== 'owned'}
+              jump={i}
+              sub={[set.numbered && g.number !== undefined ? `#${g.number}` : null, g.platform, g.status === 'owned' ? 'have it' : g.status === 'review' ? 'to review' : null].filter(Boolean).join(' · ')}
+            />
+          ))}
+        </SimpleGrid>
+      ) : (
       <Card withBorder p={0}>
         <Table highlightOnHover>
           <Table.Thead>
@@ -629,8 +653,8 @@ export function SetDetailPage() {
             </Table.Tr>
           </Table.Thead>
           <Table.Tbody>
-            {of(tab as SetGame['status'] | 'all').map((g) => (
-              <Table.Tr key={g.id}>
+            {of(tab as SetGame['status'] | 'all').map((g, rowIndex) => (
+              <Table.Tr key={g.id} {...jumpMark(rowIndex)}>
                 {set.numbered && (
                   <Table.Td>
                     <Text size="sm" ff="monospace" c={g.number === undefined ? 'dimmed' : undefined}>
@@ -762,6 +786,7 @@ export function SetDetailPage() {
           </Table.Tbody>
         </Table>
       </Card>
+      )}
     </>
   );
 }

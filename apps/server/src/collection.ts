@@ -8,6 +8,7 @@ import {
   dayIn,
   diffCollections,
   inBacklog,
+  jumpFirsts,
   matchKey,
   type Completeness,
   type PlayStatus,
@@ -1702,9 +1703,11 @@ export class CollectionService {
       .where(filter)
       .orderBy(...order)
       .$dynamic();
+    // In title order, where each letter starts (the A–Z bar: the page with a letter is turned to).
+    const byTitle = (query.sort ?? 'title') === 'title';
     if (query.keep) {
       const kept = rows.all().filter(query.keep);
-      return { total: kept.length, items: query.all ? kept : kept.slice((page - 1) * pageSize, page * pageSize) };
+      return { total: kept.length, items: query.all ? kept : kept.slice((page - 1) * pageSize, page * pageSize), ...(byTitle ? { letters: jumpFirsts(kept.map((r) => r.title)) } : {}) };
     }
     const total = this.db
       .select({ n: sql<number>`count(*)` })
@@ -1713,7 +1716,19 @@ export class CollectionService {
       .where(filter)
       .get()!.n;
     const items = query.all ? rows.all() : rows.limit(pageSize).offset((page - 1) * pageSize).all();
-    return { total, items };
+    const letters = byTitle
+      ? jumpFirsts(
+          this.db
+            .select({ title: copies.title })
+            .from(copies)
+            .leftJoin(platforms, eq(platforms.id, copies.platformId))
+            .where(filter)
+            .orderBy(...order)
+            .all()
+            .map((r) => r.title),
+        )
+      : undefined;
+    return { total, items, ...(letters ? { letters } : {}) };
   }
 
   /** Each owned product's region and PriceCharting console name on a platform ("Super Famicom", Japan): one each, as a product is one release. */
