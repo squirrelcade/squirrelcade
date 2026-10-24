@@ -1,4 +1,5 @@
-import { Anchor, Badge, Group, Loader, SegmentedControl, Stack, Switch, Table, Text } from '@mantine/core';
+import { Anchor, Badge, Group, Loader, SegmentedControl, SimpleGrid, Stack, Switch, Table, Text } from '@mantine/core';
+import { COVER_COLS, CoverTile, jumpMark, LetterBar, useListView, ViewSwitch } from '../GameViews';
 import { IconExternalLink } from '@tabler/icons-react';
 import { useQuery } from '@tanstack/react-query';
 import { useState } from 'react';
@@ -23,6 +24,7 @@ interface Upgrade {
   rating: number | null;
   igdbRating: number | null;
   priceUrl: string;
+  coverId?: string | null;
 }
 
 type Filter = 'all' | 'loose' | 'box' | 'manual';
@@ -47,6 +49,8 @@ export function UpgradesPage() {
   const anyRating = all.some((u) => u.rating !== null);
   // The server's order (your rating, then IGDB's, then worth) is the rating column's, or IGDB's when nothing's rated: ties keep it.
   const sorting = useSort(SORTS, anyRating ? 'rating' : 'igdb');
+  // Box art or a table (the owner, 2026-10-24), and the A–Z bar.
+  const [view, setView] = useListView('upgrades', 'table');
   const count = (f: Filter) => all.filter((u) => matches(u, f)).length;
   const shown = sortRows(
     all.filter((u) => matches(u, filter) && (!ratedOnly || u.rating !== null)),
@@ -79,7 +83,16 @@ export function UpgradesPage() {
               ]}
             />
             {anyRating && <Switch size="sm" label="Only games you rated" checked={ratedOnly} onChange={(e) => setRatedOnly(e.currentTarget.checked)} />}
+            <ViewSwitch value={view} onChange={setView} />
           </Group>
+          <LetterBar titles={shown.map((u) => u.title)} inTitleOrder={sorting.by === 'title' && sorting.dir === 'asc'} sortByTitle={() => sorting.set('title', 'asc')} />
+          {view === 'covers' ? (
+            <SimpleGrid cols={COVER_COLS} spacing="sm" verticalSpacing="md">
+              {shown.map((u, i) => (
+                <CoverTile key={`${u.platformKey}|${u.title}`} platformKey={u.platformKey} title={u.title} coverId={u.coverId ?? null} jump={i} sub={`${u.platform} · ${lacking(u)}`} />
+              ))}
+            </SimpleGrid>
+          ) : (
           <Table.ScrollContainer minWidth={600}>
             <Table verticalSpacing={6} striped>
               <Table.Thead>
@@ -93,8 +106,8 @@ export function UpgradesPage() {
                 </Table.Tr>
               </Table.Thead>
               <Table.Tbody>
-                {shown.map((u) => (
-                  <Table.Tr key={`${u.platformKey}|${u.title}`}>
+                {shown.map((u, rowIndex) => (
+                  <Table.Tr key={`${u.platformKey}|${u.title}`} {...jumpMark(rowIndex)}>
                     <Table.Td>
                       <GameTitle platformKey={u.platformKey} title={u.title} fw={500} />
                       <Text size="xs" c="dimmed">
@@ -119,6 +132,7 @@ export function UpgradesPage() {
               </Table.Tbody>
             </Table>
           </Table.ScrollContainer>
+          )}
           {shown.length === 0 && (
             <Text size="sm" c="dimmed">
               None of these.

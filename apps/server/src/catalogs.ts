@@ -579,7 +579,7 @@ export class CatalogService {
    * already owned (a pre-order in the export, or a just-bought mark) and its wishlist score. Excluded games
    * are left out.
    */
-  upcoming(): { entryId: number; platformKey: string; platform: string; title: string; releaseDate: string; format: string | null; status: string; score: number | null; reviews: Reviews; preference: string | null }[] {
+  upcoming(): { entryId: number; platformKey: string; platform: string; title: string; releaseDate: string; format: string | null; status: string; score: number | null; reviews: Reviews; preference: string | null; coverId: string | null }[] {
     const preferences = this.preferences();
     const today = new Date().toISOString().slice(0, 10);
     const out: ReturnType<CatalogService['upcoming']> = [];
@@ -604,6 +604,7 @@ export class CatalogService {
           score: this.scorer?.(p.key, e.title)?.score ?? null,
           reviews: reviewsOf(this.igdb?.find(p.id, e.title)),
           preference: preferences.get(`${p.key}|${normalizeTitle(e.title)}`) ?? null,
+          coverId: this.igdb?.find(p.id, e.title)?.coverId ?? null,
         });
       }
     }

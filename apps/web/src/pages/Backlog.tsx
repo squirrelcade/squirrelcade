@@ -1,5 +1,5 @@
 import { PLAY_STATUSES, type PlayStatus } from '@squirrelcade/core';
-import { Badge, Button, Card, Group, Loader, Pagination, Select, Stack, Table, Tabs, Text, TextInput } from '@mantine/core';
+import { Badge, Button, Card, Group, Loader, Pagination, Select, SimpleGrid, Stack, Table, Tabs, Text, TextInput } from '@mantine/core';
 import { useDebouncedValue, useMediaQuery } from '@mantine/hooks';
 import { IconDice5, IconPlayerPlay, IconSearch } from '@tabler/icons-react';
 import { keepPreviousData, useQuery } from '@tanstack/react-query';
@@ -9,6 +9,7 @@ import { api } from '../api';
 import { PageHeader, type SortDirection } from '../components';
 import { count } from '../format';
 import { GameCover, GameTitle } from '../GameDrawer';
+import { COVER_COLS, CoverTile, jumpMark, LetterBar, useListView, ViewSwitch } from '../GameViews';
 import { notifySuccess, useCanEdit, useSetting } from '../hooks';
 import { PlayBadge, PlayPicker, useSetPlay } from '../Playing';
 import { sortRows, useSort } from '../sort';
@@ -126,6 +127,8 @@ export function BacklogPage() {
   const platform = params.get('platform') ?? '';
   const page = Number(params.get('page') ?? 1);
   const sorting = useSort(SORTS, 'title');
+  // Box art or a table (the owner, 2026-10-24), and the A–Z bar.
+  const [view, setView] = useListView('backlog', 'table');
   const [search, setSearch] = useState(params.get('q') ?? '');
   const [debounced] = useDebouncedValue(search, 250);
   const query = new URLSearchParams({ status });
@@ -182,8 +185,19 @@ export function BacklogPage() {
           searchable
           w={220}
         />
+        <ViewSwitch value={view} onChange={setView} />
         {list.isFetching && <Loader size="xs" />}
       </Group>
+      <LetterBar titles={items.map((g) => g.title)} inTitleOrder={sorting.by === 'title' && sorting.dir === 'asc'} sortByTitle={() => sorting.set('title', 'asc')} pageSize={pageSize} setPage={(p) => set('page', String(p))} />
+      {view === 'covers' ? (
+        <SimpleGrid cols={COVER_COLS} spacing="sm" verticalSpacing="md">
+          {shown.map((g, i) => (
+            <CoverTile key={`${g.platformKey}|${g.title}`} platformKey={g.platformKey} title={g.title} coverId={g.coverId} jump={(page - 1) * pageSize + i} sub={g.platform}>
+              <PlayBadge play={g} />
+            </CoverTile>
+          ))}
+        </SimpleGrid>
+      ) : (
       <Table.ScrollContainer minWidth={narrow ? 0 : 640}>
         <Table striped verticalSpacing={6}>
           <Table.Thead>
@@ -193,8 +207,8 @@ export function BacklogPage() {
             </Table.Tr>
           </Table.Thead>
           <Table.Tbody>
-            {shown.map((g) => (
-              <Table.Tr key={`${g.platformKey}|${g.title}`}>
+            {shown.map((g, rowIndex) => (
+              <Table.Tr key={`${g.platformKey}|${g.title}`} {...jumpMark((page - 1) * pageSize + rowIndex)}>
                 <Table.Td>
                   <Group gap="sm" wrap="nowrap">
                     <GameCover platformKey={g.platformKey} title={g.title} id={g.coverId} placeholder={shown.some((x) => x.coverId)} />
@@ -218,6 +232,7 @@ export function BacklogPage() {
           </Table.Tbody>
         </Table>
       </Table.ScrollContainer>
+      )}
       {list.data && items.length === 0 && (
         <Text c="dimmed" ta="center" mt="md">
           {status === 'backlog' ? 'Nothing waits in your backlog.' : 'No games here.'}

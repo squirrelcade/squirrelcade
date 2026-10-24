@@ -1,4 +1,4 @@
-import { Anchor, Badge, Button, Card, Group, Loader, Table, Text } from '@mantine/core';
+import { Anchor, Badge, Button, Card, Group, Loader, SimpleGrid, Stack, Table, Text } from '@mantine/core';
 import { IconCalendar } from '@tabler/icons-react';
 import { useQuery } from '@tanstack/react-query';
 import { useState } from 'react';
@@ -9,6 +9,7 @@ import { sortRows, useSort } from '../sort';
 import { count, releaseDate } from '../format';
 import { useSetting } from '../hooks';
 import { GameTitle } from '../GameDrawer';
+import { COVER_COLS, CoverTile, useListView, ViewSwitch } from '../GameViews';
 import { PreferencePicker, preferenceLevels } from '../Preference';
 import { Acorns, Reviews, StashMark, type ReviewsOf } from '../Acorn';
 
@@ -26,6 +27,7 @@ interface Upcoming {
   reviews?: ReviewsOf;
   /** Your wishlist preference for it. */
   preference: string | null;
+  coverId?: string | null;
 }
 
 const STATUS: Record<string, { label: string; color: string }> = {
@@ -56,6 +58,8 @@ export function ComingSoonPage() {
   const [platform, setPlatform] = useState<string | null>(null);
   // A heading sorts each month's games by its column; the months stay soonest first.
   const sorting = useSort(SORTS, 'release');
+  // Box art or a table (the owner, 2026-10-24), month by month either way.
+  const [view, setView] = useListView('coming-soon', 'table');
   const list = useQuery({ queryKey: ['catalogs', 'upcoming'], queryFn: () => api<Upcoming[]>('/catalogs/upcoming') });
   const all = list.data ?? [];
   const consoles = [...new Map(all.map((g) => [g.platformKey, g.platform])).entries()];
@@ -101,6 +105,9 @@ export function ComingSoonPage() {
         </Card>
       ) : (
         <>
+          <Group mb="sm">
+            <ViewSwitch value={view} onChange={setView} />
+          </Group>
           {consoles.length > 1 && (
             <Group gap={6} mb="sm">
               <Badge component="button" size="lg" variant={platform === null ? 'filled' : 'light'} style={{ cursor: 'pointer', textTransform: 'none' }} onClick={() => setPlatform(null)}>
@@ -121,6 +128,31 @@ export function ComingSoonPage() {
               ))}
             </Group>
           )}
+          {view === 'covers' ? (
+            <Stack gap="md">
+              {groups.map(([month, games]) => (
+                <Stack key={month} gap="xs">
+                  <Text fw={700}>{month}</Text>
+                  <SimpleGrid cols={COVER_COLS} spacing="sm" verticalSpacing="md">
+                    {sortRows(games, sortValue, sorting.dir).map((g) => (
+                      <CoverTile
+                        key={`${g.platformKey}|${g.entryId}`}
+                        platformKey={g.platformKey}
+                        title={g.title}
+                        coverId={g.coverId ?? null}
+                        sub={
+                          <Group gap={6} component="span" wrap="nowrap">
+                            <span>{releaseDate(g.releaseDate, dateFormat)}</span>
+                            {g.status === 'owned' ? <StashMark size={11} /> : g.score !== null ? <Acorns n={g.score} size={11} /> : null}
+                          </Group>
+                        }
+                      />
+                    ))}
+                  </SimpleGrid>
+                </Stack>
+              ))}
+            </Stack>
+          ) : (
           <Card withBorder p={0}>
             <Table highlightOnHover>
               <Table.Thead>
@@ -186,6 +218,7 @@ export function ComingSoonPage() {
               </Table.Tbody>
             </Table>
           </Card>
+          )}
         </>
       )}
     </>

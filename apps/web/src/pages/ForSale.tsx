@@ -1,4 +1,4 @@
-import { Anchor, Badge, Button, Group, Loader, Stack, Table, Text } from '@mantine/core';
+import { Anchor, Badge, Button, Group, Loader, SimpleGrid, Stack, Table, Text } from '@mantine/core';
 import { IconDownload } from '@tabler/icons-react';
 import { useQuery } from '@tanstack/react-query';
 import { useState } from 'react';
@@ -8,6 +8,7 @@ import { sortRows, useSort } from '../sort';
 import { CopyDetailsModal, type CopyRef } from '../CopyDetails';
 import { money } from '../format';
 import { GameCover, GameTitle } from '../GameDrawer';
+import { COVER_COLS, CoverTile, jumpMark, LetterBar, useListView, ViewSwitch } from '../GameViews';
 import { useCanEdit, useSetting } from '../hooks';
 import { SellHelper } from '../SellHelper';
 import { ShareButton } from '../ShareLinks';
@@ -52,6 +53,8 @@ export function ForSalePage() {
   const [selling, setSelling] = useState<{ id: number; title: string } | null>(null);
   // Until a heading is clicked, the copies keep the list's order (by console, then title), which no heading has.
   const sorting = useSort(SORTS, 'listed');
+  // Box art or a table (the owner, 2026-10-24), and the A–Z bar.
+  const [view, setView] = useListView('for-sale', 'table');
   const edit = (x: { copyKey: string; title: string; platform: string | null; condition: string }) => setEditing({ copyKey: x.copyKey, title: x.title, platform: x.platform ?? '', condition: x.condition });
   const items = sale.data?.items ?? [];
   const listed = new Map(items.map((s, i) => [s, i]));
@@ -78,8 +81,33 @@ export function ForSalePage() {
         <Loader />
       ) : (
         <Stack gap="lg">
+          {items.length > 0 && (
+            <Group gap="sm">
+              <ViewSwitch value={view} onChange={setView} />
+            </Group>
+          )}
+          <LetterBar titles={rows.map((s) => s.title)} inTitleOrder={sorting.by === 'title' && sorting.dir === 'asc'} sortByTitle={() => sorting.set('title', 'asc')} />
           {items.length === 0 ? (
             <Text c="dimmed">Nothing is marked for sale or trade.</Text>
+          ) : view === 'covers' ? (
+            <SimpleGrid cols={COVER_COLS} spacing="sm" verticalSpacing="md">
+              {rows.map((s, i) => (
+                <CoverTile
+                  key={s.copyKey}
+                  platformKey={s.platformKey}
+                  title={s.title}
+                  coverId={s.coverId}
+                  jump={i}
+                  sub={[s.askingCents !== null ? `asking ${money(s.askingCents, currency)}` : null, s.valueCents !== null ? `worth ${money(s.valueCents, currency)}` : null].filter(Boolean).join(' · ')}
+                >
+                  {canEdit && (
+                    <Anchor size="xs" onClick={() => edit(s)}>
+                      Change
+                    </Anchor>
+                  )}
+                </CoverTile>
+              ))}
+            </SimpleGrid>
           ) : (
             <Table.ScrollContainer minWidth={620}>
               <Table verticalSpacing={6} striped>
@@ -93,8 +121,8 @@ export function ForSalePage() {
                   </Table.Tr>
                 </Table.Thead>
                 <Table.Tbody>
-                  {rows.map((s) => (
-                    <Table.Tr key={s.copyKey}>
+                  {rows.map((s, rowIndex) => (
+                    <Table.Tr key={s.copyKey} {...jumpMark(rowIndex)}>
                       <Table.Td>
                         <Group gap="sm" wrap="nowrap">
                           {s.platformKey && <GameCover platformKey={s.platformKey} title={s.title} id={s.coverId} placeholder={items.some((x) => x.coverId)} />}

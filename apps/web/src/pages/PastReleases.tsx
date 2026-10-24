@@ -1,4 +1,4 @@
-import { Anchor, Badge, Card, Group, Loader, SegmentedControl, Stack, Table, Text } from '@mantine/core';
+import { Anchor, Badge, Box, Card, Group, Loader, SegmentedControl, SimpleGrid, Stack, Table, Text } from '@mantine/core';
 import { useQuery } from '@tanstack/react-query';
 import { useState } from 'react';
 import { Link } from 'react-router';
@@ -7,6 +7,7 @@ import { PageHeader, type SortDirection } from '../components';
 import { sortRows, useSort } from '../sort';
 import { count, date, releaseDate } from '../format';
 import { GameCover, GameTitle, PriceLinks } from '../GameDrawer';
+import { COVER_COLS, CoverTile, useListView, ViewSwitch } from '../GameViews';
 import { PreferencePicker, preferenceLevels } from '../Preference';
 import { useSetting } from '../hooks';
 import { Acorns, Reviews, StashMark, type ReviewsOf } from '../Acorn';
@@ -58,6 +59,8 @@ export function PastReleasesPage() {
   const [show, setShow] = useState<'missing' | 'all'>('missing');
   // A heading sorts each year's games by its column; By date and By acorns are two of them.
   const sorting = useSort(SORTS, 'released');
+  // Box art or a table (the owner, 2026-10-24), each year's games either way.
+  const [view, setView] = useListView('past-releases', 'table');
   const [platform, setPlatform] = useState<string | null>(null);
   const list = useQuery({ queryKey: ['catalogs', 'past'], queryFn: () => api<PastYear[]>('/catalogs/past') });
   const years = list.data ?? [];
@@ -107,6 +110,7 @@ export function PastReleasesPage() {
                 { value: 'score', label: 'By acorns' },
               ]}
             />
+            <ViewSwitch value={view} onChange={setView} />
           </Group>
           {consoles.length > 1 && (
             <Group gap={6}>
@@ -147,6 +151,25 @@ export function PastReleasesPage() {
                   <Text size="sm" c="dimmed" px="md" py="sm">
                     {show === 'missing' ? "Nothing you don't have came out on your consoles in those weeks." : 'Nothing with a release date came out on your consoles in those weeks.'}
                   </Text>
+                ) : view === 'covers' ? (
+                  <Box p="sm">
+                    <SimpleGrid cols={COVER_COLS} spacing="sm" verticalSpacing="md">
+                      {games.map((g) => (
+                        <CoverTile
+                          key={`${g.platformKey}|${g.entryId}`}
+                          platformKey={g.platformKey}
+                          title={g.title}
+                          coverId={g.coverId}
+                          sub={
+                            <Group gap={6} component="span" wrap="nowrap">
+                              <span>{releaseDate(g.releaseDate, dateFormat)}</span>
+                              {g.status === 'owned' ? <StashMark size={11} /> : g.score !== null && g.score !== undefined ? <Acorns n={g.score} size={11} /> : null}
+                            </Group>
+                          }
+                        />
+                      ))}
+                    </SimpleGrid>
+                  </Box>
                 ) : (
                   <Table.ScrollContainer minWidth={800}>
                     <Table highlightOnHover>
