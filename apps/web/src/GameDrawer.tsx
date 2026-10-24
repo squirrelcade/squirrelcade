@@ -625,7 +625,7 @@ export function GameDrawer() {
                     {g.igdb.franchise && (
                       <>
                         {' · '}
-                        <Anchor component={Link} to={`/sets?tab=series&series=${encodeURIComponent(g.igdb.franchise)}`} size="sm" underline="hover">
+                        <Anchor component={Link} to={`/series?series=${encodeURIComponent(g.igdb.franchise)}`} size="sm" underline="hover">
                           {g.igdb.franchise}
                         </Anchor>
                       </>

@@ -1,11 +1,14 @@
-import { Anchor, Box, Group, Loader, SimpleGrid, Stack, Tabs, Text, Tooltip } from '@mantine/core';
+import { Anchor, AspectRatio, Box, Center, Group, Image, Loader, SimpleGrid, Stack, Tabs, Text, Tooltip, UnstyledButton } from '@mantine/core';
+import { igdbCoverUrl, matchKey } from '@squirrelcade/core';
 import { IconExternalLink } from '@tabler/icons-react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { useEffect, type ReactNode } from 'react';
+import { useEffect, useState, type ReactNode } from 'react';
 import { Link } from 'react-router';
 import { RootsMark, StashMark } from './Acorn';
 import { api } from './api';
+import { count } from './format';
 import { useOpenGame } from './GameDrawer';
+import { useSetting } from './hooks';
 import { DrawerHistory, type HistoryText } from './pages/History';
 
 /** A review of the game (GET /api/v1/game/roots). */
@@ -165,6 +168,96 @@ function SourceLine({ s }: { s: RootsSource }) {
   );
 }
 
+/** A series the game is in (GET /api/v1/series/of): how much of it you have. */
+interface SeriesRef {
+  name: string;
+  had: number;
+  total: number;
+}
+
+/** A series' game counted once, wherever you have it (GET /api/v1/series/games?by=game). */
+interface SeriesTitle {
+  key: string;
+  title: string;
+  released: string | null;
+  coverId: string | null;
+  had: boolean;
+  consoles: { platformKey: string; platform: string; status: string }[];
+}
+
+/** How many of a series' games a game's page shows; the rest are on the Series page. */
+const SERIES_SHOWN = 24;
+
+/**
+ * Its series (the owner: "I would like to be able to see the series from this game"): a chip for each series it's in,
+ * the chosen one's games as box art (the ones you have in color, this one outlined), each opening its page.
+ */
+function GameSeries({ list, platformKey, title }: { list: SeriesRef[]; platformKey: string; title: string }) {
+  const [chosen, setChosen] = useState(list[0]!.name);
+  const s = list.find((x) => x.name === chosen) ?? list[0]!;
+  const games = useQuery({ queryKey: ['series', 'by-game', s.name], queryFn: () => api<SeriesTitle[]>(`/series/games?name=${encodeURIComponent(s.name)}&by=game`) });
+  const open = useOpenGame();
+  const covers = useSetting('interface.showCoverArt', true);
+  const shown = (games.data ?? []).slice(0, SERIES_SHOWN);
+  const more = (games.data?.length ?? 0) - shown.length;
+  return (
+    <Stack gap="sm">
+      {list.length > 1 && (
+        <Group gap={6}>
+          {list.map((x) => (
+            <button key={x.name} type="button" className="sc-chip" data-tone={x.name === s.name ? 'have' : undefined} style={{ fontSize: 13 }} aria-pressed={x.name === s.name} onClick={() => setChosen(x.name)}>
+              {x.name}
+              <span className="sc-muted" style={{ fontWeight: 500 }}>
+                {count(x.had)}/{count(x.total)}
+              </span>
+            </button>
+          ))}
+        </Group>
+      )}
+      <Group justify="space-between" gap="xs">
+        <Text size="sm">
+          {s.name}: you have <b>{count(s.had)}</b> of its {count(s.total)} games, a copy on any console counting.
+        </Text>
+        <Anchor component={Link} to={`/series?series=${encodeURIComponent(s.name)}`} size="sm">
+          Open the series
+        </Anchor>
+      </Group>
+      {games.isLoading ? (
+        <Loader size="sm" />
+      ) : (
+        <SimpleGrid cols={{ base: 4, xs: 6, sm: 8 }} spacing={8} verticalSpacing={8}>
+          {shown.map((x) => {
+            const at = x.consoles.find((c) => c.status === 'owned') ?? x.consoles[0]!;
+            const here = x.consoles.some((c) => c.platformKey === platformKey) && matchKey(x.title) === matchKey(title);
+            return (
+              <Tooltip key={x.key} label={`${x.title}${x.released ? ` (${x.released.slice(0, 4)})` : ''}${x.had ? ': you have it' : ''}`}>
+                <UnstyledButton aria-label={x.title} onClick={() => open(at.platformKey, x.title)} style={{ borderRadius: 4, outline: here ? '2px solid var(--sc-cade)' : undefined, outlineOffset: 2 }}>
+                  <AspectRatio ratio={3 / 4}>
+                    {covers && x.coverId ? (
+                      <Image src={igdbCoverUrl(x.coverId, 'cover_small')} radius="sm" alt="" loading="lazy" fit="cover" style={x.had ? undefined : { filter: 'grayscale(1)', opacity: 0.5 }} />
+                    ) : (
+                      <Center p={4} style={{ borderRadius: 'var(--mantine-radius-sm)', border: '1px solid var(--mantine-color-default-border)', opacity: x.had ? 1 : 0.6 }}>
+                        <Text size="10px" ta="center" lineClamp={5}>
+                          {x.title}
+                        </Text>
+                      </Center>
+                    )}
+                  </AspectRatio>
+                </UnstyledButton>
+              </Tooltip>
+            );
+          })}
+        </SimpleGrid>
+      )}
+      {more > 0 && (
+        <Text size="xs" c="dimmed">
+          And {count(more)} more on the series' page.
+        </Text>
+      )}
+    </Stack>
+  );
+}
+
 function MentionLine({ m }: { m: RootsMention }) {
   const open = useOpenGame();
   return (
@@ -246,13 +339,30 @@ export function RootsPart({ platformKey, title, history }: { platformKey: string
     retry: false,
   });
   const v = roots.data;
+  // The series it's in (the Nutshell's Series), for its own tab.
+  const series = useQuery({
+    queryKey: ['series', 'of', platformKey, title],
+    queryFn: () => api<{ series: SeriesRef[] }>(`/series/of?platform=${encodeURIComponent(platformKey)}&title=${encodeURIComponent(title)}`),
+    enabled: platformKey !== 'pc',
+    staleTime: 5 * 60_000,
+    retry: false,
+  });
+  const inSeries = series.data?.series ?? [];
   // Read just now (the first time the game is opened): the header's Metacritic score and stars come from it too.
   useEffect(() => {
     if (v?.status === 'ready' && v.readAt && Date.now() - new Date(v.readAt).getTime() < 60_000) {
       void queryClient.invalidateQueries({ queryKey: ['game', platformKey, title], exact: true });
     }
   }, [v?.readAt]);
-  if (!history && (!v || v.status === 'off')) return null;
+  if (!history && (!v || v.status === 'off')) {
+    // Roots off: its series still shows.
+    return inSeries.length > 0 ? (
+      <Stack gap="xs">
+        <Text fw={700}>Its series</Text>
+        <GameSeries list={inSeries} platformKey={platformKey} title={title} />
+      </Stack>
+    ) : null;
+  }
   const year = v?.firstRelease ? Number(v.firstRelease.slice(0, 4)) : null;
   return (
     <Stack gap="sm">
@@ -281,6 +391,14 @@ export function RootsPart({ platformKey, title, history }: { platformKey: string
           Squirrelcade didn't find this game's Wikipedia article, so its reviews of the time aren't here.
         </Text>
       )}
+      {v?.status !== 'ready' && inSeries.length > 0 && (
+        <>
+          <Text size="sm" fw={700}>
+            Its series
+          </Text>
+          <GameSeries list={inSeries} platformKey={platformKey} title={title} />
+        </>
+      )}
       {v?.status === 'ready' && (
         <>
           <Strip v={v} />
@@ -299,7 +417,13 @@ export function RootsPart({ platformKey, title, history }: { platformKey: string
               <Tabs.Tab value="time">At the time</Tabs.Tab>
               <Tabs.Tab value="from">Where it came from</Tabs.Tab>
               <Tabs.Tab value="later">Looking back</Tabs.Tab>
+              {inSeries.length > 0 && <Tabs.Tab value="series">Its series</Tabs.Tab>}
             </Tabs.List>
+            {inSeries.length > 0 && (
+              <Tabs.Panel value="series" pt="sm">
+                <GameSeries list={inSeries} platformKey={platformKey} title={title} />
+              </Tabs.Panel>
+            )}
             <Tabs.Panel value="time" pt="sm">
               <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="sm">
                 <Card title="In the magazines" aside={v.time.magazines.length > 0 ? `${v.time.magazines.length}` : undefined}>

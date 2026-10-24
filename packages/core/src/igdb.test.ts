@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { igdbCoverUrl, igdbDetails, igdbGameFromApi, matchIgdb, mergeDetails, titleKeys, type IgdbGame, withoutSharedNames } from './igdb.js';
+import { igdbCoverUrl, igdbDetails, igdbGameFromApi, matchIgdb, mergeDetails, seriesNamesOf, titleKeys, type IgdbGame, withoutSharedNames } from './igdb.js';
 import { scoreCandidates, scoringConfig } from './wishlist.js';
 import { defaultSettings } from './settings.js';
 
@@ -83,13 +83,35 @@ describe('igdbGameFromApi', () => {
       publishers: ['Namco Bandai Games America'],
       remakes: [11111],
       remasters: [22222],
+      mainFranchise: null,
+      franchises: [],
+      collections: ['Tales'],
     });
   });
 
   it('copes with missing fields and rejects nameless records', () => {
-    expect(igdbGameFromApi({ id: 2, name: 'Bare' }, PS3)).toEqual(game({ id: 2, name: 'Bare', gameType: null, rating: null, ratingCount: 0, developers: [], publishers: [], remakes: [], remasters: [] }));
+    expect(igdbGameFromApi({ id: 2, name: 'Bare' }, PS3)).toEqual(game({ id: 2, name: 'Bare', gameType: null, rating: null, ratingCount: 0, developers: [], publishers: [], remakes: [], remasters: [], mainFranchise: null, franchises: [], collections: [] }));
     expect(igdbGameFromApi({ id: 3 }, PS3)).toBeNull();
     expect(igdbGameFromApi(null, PS3)).toBeNull();
+  });
+});
+
+describe('seriesNamesOf', () => {
+  it("puts a game in each of its franchises (a crossover in its main one only) and its collections; an older list in its one franchise", () => {
+    // Super Mario 64 names both of IGDB's Mario franchises, and two collections.
+    const sm64 = game({ franchise: 'Mario Bros.', mainFranchise: 'Mario Bros.', franchises: ['Mario Bros.', 'Mario'], collections: ['Super Mario', 'Super Mario 64'] });
+    expect(seriesNamesOf(sm64, true)).toEqual(['Mario Bros.', 'Mario', 'Super Mario', 'Super Mario 64']);
+    expect(seriesNamesOf(sm64, false)).toEqual(['Mario Bros.', 'Mario']);
+    // Smash Bros. names a dozen franchises and has no main one: only its collection.
+    const smash = game({ franchise: 'Metroid', mainFranchise: null, franchises: ['Metroid', 'Kirby', 'The Legend of Zelda', 'Mario', 'Pokémon'], collections: ['Super Smash Bros.'] });
+    expect(seriesNamesOf(smash, true)).toEqual(['Super Smash Bros.']);
+    expect(seriesNamesOf(smash, false)).toEqual([]);
+    // Mario Kart 8 has a main franchise among its many.
+    expect(seriesNamesOf(game({ mainFranchise: 'Mario Bros.', franchises: ['Mario Bros.', 'Mario', 'Yoshi', 'Wario'], collections: ['Mario Kart'] }), true)).toEqual(['Mario Bros.', 'Mario Kart']);
+    // A list downloaded before 1.3.0 keeps its one franchise; a game with none has no series.
+    expect(seriesNamesOf(game({ franchise: 'Tales' }), true)).toEqual(['Tales']);
+    expect(seriesNamesOf(game({ franchises: [], collections: [] }), true)).toEqual([]);
+    expect(seriesNamesOf(game({ franchise: 'Tales', franchises: [], collections: ['Tales'] }), false)).toEqual(['Tales']);
   });
 });
 

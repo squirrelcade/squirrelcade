@@ -1275,6 +1275,14 @@ export const settingDefinitions = {
     max: 4000,
     unit: 'pixels',
   }),
+  'collection.seriesCollections': bool({
+    page: 'collection',
+    section: 'Series',
+    label: "IGDB's collections are series too",
+    description:
+      "IGDB puts each game in its franchises (Mario) and in collections within them (Super Mario, Mario Kart, Mario Party). With this on, the collections are series of their own beside the franchises; off, only the franchises are (and a collection when a game has no franchise).",
+    default: true,
+  }),
   'collection.seriesMinGames': num({
     page: 'collection',
     section: 'Series',

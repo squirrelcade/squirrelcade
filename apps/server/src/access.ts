@@ -82,6 +82,7 @@ const VIEWER_READS: RegExp[] = [
   /^\/api\/v1\/purchases$/,
   /^\/api\/v1\/series$/,
   /^\/api\/v1\/series\/games$/,
+  /^\/api\/v1\/series\/of$/,
   /^\/api\/v1\/sets$/,
   /^\/api\/v1\/sets\/[^/]+$/,
   /^\/api\/v1\/sets\/[^/]+\/export$/,

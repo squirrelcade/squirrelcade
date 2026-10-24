@@ -1,4 +1,4 @@
-import { baseTitle, matchKey, normalizeTitle, type IgdbGame } from '@squirrelcade/core';
+import { baseTitle, matchKey, normalizeTitle, seriesNamesOf, type IgdbGame } from '@squirrelcade/core';
 import type { FastifyInstance } from 'fastify';
 import type { CatalogService } from './catalogs.js';
 import type { IgdbService } from './igdb.js';
@@ -37,6 +37,8 @@ export interface SeriesGame {
   onPc?: boolean;
   /** IGDB's cover for it on this console. */
   coverId?: string | null;
+  /** IGDB's game, so the same game spelled two ways on two consoles ("Judgement", "Judgment") counts once. */
+  igdbId?: number;
   /**
    * For a remake or remaster (IGDB's links): the game in this series it's a version of, followed back to the first
    * one, with its first release; so an opened series can show versions together. "version" when it took more than
@@ -121,7 +123,7 @@ function linkVersions(list: SeriesGame[], igdbOf: Map<SeriesGame, IgdbGame>): vo
  * Worked out again when the catalogs or IGDB's data change.
  */
 export class SeriesService {
-  private cache: { key: string; games: Map<string, SeriesGame[]>; custom: Set<string> } | null = null;
+  private cache: { key: string; games: Map<string, SeriesGame[]>; custom: Set<string>; folded: Map<string, string> } | null = null;
 
   constructor(
     private readonly catalogs: CatalogService,
@@ -133,15 +135,18 @@ export class SeriesService {
     private readonly onPc: (title: string) => boolean = () => false,
   ) {}
 
-  private games(): Map<string, SeriesGame[]> {
-    return this.worked().games;
-  }
-
-  /** Every series' games (IGDB's, and your own), and which series are your own. */
-  private worked(): { games: Map<string, SeriesGame[]>; custom: Set<string> } {
+  /**
+   * Every series' games (IGDB's, and your own), which series are your own, and IGDB's older franchise names folded
+   * into newer ones ("Mario Bros." into "Mario").
+   */
+  private worked(): { games: Map<string, SeriesGame[]>; custom: Set<string>; folded: Map<string, string> } {
     const own = this.settings.get('collection.customSeries');
-    const key = `${this.catalogs.stamp()}|${this.igdb.stamp()}|${own.join('\n')}`;
+    const withCollections = this.settings.get('collection.seriesCollections');
+    const key = `${this.catalogs.stamp()}|${this.igdb.stamp()}|${own.join('\n')}|${withCollections}`;
     if (this.cache?.key === key) return this.cache;
+    // The names IGDB gives as franchises, and as collections: only a franchise folds into another.
+    const franchiseNames = new Set<string>();
+    const collectionNames = new Set<string>();
     const bySeries = new Map<string, SeriesGame[]>();
     const igdbOf = new Map<SeriesGame, IgdbGame>();
     const matches = this.catalogs.allMatches();
@@ -159,14 +164,46 @@ export class SeriesService {
         // Another region's release not owned counts nowhere (it counts once owned).
         if (t.status === 'excluded' || t.status === 'extra') continue;
         const game = this.igdb.find(p.platformId, t.target.title);
-        const name = game?.franchise?.trim();
-        if (!name) continue;
-        const list = bySeries.get(name) ?? [];
+        // Each of its franchises and (with the setting) its collections (seriesNamesOf).
+        const names = game ? seriesNamesOf(game, withCollections) : [];
+        if (names.length === 0) continue;
+        for (const f of game!.franchises ?? [game!.franchise ?? '']) if (f) franchiseNames.add(f);
+        for (const c of game!.collections ?? []) collectionNames.add(c);
         const elsewhere = t.status === 'owned' ? [] : [...(ownedOn.get(matchKey(baseTitle(t.target.title))) ?? [])].filter((n) => n !== p.name);
-        const entry: SeriesGame = { platformKey: p.key, platform: p.name, title: t.target.title, status: t.status, released: game?.released ?? null, ownedOn: elsewhere, coverId: game?.coverId ?? null };
-        if (game) igdbOf.set(entry, game);
-        list.push(entry);
-        bySeries.set(name, list);
+        for (const name of names) {
+          // One entry for each series, since each series links its own remakes (linkVersions).
+          const entry: SeriesGame = { platformKey: p.key, platform: p.name, title: t.target.title, status: t.status, released: game!.released ?? null, ownedOn: elsewhere, coverId: game!.coverId ?? null, igdbId: game!.id };
+          igdbOf.set(entry, game!);
+          bySeries.set(name, [...(bySeries.get(name) ?? []), entry]);
+        }
+      }
+    }
+    // IGDB's older franchise names inside its newer ones (the owner: the Mario series lacked Super Mario Bros. 2 and 3,
+    // which IGDB files under "Mario Bros." as well as "Mario"): a franchise whose name begins with a bigger
+    // franchise's, with most of its games in that one too, joins it and isn't listed apart. Collections never fold.
+    const folded = new Map<string, string>();
+    const gameKey = (g: SeriesGame) => `${g.platformKey}|${normalizeTitle(g.title)}`;
+    for (const [name, list] of bySeries) {
+      if (!franchiseNames.has(name) || collectionNames.has(name)) continue;
+      for (const [other, into] of bySeries) {
+        if (other === name || !franchiseNames.has(other) || into.length <= list.length || !matchKey(name).startsWith(matchKey(other))) continue;
+        const inOther = new Set(into.map(gameKey));
+        if (list.filter((g) => inOther.has(gameKey(g))).length >= 0.8 * list.length) {
+          folded.set(name, other);
+          break;
+        }
+      }
+    }
+    for (const [name, other] of folded) {
+      const into = bySeries.get(other)!;
+      const have = new Set(into.map(gameKey));
+      for (const g of bySeries.get(name)!) {
+        if (have.has(gameKey(g))) continue;
+        const copy: SeriesGame = { ...g };
+        const game = igdbOf.get(g);
+        if (game) igdbOf.set(copy, game);
+        into.push(copy);
+        have.add(gameKey(g));
       }
     }
     // Your own series: the catalogs' games whose titles have one of its words (in place of an IGDB series of that name).
@@ -192,8 +229,14 @@ export class SeriesService {
       custom.add(name);
     }
     for (const list of bySeries.values()) linkVersions(list, igdbOf);
-    this.cache = { key, games: bySeries, custom };
+    this.cache = { key, games: bySeries, custom, folded };
     return this.cache;
+  }
+
+  /** A series by its name, or the one it folded into ("Mario Bros." is Mario's). */
+  private named(name: string): SeriesGame[] | undefined {
+    const { games, folded } = this.worked();
+    return games.get(folded.get(name) ?? name);
   }
 
   /**
@@ -203,8 +246,9 @@ export class SeriesService {
   list(): SeriesSummary[] {
     const out: SeriesSummary[] = [];
     const fewest = this.settings.get('collection.seriesMinGames');
-    const { games: all, custom } = this.worked();
+    const { games: all, custom, folded } = this.worked();
     for (const [name, games] of all) {
+      if (folded.has(name)) continue;
       const owned = games.filter((g) => g.status === 'owned').length;
       // Your own series show whatever you own of them; IGDB's need a game owned and enough games.
       if (!custom.has(name) && (owned === 0 || games.length < fewest)) continue;
@@ -225,20 +269,45 @@ export class SeriesService {
 
   /** A series' games counted once each, wherever you have them (see SeriesTitle), in release order. */
   private titlesOf(games: SeriesGame[]): SeriesTitle[] {
-    const byGame = new Map<string, SeriesGame[]>();
+    // One game: the same title, or the same IGDB game under another spelling (the owner: "why are the Judgment games
+    // on here twice?", a catalog's "Judgement" beside another's "Judgment").
+    const parent = new Map<string, string>();
+    const root = (k: string): string => {
+      let r = k;
+      while (parent.has(r) && parent.get(r) !== r) r = parent.get(r)!;
+      return r;
+    };
+    const join = (a: string, b: string) => {
+      const ra = root(a);
+      const rb = root(b);
+      if (ra !== rb) parent.set(rb, ra);
+    };
     for (const g of games) {
       const key = matchKey(baseTitle(g.title));
+      if (!parent.has(key)) parent.set(key, key);
+      if (g.igdbId !== undefined) {
+        if (!parent.has(`#${g.igdbId}`)) parent.set(`#${g.igdbId}`, key);
+        join(key, `#${g.igdbId}`);
+      }
+    }
+    const byGame = new Map<string, SeriesGame[]>();
+    for (const g of games) {
+      const key = root(matchKey(baseTitle(g.title)));
       byGame.set(key, [...(byGame.get(key) ?? []), g]);
     }
     const out: SeriesTitle[] = [];
     for (const [key, list] of byGame) {
       const sorted = [...list].sort((a, b) => (a.released ?? '9999').localeCompare(b.released ?? '9999') || a.platform.localeCompare(b.platform));
+      // Its name: the spelling most of its consoles use (the first released on a tie).
+      const spellings = new Map<string, number>();
+      for (const g of sorted) spellings.set(g.title, (spellings.get(g.title) ?? 0) + 1);
+      const best = [...spellings].sort((a, b) => b[1] - a[1])[0]![0];
       const first = sorted[0]!;
       const had = list.some((g) => g.status === 'owned');
       const mine = list.find((g) => g.status === 'owned' && g.coverId);
       out.push({
         key,
-        title: first.title,
+        title: best,
         released: first.released,
         coverId: mine?.coverId ?? sorted.find((g) => g.coverId)?.coverId ?? null,
         had,
@@ -257,8 +326,9 @@ export class SeriesService {
   listByGame(): SeriesByGame[] {
     const out: SeriesByGame[] = [];
     const fewest = this.settings.get('collection.seriesMinGames');
-    const { games: all, custom } = this.worked();
+    const { games: all, custom, folded } = this.worked();
     for (const [name, games] of all) {
+      if (folded.has(name)) continue;
       const titles = this.titlesOf(games);
       const had = titles.filter((t) => t.had).length;
       if (!custom.has(name) && (had === 0 || titles.length < fewest)) continue;
@@ -278,13 +348,31 @@ export class SeriesService {
 
   /** One series' games counted by game, in release order (each remake beside the game it remakes). */
   detailByGame(name: string): SeriesTitle[] | null {
-    const games = this.games().get(name);
+    const games = this.named(name);
     return games ? this.titlesOf(games) : null;
+  }
+
+  /**
+   * The series a game is in, for its page's Series tab (the owner: "I would like to be able to see the series from
+   * this game"): the ones the Series page lists (not hidden), each with how much of it you have, the biggest first.
+   */
+  of(platformKey: string, title: string): { name: string; had: number; total: number }[] {
+    const key = normalizeTitle(title);
+    const hidden = new Set(this.settings.get('collection.seriesHidden'));
+    const { games: all } = this.worked();
+    const listed = new Map(this.listByGame().map((s) => [s.name, s]));
+    const out: { name: string; had: number; total: number }[] = [];
+    for (const [name, games] of all) {
+      const s = listed.get(name);
+      if (!s || hidden.has(name) || !games.some((g) => g.platformKey === platformKey && normalizeTitle(g.title) === key)) continue;
+      out.push({ name, had: s.had, total: s.total });
+    }
+    return out.sort((a, b) => b.total - a.total || a.name.localeCompare(b.name));
   }
 
   /** One series' games: the ones you don't own first, each group by release date, then title. */
   detail(name: string): SeriesGame[] | null {
-    const games = this.games().get(name);
+    const games = this.named(name);
     if (!games) return null;
     const rank = (g: SeriesGame) => (g.status === 'owned' ? 1 : 0);
     const preferences = this.preferences();
@@ -302,5 +390,12 @@ export function registerSeriesRoutes(app: FastifyInstance, series: SeriesService
     const games = name ? (by === 'game' ? series.detailByGame(name) : series.detail(name)) : null;
     if (!games) return reply.code(404).send({ error: 'not-found', message: 'No such series in your catalogs.' });
     return games;
+  });
+
+  // The series a game is in (its page's Series tab).
+  app.get('/api/v1/series/of', async (request, reply) => {
+    const { platform, title } = request.query as { platform?: string; title?: string };
+    if (!platform || !title) return reply.code(400).send({ error: 'invalid', message: 'Give a platform key and a title.' });
+    return { series: series.of(platform, title) };
   });
 }

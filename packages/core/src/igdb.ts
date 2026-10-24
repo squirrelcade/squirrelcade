@@ -103,6 +103,30 @@ export interface IgdbGame {
   /** IGDB's remakes and remasters of this game (their IGDB ids); missing in lists downloaded before they were read. */
   remakes?: number[];
   remasters?: number[];
+  /**
+   * For series: IGDB's main franchise, every franchise it names (the main one first) and its collections ("Super
+   * Mario", "Mario Kart"); missing in lists downloaded before 1.3.0, which keep only `franchise`.
+   */
+  mainFranchise?: string | null;
+  franchises?: string[];
+  collections?: string[];
+}
+
+/** A game naming more franchises than this is a crossover (Super Smash Bros., Mario Kart 8 Deluxe): only its main one counts. */
+export const CROSSOVER_FRANCHISES = 3;
+
+/**
+ * The series a game is in by IGDB: each of its franchises (only its main one for a crossover), and its collections
+ * when asked; a list downloaded before franchises were kept gives its one franchise.
+ */
+export function seriesNamesOf(game: IgdbGame, withCollections: boolean): string[] {
+  if (!game.franchises) return game.franchise ? [game.franchise] : [];
+  const franchises = game.franchises.length <= CROSSOVER_FRANCHISES ? game.franchises : game.mainFranchise ? [game.mainFranchise] : [];
+  const out = [...franchises, ...(withCollections ? (game.collections ?? []) : [])];
+  // A game with no franchise at all is in its collection, as before (with collections off too); a crossover isn't
+  // put in whichever franchise IGDB happens to name first.
+  if (out.length === 0 && game.franchises.length === 0 && game.franchise) out.push(game.franchise);
+  return [...new Set(out)];
 }
 
 /** Countries that count as each home region for physical listings (PAL takes in Australia and New Zealand). */
@@ -198,6 +222,9 @@ export function igdbGameFromApi(raw: unknown, igdbPlatformId: number): IgdbGame 
     publishers: companyNames('publisher'),
     remakes: (g.remakes ?? []).filter((id) => typeof id === 'number'),
     remasters: (g.remasters ?? []).filter((id) => typeof id === 'number'),
+    mainFranchise: g.franchise?.name?.trim() || null,
+    franchises: [...new Set([g.franchise?.name?.trim() ?? '', ...names(g.franchises)].filter(Boolean))],
+    collections: names(g.collections),
   };
 }
 

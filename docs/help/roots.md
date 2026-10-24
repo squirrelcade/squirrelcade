@@ -15,6 +15,7 @@ Every game's page has its **Roots** under your copy. First its place in its cons
   - **Videos of the day:** the videos its article cites; video channels of your own come later.
 - **Where it came from:** the games its article names where it tells how the game was made (**What it came from**) and in its legacy (**What it led to**), each found in your consoles' catalogs, marked **Have it** or **Not yet**, and opening its own page. Magazines, people and words that aren't games are left out by not being in any catalog.
 - **Looking back:** later reviews, writing since, its awards and best-selling place, and **Learn more**: its pages on Wikipedia and the reference sites (Settings > Roots).
+- **Its series:** the series it's in (Mario, Super Mario...), a chip for each with how many of its games you have, and the chosen one's games as box art: the ones you have in color, this one outlined, each opening its page; **Open the series** goes to Nutshell › Series. It shows with Roots off too.
 
 Some articles have two review tables, "Contemporary reception" and "Retrospective reception": Roots puts each where it says. A source with no date goes by its table. Nothing here is your own: it can all be read again.
 
