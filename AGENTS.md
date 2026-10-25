@@ -35,6 +35,10 @@ squirrelcade.com is the one-page site in `site/`. When a feature is added or cha
 
 A change that adds or changes something to set up or configure updates, in the same piece of work: Help, the README and install guides, and both AI setup prompts (`docs/ai/setup-prompt.md`, for before installing, and the one an install writes, `apps/server/src/aiSetup.ts`), including the settings file the AI can write. The prompts are meant to take someone through setup and configuration from start to finish, by pasting them into any AI chat.
 
+## It stays snappy
+
+Every feature keeps the app fast to use: searching, scanning a barcode, opening a page. Heavy work (downloading a catalog, reading a channel's videos, matching thousands of titles) runs once or in the background, and its results are stored or kept in memory, so everyday use only reads what's already there. A one-time wait while data is first gathered is fine; a slower search or page from then on isn't. Never do on each keystroke or request what could be done once and kept. Time the main paths (the search, a barcode lookup, the game page) before and after a change that touches them.
+
 ## The version shows
 
 The version a server runs shows at the bottom of the menu, small and grey ("Squirrelcade 1.2.2 · f6b0323", from `/api/v1/health`; D170), so the owner can tell at a glance that an update arrived. Keep it there, quiet but visible, through any redesign of the menu.
