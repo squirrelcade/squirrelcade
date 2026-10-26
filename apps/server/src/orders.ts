@@ -2,7 +2,9 @@ import {
   dayIn,
   gmailOrderSearch,
   gmailPurchaseSearch,
+  isAmazonUnknown,
   ITEM_MATCH,
+  orderPageDate,
   itemCost,
   KNOWN_PLATFORMS,
   lotGames,
@@ -17,7 +19,10 @@ import {
   orderTextForModel,
   productPlatform,
   purchaseSubject,
+  readAmazonHistory,
+  readAmazonOrder,
   readOrderEmail,
+  readOrderPage,
   severalGames,
   splitEvenly,
   storesSeen,
@@ -38,6 +43,7 @@ import { appState, comingItems, copies, platforms } from './db/schema.js';
 import { HelperError, type HelperQueue } from './helper.js';
 import type { LookupService } from './lookup.js';
 import { signInProblem, type FoundMail, type Mailbox, type MailboxOpener, type MailImportService } from './mailImport.js';
+import { isZip, readZip } from './zip.js';
 import type { NotificationService } from './notifications.js';
 import type { SettingsService } from './settings.js';
 import { answerOf } from './talk.js';
@@ -151,6 +157,8 @@ export interface ComingView {
   paidInCurrencyCents: number | null;
   /** A lot, a pack or a bundle: several games for one price (D173), to split. */
   several: boolean;
+  /** An Amazon order's game its email didn't name (D176): its order page pasted, or a screenshot of it, names it. */
+  unknown: boolean;
   /** The lot it was split from. */
   lotOf: number | null;
   readBy: string;
@@ -499,6 +507,7 @@ export class OrderService {
       const ask: number[] = [];
       emails.forEach((e, i) => {
         const kept = cache.get(e.ref);
+        if (readAmazonOrder(e)) return;
         if (kept) out[i] = kept.order;
         else ask.push(i);
       });
@@ -527,6 +536,9 @@ export class OrderService {
       this.writeState(READ_KEY, [...cache.values()].sort((a, b) => b.at.localeCompare(a.at)).slice(0, KEEP_READ));
     }
     return emails.map((e, i) => {
+      // Amazon's order email names departments, not items (D176): its video games wait, unnamed, under its order.
+      const amazon = readAmazonOrder(e);
+      if (amazon) return amazon;
       const o = out[i];
       if (o === undefined) return readOrderEmail(e, wanted);
       // A model's reading that doesn't have the game asked for: the plain rules may still find its line.
@@ -644,7 +656,7 @@ export class OrderService {
       if (known) return;
       // Each share for one copy: the price paid is worked out from them as Settings > Email counts it, then.
       const cost = itemCost(order, index, 'all');
-      const game = this.matchListing(item.title);
+      const game = isAmazonUnknown(item.title) ? null : this.matchListing(item.title);
       const row = this.d.db
         .insert(comingItems)
         .values({
@@ -773,6 +785,80 @@ export class OrderService {
   }
 
   /**
+   * An order page's text (D176: copied from the shop's page, or read from a screenshot on the phone): its items on the
+   * way, each matched as an email's are. With `into`, it names that game on the way (an Amazon order's game its email
+   * didn't name: every one of that order's unnamed games is replaced by the page's). Pasted twice, it's added once.
+   */
+  fromPage(text: string, into?: number): ComingView[] {
+    const today = new Date().toISOString().slice(0, 10);
+    const row = into !== undefined ? this.d.db.select().from(comingItems).where(eq(comingItems.id, into)).get() : undefined;
+    if (into !== undefined && (!row || row.status !== 'waiting')) throw new CopyError("That isn't on the way.");
+    const order = readOrderPage(text.slice(0, 200_000), today, row?.store);
+    if (!order || order.items.length === 0) throw new CopyError("That doesn't read as an order page: copy the whole page (Ctrl+A, then Ctrl+C), the one with each item's price.");
+    if (row) {
+      order.orderNumber ??= row.orderNumber;
+      if (orderPageDate(text) === null && row.orderDate) order.date = row.orderDate;
+    }
+    const ref = `page:${createHash('sha256').update(row ? `${row.mailRef}|${text}` : text).digest('hex').slice(0, 32)}`;
+    const now = new Date().toISOString();
+    if (row) {
+      // The order's unnamed games give way to the page's.
+      const unnamed = this.d.db.select().from(comingItems).where(and(eq(comingItems.status, 'waiting'), eq(comingItems.mailRef, row.mailRef))).all().filter((r) => r.id === row.id || isAmazonUnknown(r.listingTitle));
+      for (const u of unnamed) this.d.db.update(comingItems).set({ status: 'split', updatedAt: now }).where(eq(comingItems.id, u.id)).run();
+    }
+    return this.addComing(ref, order);
+  }
+
+  /**
+   * Amazon's order history download (D176: Request your data > Your Orders; its CSV, or the zip it comes in): the games
+   * in it, by their names (a console named, and a game Squirrelcade is sure of), each on the way to be checked and
+   * added, its price before tax and shipping. A game you have already, on that console, is left out; so is each item
+   * read before. What it found, counted.
+   */
+  async fromAmazonHistory(data: Buffer): Promise<{ items: number; games: number; added: number; have: number; unsure: number }> {
+    let text = data.toString('utf8');
+    if (isZip(data)) {
+      const entry = readZip(data).find((e) => /OrderHistory.*\.csv$/i.test(e.name)) ?? readZip(data).find((e) => /\.csv$/i.test(e.name));
+      if (!entry) throw new CopyError("That zip has no order history in it (Retail.OrderHistory.1.csv).");
+      text = entry.read().toString('utf8');
+    }
+    const rows = readAmazonHistory(text);
+    if (!rows) throw new CopyError("That isn't Amazon's order history: it's the file Your Orders in Amazon's Request your data (its columns Order ID, Order Date, Product Name...).");
+    const counts = { items: rows.length, games: 0, added: 0, have: 0, unsure: 0 };
+    for (const [i, r] of rows.entries()) {
+      // A long history doesn't hold the server: other requests get their turn every 25 rows.
+      if (i % 25 === 24) await new Promise((resolve) => setImmediate(resolve));
+      const platformKey = productPlatform(r.productName);
+      if (!platformKey) continue;
+      counts.games++;
+      const game = this.matchListing(r.productName);
+      if (game) {
+        const mine = this.d.lookup.search(game.title, { platformKey: game.platformKey, exact: true, limit: 1, brief: true, followed: false })[0];
+        if (mine && (mine.answer === 'own' || mine.answer === 'own-not-in-catalog')) {
+          counts.have++;
+          continue;
+        }
+      } else counts.unsure++;
+      const added = this.addComing(`amazon-history:${r.orderId}|${i}`, {
+        store: 'Amazon',
+        date: r.date,
+        orderNumber: r.orderId,
+        currency: r.currency,
+        items: [{ title: r.productName.slice(0, 200), priceCents: r.unitPriceCents, quantity: r.quantity }],
+        taxCents: null,
+        shippingCents: null,
+        discountCents: null,
+        totalCents: null,
+        link: `https://www.amazon.com/your-orders/order-details?orderID=${r.orderId}`,
+        readBy: 'plain',
+      });
+      counts.added += added.length;
+    }
+    await this.fillRates();
+    return counts;
+  }
+
+  /**
    * The games a lot may be, to start its split (D173): the ones its listing names, each with the game Squirrelcade takes
    * it for on the console the listing names (or anywhere), and the lot's whole price paid.
    */
@@ -791,7 +877,7 @@ export class OrderService {
   private view(r: typeof comingItems.$inferSelect): ComingView {
     const paid = this.paidOf(r);
     const game = r.platformKey && r.title ? this.d.lookup.search(r.title, { platformKey: r.platformKey, exact: true, limit: 1, brief: true })[0] : undefined;
-    const maybe = r.platformKey && r.title ? [] : r.status === 'waiting' ? this.d.lookup.productMatch(r.listingTitle).results.slice(0, 5).map((m) => ({ platformKey: m.platformKey, platform: m.platform, title: m.title })) : [];
+    const maybe = r.platformKey && r.title ? [] : r.status === 'waiting' && !isAmazonUnknown(r.listingTitle) ? this.d.lookup.productMatch(r.listingTitle).results.slice(0, 5).map((m) => ({ platformKey: m.platformKey, platform: m.platform, title: m.title })) : [];
     return {
       id: r.id,
       store: r.store,
@@ -808,6 +894,7 @@ export class OrderService {
       paidCents: paid,
       paidInCurrencyCents: this.foreign(r) ? this.paidInCurrency(r) : null,
       several: r.lotOf === null && severalGames(r.listingTitle),
+      unknown: isAmazonUnknown(r.listingTitle),
       lotOf: r.lotOf,
       readBy: r.readBy,
       platformKey: r.platformKey,
@@ -949,6 +1036,28 @@ export function registerOrderRoutes(app: FastifyInstance, orders: OrderService, 
     const game = typeof b.platformKey === 'string' && typeof b.title === 'string' && b.title.trim() ? { platformKey: b.platformKey, title: b.title.trim().slice(0, 200) } : null;
     const view = orders.setGame(Number((request.params as { id: string }).id), game);
     return view ?? reply.code(404).send({ error: 'not-found', message: "That isn't on the way." });
+  });
+  // An order page pasted, or read from a screenshot (D176): its games on the way, or the unnamed game it names.
+  app.post('/api/v1/coming/page', async (request, reply) => {
+    const b = (request.body ?? {}) as { text?: unknown; into?: unknown };
+    if (typeof b.text !== 'string' || !b.text.trim()) return reply.code(400).send({ error: 'invalid', message: 'Paste the order page.' });
+    try {
+      return reply.code(201).send({ items: orders.fromPage(b.text, typeof b.into === 'number' ? b.into : undefined) });
+    } catch (err) {
+      if (err instanceof CopyError) return reply.code(400).send({ error: 'invalid', message: err.message });
+      throw err;
+    }
+  });
+  // Amazon's order history download (D176), dropped in.
+  app.post('/api/v1/coming/amazon-history', async (request, reply) => {
+    const file = await request.file();
+    if (!file) return reply.code(400).send({ error: 'no-file', message: "Choose Amazon's order history: the zip from Request your data, or the CSV in it." });
+    try {
+      return await orders.fromAmazonHistory(await file.toBuffer());
+    } catch (err) {
+      if (err instanceof CopyError) return reply.code(400).send({ error: 'invalid', message: err.message });
+      throw err;
+    }
   });
   // Several games, one price (D173): what the lot may be, and the lot made a game of its own for each.
   app.get('/api/v1/coming/:id/games', async (request, reply) => orders.lotGuesses(Number((request.params as { id: string }).id)) ?? reply.code(404).send({ error: 'not-found', message: "That isn't on the way." }));

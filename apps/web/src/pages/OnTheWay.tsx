@@ -1,7 +1,7 @@
-import { Alert, Anchor, Autocomplete, Badge, Button, Card, CloseButton, Group, Loader, Modal, NumberInput, Select, Stack, Text, TextInput } from '@mantine/core';
+import { Alert, Anchor, Autocomplete, Badge, Button, Card, CloseButton, FileButton, Group, Loader, Modal, NumberInput, Select, Stack, Text, TextInput } from '@mantine/core';
 import { useDebouncedValue } from '@mantine/hooks';
 import { KNOWN_PLATFORMS } from '@squirrelcade/core';
-import { IconExternalLink, IconMailSearch, IconPackage, IconPlus } from '@tabler/icons-react';
+import { IconClipboardText, IconExternalLink, IconFileImport, IconMailSearch, IconPackage, IconPlus } from '@tabler/icons-react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router';
@@ -12,6 +12,7 @@ import { date, money, timeAgo } from '../format';
 import { GameTitle } from '../GameDrawer';
 import { notifyError, notifySuccess, useSetting } from '../hooks';
 import { COUNTS_SAID } from '../OrderEmails';
+import { OrderPageModal } from '../OrderPage';
 
 /** A game on the way (GET /api/v1/coming). */
 export interface ComingItem {
@@ -33,6 +34,8 @@ export interface ComingItem {
   paidInCurrencyCents: number | null;
   /** Several games for one price: a lot, a pack, a bundle (D173). */
   several: boolean;
+  /** An Amazon order's game its email didn't name (D176). */
+  unknown: boolean;
   lotOf: number | null;
   readBy: string;
   platformKey: string | null;
@@ -213,6 +216,23 @@ export function OnTheWayPage() {
   const status = useQuery({ queryKey: ['orders', 'status'], queryFn: () => api<OrdersStatus>('/orders'), refetchInterval: 30_000 });
   const [editing, setEditing] = useState<CopyRef | null>(null);
   const [splitting, setSplitting] = useState<ComingItem | null>(null);
+  // An order page in (D176): its games added, or an Amazon order's unnamed game named.
+  const [paging, setPaging] = useState<{ into: { id: number; label: string } | null } | null>(null);
+  const history = useMutation({
+    mutationFn: (file: File) => {
+      const form = new FormData();
+      form.append('file', file);
+      return api<{ items: number; games: number; added: number; have: number; unsure: number }>('/coming/amazon-history', { method: 'POST', body: form });
+    },
+    onSuccess: (r) => {
+      notifySuccess(
+        `${r.games} of its ${r.items} items are games: ${r.added} on the way to check and add${r.have > 0 ? `, ${r.have} you have already (left out)` : ''}${r.unsure > 0 ? `, ${r.unsure} to say which game` : ''}.`,
+        "Amazon's order history",
+      );
+      void refresh();
+    },
+    onError: (err) => notifyError(err),
+  });
   const refresh = () => Promise.all(['coming', 'orders', ...TOUCHED].map((k) => queryClient.invalidateQueries({ queryKey: [k] })));
   const check = useMutation({
     mutationFn: () => api('/coming/check', { method: 'POST' }),
@@ -253,11 +273,23 @@ export function OnTheWayPage() {
         title="On the way"
         description="Games you bought that haven't arrived, found in your purchase emails. They aren't in your collection yet: not counted, not on your lists, never sent to PriceCharting. When one comes, It's here adds it with what you paid and the day, and opens its window for the rest."
         actions={
-          on && (
-            <Button variant="default" leftSection={<IconMailSearch size={16} />} loading={check.isPending} onClick={() => check.mutate()} disabled={!s?.account}>
-              Check my email now
+          <Group gap="xs">
+            <Button variant="default" leftSection={<IconClipboardText size={16} />} onClick={() => setPaging({ into: null })}>
+              Add from an order page
             </Button>
-          )
+            <FileButton onChange={(file) => file && history.mutate(file)} accept=".zip,.csv,application/zip,text/csv">
+              {(props) => (
+                <Button {...props} variant="default" leftSection={<IconFileImport size={16} />} loading={history.isPending}>
+                  Amazon's order history
+                </Button>
+              )}
+            </FileButton>
+            {on && (
+              <Button variant="default" leftSection={<IconMailSearch size={16} />} loading={check.isPending} onClick={() => check.mutate()} disabled={!s?.account}>
+                Check my email now
+              </Button>
+            )}
+          </Group>
         }
       />
       {!on ? (
@@ -344,8 +376,21 @@ export function OnTheWayPage() {
                           </Button>
                         </Group>
                       )}
-                      {!known && <WhichGame item={item} onPick={(g) => pick.mutate({ id: item.id, ...g })} />}
-                      {!known && !item.several && item.lotOf === null && (
+                      {/* Amazon's email names no game (D176): its order page names it. */}
+                      {item.unknown && (
+                        <Group gap={6}>
+                          <Button size="compact-xs" variant="light" leftSection={<IconClipboardText size={12} />} onClick={() => setPaging({ into: { id: item.id, label: item.orderNumber ? `Amazon order ${item.orderNumber}` : 'Amazon order' } })}>
+                            Name it from its order page
+                          </Button>
+                          {item.link && (
+                            <Anchor href={item.link} target="_blank" rel="noreferrer" size="xs">
+                              Open the order on Amazon <IconExternalLink size={11} />
+                            </Anchor>
+                          )}
+                        </Group>
+                      )}
+                      {!known && !item.unknown && <WhichGame item={item} onPick={(g) => pick.mutate({ id: item.id, ...g })} />}
+                      {!known && !item.several && !item.unknown && item.lotOf === null && (
                         <Anchor size="xs" c="dimmed" onClick={() => setSplitting(item)}>
                           It's several games
                         </Anchor>
@@ -377,6 +422,15 @@ export function OnTheWayPage() {
         </Stack>
       )}
       <CopyDetailsModal copy={editing} added onClose={() => setEditing(null)} />
+      <OrderPageModal
+        opened={paging !== null}
+        into={paging?.into}
+        onClose={() => setPaging(null)}
+        onDone={() => {
+          setPaging(null);
+          void refresh();
+        }}
+      />
       <SplitLot
         item={splitting}
         onClose={() => setSplitting(null)}

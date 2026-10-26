@@ -2,7 +2,7 @@ import { eq } from 'drizzle-orm';
 import { afterEach, describe, expect, it } from 'vitest';
 import { copies } from './db/schema.js';
 import type { FoundMail, MailboxOpener, MailSearch } from './mailImport.js';
-import { fakeTransports, seedCatalogs, setUp, testApp, type TestApp } from './test-helpers.js';
+import { fakeTransports, multipart, seedCatalogs, setUp, testApp, type TestApp } from './test-helpers.js';
 
 let g: TestApp | undefined;
 afterEach(async () => {
@@ -333,3 +333,41 @@ describe('Several games, one price (D173)', () => {
   });
 });
 
+describe('Amazon (D176)', () => {
+  it("waits with an Amazon order's unnamed game, names it from its order page, and brings in the order history's games", async () => {
+    const ordered = orderMail('amz1@amazon', 1, 'auto-confirm@amazon.com', 'Ordered 2 items: Video Games, Electronics', [['2 items: 1 Video Games, 1 Electronics', ''], ['Order #', '111-1234567-7654321'], ['Grand Total:', '$32.39']]);
+    const shipped = orderMail('amz2@amazon', 1, 'shipment-tracking@amazon.com', 'Shipped 2 items: Video Games, Electronics', [['Order #', '111-1234567-7654321']]);
+    const tools = orderMail('amz3@amazon', 1, 'auto-confirm@amazon.com', 'Ordered 1 item: Tools', [['1 item: 1 Tools', ''], ['Order #', '111-1234567-0000000']]);
+    const { cookies } = await owner([ordered, shipped, tools]);
+    g!.settings.update({ 'orders.watch': true, 'orders.watchSenders': ['amazon.com'] });
+    expect(await g!.orders.watch()).toMatch(/^1 new on the way/);
+    const list = async () => (await g!.app.inject({ url: '/api/v1/coming', cookies })).json().items as Record<string, unknown>[];
+    const unnamed = (await list())[0]!;
+    expect(unnamed).toMatchObject({ store: 'Amazon', unknown: true, title: null, maybe: [], orderNumber: '111-1234567-7654321' });
+
+    // Its page, pasted: its game, matched, with its price; the unnamed line gives way to it.
+    const page = ['Order Details', 'Order placed October 24, 2026', 'Order # 111-1234567-7654321', 'Order Summary', 'Item(s) Subtotal: $29.99', 'Grand Total: $32.39', 'Arriving today', 'Okami - PlayStation 2', 'Sold by: Amazon.com Services LLC', '$29.99', 'Buy it again'].join('\n');
+    const named = await g!.app.inject({ method: 'POST', url: '/api/v1/coming/page', cookies, payload: { text: page, into: unnamed.id } });
+    expect(named.statusCode).toBe(201);
+    expect(named.json().items).toEqual([expect.objectContaining({ store: 'Amazon', platformKey: 'playstation-2', title: 'Okami', itemCents: 2999, orderDate: '2026-10-24' })]);
+    expect((await list()).some((i) => i.id === unnamed.id)).toBe(false);
+    // The same page again adds nothing; something that isn't an order page says so.
+    expect((await g!.app.inject({ method: 'POST', url: '/api/v1/coming/page', cookies, payload: { text: page } })).json().items).toHaveLength(1);
+    expect((await g!.app.inject({ method: 'POST', url: '/api/v1/coming/page', cookies, payload: { text: 'hello' } })).statusCode).toBe(400);
+
+    // The order history: a game you have is left out, a cable isn't a game, a game is on the way with its price.
+    await g!.app.inject({ method: 'POST', url: '/api/v1/collection/copies', cookies, payload: { platformKey: 'playstation-3', title: 'Journey', completeness: 'complete' } });
+    const csv = [
+      'Website,Order ID,Order Date,Currency,Unit Price,Quantity,Order Status,Product Name',
+      'Amazon.com,111-0000001-0000001,2019-03-04T18:22:01Z,USD,19.99,1,Closed,"Journey - PlayStation 3"',
+      'Amazon.com,111-0000002-0000002,2020-07-01T10:00:00Z,USD,12.50,1,Closed,"USB-C Cable, 2 Pack"',
+      'Amazon.com,111-0000003-0000003,2021-01-01T10:00:00Z,USD,24.99,1,Closed,"Kingdom Hearts - PlayStation 2"',
+    ].join('\n');
+    const history = await g!.app.inject({ method: 'POST', url: '/api/v1/coming/amazon-history', cookies, ...multipart('Retail.OrderHistory.1.csv', csv) });
+    expect(history.json()).toEqual({ items: 3, games: 2, added: 1, have: 1, unsure: 0 });
+    expect((await list()).find((i) => i.title === 'Kingdom Hearts')).toMatchObject({ itemCents: 2499, orderDate: '2021-01-01', store: 'Amazon' });
+    // Dropped in again: nothing twice.
+    expect((await g!.app.inject({ method: 'POST', url: '/api/v1/coming/amazon-history', cookies, ...multipart('Retail.OrderHistory.1.csv', csv) })).json().added).toBe(0);
+    expect((await g!.app.inject({ method: 'POST', url: '/api/v1/coming/amazon-history', cookies, ...multipart('list.csv', 'Title\nOkami') })).statusCode).toBe(400);
+  });
+});

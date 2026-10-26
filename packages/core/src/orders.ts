@@ -58,7 +58,7 @@ export const ORDER_STORES: readonly { name: string; domains: readonly string[] }
 /** eBay's and Mercari's purchase emails, which On the way reads unless Settings > Email says otherwise. */
 export const WATCH_SENDERS_DEFAULT = ['ebay.com', 'mercari.com'] as const;
 /** Words in a purchase email's subject (eBay's "Order confirmed: ...", Mercari's purchase emails, a store's receipt). */
-export const PURCHASE_SUBJECTS_DEFAULT = ['order confirmed', 'order confirmation', 'purchased', 'purchase', 'you bought', 'you won', 'thanks for your order', 'thank you for your order', 'order received', 'order placed', 'order has been confirmed', 'receipt'] as const;
+export const PURCHASE_SUBJECTS_DEFAULT = ['order confirmed', 'order confirmation', 'purchased', 'purchase', 'you bought', 'you won', 'thanks for your order', 'thank you for your order', 'order received', 'order placed', 'order has been confirmed', 'ordered', 'receipt'] as const;
 /** Words in the subject of an email about an order that isn't the purchase (shipping, delivery, a refund) or about a sale. */
 export const NOT_PURCHASE_SUBJECTS_DEFAULT = ['shipped', 'on its way', 'out for delivery', 'delivered', 'arriving', 'tracking', 'cancel', 'refund', 'return', 'offer', 'feedback', 'review', 'rate your', 'sold', 'made the sale', 'price drop', 'watch', 'bid', 'listing'] as const;
 /** The words that, with a game's title, find its order or receipt in a mailbox. */

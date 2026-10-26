@@ -904,6 +904,19 @@ export async function uiTest(target, account, check) {
     const comingInMenu = await page.locator('nav.mantine-AppShell-navbar').getByText('On the way', { exact: true }).count();
     await settle();
     const comingAccess = await seriousProblems();
+    // An order page pasted (D176): its game goes on the way with its price; Not coming takes it off again.
+    await page.getByRole('button', { name: 'Add from an order page' }).click();
+    const pageWindow = page.getByRole('dialog', { name: 'Add from an order page' });
+    await pageWindow.getByLabel("The order page's text").fill(['Order Details', 'Order placed October 1, 2026', 'Order # 111-0000000-0000001', 'Order Summary', 'Item(s) Subtotal: $19.99', 'Grand Total: $21.59', 'Journey - PlayStation 3', 'Sold by: Amazon.com Services LLC', '$19.99', 'Buy it again'].join('\n'));
+    const pageAccess = await seriousProblems();
+    await pageWindow.getByRole('button', { name: 'Read the order' }).click();
+    await pageWindow.waitFor({ state: 'detached', timeout: 10000 }).catch(() => {});
+    const pastedCard = page.locator('.mantine-Card-root', { hasText: 'Journey' }).first();
+    const pasted = await pastedCard.waitFor({ timeout: 10000 }).then(() => true, () => false);
+    const pastedText = pasted ? await pastedCard.innerText() : '';
+    if (pasted) await pastedCard.getByRole('button', { name: 'Not coming' }).click();
+    found = await pageProblems();
+    check("ui: an order page pasted on On the way puts its game on the way with its price (D176)", found.length === 0 && pageAccess.length === 0 && /Amazon/.test(pastedText) && /\$19\.99/.test(pastedText), [...found, ...pageAccess].join(' | ') || pastedText.slice(0, 200));
     found = await pageProblems();
     await page.request.put(`${base}/api/v1/settings`, { data: { changes: { 'orders.find': false, 'orders.watch': false } } });
     check(

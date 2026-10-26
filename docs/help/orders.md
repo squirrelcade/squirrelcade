@@ -58,6 +58,12 @@ Each game bought goes on **Acorns > On the way** with the store, the day, the pr
 
 GameFly's and Super Rare Games' order emails are read like the others: add `gamefly.com` and `superraregames.com` to **Purchase emails from**.
 
+**An order page in, its games out.** **Add from an order page** (at the top of On the way): on the shop's order page (Amazon's order details, GameFly's, any shop's), press Ctrl+A, then Ctrl+C, and paste it in; or **Read a screenshot** of the page, read on your phone or computer itself (as Check a shelf reads spines; nothing is sent anywhere). Its games go on the way with their prices, matched as the emails' are, to check and add; the same page twice adds nothing.
+
+**Amazon.** Amazon's emails don't name what you bought ("Ordered 2 items: Video Games, Electronics"), so with `amazon.com` in **Purchase emails from**, an order with a video game in it puts a line on On the way for each game, **Amazon order 111-…: a video game, its name not in the email**, with **Open the order on Amazon** and **Name it from its order page** (paste or screenshot it there: the order's unnamed games give way to the page's, with their prices). Its shipped and delivered emails aren't added again.
+
+**Amazon's order history.** On Amazon: Account > **Request your data** > **Your Orders**; when Amazon's email says it's ready, download it. Then **Amazon's order history** (at the top of On the way): choose the zip (or the CSV in it). Every item whose name says its console and is a game Squirrelcade is sure of goes on the way to check and add, with the day and its price before tax and shipping; games you have on that console already are left out, and so is anything brought in before.
+
 **Check my email now** looks at once. **Tell me when something is on the way** sends a message (Settings > Notifications) when a look finds a new purchase; it's off to start with.
 
 The first look goes back 14 days (**The first look goes back**); each look after starts where the one before ended, and each email is read once.
