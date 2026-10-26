@@ -2,11 +2,12 @@ import { guessDates, issueFromFileName, issueLabel, pageNames, parseComicInfo, p
 import Database from 'better-sqlite3';
 import { spawn } from 'node:child_process';
 import { existsSync, type Dirent } from 'node:fs';
-import { open, readdir, readFile, stat } from 'node:fs/promises';
+import { mkdir, open, readdir, readFile, rm, stat, utimes, writeFile } from 'node:fs/promises';
 import { basename, join, relative } from 'node:path';
 import { inflateRawSync } from 'node:zlib';
 import type { FastifyInstance } from 'fastify';
 import type { Logger } from 'pino';
+import sharp from 'sharp';
 import type { Env } from './env.js';
 import type { SettingsService } from './settings.js';
 
@@ -110,6 +111,9 @@ export async function zipRead(path: string, item: ZipItem): Promise<Buffer> {
     await fh.close();
   }
 }
+
+/** The widths a page is made at for screens (D182): a step up from what's asked, so few are made and kept. */
+const PAGE_WIDTHS = [240, 480, 800, 1200, 1600, 2400, 3200, 4000];
 
 const SCHEMA = `
 CREATE TABLE IF NOT EXISTS magazines (id INTEGER PRIMARY KEY, name TEXT NOT NULL UNIQUE, folder TEXT NOT NULL, publisher TEXT);
@@ -510,8 +514,83 @@ export class MagazineService {
     return this.issue(id);
   }
 
+  /**
+   * A page's picture (n from 1): as it is in its CBZ, or, asked for a width, made that wide (D182: a step up from it,
+   * never wider than the setting or the scan) and kept in magazines-cache, so a phone gets a small page at once.
+   */
+  async page(id: number, n: number, want = 0): Promise<{ data: Buffer; type: string } | null> {
+    const max = this.settings.get('magazines.pageWidth');
+    if (want > 0 && max > 0) {
+      const row = this.store().prepare('SELECT file_mtime AS version FROM issues WHERE id = ?').get(id) as { version: number } | undefined;
+      if (!row) return null;
+      const width = Math.min(PAGE_WIDTHS.find((w) => w >= want) ?? PAGE_WIDTHS.at(-1)!, max);
+      const file = join(this.cacheDir(), `${id}-${row.version}-${n}-${width}.jpg`);
+      try {
+        const data = await readFile(file);
+        void utimes(file, new Date(), new Date()).catch(() => undefined);
+        return { data, type: 'image/jpeg' };
+      } catch {
+        // Not made yet.
+      }
+      const original = await this.originalPage(id, n);
+      if (!original) return null;
+      let data: Buffer;
+      try {
+        const image = sharp(original.data, { failOn: 'none' });
+        const meta = await image.metadata();
+        if (!meta.width || meta.width <= width) return original;
+        data = await image.rotate().resize({ width }).jpeg({ quality: 80, mozjpeg: true }).toBuffer();
+      } catch {
+        // A picture sharp can't read is sent as it is.
+        return original;
+      }
+      await mkdir(this.cacheDir(), { recursive: true });
+      await writeFile(file, data);
+      if (++this.made % 50 === 0) void this.pruneCache().catch((err) => this.log.warn({ context: 'magazines', err }, "The magazines' page cache couldn't be trimmed"));
+      return { data, type: 'image/jpeg' };
+    }
+    return this.originalPage(id, n);
+  }
+
+  private made = 0;
+
+  private cacheDir(): string {
+    return join(this.env.configDir, 'magazines-cache');
+  }
+
+  /** The pages made for screens, past their room: the ones used longest ago go. */
+  async pruneCache(): Promise<number> {
+    const dir = this.cacheDir();
+    if (!existsSync(dir)) return 0;
+    const files = await Promise.all((await readdir(dir)).map(async (name) => ({ name, ...(await stat(join(dir, name)).then((s) => ({ size: s.size, at: s.mtimeMs }))) })));
+    let total = files.reduce((t, f) => t + f.size, 0);
+    const room = this.settings.get('magazines.cacheMb') * 1024 * 1024;
+    let gone = 0;
+    for (const f of files.sort((a, b) => a.at - b.at)) {
+      if (total <= room) break;
+      await rm(join(dir, f.name), { force: true });
+      total -= f.size;
+      gone++;
+    }
+    return gone;
+  }
+
+  /** A page's size in its scan (the words' boxes are in its pixels), kept once known. */
+  async pageSize(id: number, n: number): Promise<{ width: number; height: number } | null> {
+    const row = this.store().prepare('SELECT width, height FROM pages WHERE issue_id = ? AND n = ?').get(id, n) as { width: number | null; height: number | null } | undefined;
+    if (row?.width && row.height) return { width: row.width, height: row.height };
+    const original = await this.originalPage(id, n);
+    if (!original) return null;
+    const meta = await sharp(original.data, { failOn: 'none' })
+      .metadata()
+      .catch(() => null);
+    if (!meta?.width || !meta.height) return null;
+    if (row) this.store().prepare('UPDATE pages SET width = ?, height = ? WHERE issue_id = ? AND n = ?').run(meta.width, meta.height, id, n);
+    return { width: meta.width, height: meta.height };
+  }
+
   /** A page's picture, as it is in its CBZ (n from 1). */
-  async page(id: number, n: number): Promise<{ data: Buffer; type: string } | null> {
+  private async originalPage(id: number, n: number): Promise<{ data: Buffer; type: string } | null> {
     const root = this.folder();
     const row = this.store().prepare('SELECT path FROM issues WHERE id = ?').get(id) as { path: string } | undefined;
     if (!root || !row) return null;
@@ -580,12 +659,17 @@ export function registerMagazineRoutes(app: FastifyInstance, magazines: Magazine
   // A page's picture: the same bytes as long as its file stays the same, so the browser keeps it.
   app.get('/api/v1/magazines/issues/:id/pages/:n', async (request, reply) => {
     const { id, n } = request.params as { id: string; n: string };
-    const page = await magazines.page(Number(id), Number(n));
+    // ?w=: as wide as the screen needs (D182); without it, the page as it is in its scan.
+    const w = Number((request.query as { w?: string }).w ?? 0);
+    const page = await magazines.page(Number(id), Number(n), Number.isFinite(w) && w > 0 ? Math.min(Math.round(w), 8000) : 0);
     if (!page) return reply.code(404).send({ error: 'not-found', message: 'No such page.' });
     return reply.header('Content-Type', page.type).header('Cache-Control', 'private, max-age=604800').send(page.data);
   });
   app.get('/api/v1/magazines/issues/:id/pages/:n/words', async (request) => {
     const { id, n } = request.params as { id: string; n: string };
-    return { words: magazines.pageWords(Number(id), Number(n)) };
+    const words = magazines.pageWords(Number(id), Number(n));
+    // The scan's own size, which the boxes are in (a page sent smaller is scaled to it).
+    const size = words.length > 0 ? await magazines.pageSize(Number(id), Number(n)) : null;
+    return { words, width: size?.width ?? null, height: size?.height ?? null };
   });
 }

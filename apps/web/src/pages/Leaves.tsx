@@ -50,15 +50,19 @@ interface Status {
   estimate: { perIssueSeconds: number; issuesLeft: number; hoursLeft: number } | null;
 }
 
-/** A page's picture: the same address while its file is the same, so the browser keeps it. */
-const pageUrl = (issueId: number, n: number, version = 0) => `/api/v1/magazines/issues/${issueId}/pages/${n}?v=${version}`;
+/**
+ * A page's picture: the same address while its file is the same, so the browser keeps it. With a width (CSS pixels),
+ * the server makes it that wide for this screen (D182) instead of sending the whole scan.
+ */
+const pageUrl = (issueId: number, n: number, version = 0, width = 0) =>
+  `/api/v1/magazines/issues/${issueId}/pages/${n}?v=${version}${width > 0 ? `&w=${Math.ceil(width * (window.devicePixelRatio || 1))}` : ''}`;
 
 /** An issue's cover (its first page), as a tile: opens the issue. */
 function IssueCover({ issue, cover, caption }: { issue: { id: number; version?: number } | null; cover?: ReactNode; caption: ReactNode }) {
   return (
     <Stack gap={4}>
       <AspectRatio ratio={3 / 4}>
-        {issue ? <Image src={pageUrl(issue.id, 1, issue.version)} radius="sm" alt="" loading="lazy" fit="cover" /> : (cover ?? <Box bg="var(--mantine-color-default-hover)" style={{ borderRadius: 4 }} />)}
+        {issue ? <Image src={pageUrl(issue.id, 1, issue.version, 200)} radius="sm" alt="" loading="lazy" fit="cover" /> : (cover ?? <Box bg="var(--mantine-color-default-hover)" style={{ borderRadius: 4 }} />)}
       </AspectRatio>
       <Text size="xs" component="div" lineClamp={3}>
         {caption}
@@ -225,8 +229,11 @@ export function MagazinePage() {
 
 /** A page's words found by a search, marked on it (their boxes in the picture's own pixels). */
 function Marks({ issueId, page, words, img }: { issueId: number; page: number; words: string[]; img: HTMLImageElement | null }) {
-  const found = useQuery({ queryKey: ['magazines', 'words', issueId, page], queryFn: () => api<{ words: { text: string; box: [number, number, number, number] }[] }>(`/magazines/issues/${issueId}/pages/${page}/words`), enabled: words.length > 0 });
+  const found = useQuery({ queryKey: ['magazines', 'words', issueId, page], queryFn: () => api<{ words: { text: string; box: [number, number, number, number] }[]; width: number | null; height: number | null }>(`/magazines/issues/${issueId}/pages/${page}/words`), enabled: words.length > 0 });
   if (!img || !found.data || words.length === 0 || !img.naturalWidth) return null;
+  // The boxes are in the scan's own pixels; the page shown may have been made smaller (D182).
+  const W = found.data.width ?? img.naturalWidth;
+  const H = found.data.height ?? img.naturalHeight;
   const norm = (w: string) => w.toLowerCase().replace(/[^\p{L}\p{N}]/gu, '');
   const want = new Set(words.map(norm));
   return (
@@ -239,10 +246,10 @@ function Marks({ issueId, page, words, img }: { issueId: number; page: number; w
             aria-hidden="true"
             style={{
               position: 'absolute',
-              left: `${(w.box[0] / img.naturalWidth) * 100}%`,
-              top: `${(w.box[1] / img.naturalHeight) * 100}%`,
-              width: `${((w.box[2] - w.box[0]) / img.naturalWidth) * 100}%`,
-              height: `${((w.box[3] - w.box[1]) / img.naturalHeight) * 100}%`,
+              left: `${(w.box[0] / W) * 100}%`,
+              top: `${(w.box[1] / H) * 100}%`,
+              width: `${((w.box[2] - w.box[0]) / W) * 100}%`,
+              height: `${((w.box[3] - w.box[1]) / H) * 100}%`,
               background: 'rgba(255, 200, 0, 0.35)',
               outline: '1px solid rgba(255, 170, 0, 0.9)',
               pointerEvents: 'none',
@@ -353,7 +360,7 @@ export function IssueReaderPage() {
                 ref={(el) => {
                   imgs.current[k] = el;
                 }}
-                src={pageUrl(i.id, n, i.version)}
+                src={pageUrl(i.id, n, i.version, (window.innerWidth * zoom) / shown.length)}
                 alt={`Page ${n}`}
                 style={{ width: '100%', height: 'auto', display: 'block' }}
                 onLoad={() => setLoaded((x) => x + 1)}
@@ -366,7 +373,7 @@ export function IssueReaderPage() {
       {/* The next pages, fetched ahead so a turn is at once. */}
       <div style={{ display: 'none' }} aria-hidden="true">
         {[left + step, left + step + 1].filter((n) => n <= pages).map((n) => (
-          <img key={n} src={pageUrl(i.id, n, i.version)} alt="" loading="eager" />
+          <img key={n} src={pageUrl(i.id, n, i.version, (window.innerWidth * zoom) / shown.length)} alt="" loading="eager" />
         ))}
       </div>
     </Stack>
@@ -406,7 +413,7 @@ export function MagazineSearchPage() {
         {hits.data?.hits.map((h) => (
           <Card key={`${h.issueId}|${h.page}`} withBorder padding="xs" component={Link} to={`/leaves/issue/${h.issueId}?page=${h.page}&q=${encodeURIComponent(q)}`}>
             <Group gap="sm" wrap="nowrap" align="flex-start">
-              <Image src={pageUrl(h.issueId, h.page)} w={60} h={80} fit="cover" radius="sm" alt="" loading="lazy" />
+              <Image src={pageUrl(h.issueId, h.page, 0, 60)} w={60} h={80} fit="cover" radius="sm" alt="" loading="lazy" />
               <Stack gap={2} style={{ minWidth: 0 }}>
                 <Text size="sm" fw={600}>
                   {h.label}, page {h.page}
@@ -485,7 +492,7 @@ function UndatedRow({ issue, onSave }: { issue: Issue; onSave: (year: number, mo
     <Card withBorder padding="xs">
       <Group gap="sm" wrap="wrap" align="flex-end">
         <Anchor component={Link} to={`/leaves/issue/${issue.id}`}>
-          <Image src={pageUrl(issue.id, 1, issue.version)} w={45} h={60} fit="cover" radius="sm" alt="" loading="lazy" />
+          <Image src={pageUrl(issue.id, 1, issue.version, 45)} w={45} h={60} fit="cover" radius="sm" alt="" loading="lazy" />
         </Anchor>
         <Text size="sm" fw={600} style={{ flex: '1 1 180px' }}>
           {issue.label}

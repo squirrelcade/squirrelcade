@@ -1,6 +1,7 @@
-import { mkdirSync, mkdtempSync, rmSync, unlinkSync, writeFileSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, readdirSync, rmSync, unlinkSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import sharp from 'sharp';
 import { afterEach, describe, expect, it } from 'vitest';
 import { setUp, testApp, type TestApp } from './test-helpers.js';
 import { writeZip } from './zip.js';
@@ -86,6 +87,41 @@ describe('Leaves: the magazine scans (D177)', () => {
     unlinkSync(join(dir, 'Nintendo Power', 'Nintendo Power #011 (1990-03).cbz'));
     expect(await g.magazines.scan()).toBe('3 issues, 1 gone; 1 dated by the magazine index');
     expect((await get('/api/v1/magazines/search?q=tecmo')).hits).toEqual([]);
+  });
+
+  it("sends a page as wide as the screen needs, made once and kept, and its words' boxes in the scan's pixels (D182)", async () => {
+    dir = mkdtempSync(join(tmpdir(), 'squirrelcade-magazines-'));
+    mkdirSync(join(dir, 'Nintendo Power'));
+    const scan = await sharp({ create: { width: 2000, height: 2600, channels: 3, background: '#c33' } }).jpeg().toBuffer();
+    writeFileSync(join(dir, 'Nintendo Power', 'Nintendo Power #001 (1988-07).cbz'), writeZip([{ name: '001.jpg', data: scan }]));
+    writeFileSync(join(dir, 'Nintendo Power', 'Nintendo Power #002 (1988-09).cbz'), writeZip([{ name: '001.jpg', data: Buffer.from('not a picture') }]));
+    g = await testApp({ magazineReader: async () => hocr(['Zelda']) });
+    const cookies = await setUp(g);
+    g.settings.update({ 'features.magazines': true, 'magazines.folder': dir, 'magazines.ocr': true });
+    await g.magazines.scan();
+    await g.magazines.readText(() => undefined, true);
+    await g.magazines.readText(() => undefined, true);
+    const [one, two] = (await g.app.inject({ url: `/api/v1/magazines/${(await g.app.inject({ url: '/api/v1/magazines', cookies })).json().magazines[0].id}`, cookies })).json().issues;
+    const width = async (url: string) => {
+      const res = await g.app.inject({ url, cookies });
+      expect(res.statusCode).toBe(200);
+      return (await sharp(res.rawPayload).metadata()).width;
+    };
+    // A phone's screen (390 pixels at 3x): the next width up, 1200; a cover tile, 240; none asked, the whole scan.
+    expect(await width(`/api/v1/magazines/issues/${one.id}/pages/1?w=1170`)).toBe(1200);
+    expect(await width(`/api/v1/magazines/issues/${one.id}/pages/1?w=200`)).toBe(240);
+    expect(await width(`/api/v1/magazines/issues/${one.id}/pages/1`)).toBe(2000);
+    // Never wider than the setting; kept in magazines-cache.
+    g.settings.update({ 'magazines.pageWidth': 800 });
+    expect(await width(`/api/v1/magazines/issues/${one.id}/pages/1?w=3000`)).toBe(800);
+    expect(readdirSync(join(g.env.configDir, 'magazines-cache')).sort()).toEqual([`${one.id}-${one.version}-1-1200.jpg`, `${one.id}-${one.version}-1-240.jpg`, `${one.id}-${one.version}-1-800.jpg`]);
+    // Past its room, the ones used longest ago go.
+    g.settings.update({ 'magazines.cacheMb': 50 });
+    expect(await g.magazines.pruneCache()).toBe(0);
+    // A picture that can't be read is sent as it is.
+    expect((await g.app.inject({ url: `/api/v1/magazines/issues/${two.id}/pages/1?w=400`, cookies })).body).toBe('not a picture');
+    // The words' boxes come with the scan's size, so the marks land right on a smaller page.
+    expect((await g.app.inject({ url: `/api/v1/magazines/issues/${one.id}/pages/1/words`, cookies })).json()).toMatchObject({ width: 2000, height: 2600 });
   });
 
   it('answers the library and its search within the budget on a big library (It stays snappy)', async () => {
