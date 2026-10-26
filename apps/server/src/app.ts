@@ -640,7 +640,7 @@ export async function buildApp(options: BuildOptions = {}): Promise<Squirrelcade
   collection.events.on('remapped', () => aiTools.invalidate());
   pc.events.on('changed', () => aiTools.invalidate());
   await registerAiAuthRoutes(app, aiAuth, auth);
-  registerMcpRoute(app, aiAuth, aiTools, { db, settings, log });
+  registerMcpRoute(app, aiAuth, aiTools, { db, settings, log, orders });
   // Friends' collections (0.56.0, D131): share files, the comparison and trades.
   const friendsService = new FriendsService(db, settings, details, wishlist, log);
   registerFriendRoutes(app, friendsService);

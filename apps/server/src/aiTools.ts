@@ -591,6 +591,29 @@ export const SEARCH_OUTPUT = {
   next_cursor: z.string().optional().describe('Give it as cursor for the next page; absent on the last.'),
 };
 
+const day = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'A day as YYYY-MM-DD');
+/** record_on_the_way (D179): a game bought, for On the way. */
+export const ON_THE_WAY_INPUT = {
+  title: z.string().min(1).max(200).describe("The game's title, as the shop names it (its console in it is fine: \"Okami - PlayStation 2\")."),
+  platform: z.string().max(60).optional().describe('Its console (a key, name or short name), when known.'),
+  store: z.string().min(1).max(60).describe('Where it was bought ("Amazon", "eBay").'),
+  order_date: day.optional().describe('The day it was ordered.'),
+  price_cents: z.number().int().min(0).max(10_000_000).optional().describe("The price paid for it, in cents, before tax and shipping."),
+  currency: z.string().regex(/^[A-Z]{3}$/).optional().describe('The price\'s currency (ISO 4217, "USD"); the home currency when left out.'),
+  order_number: z.string().max(60).optional().describe("The shop's order number."),
+  item_id: z.string().max(60).optional().describe("The shop's id for the item: Amazon's ASIN, eBay's item number."),
+  expected_delivery: day.optional().describe('The day the shop expects it to arrive.'),
+  link: z.string().url().max(500).optional().describe('The order or the listing on the shop\'s site.'),
+};
+export const ON_THE_WAY_OUTPUT = {
+  status: z.enum(['added', 'named', 'known']).describe('added: new on On the way; named: an order already waiting got its game named; known: it was there already.'),
+  id: z.number(),
+  title: z.string().nullable().describe('The game Squirrelcade takes it for; null when the owner is to say which.'),
+  platform: z.string().nullable(),
+  listing: z.string(),
+  expected_delivery: z.string().nullable(),
+};
+
 export const CHECK_INPUT = {
   titles: z.array(z.string().min(1).max(200)).min(1).max(50).describe('Up to 50 titles, as written anywhere (a list, a photo, a receipt).'),
   platforms: z.array(z.string().max(60)).max(10).optional().describe('Only these consoles (keys, names or short names, or "PC"); owned elsewhere is said apart.'),

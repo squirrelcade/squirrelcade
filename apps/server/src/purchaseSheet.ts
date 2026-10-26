@@ -211,7 +211,7 @@ export class PurchaseSheetService {
         store: 'Amazon',
         date: m.date,
         orderNumber: m.orderNumber,
-        currency: 'USD',
+        currency: this.d.settings.get('general.currency'),
         items: [{ title: m.item.slice(0, 200), priceCents: m.unitCents, quantity: 1 }],
         taxCents: null,
         shippingCents: null,

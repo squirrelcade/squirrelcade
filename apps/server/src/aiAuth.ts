@@ -23,6 +23,8 @@ import { SQUIRREL_SVG } from './squirrelLogo.js';
 
 /** The one scope: reading the collection. offline_access asks for refresh tokens (issued either way). */
 export const AI_SCOPE = 'collection:read';
+/** Putting games on On the way (D179): only a key made for it has it, never an app's sign-in. */
+export const ON_THE_WAY_SCOPE = 'on-the-way:write';
 const SCOPES = [AI_SCOPE, 'offline_access'];
 const ACCESS_SECONDS = 3600;
 const REFRESH_DAYS = 30;
@@ -759,7 +761,7 @@ export class AiAuthService {
   /** A key's caller: its account, while the key stands and (by default) only from the home network. */
   private keyCaller(key: string, request: FastifyRequest): AiCaller | { status: 401 | 403; error?: { code: 'invalid_token'; description: string }; message?: string } {
     const row = this.db
-      .select({ id: aiKeys.id, name: aiKeys.name, lastUsedAt: aiKeys.lastUsedAt, revokedAt: aiKeys.revokedAt, userId: users.id, username: users.username, role: users.role })
+      .select({ id: aiKeys.id, name: aiKeys.name, canWrite: aiKeys.canWrite, lastUsedAt: aiKeys.lastUsedAt, revokedAt: aiKeys.revokedAt, userId: users.id, username: users.username, role: users.role })
       .from(aiKeys)
       .innerJoin(users, eq(users.id, aiKeys.userId))
       .where(eq(aiKeys.hash, sha256(key)))
@@ -769,13 +771,13 @@ export class AiAuthService {
       return { status: 403, message: 'Keys work from the home network only here (Settings › Claude and AI apps › Keys work from).' };
     }
     if (!row.lastUsedAt || Date.now() - Date.parse(row.lastUsedAt) > 60_000) this.db.update(aiKeys).set({ lastUsedAt: nowIso() }).where(eq(aiKeys.id, row.id)).run();
-    return { grantId: null, keyId: row.id, person: { kind: 'account', userId: row.userId, username: row.username, role: row.role as Role }, client: { id: `key:${row.id}`, name: row.name }, scope: [AI_SCOPE] };
+    return { grantId: null, keyId: row.id, person: { kind: 'account', userId: row.userId, username: row.username, role: row.role as Role }, client: { id: `key:${row.id}`, name: row.name }, scope: row.canWrite && row.role === 'owner' ? [AI_SCOPE, ON_THE_WAY_SCOPE] : [AI_SCOPE] };
   }
 
   // ---- Keys for apps on the home network ----
 
   /** The keys not revoked, newest first, with their calls (never the keys themselves). */
-  keys(): { id: number; name: string; username: string; createdAt: string; lastUsedAt: string | null; calls: number }[] {
+  keys(): { id: number; name: string; username: string; canWrite: boolean; createdAt: string; lastUsedAt: string | null; calls: number }[] {
     const calls = new Map(
       this.db
         .select({ keyId: aiCalls.keyId, n: sql<number>`count(*)` })
@@ -786,7 +788,7 @@ export class AiAuthService {
         .map((r) => [r.keyId, r.n]),
     );
     return this.db
-      .select({ id: aiKeys.id, name: aiKeys.name, username: users.username, createdAt: aiKeys.createdAt, lastUsedAt: aiKeys.lastUsedAt })
+      .select({ id: aiKeys.id, name: aiKeys.name, username: users.username, canWrite: aiKeys.canWrite, createdAt: aiKeys.createdAt, lastUsedAt: aiKeys.lastUsedAt })
       .from(aiKeys)
       .innerJoin(users, eq(users.id, aiKeys.userId))
       .where(isNull(aiKeys.revokedAt))
@@ -795,16 +797,16 @@ export class AiAuthService {
       .map((k) => ({ ...k, calls: calls.get(k.id) ?? 0 }));
   }
 
-  /** A new key for an account: the key itself is in this answer only (kept as its SHA-256). */
-  makeKey(name: unknown, userId: number): { id: number; name: string; key: string; createdAt: string } {
+  /** A new key for an account: the key itself is in this answer only (kept as its SHA-256). canWrite: it may put games on the way too. */
+  makeKey(name: unknown, userId: number, canWrite = false): { id: number; name: string; key: string; canWrite: boolean; createdAt: string } {
     const n = typeof name === 'string' ? name.trim().replace(/\s+/g, ' ') : '';
     if (!n || n.length > 60) throw new OAuthError('invalid', 'Name the key (what it is for), up to 60 characters.');
     if (this.keys().length >= 50) throw new OAuthError('invalid', 'That is 50 keys already: revoke one first.');
     const key = `${KEY_PREFIX}${token(32)}`;
     const createdAt = nowIso();
-    const row = this.db.insert(aiKeys).values({ name: n, userId, hash: sha256(key), createdAt }).returning({ id: aiKeys.id }).get();
-    this.log.info({ context: 'ai' }, `Key made: ${n}`);
-    return { id: row.id, name: n, key, createdAt };
+    const row = this.db.insert(aiKeys).values({ name: n, userId, hash: sha256(key), canWrite, createdAt }).returning({ id: aiKeys.id }).get();
+    this.log.info({ context: 'ai' }, `Key made: ${n}${canWrite ? ' (it may put games on the way)' : ''}`);
+    return { id: row.id, name: n, key, canWrite, createdAt };
   }
 
   revokeKey(id: number): boolean {
@@ -1048,8 +1050,12 @@ export async function registerAiAuthRoutes(app: FastifyInstance, ai: AiAuthServi
     scope.post('/api/v1/ai/keys', async (request, reply) => {
       const userId = keyOwner(request);
       if (userId === undefined) return reply.code(409).send({ error: 'no-owner', message: 'Create the first account first.' });
+      const b = (request.body ?? {}) as { name?: unknown; canWrite?: unknown };
+      // Only the owner's key may put games on the way (D179).
+      const canWrite = b.canWrite === true;
+      if (canWrite && auth.users().find((u) => u.id === userId)?.role !== 'owner') return reply.code(403).send({ error: 'forbidden', message: "Only the owner's keys may put games on the way." });
       try {
-        return reply.code(201).send(ai.makeKey((request.body as { name?: unknown } | null)?.name, userId));
+        return reply.code(201).send(ai.makeKey(b.name, userId, canWrite));
       } catch (err) {
         if (err instanceof OAuthError) return reply.code(400).send({ error: err.code, message: err.message });
         throw err;

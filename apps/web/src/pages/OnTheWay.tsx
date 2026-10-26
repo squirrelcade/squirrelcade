@@ -22,6 +22,7 @@ export interface ComingItem {
   orderNumber: string | null;
   link: string | null;
   listingTitle: string;
+  expectedOn: string | null;
   quantity: number;
   currency: string | null;
   itemCents: number | null;
@@ -343,6 +344,7 @@ export function OnTheWayPage() {
                       <Text size="sm">
                         {item.store}
                         {item.orderDate ? `, ${date(item.orderDate, dateFormat)}` : ''}
+                        {item.expectedOn ? ` · expected ${date(item.expectedOn, dateFormat)}` : ''}
                         {item.paidCents !== null ? ` · ${money(item.paidCents, currency)}` : ''}
                         {item.paidInCurrencyCents !== null ? ` (${money(item.paidInCurrencyCents, cur)}${item.paidCents === null ? ', not turned into yours yet' : ''})` : ''}
                         {item.quantity > 1 ? ` · ${item.quantity} of them` : ''}

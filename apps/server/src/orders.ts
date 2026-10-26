@@ -1,5 +1,6 @@
 import {
   dayIn,
+  findPlatforms,
   gmailOrderSearch,
   gmailPurchaseSearch,
   fromAmazon,
@@ -40,7 +41,7 @@ import type { Logger } from 'pino';
 import { CopyError, type CollectionService } from './collection.js';
 import type { Db } from './db/index.js';
 import type { FetchLike } from './igdb.js';
-import { appState, comingItems, copies, platforms } from './db/schema.js';
+import { appState, comingItems, copies, platforms, purchaseRows } from './db/schema.js';
 import { HelperError, type HelperQueue } from './helper.js';
 import type { LookupService } from './lookup.js';
 import { signInProblem, type FoundMail, type Mailbox, type MailboxOpener, type MailImportService } from './mailImport.js';
@@ -163,6 +164,8 @@ export interface ComingView {
   /** The lot it was split from. */
   lotOf: number | null;
   readBy: string;
+  /** The day it's expected, when the shop said (D179). */
+  expectedOn: string | null;
   /** The game it is, when Squirrelcade is sure or the owner said; else null, with the games it may be. */
   platformKey: string | null;
   platform: string | null;
@@ -649,12 +652,69 @@ export class OrderService {
     return message;
   }
 
-  /** An order's items as games on the way (each once: an email's item is never added twice); the new ones. */
   /** An order's items put on the way (each once, by ref and place), as an email's are: for other sources (D178). */
   putOnTheWay(ref: string, order: FoundOrder): ComingView[] {
     return this.addComing(ref, order);
   }
 
+  /**
+   * A game bought, said by an app through the connector (D179: record_on_the_way): on the way as an email's would be,
+   * once by its order number and item id (the ASIN or the shop's own). Already waiting on that order (an email's or a
+   * CSV's), it's the same one: an Amazon game its email didn't name is named, nothing is added.
+   */
+  recordOnTheWay(r: { title: string; platform?: string; store: string; orderDate?: string; priceCents?: number; currency?: string; orderNumber?: string; itemId?: string; expectedOn?: string; link?: string }): { status: 'added' | 'named' | 'known'; item: ComingView } {
+    const orderNumber = r.orderNumber?.trim() || null;
+    const itemId = r.itemId?.trim() || null;
+    const ref = `connector:${orderNumber ?? ''}|${itemId ?? normalizeTitle(r.title)}`;
+    const listing = (r.platform ? `${r.title} - ${r.platform}` : r.title).slice(0, 200);
+    const now = new Date().toISOString();
+    const expected = r.expectedOn ? { expectedOn: r.expectedOn } : {};
+    const mine = this.d.db.select().from(comingItems).where(eq(comingItems.mailRef, ref)).get();
+    if (mine) {
+      if (r.expectedOn) this.d.db.update(comingItems).set({ ...expected, updatedAt: now }).where(eq(comingItems.id, mine.id)).run();
+      return { status: 'known', item: this.view({ ...mine, ...expected }) };
+    }
+    const game = this.matchListing(listing);
+    const rowKey = orderNumber && itemId ? `${orderNumber}|${itemId}` : null;
+    if (orderNumber) {
+      const same = this.d.db.select().from(comingItems).where(and(eq(comingItems.orderNumber, orderNumber), eq(comingItems.status, 'waiting'))).all();
+      const twin = same.find((x) => game && x.platformKey === game.platformKey && x.title === game.title) ?? same.find((x) => isAmazonUnknown(x.listingTitle));
+      if (twin) {
+        const unnamed = isAmazonUnknown(twin.listingTitle);
+        const set = { ...expected, ...(unnamed ? { listingTitle: listing, platformKey: game?.platformKey ?? null, title: game?.title ?? null } : {}), ...(twin.itemCents === null && r.priceCents !== undefined ? { itemCents: r.priceCents } : {}), updatedAt: now };
+        this.d.db.update(comingItems).set(set).where(eq(comingItems.id, twin.id)).run();
+        if (rowKey) this.d.db.insert(purchaseRows).values({ key: rowKey, kind: 'coming', copyId: null, appliedAt: now }).onConflictDoNothing().run();
+        return { status: unnamed ? 'named' : 'known', item: this.view({ ...twin, ...set }) };
+      }
+    }
+    // Brought in once: a purchases CSV's row for it isn't put on the way again.
+    if (rowKey && this.d.db.select().from(purchaseRows).where(eq(purchaseRows.key, rowKey)).get()) {
+      const earlier = this.d.db.select().from(comingItems).where(eq(comingItems.mailRef, `sheet:${rowKey}`)).get();
+      if (earlier) return { status: 'known', item: this.view(earlier) };
+    }
+    this.addComing(ref, {
+      store: r.store,
+      date: r.orderDate ?? null,
+      orderNumber,
+      currency: r.currency ?? this.d.settings.get('general.currency'),
+      items: [{ title: listing, priceCents: r.priceCents ?? null, quantity: 1 }],
+      taxCents: null,
+      shippingCents: null,
+      discountCents: null,
+      totalCents: null,
+      link: r.link ?? (orderNumber && /^\d{3}-\d{7}-\d{7}$/.test(orderNumber) ? `https://www.amazon.com/your-orders/order-details?orderID=${orderNumber}` : null),
+      readBy: 'ai',
+    });
+    const row = this.d.db.select().from(comingItems).where(eq(comingItems.mailRef, ref)).get()!;
+    // A console said that the title's words didn't settle: the owner then picks the game on it.
+    const platformKey = row.platformKey ?? (r.platform ? findPlatforms(r.platform, this.d.db.select({ key: platforms.key, name: platforms.name }).from(platforms).all())[0]?.key ?? null : null);
+    const set = { ...expected, platformKey, updatedAt: now };
+    this.d.db.update(comingItems).set(set).where(eq(comingItems.id, row.id)).run();
+    if (rowKey) this.d.db.insert(purchaseRows).values({ key: rowKey, kind: 'coming', copyId: null, appliedAt: now }).onConflictDoNothing().run();
+    return { status: 'added', item: this.view({ ...row, ...set }) };
+  }
+
+  /** An order's items as games on the way (each once: an email's item is never added twice); the new ones. */
   private addComing(ref: string, order: FoundOrder): ComingView[] {
     const now = new Date().toISOString();
     const out: ComingView[] = [];
@@ -694,12 +754,12 @@ export class OrderService {
     return out;
   }
 
-  /** The game a listing's title is, when Squirrelcade is sure: its console named, or one console's game only, and the title's words all there. */
   /** The game a listing's title is, when Squirrelcade is sure (for other sources, D178). */
   gameOf(listing: string): { platformKey: string; title: string } | null {
     return this.matchListing(listing);
   }
 
+  /** The game a listing's title is, when Squirrelcade is sure: its console named, or one console's game only, and the title's words all there. */
   private matchListing(listing: string): { platformKey: string; title: string } | null {
     // A lot or a bundle is several games: the owner says which.
     if (/\b(lot|bundle|bundled)\b|\b\d+\s+games\b/i.test(listing)) return null;
@@ -909,6 +969,7 @@ export class OrderService {
       unknown: isAmazonUnknown(r.listingTitle),
       lotOf: r.lotOf,
       readBy: r.readBy,
+      expectedOn: r.expectedOn,
       platformKey: r.platformKey,
       platform: game?.platform ?? (r.platformKey ? this.platformName(r.platformKey) : null),
       title: r.title,

@@ -1135,6 +1135,8 @@ export const aiKeys = sqliteTable('ai_keys', {
     .notNull()
     .references(() => users.id, { onDelete: 'cascade' }),
   hash: text('hash').notNull().unique(),
+  /** It may also put games on On the way (D179: the connector's record_on_the_way); otherwise it only reads. */
+  canWrite: integer('can_write', { mode: 'boolean' }).notNull().default(false),
   createdAt: text('created_at').notNull(),
   lastUsedAt: text('last_used_at'),
   revokedAt: text('revoked_at'),
@@ -1232,6 +1234,8 @@ export const comingItems = sqliteTable(
     lotOf: integer('lot_of'),
     /** Who read the email: ai or plain. */
     readBy: text('read_by').notNull(),
+    /** The day it's expected, when the shop said (D179). */
+    expectedOn: text('expected_on'),
     /** The game it is, when Squirrelcade was sure or the owner said. */
     platformKey: text('platform_key'),
     title: text('title'),

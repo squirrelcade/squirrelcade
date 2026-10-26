@@ -1,6 +1,6 @@
 # Claude and AI apps
 
-Claude, and other AI apps that speak MCP (the Model Context Protocol), can read your collection once you connect them. Ask "do I have Cars 2?", paste the titles from a garage-sale photo and ask which ones you don't have, or ask what's sealed on your PS3 shelf. It's read-only: nothing an app asks changes anything.
+Claude, and other AI apps that speak MCP (the Model Context Protocol), can read your collection once you connect them. Ask "do I have Cars 2?", paste the titles from a garage-sale photo and ask which ones you don't have, or ask what's sealed on your PS3 shelf. It's read-only: nothing an app asks changes anything (the one exception is a key you make to put games on On the way, below).
 
 ## Two ways in
 
@@ -31,6 +31,8 @@ For Claude Code alone, on a computer with the claude command:
 
 A key only reads, and answers as the account that made it. It works from your home network only unless **Settings > Claude and AI apps > Keys work from** says otherwise, so a copied key is useless elsewhere. At home Squirrelcade is usually plain http, so the key crosses your home network unencrypted: fine there, never over the internet. **Revoke** ends a key at once. Other MCP apps (a script, another MCP client) send the same header.
 
+**A key that puts games on On the way.** Tick **It may also put games on On the way** when you make a key (the owner's account only), for a task of your own that knows what you've bought (one that reads your Amazon orders, say). Its app gets one more tool, **record_on_the_way**: a game bought (its title, the shop, and what's known: console, order day, price paid, order number, item id such as Amazon's ASIN, expected delivery) goes on **On the way**, as a purchase email's would, to check and add when it arrives. It never changes your collection, edits or deletes anything. Each game is known by its order number and item id, so saying it twice, or an order that also came by email or in a purchases CSV, is one entry; an Amazon game its email didn't name is named. Every other key, and every app signed in from the internet, stays read-only.
+
 ## Claude's apps from the internet (optional)
 
 Think it over first: these addresses become reachable by anyone on the internet, guarded only by Squirrelcade's own sign-in (they answer nothing without it, and they're limited per address).
@@ -51,6 +53,7 @@ Five tools, each answering with structured data:
 - **get_game:** one game's copies on each console (condition, sealed, box, manual, region, grading, market value, when added), its PC storefronts and how each is held, digital copies claimed with discs, its IGDB reviews and its Top 100 place.
 - **get_wishlist:** your Acorns wishlist, best first: each game's acorns (how much you want it, 0 to 100, from your own rules), its priority, its place on the main list and the rules that gave it the most acorns. Ask for a game by its title to get its acorns and why, for a console to get its whole list, or for a priority. So "what should I hunt for on the Switch?" and "why does Demon's Souls have 72 acorns?" have answers. A game you have has no acorns. The main list is in the order the Wishlist page shows: each game's acorns minus the variety in the top picks (a little less for each game of the same console or series above it), so Claude can say why a game with 100 acorns sits sixth.
 - **list_platforms:** your consoles with their short names, games, copies (sealed and complete) and value; your PC storefronts.
+- **record_on_the_way** (only for a key made to put games on On the way): a game bought, onto On the way.
 
 A game is a title across consoles and PC, grouped as Stash > Copies groups it (your own answers there included).
 

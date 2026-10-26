@@ -4,17 +4,19 @@ import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/
 import type { CallToolResult, JSONRPCMessage } from '@modelcontextprotocol/sdk/types.js';
 import type { FastifyInstance } from 'fastify';
 import type { Logger } from 'pino';
-import { personLabel, type AiAuthService, type AiCaller } from './aiAuth.js';
-import { aiViewOf, AiToolError, askedOf, CHECK_INPUT, CHECK_OUTPUT, GAME_INPUT, GAME_OUTPUT, PLATFORMS_OUTPUT, SEARCH_INPUT, SEARCH_OUTPUT, WISHLIST_INPUT, WISHLIST_OUTPUT, type AiTools } from './aiTools.js';
+import { ON_THE_WAY_SCOPE, personLabel, type AiAuthService, type AiCaller } from './aiAuth.js';
+import { aiViewOf, AiToolError, askedOf, CHECK_INPUT, CHECK_OUTPUT, GAME_INPUT, GAME_OUTPUT, ON_THE_WAY_INPUT, ON_THE_WAY_OUTPUT, PLATFORMS_OUTPUT, SEARCH_INPUT, SEARCH_OUTPUT, WISHLIST_INPUT, WISHLIST_OUTPUT, type AiTools } from './aiTools.js';
 import type { Db } from './db/index.js';
 import { aiCalls } from './db/schema.js';
 import { APP_VERSION } from './env.js';
+import type { OrderService } from './orders.js';
 import type { SettingsService } from './settings.js';
 
 /**
  * The connector itself (0.55.0, D127): Streamable HTTP at /mcp, stateless (a fresh MCP server for each request, plain
- * JSON answers), for a bearer token from Squirrelcade's own sign-in (aiAuth.ts). Read-only tools; each call counted
- * against the person's limits (Settings › Claude and AI apps) and kept in the list of calls.
+ * JSON answers), for a bearer token from Squirrelcade's own sign-in (aiAuth.ts). Read-only tools, and for a key made to
+ * write, record_on_the_way (D179); each call counted against the person's limits (Settings › Claude and AI apps) and
+ * kept in the list of calls.
  */
 
 /** Calls per person per minute and per day, kept in memory (a restart starts them over). */
@@ -42,6 +44,7 @@ export interface McpDeps {
   db: Db;
   settings: SettingsService;
   log: Logger;
+  orders: OrderService;
 }
 
 /** The MCP server for one request, its tools answering as the caller sees the collection. */
@@ -49,10 +52,11 @@ function buildServer(caller: AiCaller, tools: AiTools, deps: McpDeps, limits: Ca
   const { settings, db, log } = deps;
   const instance = settings.get('general.instanceName') || 'Squirrelcade';
   const currency = settings.get('general.currency');
+  const writes = caller.scope.includes(ON_THE_WAY_SCOPE);
   const server = new McpServer(
     { name: 'squirrelcade', title: instance, version: APP_VERSION },
     {
-      instructions: `${instance}: one person's video game collection in Squirrelcade (consoles, and the PC library), read-only. check_ownership answers "do I have it?" for up to 50 titles at once: it reads editions, subtitles, franchise names and spellings, gives each match a confidence (0.85 and up counts as the same game) and lists near misses. search_games browses and filters (console, physical or digital, storefront, condition); get_game gives one game's copies; list_platforms gives the consoles and their keys. get_wishlist gives the Acorns wishlist: acorns are how much the owner wants a game they don't have yet (0 to 100, from their own rules; games they have have none), with the rules behind them; a title gives one game's acorns, and the main list is ordered by list_acorns (acorns minus the variety in the top picks). Money is in cents (${currency}).`,
+      instructions: `${instance}: one person's video game collection in Squirrelcade (consoles, and the PC library), read-only. check_ownership answers "do I have it?" for up to 50 titles at once: it reads editions, subtitles, franchise names and spellings, gives each match a confidence (0.85 and up counts as the same game) and lists near misses. search_games browses and filters (console, physical or digital, storefront, condition); get_game gives one game's copies; list_platforms gives the consoles and their keys. get_wishlist gives the Acorns wishlist: acorns are how much the owner wants a game they don't have yet (0 to 100, from their own rules; games they have have none), with the rules behind them; a title gives one game's acorns, and the main list is ordered by list_acorns (acorns minus the variety in the top picks). Money is in cents (${currency}).${writes ? ' record_on_the_way, the one tool that writes, puts a game bought on On the way, where the owner checks it and adds it when it arrives; it never changes the collection itself.' : ''}`,
     },
   );
   const view = aiViewOf(caller.person, settings);
@@ -188,6 +192,42 @@ function buildServer(caller: AiCaller, tools: AiTools, deps: McpDeps, limits: Ca
         (r) => r.platforms.length,
       ),
   );
+
+  // The one tool that writes (D179), for a key made to: a game bought goes on On the way, never into the collection.
+  if (writes) {
+    server.registerTool(
+      'record_on_the_way',
+      {
+        title: 'Say a game bought is on the way',
+        description:
+          "Puts a game bought on On the way, as a purchase email would: title, shop, and what's known (console, order day, price paid in cents, order number, item id such as Amazon's ASIN, expected delivery). It becomes a copy only when the owner says it arrived; nothing is edited or deleted. Known by its order number and item id, so saying it again, or an order that came by email or a purchases CSV too, is one entry (an Amazon game its email didn't name gets named). One game per call.",
+        inputSchema: ON_THE_WAY_INPUT,
+        outputSchema: ON_THE_WAY_OUTPUT,
+        annotations: { title: 'Record on the way', readOnlyHint: false, destructiveHint: false, idempotentHint: true, openWorldHint: false },
+      },
+      async (input) =>
+        run(
+          'record_on_the_way',
+          askedOf(input.title),
+          () => {
+            const { status, item } = deps.orders.recordOnTheWay({
+              title: input.title,
+              platform: input.platform,
+              store: input.store,
+              orderDate: input.order_date,
+              priceCents: input.price_cents,
+              currency: input.currency,
+              orderNumber: input.order_number,
+              itemId: input.item_id,
+              expectedOn: input.expected_delivery,
+              link: input.link,
+            });
+            return { status, id: item.id, title: item.title, platform: item.platform, listing: item.listingTitle, expected_delivery: item.expectedOn };
+          },
+          (r) => (r.status === 'known' ? 0 : 1),
+        ),
+    );
+  }
 
   return server;
 }

@@ -1,4 +1,4 @@
-import { Alert, Badge, Button, Card, Code, Divider, Group, List, Stack, Table, Text, TextInput, Title } from '@mantine/core';
+import { Alert, Badge, Button, Card, Checkbox, Code, Divider, Group, List, Stack, Table, Text, TextInput, Title } from '@mantine/core';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
 import { api, ApiError } from '../api';
@@ -24,6 +24,7 @@ interface Key {
   id: number;
   name: string;
   username: string;
+  canWrite: boolean;
   createdAt: string;
   lastUsedAt: string | null;
   calls: number;
@@ -66,6 +67,8 @@ export function AiExtras() {
   const state = useQuery({ queryKey: ['ai', 'connections'], queryFn: () => api<{ connections: Connection[]; address: string | null; on: boolean; signIn: boolean }>('/ai/connections') });
   const keys = useQuery({ queryKey: ['ai', 'keys'], queryFn: () => api<{ keys: Key[] }>('/ai/keys') });
   const [keyName, setKeyName] = useState('Claude Code');
+  // A key that may also put games on On the way (D179), for a task of the owner's own.
+  const [keyWrites, setKeyWrites] = useState(false);
   // A key just made: shown this once.
   const [made, setMade] = useState<{ name: string; key: string } | null>(null);
   // The address Claude reaches Squirrelcade at on the home network (the one this page was opened at, unless changed).
@@ -98,7 +101,7 @@ export function AiExtras() {
     onError: (err) => notifyError(err),
   });
   const makeKey = useMutation({
-    mutationFn: () => api<{ id: number; name: string; key: string }>('/ai/keys', { method: 'POST', json: { name: keyName } }),
+    mutationFn: () => api<{ id: number; name: string; key: string }>('/ai/keys', { method: 'POST', json: { name: keyName, canWrite: keyWrites } }),
     onSuccess: async (k) => {
       setMade({ name: k.name, key: k.key });
       await refresh();
@@ -237,6 +240,13 @@ export function AiExtras() {
         ) : (
           <Group gap="xs" align="flex-end" wrap="wrap" mb="sm">
             <TextInput label="What it's for" value={keyName} onChange={(e) => setKeyName(e.currentTarget.value)} maxLength={60} w={240} maw="100%" />
+            <Checkbox
+              label="It may also put games on On the way"
+              description="For a task of your own that tells Squirrelcade about games you've bought (record_on_the_way). It never changes your collection."
+              checked={keyWrites}
+              onChange={(e) => setKeyWrites(e.currentTarget.checked)}
+              maw={360}
+            />
             <Button variant="default" onClick={() => makeKey.mutate()} loading={makeKey.isPending} disabled={!on || !keyName.trim()}>
               Make a key
             </Button>
@@ -261,6 +271,7 @@ export function AiExtras() {
                       {k.name}
                       <Text size="xs" c="dimmed">
                         answers as {k.username}
+                        {k.canWrite ? '; may put games on On the way' : ''}
                       </Text>
                     </Table.Td>
                     <Table.Td>{date(k.createdAt, dateFormat)}</Table.Td>

@@ -420,6 +420,29 @@ describe('AI apps: keys for apps on the home network', () => {
     expect((await g.app.inject({ method: 'POST', url: '/api/v1/ai/keys', cookies: viewer, payload: { name: 'Mine' } })).statusCode).toBe(403);
     expect((await g.app.inject({ url: '/api/v1/ai/keys', cookies: viewer })).statusCode).toBe(403);
   });
+
+  it('puts a game on the way only with a key made for it, once by its order and item (D179)', async () => {
+    const reader = await makeKey('Reader');
+    const names = async (key: string) => ((await mcp(key, 'tools/list')).json().result.tools as { name: string }[]).map((t) => t.name);
+    expect(await names(reader.key)).not.toContain('record_on_the_way');
+    expect((await call(reader.key, 'record_on_the_way', { title: 'Gears of War', store: 'Amazon' })).isError).toBe(true);
+    const writer = (await g.app.inject({ method: 'POST', url: '/api/v1/ai/keys', cookies, payload: { name: 'Amazon task', canWrite: true } })).json();
+    expect(writer.canWrite).toBe(true);
+    expect(await names(writer.key)).toContain('record_on_the_way');
+    const said = { title: "Demon's Souls - PlayStation 3", store: 'Amazon', order_date: '2026-10-20', price_cents: 1999, order_number: '111-0000009-0000009', item_id: 'B000000009', expected_delivery: '2026-10-28' };
+    const r = await call(writer.key, 'record_on_the_way', said);
+    expect(r.structuredContent).toMatchObject({ status: 'added', title: "Demon's Souls", platform: 'PlayStation 3', expected_delivery: '2026-10-28' });
+    expect((await call(writer.key, 'record_on_the_way', said)).structuredContent).toMatchObject({ status: 'known', id: r.structuredContent.id });
+    const coming = (await g.app.inject({ url: '/api/v1/coming', cookies })).json().items as { title: string | null; itemCents: number | null; expectedOn: string | null; orderNumber: string }[];
+    expect(coming).toEqual([expect.objectContaining({ title: "Demon's Souls", itemCents: 1999, expectedOn: '2026-10-28', orderNumber: '111-0000009-0000009' })]);
+    // An Amazon order whose email didn't name its game is named, not added again.
+    g.orders.putOnTheWay('mail:1', { store: 'Amazon', date: '2026-10-21', orderNumber: '111-0000010-0000010', currency: 'USD', items: [{ title: 'Amazon order 111-0000010-0000010: a video game, its name not in the email', priceCents: null, quantity: 1 }], taxCents: null, shippingCents: null, discountCents: null, totalCents: null, link: null, readBy: 'plain' });
+    const named = await call(writer.key, 'record_on_the_way', { title: 'Gears of War - Xbox 360', store: 'Amazon', order_number: '111-0000010-0000010', item_id: 'B000000010', price_cents: 900 });
+    expect(named.structuredContent).toMatchObject({ status: 'named', title: 'Gears of War' });
+    expect((await g.app.inject({ url: '/api/v1/coming', cookies })).json().items).toHaveLength(2);
+    const keys = (await g.app.inject({ url: '/api/v1/ai/keys', cookies })).json().keys as { name: string; canWrite: boolean }[];
+    expect(keys.map((k) => [k.name, k.canWrite])).toEqual([['Amazon task', true], ['Reader', false]]);
+  });
 });
 
 describe('AI apps: guests', () => {
