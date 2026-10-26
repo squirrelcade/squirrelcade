@@ -22,7 +22,7 @@ import { useGameNotes } from '../notes';
 import { usePlaceNotes, type Vocabulary } from '../places';
 import { PlayBadge, type Play } from '../Playing';
 import { TestBadge } from '../CopyDetails';
-import { ConsoleMark } from '../ConsoleMark';
+import { ConsoleMark, CoverMarks } from '../ConsoleMark';
 
 /** The collection's totals and each platform's (GET /api/v1/collection/summary). */
 export interface CollectionSummary {
@@ -170,7 +170,11 @@ function CoverTile({ item, jump }: { item: Item; jump: number }) {
       >
         <AspectRatio ratio={3 / 4}>
           {art ? (
-            <Image src={igdbCoverUrl(item.coverId!, 'cover_big')} radius="sm" alt="" loading="lazy" fit="cover" />
+            // Its consoles' banner in the corner, as on every cover (D175, D185).
+            <Box pos="relative">
+              <Image src={igdbCoverUrl(item.coverId!, 'cover_big')} radius="sm" alt="" loading="lazy" fit="cover" w="100%" h="100%" />
+              <CoverMarks title={item.title} coverWidth={130} />
+            </Box>
           ) : (
             <Center p={6} style={{ borderRadius: 'var(--mantine-radius-sm)', border: '1px solid var(--mantine-color-default-border)' }}>
               <Text size="xs" ta="center" lineClamp={5}>
