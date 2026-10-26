@@ -45,6 +45,7 @@ import { CopyDetailsService, registerCopyDetailRoutes } from './copyDetails.js';
 import { PlacesService, registerPlaceRoutes } from './places.js';
 import { catalogTarget, registerGameRoutes } from './games.js';
 import { ItadClient, PcPriceService, registerPcPriceRoutes, type PcPrice } from './itad.js';
+import { GameFlyService, registerGameFlyRoutes } from './gamefly.js';
 import { GgDealsService, ggAsPcPrice, type GgPrice } from './ggdeals.js';
 import { registerRetroAchievementsRoutes, RetroAchievementsService } from './retroachievements.js';
 import { AchievementsService, registerAchievementRoutes, xboxHttpsGet, type PsnApi, type XboxGet } from './achievements.js';
@@ -125,6 +126,8 @@ export interface BuildOptions {
   itadFetch?: FetchLike;
   /** Exchange rates for purchases in another currency (Frankfurter's, D173). */
   ratesFetch?: FetchLike;
+  /** GameFly's search, for its prices (D174). */
+  gameflyFetch?: FetchLike;
   /** The vision model's HTTP calls (Check a shelf), replaced in tests. */
   visionFetch?: FetchLike;
   /** Replaces the network for GG.deals (tests use a fake). */
@@ -164,6 +167,7 @@ export interface SquirrelcadeApp {
   details: CopyDetailsService;
   shares: ShareService;
   pcPrices: PcPriceService;
+  gamefly: GameFlyService;
   mail: MailImportService;
   orders: OrderService;
   gotd: GameOfTheDayService;
@@ -513,6 +517,9 @@ export async function buildApp(options: BuildOptions = {}): Promise<Squirrelcade
   };
   registerPcWishlistRoutes(app, pcWishlist, tasks, pcPriceOf);
   registerPcPriceRoutes(app, pcPrices, tasks);
+  // GameFly as a place to buy (D174): its prices for the wishlist's first games, read by a task, kept.
+  const gamefly = new GameFlyService(db, settings, () => wishlist.compute().master, log, options.gameflyFetch, options.gameflyFetch ? 0 : undefined);
+  registerGameFlyRoutes(app, gamefly);
   const mail = new MailImportService(db, settings, collection, log, notifications, options.mailbox, options.exportDownload);
   registerMailRoutes(app, mail, tasks);
   // Settings > Email's one test: sending from your account, and reading its mailbox.
@@ -811,6 +818,15 @@ export async function buildApp(options: BuildOptions = {}): Promise<Squirrelcade
     quiet: (m) => m === 'No lent game is overdue' || m === 'Loan reminders are off',
   });
   tasks.register({
+    name: 'gamefly-prices',
+    title: "Read GameFly's prices",
+    description: "Reads GameFly's new and used prices for the wishlist's games on the consoles it sells (Settings > Sources > GameFly), one a second.",
+    interval: () => (gamefly.enabled() ? settings.get('sources.gameflyRefreshHours') * 3_600_000 : null),
+    firstRunDelayMs: 30 * 60_000,
+    run: async (_log, progress) => gamefly.refresh(progress),
+    quiet: (m) => m === "GameFly's prices are off",
+  });
+  tasks.register({
     name: 'pc-prices',
     title: 'Check PC game prices',
     description: "Reads the PC wishlist's prices from IsThereAnyDeal and sends a message when one drops (Settings > PC library > Prices).",
@@ -1000,6 +1016,7 @@ export async function buildApp(options: BuildOptions = {}): Promise<Squirrelcade
     details,
     shares,
     pcPrices,
+    gamefly,
     mail,
     orders,
     gotd,

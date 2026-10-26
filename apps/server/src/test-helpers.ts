@@ -125,6 +125,7 @@ export async function testApp(
     steamFetch?: FetchLike;
     itadFetch?: FetchLike;
     ratesFetch?: FetchLike;
+    gameflyFetch?: FetchLike;
     ggdealsFetch?: FetchLike;
     visionFetch?: FetchLike;
     mailbox?: MailboxOpener;
@@ -174,6 +175,7 @@ export async function testApp(
       steamFetch: options.steamFetch ?? noNetwork,
       itadFetch: options.itadFetch ?? noNetwork,
       ratesFetch: options.ratesFetch ?? noNetwork,
+      gameflyFetch: options.gameflyFetch ?? noNetwork,
       ggdealsFetch: options.ggdealsFetch ?? noNetwork,
       visionFetch: options.visionFetch ?? noNetwork,
       mailbox: options.mailbox ?? (async () => {

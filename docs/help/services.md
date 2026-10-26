@@ -18,6 +18,10 @@ Every outside service, program and tool Squirrelcade works with or recommends: w
 - [Steam](https://store.steampowered.com): review scores for the PC wishlist's games. **You need:** nothing. **Cost:** free. **Where:** the PC library.
 - [IsThereAnyDeal](https://isthereanydeal.com): the best price now and the lowest ever of the PC wishlist's games, and a message when one drops. **You need:** a free [API key](https://isthereanydeal.com/apps/my/). **Cost:** free. **Where:** Settings > Sources > IsThereAnyDeal (PC game prices).
 
+## Places to buy
+
+- [GameFly](https://www.gamefly.com): its new and used prices for your wishlist's games on the consoles it sells (PlayStation 2 to 5, PSP, Vita, the Xboxes, GameCube to Switch 2, DS, 3DS, Game Boy Advance), beside the wishlist's games and first in a game's Get it, each opening GameFly's page. Read in the background once a day (one question a second, for the wishlist's first 200 games), never while you browse. **You need:** nothing (its public search). **Cost:** free. **Where:** Settings > Sources > GameFly (off to start).
+
 ## Barcodes
 
 - [UPCitemdb](https://www.upcitemdb.com): names a barcode Squirrelcade has never seen, in Store Mode. **You need:** nothing (about 100 lookups a day). **Cost:** free. **Where:** Settings > Sources > Barcodes.

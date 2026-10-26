@@ -6,6 +6,7 @@ import { photoUrl, type PhotoInfo } from './CopyDetails';
 import { count, date, money } from './format';
 import { usePlaceNotes } from './places';
 import { Acorns } from './Acorn';
+import { gameFlyLabel, useGameFly } from './GameFly';
 
 /**
  * The game page's copies (D165, the owner: "this is still primarily a collecting application"): first on the page,
@@ -516,6 +517,8 @@ export function GetItCard({
   versions: ReactNode;
 }) {
   const [more, setMore] = useState(false);
+  // GameFly's price, when it sells the game (D174): first, with its price, as a place to buy.
+  const gamefly = useGameFly()(platformKey, title);
   const mine = shopLinksFor(shops, platformKey);
   const firsts = [...mine.filter((s) => s.group === 'Used marketplaces'), ...mine.filter((s) => s.group !== 'Used marketplaces')].slice(0, SHOPS_IN_LISTS);
   const rest = mine.filter((s) => !firsts.includes(s));
@@ -524,12 +527,17 @@ export function GetItCard({
   return (
     <CopiesFrame title="Get it" tone="want" aside={wishlist ? `On your Acorns list${wishlist.rank ? `, #${wishlist.rank}` : ''} · ${wishlist.priority}` : priority}>
       <Group gap="xl" align="flex-start" wrap="wrap">
-        {mine.length > 0 && (
+        {(mine.length > 0 || gamefly?.url) && (
           <Stack gap={4}>
             <Text size="xs" c="dimmed">
               Look for it
             </Text>
             <Group gap={6} wrap="wrap">
+              {gamefly?.url && (
+                <Button component="a" href={gamefly.url} target="_blank" rel="noreferrer" size="compact-sm" variant="light" rightSection={<IconExternalLink size={12} />}>
+                  {gameFlyLabel(gamefly)}
+                </Button>
+              )}
               {[...firsts, ...(more ? rest : [])].map((s) => (
                 <Button key={s.name} component="a" href={shopUrl(s.template, title, platform)} target="_blank" rel="noreferrer" size="compact-sm" variant="default" rightSection={<IconExternalLink size={12} />}>
                   {s.name}

@@ -10,6 +10,7 @@ import { sortRows, useSort } from '../sort';
 import { count, date, dateTime } from '../format';
 import { notifyError, useCanEdit, useSetting, useSettingsState } from '../hooks';
 import { GameCover, GameTitle } from '../GameDrawer';
+import { gameFlyLabel, useGameFly } from '../GameFly';
 import { COVER_COLS, CoverTile, jumpMark, LetterBar, useListView, ViewSwitch } from '../GameViews';
 import { PreferencePicker, preferenceLevels } from '../Preference';
 import { monthsFromNow, SNOOZES } from '../choices';
@@ -180,6 +181,8 @@ export function WishlistPage() {
 }
 
 function EntryTable({ entries: all, ranked }: { entries: Entry[]; ranked?: boolean }) {
+  // GameFly's price beside a game it sells (D174), read in the background.
+  const gameflyOf = useGameFly();
   const [open, setOpen] = useState<string | null>(null);
   const [filter, setFilter] = useState('');
   // Until a heading is clicked, the top picks keep their rank and a console's list its acorns, the order they come in.
@@ -273,6 +276,14 @@ function EntryTable({ entries: all, ranked }: { entries: Entry[]; ranked?: boole
                       <GameCover platformKey={e.platformKey} title={e.title} id={e.coverId} width={24} placeholder={anyCover} />
                       <Stack gap={0}>
                         <GameTitle platformKey={e.platformKey} title={e.title} fw={500} />
+                        {(() => {
+                          const gf = gameflyOf(e.platformKey, e.title);
+                          return gf?.url ? (
+                            <Anchor size="xs" href={gf.url} target="_blank" rel="noreferrer" onClick={(ev) => ev.stopPropagation()}>
+                              {gameFlyLabel(gf)}
+                            </Anchor>
+                          ) : null;
+                        })()}
                         {narrow && (
                           <Anchor size="xs" c="dimmed" component={Link} to={`/platforms/${e.platformKey}`} onClick={(ev) => ev.stopPropagation()}>
                             {e.platform}

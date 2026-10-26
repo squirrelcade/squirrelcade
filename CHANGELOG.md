@@ -6,6 +6,7 @@ What changed in each version of Squirrelcade (called Gamefolio before 0.35.0). T
 
 ### Added
 
+- **GameFly as a place to buy** (D174, the owner: "I really like buying things from GameFly, if they're good prices"): Settings > Sources > **GameFly's prices on the wishlist** (off to start) reads GameFly's new and used prices for the wishlist's first games on the consoles it sells, once a day in the background, and the Acorns wishlist and a game's Get it show them ("GameFly $7.50 used · $14.99 new"), each opening GameFly's page.
 - **Several games, one price** (D173, the owner: a Mercari lot of four "takes the overall price that I paid and divide it by four"): a lot, a pack or a bundle on **On the way** has **Split it into its games**, the games its title names already listed and matched, the price shared evenly to the cent or typed per game, the tax and shipping shared too; each game then arrives on its own.
 - **Other currencies in your own** (D173): a purchase in pounds or euros gets its price paid in your currency at the order day's rate (the European Central Bank's, from Frankfurter: free, no account), its own price beside it. Settings > Email > On the way: **Turn other currencies into mine** (on).
 - **GameFly's and Super Rare Games' order emails** are read (GameFly's items each with its price; Super Rare's packs, their names wrapped over two lines); add their addresses to Purchase emails from.

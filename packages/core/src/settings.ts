@@ -2334,6 +2334,35 @@ export const settingDefinitions = {
     description:
       'For UPC Database, chosen above: make a free account at upcdatabase.org, register an application in your dashboard, and copy its key here. Its free plan allows 100 lookups a day; paid plans more.',
   }),
+  'sources.gamefly': bool({
+    page: 'sources',
+    section: 'GameFly',
+    label: "GameFly's prices on the wishlist",
+    description:
+      "GameFly sells new and used games for today's consoles (PlayStation 2 to 5, PSP and Vita, the Xboxes, GameCube to the Switch 2, the DS and 3DS, Game Boy Advance). On, Squirrelcade reads its prices for your wishlist's games on those consoles in the background (its public search, no account), and the wishlist and a game's Get it show them beside your shops, each opening GameFly's page.",
+    default: false,
+  }),
+  'sources.gameflyGames': num({
+    page: 'sources',
+    section: 'GameFly',
+    label: 'How many wishlist games',
+    description: "The wishlist's first games whose GameFly prices are read (one question to GameFly each, a second apart).",
+    default: 200,
+    min: 10,
+    max: 2000,
+    shownWhen: 'sources.gamefly',
+  }),
+  'sources.gameflyRefreshHours': num({
+    page: 'sources',
+    section: 'GameFly',
+    label: 'Read the prices again every',
+    description: "How often GameFly's prices are read again.",
+    default: 24,
+    min: 6,
+    max: 168,
+    unit: 'hours',
+    shownWhen: 'sources.gamefly',
+  }),
   'sources.raUsername': text({
     page: 'sources',
     section: 'RetroAchievements',

@@ -38,6 +38,33 @@ export function shopLinks(lines: readonly string[]): ShopLink[] {
 /** How many shop links a list shows (a game's drawer shows them all, by group). */
 export const SHOPS_IN_LISTS = 3;
 
+/** GameFly's consoles (its own numbers, from its site), by Squirrelcade's console keys: where it sells games (D174). */
+export const GAMEFLY_PLATFORMS: Readonly<Record<string, number>> = {
+  'playstation-5': 1260,
+  'playstation-4': 1225,
+  'playstation-3': 1080,
+  'playstation-2': 1005,
+  psp: 1065,
+  'playstation-vita': 1205,
+  'xbox-series-x': 1265,
+  'xbox-one': 1215,
+  'xbox-360': 1070,
+  xbox: 1010,
+  'nintendo-switch-2': 1275,
+  'nintendo-switch': 1245,
+  'wii-u': 1210,
+  wii: 1085,
+  'nintendo-gamecube': 1015,
+  'nintendo-3ds': 1090,
+  'nintendo-ds': 1060,
+  'game-boy-advance': 1050,
+};
+
+/** A game's page on GameFly, from its search's answer (its own way of making the address). */
+export function gameflyUrl(uriSafeTitle: string, id: number): string {
+  return `https://www.gamefly.com/game/${decodeURIComponent(uriSafeTitle.replace(/[()]/g, ''))}/${id}`;
+}
+
 /** The shop links for a game on one console: the ones for every console, and the ones naming it. */
 export function shopLinksFor(lines: readonly string[], platformKey: string): ShopLink[] {
   return shopLinks(lines).filter((s) => s.platforms === null || s.platforms.includes(platformKey));

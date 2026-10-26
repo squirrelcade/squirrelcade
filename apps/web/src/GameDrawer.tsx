@@ -21,6 +21,7 @@ import { PreferencePicker } from './Preference';
 import { RegionBadge } from './Region';
 import { type RommLink } from './Romm';
 import { Acorn, Acorns, Reviews, StashMark } from './Acorn';
+import { gameFlyLabel, useGameFly } from './GameFly';
 import { ConsoleChip, GameHeader, ReviewsRing, RommChip, ScoreRing, type GameStar, type HeaderReviews } from './GameHeader';
 import { ConsoleRowChips, CopiesFrame, Fact, GetItCard, KeptIn, OnPc, OtherConsoles, Thumbs, WorthGraph, WorthValue, type ConsoleCopy, type ConsoleRow } from './CopiesCard';
 
@@ -339,8 +340,11 @@ function ShopFor({ links, title, platform }: { links: ShopLink[]; title: string;
 /** Where to see what a game sells for: PriceCharting, and the shop links for its console (Settings > Interface). */
 export function PriceLinks({ platformKey, platform, title, size = 'xs' }: { platformKey: string; platform: string; title: string; size?: 'xs' | 'sm' }) {
   const shops = useSetting('interface.shopLinks', []);
+  // GameFly's price, when it sells the game (D174).
+  const gamefly = useGameFly()(platformKey, title);
   const links = [
     { name: 'PriceCharting', href: priceChartingUrl(title, platform) },
+    ...(gamefly?.url ? [{ name: gameFlyLabel(gamefly), href: gamefly.url }] : []),
     // The first few of your shop links: the game's drawer has them all, by group.
     ...shopLinksFor(shops ?? [], platformKey)
       .slice(0, SHOPS_IN_LISTS)
