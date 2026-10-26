@@ -6,6 +6,7 @@ What changed in each version of Squirrelcade (called Gamefolio before 0.35.0). T
 
 ### Added
 
+- **A faster Nutshell** (D183): its statistics are kept until your copies, their prices, the catalogs or IGDB change, instead of worked out from every copy on each visit (1.7 s on a big collection).
 - **Magazine pages sized for the screen** (D182): Leaves' reader asks for each page as wide as the screen needs, and the server makes it (and the cover tiles' tiny ones) once and keeps it, so a page on a phone is a fraction of the scan's size. Settings > Magazines (advanced): **Largest page sent** (1,600 pixels) and **Room for the pages made** (1,000 MB).
 - **The magazine index** (D181): Leaves dates the issues whose files don't say, before you name any by hand: GameFan's volumes and issues from a table of their cover dates, and any magazine's issue whose number sits between two dated issues that came out one a month (most of Computer Gaming World's). They're listed under **Dated by Squirrelcade** on Name these, to check; a date you give always wins.
 - **On the way as a tick on the plugin's download** (D180, the owner: "Yes, I agree"): Settings > Claude and AI apps has **This plugin may also put games on On the way** beside **Download the plugin**; ticked, the plugin's own key may also call record_on_the_way, with no other key to make or wire in. Unticked, the plugin only reads, as before.

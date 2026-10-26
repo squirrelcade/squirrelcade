@@ -1,4 +1,5 @@
 import { COMPLETENESS_LABELS, normalizeTitle, PLAY_LABELS, REGION_LABELS, type Completeness, type PlayStatus, type Region } from '@squirrelcade/core';
+import { sql } from 'drizzle-orm';
 import type { FastifyInstance } from 'fastify';
 import { shown, type Sees } from './access.js';
 import type { CatalogService } from './catalogs.js';
@@ -6,7 +7,7 @@ import type { CollectionService } from './collection.js';
 import type { CopyDetailsService } from './copyDetails.js';
 import type { CopyCareService } from './copyCare.js';
 import type { Db } from './db/index.js';
-import { catalogEntries } from './db/schema.js';
+import { catalogEntries, copies } from './db/schema.js';
 import type { HistoryService } from './history.js';
 import type { IgdbService } from './igdb.js';
 import type { NotesService } from './notes.js';
@@ -95,7 +96,45 @@ const allItems = (deps: ReportDeps): Item[] => deps.collection.items({ all: true
 /** The title a copy counts as in its console's catalog (for IGDB, play status and notes), or its own. */
 const titleOf = (deps: ReportDeps, item: Item) => (item.platformKey ? (deps.catalogs.titlesOfOwned(item.platformKey, item.productId)[0] ?? item.title) : item.title);
 
+/**
+ * The Nutshell's statistics, kept (D183): working them out reads every copy and its IGDB game (1.7 s on a big
+ * collection), so they're kept until the copies, their prices, the catalogs or IGDB change (each has its stamp), and
+ * only what the person may see is part of the key. Play status and the estimate are read fresh: they're quick.
+ */
+const kept = new WeakMap<ReportDeps, { key: string; stats: Statistics }>();
+
+function copiesStamp(deps: ReportDeps): string {
+  const c = deps.db.select({ n: sql<number>`count(*)`, last: sql<number>`max(${copies.id})`, changed: sql<string>`max(${copies.updatedAt})` }).from(copies).get();
+  return `${c?.n}|${c?.last}|${c?.changed}`;
+}
+
 export function statistics(deps: ReportDeps, may: Sees): Statistics {
+  const key = [copiesStamp(deps), deps.collection.revision(), deps.catalogs.stamp(), deps.igdb.stamp(), deps.settings.get('general.currency'), may.paid].join('|');
+  let mine = kept.get(deps);
+  if (mine?.key !== key) {
+    mine = { key, stats: workStatistics(deps, may) };
+    kept.set(deps, mine);
+  }
+  return {
+    ...mine.stats,
+    estimated: may.paid && deps.care ? deps.care.estimatedTotal() : null,
+    play: playStatistics(deps, may),
+  };
+}
+
+function playStatistics(deps: ReportDeps, may: Sees): Statistics['play'] {
+  if (!may.play) return null;
+  const owned = deps.play.owned();
+  const statuses = new Map<string, Bar>();
+  const finished = new Map<string, Bar>();
+  for (const g of owned) {
+    bump(statuses, g.status ?? 'unmarked', g.status ? PLAY_LABELS[g.status as PlayStatus] : 'Not marked');
+    if (g.finishedAt && (g.status === 'beaten' || g.status === 'completed')) bump(finished, g.finishedAt.slice(0, 4), g.finishedAt.slice(0, 4));
+  }
+  return { statuses: [...statuses.values()].sort(byCount), finished: [...finished.values()].sort(byLabel) };
+}
+
+function workStatistics(deps: ReportDeps, may: Sees): Statistics {
   const items = allItems(deps);
   const consoles = new Map<string, Bar & { key: string | null; games: number; products: Set<string> }>();
   const conditions = new Map<string, Bar>();
@@ -140,21 +179,10 @@ export function statistics(deps: ReportDeps, may: Sees): Statistics {
       for (const g of game?.genres ?? []) bump(genres, g, g);
     }
   }
-  let play: Statistics['play'] = null;
-  if (may.play) {
-    const owned = deps.play.owned();
-    const statuses = new Map<string, Bar>();
-    const finished = new Map<string, Bar>();
-    for (const g of owned) {
-      bump(statuses, g.status ?? 'unmarked', g.status ? PLAY_LABELS[g.status as PlayStatus] : 'Not marked');
-      if (g.finishedAt && (g.status === 'beaten' || g.status === 'completed')) bump(finished, g.finishedAt.slice(0, 4), g.finishedAt.slice(0, 4));
-    }
-    play = { statuses: [...statuses.values()].sort(byCount), finished: [...finished.values()].sort(byLabel) };
-  }
   return {
     currency: deps.settings.get('general.currency'),
     totals: { games: products.size, copies, valueCents, costCents: may.paid ? costCents : null, sealed, consoles: consoles.size },
-    estimated: may.paid && deps.care ? deps.care.estimatedTotal() : null,
+    estimated: null,
     consoles: [...consoles.values()].map(({ products: p, ...c }) => ({ ...c, games: p.size })).sort(byCount),
     conditions: [...conditions.values()].sort(byCount),
     regions: [...regions.values()].sort(byCount),
@@ -168,7 +196,7 @@ export function statistics(deps: ReportDeps, may: Sees): Statistics {
       .sort((a, b) => (b.valueCents ?? 0) - (a.valueCents ?? 0))
       .slice(0, 10)
       .map((i) => ({ title: i.title, platform: i.platform ?? 'Other', condition: COMPLETENESS_LABELS[i.completeness as Completeness] ?? i.completeness, valueCents: i.valueCents ?? 0 })),
-    play,
+    play: null,
   };
 }
 

@@ -7,6 +7,7 @@ import { seedCatalogs, setUp, testApp, type TestApp } from './test-helpers.js';
 // console's whole IGDB list (a big console's is tens of thousands of games) kept in memory, not read per search.
 const SEARCH_BUDGET_MS = 300;
 const BARCODE_BUDGET_MS = 500;
+const STATS_BUDGET_MS = 100;
 const FOLLOWED_GAMES = 30000;
 
 let g: TestApp;
@@ -63,5 +64,21 @@ describe('the search and barcodes stay snappy (D171)', () => {
     expect((value.json().results as { answer: string }[]).some((r) => r.answer === 'not-tracked')).toBe(false);
     expect(ms).toBeLessThan(BARCODE_BUDGET_MS);
     expect(read).not.toHaveBeenCalled();
+  });
+
+  it("keeps the Nutshell's statistics until the copies change (D183)", async () => {
+    const stats = async () => (await g.app.inject({ url: '/api/v1/collection/statistics', cookies })).json();
+    const first = await stats();
+    expect(first.totals).toMatchObject({ copies: 1 });
+    const work = vi.spyOn(g.collection, 'items');
+    const again = await time(stats);
+    expect(work).not.toHaveBeenCalled();
+    expect(again.value.totals).toEqual(first.totals);
+    expect(again.ms).toBeLessThan(STATS_BUDGET_MS);
+    // A copy added: worked out again.
+    const added = await g.app.inject({ method: 'POST', url: '/api/v1/collection/copies', cookies, payload: { platformKey: 'playstation-2', title: 'Shadow of the Colossus', completeness: 'complete' } });
+    expect(added.statusCode).toBeLessThan(300);
+    expect((await stats()).totals).toMatchObject({ copies: 2 });
+    expect(work).toHaveBeenCalledTimes(1);
   });
 });
