@@ -24,6 +24,19 @@ async function launch() {
 }
 
 /** Closes each page's context first (a video is written when its context closes), then the browser. */
+/** A copy just added (D172): its walk-through's Next and Skip to the end, then Save and close. */
+async function throughTheSteps(win) {
+  for (let i = 0; i < 20; i++) {
+    const save = win.getByRole('button', { name: 'Save and close', exact: true });
+    if (await save.isVisible()) {
+      await save.click();
+      return;
+    }
+    await win.getByRole('button', { name: /^(Next|Skip)$/ }).click();
+  }
+  throw new Error('The walk-through never came to Save and close');
+}
+
 async function finish(browser) {
   for (const context of browser.contexts()) await context.close().catch(() => undefined);
   await browser.close();
@@ -610,11 +623,16 @@ export async function uiTest(target, account, check) {
     await drawer.getByText('You own it').waitFor({ timeout: 10000 });
     await drawer.getByRole('button', { name: 'Add a copy' }).click();
     const addCopy = page.locator('.mantine-Modal-content', { hasText: 'Add a copy' });
-    await addCopy.getByLabel('Condition').click();
-    await page.getByRole('option', { name: 'Loose' }).click();
-    await addCopy.getByLabel(/Price paid/).fill('12.50');
     await addCopy.getByRole('button', { name: 'Add it' }).click();
     await addCopy.waitFor({ state: 'detached', timeout: 10000 });
+    // The copy's walk-through opens at once (D172): its condition and what was paid, its photos skipped, Save and close.
+    const copySteps = page.locator('.mantine-Modal-content', { hasText: "Undo: I didn't buy it" });
+    await copySteps.getByText(/^Step 1 of/).waitFor({ timeout: 10000 });
+    await copySteps.getByLabel('Condition').click();
+    await page.getByRole('option', { name: 'Loose' }).click();
+    await copySteps.getByLabel(/Price paid/).fill('12.50');
+    await throughTheSteps(copySteps);
+    await copySteps.waitFor({ state: 'detached', timeout: 10000 });
     await drawer.getByText('Added in Squirrelcade: not on PriceCharting yet').waitFor({ timeout: 10000 });
     await page.goto(`${base}/updates`);
     // Okami came in an export, so PriceCharting's product is known: the copy goes in the CSV, with what was paid (D150).
@@ -1292,11 +1310,13 @@ export async function uiTest(target, account, check) {
     found = await pageProblems();
     check('ui: what you paid, asked in Store Mode right after Add it', found.length === 0 && paidPurchase?.costCents === 1250, found.join(' | ') || JSON.stringify(paidPurchase));
     if (offlinePurchase) await page.request.delete(`${base}/api/v1/purchases/${offlinePurchase.id}`);
-    // Add it (D153), on a phone: the big button beside the verdict adds the game and opens its copy's window over the
-    // whole screen, where one Done saves what was paid and the notes.
+    // Add it (D153), on a phone: the big button beside the verdict adds the game and opens its copy's walk-through over
+    // the whole screen (D172), whose Save and close saves what was paid.
     await page.setViewportSize({ width: 390, height: 844 });
     await page.goto(`${base}/store`);
     await page.getByPlaceholder('Barcode or title').fill('smoke test adv');
+    // Go searches at once (D172), for whoever types a title and waits for something to press.
+    await page.getByRole('button', { name: 'Go', exact: true }).click();
     const addCard = page.locator('.mantine-Card-root', { hasText: 'Smoke Test Adventure' }).first();
     await addCard.getByRole('button', { name: 'Add it' }).waitFor({ timeout: 10000 });
     // Pictures of it in both themes, for a look by eye (UI_SHOTS=folder).
@@ -1309,7 +1329,7 @@ export async function uiTest(target, account, check) {
     }
     await addCard.getByRole('button', { name: 'Add it' }).click();
     const addedWindow = page.locator('.mantine-Modal-content');
-    await addedWindow.getByText("It's in your collection.").waitFor({ timeout: 15000 });
+    await addedWindow.getByText(/^Step 1 of/).waitFor({ timeout: 15000 });
     if (process.env.UI_SHOTS) {
       // Once the window has finished opening.
       await page.waitForTimeout(600);
@@ -1318,13 +1338,12 @@ export async function uiTest(target, account, check) {
     const addedBox = await addedWindow.boundingBox();
     const addedFullScreen = Boolean(addedBox && addedBox.width >= 380 && addedBox.height >= 800);
     await addedWindow.getByLabel(/^Price paid/).fill('19.99');
-    await addedWindow.getByLabel('Notes', { exact: true }).fill('From the walkthrough');
-    await addedWindow.getByRole('button', { name: 'Done', exact: true }).click();
+    await throughTheSteps(addedWindow);
     await addedWindow.waitFor({ state: 'detached', timeout: 10000 }).catch(() => {});
     const addedCopy = (await (await page.request.get(`${base}/api/v1/purchases`)).json()).find((x) => x.title === 'Smoke Test Adventure');
     found = await pageProblems();
     check(
-      'ui: Add it opens the copy window on the whole phone screen, and Done saves what was paid',
+      "ui: Add it opens the copy's walk-through on the whole phone screen, and Save and close saves what was paid",
       found.length === 0 && addedFullScreen && addedCopy?.costCents === 1999,
       found.join(' | ') || `full screen ${addedFullScreen} ${JSON.stringify(addedBox)} ${JSON.stringify(addedCopy)}`,
     );
@@ -1580,8 +1599,12 @@ export async function uiTest(target, account, check) {
     await page.getByRole('option', { name: 'Sega Saturn', exact: true }).click();
     await page.getByRole('combobox', { name: /^Title/ }).fill('Walkthrough Saturn Quest');
     const saysNoCatalog = await page.getByText(/Sega Saturn has no catalog yet/).isVisible();
-    await page.getByLabel(/Price paid/).fill('12.50');
     await page.getByRole('button', { name: 'Add it' }).click();
+    // Its walk-through opens at once (D172): what was paid, then Save and close.
+    const addSteps = page.locator('.mantine-Modal-content', { hasText: "Undo: I didn't buy it" });
+    await addSteps.getByLabel(/Price paid/).fill('12.50');
+    await throughTheSteps(addSteps);
+    await addSteps.waitFor({ state: 'detached', timeout: 10000 });
     await page.getByText('Added just now').waitFor({ timeout: 10000 });
     let serious = await seriousProblems();
     const addedItem = (await (await page.request.get(`${base}/api/v1/collection/items?q=${encodeURIComponent('Walkthrough Saturn Quest')}`)).json()).items[0];

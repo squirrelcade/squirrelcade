@@ -126,6 +126,53 @@ export function useFromPriceCharting(): boolean {
   return Boolean(summary.data?.currentImport);
 }
 
+/** A copy's fields as a game's page lists them (GET /api/v1/game), for its window. */
+interface ListedCopy {
+  id: number;
+  copyKey: string;
+  completeness: string;
+  costCents: number | null;
+  datePurchased: string | null;
+  notes: string;
+  slots: string[];
+  estimatedCents: number | null;
+  gradingCompany: string;
+  gradingCertId: string;
+}
+
+/**
+ * A copy just added (Add it, Add a game, Add a copy), ready for its window: what the game's page has for it (its standard
+ * photos above all), or what adding it gave when the page can't be read.
+ */
+export async function addedCopyRef(game: { platformKey: string; platform: string; title: string }, added: { id: number; key: string; completeness?: string }, usual: string): Promise<CopyRef> {
+  let found: ListedCopy | undefined;
+  try {
+    const view = await api<{ copies: ListedCopy[] }>(`/game?platform=${encodeURIComponent(game.platformKey)}&title=${encodeURIComponent(game.title)}`);
+    found = view.copies.find((c) => c.id === added.id);
+  } catch {
+    // Its window opens anyway, with what adding it gave it (only its standard photos are missing).
+  }
+  const completeness = found?.completeness ?? added.completeness ?? usual;
+  return {
+    copyKey: found?.copyKey ?? added.key,
+    title: game.title,
+    platform: game.platform,
+    condition: COMPLETENESS_LABELS[completeness as Completeness] ?? completeness,
+    copy: {
+      id: added.id,
+      completeness,
+      costCents: found?.costCents ?? null,
+      datePurchased: found?.datePurchased ?? null,
+      notes: found?.notes ?? '',
+      slots: found?.slots ?? [],
+      estimatedCents: found?.estimatedCents ?? null,
+      platformKey: game.platformKey,
+      gradingCompany: found?.gradingCompany ?? '',
+      gradingCertId: found?.gradingCertId ?? '',
+    },
+  };
+}
+
 export function AddCopyModal({ game, onClose }: { game: { platformKey: string; platform: string; title: string } | null; onClose: () => void }) {
   const queryClient = useQueryClient();
   const fromPriceCharting = useFromPriceCharting();
@@ -135,6 +182,9 @@ export function AddCopyModal({ game, onClose }: { game: { platformKey: string; p
   const [paid, setPaid] = useState<number | string>('');
   const [bought, setBought] = useState('');
   const [notes, setNotes] = useState('');
+  // With the walk-through on (D172), Add it adds the copy and its window asks the rest, a step at a time.
+  const walkThrough = useSetting('collection.addWizard', true);
+  const [added, setAdded] = useState<CopyRef | null>(null);
   useEffect(() => {
     if (!game) return;
     setCompleteness(usual);
@@ -150,27 +200,39 @@ export function AddCopyModal({ game, onClose }: { game: { platformKey: string; p
       }),
     onSuccess: async (answer) => {
       notifySuccess(`${game!.title} is in your collection.${fromPriceCharting ? ' Stash updates › Send to PriceCharting has it for PriceCharting.' : ''}${overGoalNote(answer)}`);
-      await Promise.all(TOUCHED.map((k) => queryClient.invalidateQueries({ queryKey: [k] })));
+      const copy = (answer as { copy?: { id: number; key: string; completeness: string } } | undefined)?.copy;
+      // The copy's form opens at once (the owner, 2026-10-25), instead of a message and a search for it.
+      if (copy) setAdded(await addedCopyRef(game!, copy, usual));
       onClose();
+      await Promise.all(TOUCHED.map((k) => queryClient.invalidateQueries({ queryKey: [k] })));
     },
     onError: (err) => notifyError(err),
   });
   return (
+    <>
     <Modal opened={Boolean(game)} onClose={onClose} title={game ? `Add a copy · ${game.title} · ${game.platform}` : ''} zIndex={350}>
       <Stack gap="xs">
-        <Select label="Condition" data={CONDITIONS} value={completeness} onChange={(v) => v && setCompleteness(v)} allowDeselect={false} comboboxProps={{ zIndex: 400 }} />
-        <Group grow align="flex-start">
-          <NumberInput label={`Price paid (${currency})`} value={paid} onChange={setPaid} min={0} decimalScale={2} allowNegative={false} placeholder="Optional" data-autofocus />
-          <TextInput label="Bought on" type="date" value={bought} onChange={(e) => setBought(e.currentTarget.value)} />
-        </Group>
-        <TextInput label="Notes" value={notes} onChange={(e) => setNotes(e.currentTarget.value)} maxLength={500} placeholder="Optional" />
+        {walkThrough ? (
+          <Text size="sm">Its condition, what you paid, the day and its photos come next, a step at a time.</Text>
+        ) : (
+          <>
+            <Select label="Condition" data={CONDITIONS} value={completeness} onChange={(v) => v && setCompleteness(v)} allowDeselect={false} comboboxProps={{ zIndex: 400 }} />
+            <Group grow align="flex-start">
+              <NumberInput label={`Price paid (${currency})`} value={paid} onChange={setPaid} min={0} decimalScale={2} allowNegative={false} placeholder="Optional" data-autofocus />
+              <TextInput label="Bought on" type="date" value={bought} onChange={(e) => setBought(e.currentTarget.value)} />
+            </Group>
+            <TextInput label="Notes" value={notes} onChange={(e) => setNotes(e.currentTarget.value)} maxLength={500} placeholder="Optional" />
+          </>
+        )}
         <Group>
-          <Button onClick={() => add.mutate()} loading={add.isPending}>
+          <Button onClick={() => add.mutate()} loading={add.isPending} data-autofocus={walkThrough || undefined}>
             Add it
           </Button>
         </Group>
       </Stack>
     </Modal>
+    <CopyDetailsModal copy={added} added onClose={() => setAdded(null)} />
+    </>
   );
 }
 
@@ -550,6 +612,21 @@ export function CopyDetailsModal({
   const open = (current.data?.loans ?? []).filter((l) => l.returnedAt === null);
   const history = (current.data?.loans ?? []).filter((l) => l.returnedAt !== null);
   const busy = change.isPending || finish.isPending || undo.isPending;
+  // A copy just added (D172): a short walk-through, the chosen questions first, then its standard photos one at a time,
+  // each skippable, and Save and close at the end (Settings › Collection › Adding copies). Its whole window is a tap away.
+  const walkThrough = useSetting('collection.addWizard', true);
+  const askFirst = useSetting('collection.addWizardFields', ['Condition', 'Price paid', 'Bought on']);
+  const photoStepsOn = useSetting('collection.addWizardPhotos', true);
+  const [step, setStep] = useState(0);
+  const [wholeForm, setWholeForm] = useState(false);
+  useEffect(() => {
+    setStep(0);
+    setWholeForm(false);
+  }, [key]);
+  const photoSteps = photoStepsOn ? slots : [];
+  const steps = 1 + photoSteps.length;
+  const walking = added && walkThrough && !wholeForm && own !== undefined;
+  const stepSlot = step > 0 ? photoSteps[step - 1] : undefined;
 
   return (
     // Above the game drawer it opens from (a drawer is 200), with its lists above it in turn.
@@ -563,6 +640,80 @@ export function CopyDetailsModal({
     >
       {!current.data ? (
         <Loader />
+      ) : walking ? (
+        <Stack gap="md">
+          <Text size="sm" c="dimmed">
+            Step {step + 1} of {steps}: {stepSlot ?? 'about this copy'}
+          </Text>
+          {stepSlot === undefined ? (
+            <Stack gap="xs">
+              {askFirst.includes('Condition') && (
+                <Select label="Condition" data={CONDITIONS} value={completeness === 'unknown' ? null : completeness} onChange={(v) => v && setCompleteness(v)} allowDeselect={false} placeholder="Unknown" comboboxProps={{ zIndex: 400 }} />
+              )}
+              {askFirst.includes('Price paid') && (
+                <NumberInput label={`Price paid (${currency})`} value={paid} onChange={setPaid} min={0} decimalScale={2} allowNegative={false} placeholder="Not known" inputMode="decimal" data-autofocus />
+              )}
+              {askFirst.includes('Price paid') && ordersOn && copy && (
+                <FindInEmail
+                  key={own!.id}
+                  copyId={own!.id}
+                  title={copy.title}
+                  initial={found ?? null}
+                  onUse={(f, asked) => {
+                    if (f.paidCents !== null) setPaid(f.paidCents / 100);
+                    if (f.date && (asked || !bought)) setBought(f.date);
+                  }}
+                />
+              )}
+              {askFirst.includes('Bought on') && <TextInput label="Bought on" type="date" value={bought} onChange={(e) => setBought(e.currentTarget.value)} />}
+              {askFirst.includes('Notes') && <TextInput label="Notes" value={notes} onChange={(e) => setNotes(e.currentTarget.value)} maxLength={500} />}
+              {!['Condition', 'Price paid', 'Bought on', 'Notes'].some((f) => askFirst.includes(f)) && (
+                <Text size="sm">It's in your collection. No questions are asked first (Settings › Collection › Adding copies).</Text>
+              )}
+            </Stack>
+          ) : (
+            <Stack gap="xs" align="stretch">
+              {inSlot.get(stepSlot) && <Image src={photoUrl(inSlot.get(stepSlot)!.id)} radius="sm" h={220} fit="contain" alt={stepSlot} />}
+              <FileButton onChange={(file) => file && void addSlotPhoto(stepSlot, file).then(() => setStep((s) => Math.min(s + 1, steps - 1)))} accept="image/*" capture="environment">
+                {(props) => (
+                  <Button {...props} size="lg" fullWidth leftSection={<IconCamera size={20} />} loading={uploading > 0}>
+                    {inSlot.get(stepSlot) ? `Retake: ${stepSlot}` : `Take: ${stepSlot}`}
+                  </Button>
+                )}
+              </FileButton>
+              <Text size="xs" c="dimmed" ta="center">
+                {isSideways(stepSlot) ? <IconDeviceMobileRotated size={12} aria-hidden /> : <IconDeviceMobile size={12} aria-hidden />} Hold the phone {isSideways(stepSlot) ? 'sideways' : 'upright'}.
+              </Text>
+            </Stack>
+          )}
+          <Group justify="space-between">
+            <Button variant="default" onClick={() => setStep((s) => s - 1)} disabled={step === 0 || busy}>
+              Back
+            </Button>
+            {step < steps - 1 ? (
+              <Button variant={stepSlot && !inSlot.get(stepSlot) ? 'default' : 'filled'} onClick={() => setStep((s) => s + 1)} disabled={busy}>
+                {stepSlot && !inSlot.get(stepSlot) ? 'Skip' : 'Next'}
+              </Button>
+            ) : (
+              <Button onClick={() => finish.mutate('close')} loading={finish.isPending && finish.variables === 'close'} disabled={busy && !finish.isPending}>
+                Save and close
+              </Button>
+            )}
+          </Group>
+          <Group gap="xs" justify="center">
+            {onScanNext && (
+              <Button variant="light" leftSection={<IconVideoFilled size={16} />} onClick={() => finish.mutate('scan')} disabled={busy}>
+                Save and scan the next one
+              </Button>
+            )}
+            <Button variant="subtle" onClick={() => setWholeForm(true)} disabled={busy}>
+              Open the whole form
+            </Button>
+            <Button variant="subtle" color="gray" onClick={() => undo.mutate()} loading={undo.isPending} disabled={busy && !undo.isPending}>
+              Undo: I didn't buy it
+            </Button>
+          </Group>
+        </Stack>
       ) : (
         <Stack gap="md">
           {/* Many games are added in one sitting: the way out (and on to the next) is at the top, details can wait for
@@ -652,11 +803,7 @@ export function CopyDetailsModal({
                 )}
                 <TextInput label="Notes" value={notes} onChange={(e) => setNotes(e.currentTarget.value)} maxLength={500} />
                 {!added && (
-                <Group justify="space-between">
-                  {/* Everything typed in the window, saved together, then the window closes (the owner, 2026-10-16). */}
-                  <Button onClick={() => finish.mutate('close')} loading={busy}>
-                    Save and close
-                  </Button>
+                <Group justify="flex-end">
                   <Group gap="xs">
                     <Button variant="light" color="green" size="compact-sm" onClick={() => setSelling('list')} disabled={busy}>
                       Ready to sell
@@ -779,13 +926,6 @@ export function CopyDetailsModal({
                 <Autocomplete label="Store" placeholder="Xbox" value={digitalStore} onChange={setDigitalStore} data={['Xbox', 'PlayStation', 'Nintendo', 'Steam']} maxLength={40} disabled={waiting} comboboxProps={{ zIndex: 400 }} />
               )}
             </Group>
-            {!added && (
-              <Group>
-                <Button onClick={() => finish.mutate('close')} loading={busy} disabled={waiting}>
-                  Save and close
-                </Button>
-              </Group>
-            )}
           </Stack>
 
           {!added && (
@@ -914,6 +1054,15 @@ export function CopyDetailsModal({
               }}
             />
           )}
+          {/* Everything typed in the window, saved together, then the window closes (the owner, 2026-10-16), at the
+              bottom where the last field is (the owner, 2026-10-25). */}
+          {!added && (
+            <Group justify="flex-end">
+              <Button onClick={() => finish.mutate('close')} loading={finish.isPending && finish.variables === 'close'} disabled={busy && !finish.isPending}>
+                Save and close
+              </Button>
+            </Group>
+          )}
           {onNext && (
             <Group justify="flex-end" gap="sm">
               {position && (
@@ -929,7 +1078,7 @@ export function CopyDetailsModal({
           {added && own && (
             <Stack gap="xs" mt="xs">
               <Button size="lg" fullWidth onClick={() => finish.mutate('close')} loading={finish.isPending && finish.variables === 'close'} disabled={busy && !finish.isPending}>
-                Done
+                Save and close
               </Button>
               <Button variant="subtle" color="gray" onClick={() => undo.mutate()} loading={undo.isPending} disabled={busy && !undo.isPending}>
                 Undo: I didn't buy it

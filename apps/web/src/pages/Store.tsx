@@ -1,6 +1,6 @@
 import { Alert, Anchor, Button, Card, Group, Loader, NumberInput, Stack, Text, TextInput, Title } from '@mantine/core';
 import { useDebouncedValue, useMediaQuery } from '@mantine/hooks';
-import { COMPLETENESS_LABELS, priceChartingBarcodeUrl, priceChartingUrl, shopLinksFor, shopUrl, SHOPS_IN_LISTS, type Completeness } from '@squirrelcade/core';
+import { priceChartingBarcodeUrl, priceChartingUrl, shopLinksFor, shopUrl, SHOPS_IN_LISTS } from '@squirrelcade/core';
 import { IconCurrencyDollar, IconPlus, IconSearch, IconVideoFilled } from '@tabler/icons-react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useEffect, useRef, useState, type ReactNode } from 'react';
@@ -29,7 +29,7 @@ import {
   type SavedCopy,
 } from '../offline';
 import { ScannerModal } from '../ScannerModal';
-import { CopyDetailsModal, type CopyRef } from '../CopyDetails';
+import { addedCopyRef, CopyDetailsModal, type CopyRef } from '../CopyDetails';
 import { isBarcode } from '../lines';
 import { GameCover, GameTitle } from '../GameDrawer';
 import { GameStars, RommChip, type GameStar } from '../GameHeader';
@@ -73,21 +73,6 @@ interface Result {
   onTheWay?: { id: number; store: string; orderDate: string | null; paidCents: number | null } | null;
   /** The stars beside its name, as on the game page (D165). */
   stars?: GameStar[];
-}
-
-/** The fields of a game's copy that its window needs (GET /api/v1/game). */
-interface GameCopy {
-  id: number;
-  copyKey: string;
-  title: string;
-  completeness: string;
-  costCents: number | null;
-  datePurchased: string | null;
-  notes: string;
-  slots: string[];
-  estimatedCents: number | null;
-  gradingCompany: string;
-  gradingCertId: string;
 }
 
 /** The answers a game can be added from (a game you have on another console, or one to check, may be bought here too). */
@@ -174,7 +159,10 @@ const NOT_SQUIRRELCADE = "Something other than Squirrelcade answered (a Wi-Fi ne
 /** Store Mode: scan or type, get an instant owned / needed answer. Built for one hand on a phone. */
 export function StorePage() {
   const [text, setText] = useState('');
-  const [query] = useDebouncedValue(text.trim(), 300);
+  const [typed] = useDebouncedValue(text.trim(), 300);
+  // Go (or Enter) searches at once, without waiting for the pause after typing (the owner, 2026-10-25).
+  const [went, setWent] = useState<string | null>(null);
+  const query = went !== null && went === text.trim() ? went : typed;
   const [scanning, setScanning] = useState(false);
   // The header's camera button (and any link with ?scan=1) opens Store Mode with the camera already on.
   const [params, setParams] = useSearchParams();
@@ -284,34 +272,7 @@ export function StorePage() {
   const boughtCondition = useSetting('collection.boughtCondition', 'complete');
   // The window of the copy just added (D153): what was paid, the day, notes and photos, all at once.
   const [editing, setEditing] = useState<CopyRef | null>(null);
-  const openCopy = async (r: Result, added: { id: number; key: string }) => {
-    let found: GameCopy | undefined;
-    try {
-      const view = await api<{ copies: GameCopy[] }>(`/game?platform=${encodeURIComponent(r.platformKey)}&title=${encodeURIComponent(r.title)}`);
-      found = view.copies.find((c) => c.id === added.id);
-    } catch {
-      // Its window opens anyway, with what Add it gave it (only its standard photos are missing).
-    }
-    const completeness = found?.completeness ?? boughtCondition;
-    setEditing({
-      copyKey: found?.copyKey ?? added.key,
-      title: r.title,
-      platform: r.platform,
-      condition: COMPLETENESS_LABELS[completeness as Completeness] ?? completeness,
-      copy: {
-        id: added.id,
-        completeness,
-        costCents: found?.costCents ?? null,
-        datePurchased: found?.datePurchased ?? null,
-        notes: found?.notes ?? '',
-        slots: found?.slots ?? [],
-        estimatedCents: found?.estimatedCents ?? null,
-        platformKey: r.platformKey,
-        gradingCompany: found?.gradingCompany ?? '',
-        gradingCertId: found?.gradingCertId ?? '',
-      },
-    });
-  };
+  const openCopy = async (r: Result, added: { id: number; key: string }) => setEditing(await addedCopyRef(r, added, boughtCondition));
 
   const purchases = useQuery({ queryKey: ['purchases'], queryFn: () => api<Purchase[]>('/purchases') });
   // How many of the copies added here still miss something Collection › Improve counts (a price, the day, photos, a test).
@@ -392,9 +353,10 @@ export function StorePage() {
       // Over the spending goal says so; then the copy's window, to put in what was paid, the day, notes and photos.
       const over = overGoalNote(answer);
       if (over) notifySuccess(`${r.title} is in your collection.${over}`, 'Bought');
-      await afterPurchase();
+      // Its window first (D172): waiting for every answer on the page to come back first made it seem not to open.
       const added = answer as { id?: number; key?: string } | undefined;
       if (added?.id !== undefined && added.key) await openCopy(r, { id: added.id, key: added.key });
+      await afterPurchase();
     },
     onError: (err) => notifyError(err),
   });
@@ -516,7 +478,18 @@ export function StorePage() {
           </Anchor>
         </Group>
       </Group>
-      <Group gap="xs" wrap="nowrap" align="flex-end">
+      <Group
+        gap="xs"
+        wrap="nowrap"
+        align="flex-end"
+        component="form"
+        onSubmit={(e) => {
+          e.preventDefault();
+          setWent(text.trim());
+          // The phone's keyboard goes away, so the answers can be seen.
+          (document.activeElement as HTMLElement | null)?.blur();
+        }}
+      >
         <TextInput
           flex={1}
           size="lg"
@@ -525,8 +498,12 @@ export function StorePage() {
           value={text}
           onChange={(e) => setText(e.currentTarget.value)}
           inputMode="search"
+          enterKeyHint="go"
           autoFocus
         />
+        <Button type="submit" size="lg" variant="default" disabled={!text.trim()}>
+          Go
+        </Button>
         <Button size="lg" leftSection={<IconVideoFilled size={20} />} onClick={() => setScanning(true)}>
           Scan
         </Button>

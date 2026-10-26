@@ -8,7 +8,7 @@ import { Link, useSearchParams } from 'react-router';
 import { StashMark } from '../Acorn';
 import { api } from '../api';
 import { PageHeader } from '../components';
-import { CONDITIONS, TOUCHED, useFromPriceCharting } from '../CopyDetails';
+import { addedCopyRef, CONDITIONS, CopyDetailsModal, TOUCHED, useFromPriceCharting, type CopyRef } from '../CopyDetails';
 import { overGoalNote } from '../Goal';
 import { notifyError, notifySuccess, useSetting } from '../hooks';
 
@@ -52,6 +52,9 @@ export function AddGamePage() {
   const [notes, setNotes] = useState('');
   const [added, setAdded] = useState<{ platformKey: string; platform: string; title: string }[]>([]);
   const [typed] = useDebouncedValue(title, 200);
+  // With the walk-through on (D172), adding opens the copy's own steps (what you paid, the day, its photos) at once.
+  const walkThrough = useSetting('collection.addWizard', true);
+  const [editing, setEditing] = useState<CopyRef | null>(null);
 
   const mine = (yours.data ?? []).filter((p) => p.copies > 0).sort((a, b) => b.copies - a.copies);
   const mineKeys = new Set(mine.map((p) => p.key));
@@ -91,6 +94,9 @@ export function AddGamePage() {
       setPaid('');
       setBought('');
       setNotes('');
+      // Its form opens at once (the owner, 2026-10-25): no going to find it and pressing Edit.
+      const copy = (answer as { copy?: { id: number; key: string; completeness: string } } | undefined)?.copy;
+      if (copy) setEditing(await addedCopyRef({ platformKey, platform: platformName, title: name }, copy, usual));
       await Promise.all(TOUCHED.map((k) => queryClient.invalidateQueries({ queryKey: [k] })));
       await queryClient.invalidateQueries({ queryKey: ['platforms'] });
     },
@@ -102,7 +108,7 @@ export function AddGamePage() {
       <PageHeader
         help="collection"
         title="Add a game"
-        description="A game you have, typed in by hand: pick its console, type its title, and say what you paid. Its value stays empty until an export from PriceCharting gives one."
+        description="A game you have, typed in by hand: pick its console, type its title, then say what you paid. Its value stays empty until an export from PriceCharting gives one."
         actions={
           fromWelcome && (
             <Button component={Link} to="/welcome" variant="light" leftSection={<IconArrowLeft size={16} />}>
@@ -170,20 +176,30 @@ export function AddGamePage() {
                     : "Not in this console's catalog yet: it's added as you typed it, and matched once the catalog has it."}
               </Text>
             )}
-            <Select label="Condition" data={CONDITIONS} value={completeness ?? usual} onChange={(v) => v && setCompleteness(v)} allowDeselect={false} />
-            <Group grow align="flex-start">
-              <NumberInput label={`Price paid (${currency})`} value={paid} onChange={setPaid} min={0} decimalScale={2} allowNegative={false} placeholder="Optional" />
-              <TextInput label="Bought on" type="date" value={bought} onChange={(e) => setBought(e.currentTarget.value)} />
-            </Group>
-            <TextInput label="Notes" value={notes} onChange={(e) => setNotes(e.currentTarget.value)} maxLength={500} placeholder="Optional: where it came from, what's special about it" />
+            {!walkThrough && (
+              <>
+                <Select label="Condition" data={CONDITIONS} value={completeness ?? usual} onChange={(v) => v && setCompleteness(v)} allowDeselect={false} />
+                <Group grow align="flex-start">
+                  <NumberInput label={`Price paid (${currency})`} value={paid} onChange={setPaid} min={0} decimalScale={2} allowNegative={false} placeholder="Optional" />
+                  <TextInput label="Bought on" type="date" value={bought} onChange={(e) => setBought(e.currentTarget.value)} />
+                </Group>
+                <TextInput label="Notes" value={notes} onChange={(e) => setNotes(e.currentTarget.value)} maxLength={500} placeholder="Optional: where it came from, what's special about it" />
+              </>
+            )}
             <Group>
               <Button type="submit" leftSection={<IconPlus size={16} />} loading={add.isPending} disabled={!platformKey || !title.trim()}>
                 Add it
               </Button>
             </Group>
+            {walkThrough && (
+              <Text size="xs" c="dimmed">
+                Its condition, what you paid, the day and its photos come next, a step at a time.
+              </Text>
+            )}
           </Stack>
         </form>
       </Card>
+      <CopyDetailsModal copy={editing} added onClose={() => setEditing(null)} />
       {added.length > 0 && (
         <Alert color="green" variant="light" icon={<IconCheck size={18} />} title="Added just now" mt="md" maw={640}>
           <Stack gap={2}>

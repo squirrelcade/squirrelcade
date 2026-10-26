@@ -1062,6 +1062,35 @@ export const settingDefinitions = {
       { value: 'loose', label: 'Loose' },
     ],
   }),
+  'collection.addWizard': bool({
+    page: 'collection',
+    section: 'Adding copies',
+    label: 'A short walk-through for a copy just added',
+    description:
+      "Adding a copy (Add a game, a game's Add a copy, Store Mode's Add it) opens a few short steps: the questions below first, then each of its standard photos, one at a time, each one skippable, and Save and close at the end. Off: the copy's whole window opens instead. Editing a copy later always opens its whole window.",
+    default: true,
+  }),
+  'collection.addWizardFields': list({
+    page: 'collection',
+    section: 'Adding copies',
+    label: "The walk-through's questions",
+    description: 'Asked first, together, for a copy just added: Condition, Price paid, Bought on and Notes. The rest (where it is, tags, tests) are in its window later.',
+    default: ['Condition', 'Price paid', 'Bought on'],
+    maxItems: 4,
+    suggestions: [
+      { value: 'Condition', label: 'Condition' },
+      { value: 'Price paid', label: 'Price paid' },
+      { value: 'Bought on', label: 'Bought on' },
+      { value: 'Notes', label: 'Notes' },
+    ],
+  }),
+  'collection.addWizardPhotos': bool({
+    page: 'collection',
+    section: 'Adding copies',
+    label: "The walk-through's photo steps",
+    description: "After the questions, a step for each of the copy's standard photos (Your copies, below: the box's front and back, the game itself...), with Skip on each. Off: the walk-through ends after the questions.",
+    default: true,
+  }),
   'collection.ripConsoles': list({
     page: 'collection',
     section: 'Your copies',
