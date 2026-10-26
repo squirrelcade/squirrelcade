@@ -40,3 +40,4 @@ export * from './roots.js';
 export * from './videos.js';
 export * from './marks.js';
 export * from './amazon.js';
+export * from './magazines.js';

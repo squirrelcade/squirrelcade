@@ -9,6 +9,7 @@ Each of these is optional, and each has one home: its card on **Settings > Sourc
 | [Exports from your email](#exports-from-your-email) | Your collection updated by itself after you export on PriceCharting | Your mailbox's app password | 5 minutes |
 | [Family and friends](#family-and-friends) | Viewers, a gift link for your wishlist, a game check without an account | Step 3 done | 10 minutes |
 | [PC library](#pc-library-playnite) | Your PC games from every store, next to your console copies | Playnite on a Windows PC, a shared folder | 15 minutes |
+| [Leaves](#leaves-your-magazine-scans) | Your magazine scans, read on any screen and searched | A folder of CBZ scans | 10 minutes |
 | [PC game prices](#pc-game-prices) | Prices and lows for the PC wishlist | The PC library, a free key | 5 minutes |
 | [RomM](#romm) | Links from your games to your RomM, to play them | A RomM server | 5 minutes |
 | [RetroAchievements](#retroachievements) | What you beat and mastered in classic games, in each game's drawer | A free account's key | 5 minutes |
@@ -57,6 +58,20 @@ See [Sharing your collection](../help/sharing.md).
 3. **Settings > Features:** turn on **PC library (Playnite)** and save. In Docker, Squirrelcade looks in `/playnite` by itself (its own page, **Settings > PC library**, appears in the menu once it's on).
 
 **Check:** **PC library** lists your games within a few minutes. See [PC library](../help/pc-library.md).
+
+## Leaves (your magazine scans)
+
+1. Each magazine in a folder of its own, its issues CBZ files (with their `ComicInfo.xml`).
+2. Add the folder to the compose file, read-only, and recreate the container:
+
+   ```yaml
+       volumes:
+         - /path/to/Magazines:/magazines:ro
+   ```
+
+3. **Settings > Features:** turn on **Leaves: your magazine scans** and save. In Docker, Squirrelcade looks in `/magazines` by itself (**Settings > Magazines** has the rest).
+
+**Check:** **Leaves** shows your magazines within a few minutes. See [Leaves](../help/magazines.md).
 
 ## PC game prices
 

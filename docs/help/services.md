@@ -8,6 +8,10 @@ Every outside service, program and tool Squirrelcade works with or recommends: w
 - **Your mailbox (IMAP)**: reads PriceCharting's export emails, so an export updates Squirrelcade by itself, and its wishlist deal emails; and, only if you turn them on, your order emails (what you paid for a copy) and your eBay and Mercari purchase emails (On the way): see [Order emails](orders.md). It only reads. **You need:** an app password (Gmail: [app passwords](https://myaccount.google.com/apppasswords)). **Cost:** free. **Where:** Settings > Email.
 - [CLZ Games](https://clz.com/games), [GAMEYE](https://www.gameye.app) and [VGCollect](https://vgcollect.com): their exports come in like PriceCharting's (CLZ's with its barcodes). **You need:** their export file. **Cost:** free to export. **Where:** Stash updates.
 
+## Your magazines
+
+- [Tesseract](https://github.com/tesseract-ocr/tesseract): reads your magazine scans' pages at night for [Leaves](magazines.md)'s search, at the lowest priority. **You need:** nothing: it's in Squirrelcade's image. **Cost:** free (open source). **Where:** Settings > Magazines.
+
 ## Game information
 
 - [IGDB](https://www.igdb.com): box art, genres, series, release dates and developers, and proof of a physical release. **You need:** a [Twitch developer application](https://dev.twitch.tv/console/apps) (see [Optional parts](features.md#igdb-keys)). **Cost:** free. **Where:** Settings > Features.

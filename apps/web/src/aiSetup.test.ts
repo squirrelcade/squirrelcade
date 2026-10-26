@@ -30,6 +30,7 @@ describe('the AI setup prompt', () => {
       steam: 'Steam achievements',
       vision: 'A vision model for Check a shelf',
       talk: 'Talk to Squirrelcade',
+      magazines: 'Leaves',
     };
     for (const [part, name] of Object.entries(named)) if (name) expect([part, BRIEF_TEMPLATE.includes(name)]).toEqual([part, true]);
     for (const name of Object.values(CHANNEL_NAMES)) expect([name, BRIEF_TEMPLATE.toLowerCase().includes(name.toLowerCase())]).toEqual([name, true]);

@@ -50,9 +50,10 @@ COPY --from=build /src/apps/server/dist ./server/dist
 COPY --from=build /src/apps/server/drizzle ./server/drizzle
 COPY --from=build /src/apps/web/dist ./web
 COPY --from=reader /out/playnite-reader ./bin/playnite-reader
-# The self-contained .NET binary needs the C++ runtime; /playnite is where the Playnite backup folder is mounted (read-only).
-RUN apk add --no-cache libstdc++ libgcc \
-    && mkdir -p /config /imports /playnite && chown -R node:node /config /imports
+# The self-contained .NET binary needs the C++ runtime; /playnite is where the Playnite backup folder is mounted (read-only),
+# /magazines the magazine scans (read-only, D177), whose pages Tesseract (English) reads at night when that's on.
+RUN apk add --no-cache libstdc++ libgcc tesseract-ocr tesseract-ocr-data-eng \
+    && mkdir -p /config /imports /playnite /magazines && chown -R node:node /config /imports
 USER node
 EXPOSE 7575
 VOLUME ["/config"]

@@ -47,6 +47,7 @@ import { catalogTarget, registerGameRoutes } from './games.js';
 import { ItadClient, PcPriceService, registerPcPriceRoutes, type PcPrice } from './itad.js';
 import { GameFlyService, registerGameFlyRoutes } from './gamefly.js';
 import { MarksService, registerMarkRoutes } from './marks.js';
+import { MagazineService, registerMagazineRoutes, type PageReader } from './magazines.js';
 import { GgDealsService, ggAsPcPrice, type GgPrice } from './ggdeals.js';
 import { registerRetroAchievementsRoutes, RetroAchievementsService } from './retroachievements.js';
 import { AchievementsService, registerAchievementRoutes, xboxHttpsGet, type PsnApi, type XboxGet } from './achievements.js';
@@ -128,6 +129,8 @@ export interface BuildOptions {
   /** Exchange rates for purchases in another currency (Frankfurter's, D173). */
   ratesFetch?: FetchLike;
   /** GameFly's search, for its prices (D174). */
+  /** Leaves' page reader (Tesseract), for tests (D177). */
+  magazineReader?: PageReader;
   gameflyFetch?: FetchLike;
   /** The vision model's HTTP calls (Check a shelf), replaced in tests. */
   visionFetch?: FetchLike;
@@ -169,6 +172,7 @@ export interface SquirrelcadeApp {
   shares: ShareService;
   pcPrices: PcPriceService;
   gamefly: GameFlyService;
+  magazines: MagazineService;
   mail: MailImportService;
   orders: OrderService;
   gotd: GameOfTheDayService;
@@ -601,6 +605,10 @@ export async function buildApp(options: BuildOptions = {}): Promise<Squirrelcade
   // Roots' videos (D168): pasted, IGDB's trailers, and the video channels' (with a YouTube key).
   const videos = new VideosService(db, settings, catalogs, igdb, new YouTubeClient(settings, options.youtubeFetch), join(env.configDir, 'video-thumbs'), log, () => followed().flatMap((k) => history.top100Titles(k)));
   registerVideoRoutes(app, videos);
+  // Leaves (D177): the magazine scans, their text and the reader.
+  const magazines = new MagazineService(settings, env, log, options.magazineReader);
+  registerMagazineRoutes(app, magazines, tasks);
+  app.addHook('onClose', async () => magazines.close());
   registerPlayRoutes(app, play, (platformKey, title) => catalogTarget(catalogs, platformKey, title)?.target.title ?? null);
   registerCopyDetailRoutes(app, details, settings);
   // Storage locations made quick (D157): Pack a place, a shelf photo's games in one place, the Places page.
@@ -647,6 +655,23 @@ export async function buildApp(options: BuildOptions = {}): Promise<Squirrelcade
     interval: () => (videos.enabled() ? 86_400_000 : null),
     firstRunDelayMs: 30 * 60_000,
     run: async (_log, progress) => videos.readChannels(progress),
+  });
+  tasks.register({
+    name: 'magazines-scan',
+    title: 'Read the magazines folder',
+    description: 'Reads the magazines folder (Settings > Magazines): new and changed issues, from their ComicInfo.xml, and the text that came with the scans.',
+    interval: () => (magazines.enabled() ? 86_400_000 : null),
+    firstRunDelayMs: 2 * 60_000,
+    run: async (_log, progress) => magazines.scan(progress),
+  });
+  tasks.register({
+    name: 'magazines-read',
+    title: "Read the magazines' text",
+    description: 'Reads the pages without text yet with Tesseract, in the reading hours, at the lowest priority (Settings > Magazines).',
+    interval: () => (magazines.enabled() && settings.get('magazines.ocr') ? 3_600_000 : null),
+    firstRunDelayMs: 10 * 60_000,
+    run: async (_log, progress) => magazines.readText(progress),
+    quiet: (m) => m === 'Outside the reading hours' || m === 'Nothing left to read',
   });
   tasks.register({
     name: 'ra-sync',
@@ -1021,6 +1046,7 @@ export async function buildApp(options: BuildOptions = {}): Promise<Squirrelcade
     shares,
     pcPrices,
     gamefly,
+    magazines,
     mail,
     orders,
     gotd,

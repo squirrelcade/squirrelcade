@@ -17,6 +17,8 @@ services:
       # Optional: the folder Playnite saves its library backups to (Playnite > Settings > Backup), read-only.
       # Squirrelcade reads the newest backup's library files in place; the backups' artwork is never copied.
       # - /path/to/Playnite Backup:/playnite:ro
+      # Leaves (your magazine scans, CBZ), read-only:
+      # - /path/to/Magazines:/magazines:ro
       # Optional: a second place for each backup (Settings > Storage > Second backup folder).
       # - /path/to/nas/squirrelcade-backups:/backup-copies
     # Optional: a group that may read the Playnite folder, when it's on a share only that group reads.

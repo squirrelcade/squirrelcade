@@ -174,7 +174,7 @@ const PUSHOVER_PRIORITIES = [
 ] as const;
 
 /** The optional parts of Squirrelcade (Settings > Features): each needs something outside Squirrelcade, or can simply be left out. */
-export type FeatureKey = 'igdb' | 'history' | 'pc' | 'romm' | 'itad' | 'mail' | 'retroachievements' | 'xbox' | 'playstation' | 'steam' | 'vision' | 'talk';
+export type FeatureKey = 'igdb' | 'history' | 'pc' | 'romm' | 'itad' | 'mail' | 'retroachievements' | 'xbox' | 'playstation' | 'steam' | 'vision' | 'talk' | 'magazines';
 
 /** Each optional part's switch. */
 export const FEATURE_SETTINGS = {
@@ -190,13 +190,14 @@ export const FEATURE_SETTINGS = {
   steam: 'features.steam',
   vision: 'features.vision',
   talk: 'features.talk',
+  magazines: 'features.magazines',
 } as const satisfies Record<FeatureKey, string>;
 
 /**
  * Whether each optional part is on in a new install: the ones that work with nothing to set up, and IGDB (which
  * does nothing until it has its keys); the ones that need another program (Playnite, RomM) start off.
  */
-export const FEATURE_DEFAULTS: Readonly<Record<FeatureKey, boolean>> = { igdb: true, history: true, pc: false, romm: false, itad: false, mail: false, retroachievements: false, xbox: false, playstation: false, steam: false, vision: false, talk: false };
+export const FEATURE_DEFAULTS: Readonly<Record<FeatureKey, boolean>> = { igdb: true, history: true, pc: false, romm: false, itad: false, mail: false, retroachievements: false, xbox: false, playstation: false, steam: false, vision: false, talk: false, magazines: false };
 
 /** Every setting Squirrelcade has, by key: the one list the settings pages, validation, defaults and exports are built from. */
 export const settingDefinitions = {
@@ -652,6 +653,14 @@ export const settingDefinitions = {
     description:
       "Your PC games from every storefront (Steam, GOG, Epic...), read from Playnite's backups: the PC library, a PC wishlist, and PC copies next to your console copies (on the Copies page, in the wishlist and in Store Mode). Needs Playnite on a Windows PC and its backup folder shared with Squirrelcade: turn this on, then name the folder right below (the rest is in Settings > PC library).",
     default: FEATURE_DEFAULTS.pc,
+  }),
+  'features.magazines': bool({
+    page: 'features',
+    section: 'Optional features',
+    label: 'Leaves: your magazine scans',
+    description:
+      "Your scanned game magazines (Nintendo Power, EGM, GamePro...), read from a folder: each magazine and its issues, a reader for phones, and their text searched, from the text they come with or read at night. The scans stay where they are, read only. Needs the folder shared with Squirrelcade: turn this on, then name the folder right below (the rest is in Settings > Magazines).",
+    default: FEATURE_DEFAULTS.magazines,
   }),
   'features.romm': bool({
     page: 'features',
@@ -2125,6 +2134,71 @@ export const settingDefinitions = {
   }),
 
   // PC library
+  'magazines.folder': path({
+    page: 'magazines',
+    section: 'Your scans',
+    label: 'Magazines folder',
+    description:
+      'The folder of your magazine scans: a folder for each magazine, an issue a CBZ (with its ComicInfo.xml, as Kavita and Komga use) in it. Read only, never changed. Empty means /magazines in Docker (mount the folder there, read-only).',
+    default: '',
+  }),
+  'magazines.skip': list({
+    page: 'magazines',
+    section: 'Your scans',
+    label: 'Folders and files to leave out',
+    description: 'Names to skip in the folder ("*" for any letters): working folders, notes. To start, anything starting with _ or a dot.',
+    default: ['_*', '.*'],
+    maxItems: 40,
+  }),
+  'magazines.textFolder': path({
+    page: 'magazines',
+    section: 'Their text',
+    label: 'Text already read',
+    description:
+      'Where pages already read are (Tesseract\'s hOCR: <magazine>/ocr/<issue>/001.hocr...), taken as they are so those issues need no reading. Empty means _derived in the magazines folder.',
+    default: '',
+  }),
+  'magazines.ocr': bool({
+    page: 'magazines',
+    section: 'Their text',
+    label: 'Read the rest of their text at night',
+    description:
+      "Reads the pages that have no text yet with Tesseract (in Squirrelcade's image), a few issues a night, at the lowest priority so everything else comes first; it says how long the rest will take after its first issue. A big library takes weeks of nights. Off: only the text that came with the scans is searched.",
+    default: false,
+  }),
+  'magazines.ocrHours': text({
+    page: 'magazines',
+    section: 'Their text',
+    label: 'Reading hours',
+    description: 'When the reading runs, in your time zone: from the first hour to the second (01-06 is 1 AM to 6 AM).',
+    default: '01-06',
+    maxLength: 5,
+    shownWhen: 'magazines.ocr',
+  }),
+  'magazines.ocrThreads': num({
+    page: 'magazines',
+    section: 'Their text',
+    label: 'Processor cores it may use',
+    description: 'How many of the server\'s cores the reading may use at once.',
+    default: 2,
+    min: 1,
+    max: 16,
+    shownWhen: 'magazines.ocr',
+  }),
+  'magazines.twoPages': bool({
+    page: 'magazines',
+    section: 'The reader',
+    label: 'Two pages side by side on a wide screen',
+    description: 'On a computer or a tablet held sideways, a spread as it was printed; one page at a time on a phone.',
+    default: true,
+  }),
+  'magazines.viewers': bool({
+    page: 'magazines',
+    section: 'The reader',
+    label: 'People you invite can read them too',
+    description: 'Off: your magazines are yours alone.',
+    default: false,
+  }),
   'pc.playniteFolder': path({
     page: 'pc',
     section: 'Playnite',
@@ -3626,6 +3700,7 @@ export const FEATURE_SETUP: Readonly<Record<FeatureKey, readonly SettingKey[]>> 
   steam: ['sources.steamApiKey', 'sources.steamId'],
   vision: ['sources.visionApi', 'sources.visionUrl', 'sources.visionModel', 'sources.visionKey', 'sources.visionDailyLimit'],
   talk: [],
+  magazines: ['magazines.folder'],
 };
 
 /**
@@ -3645,6 +3720,7 @@ export const FEATURE_HOME: Readonly<Record<FeatureKey, SettingsPageId | null>> =
   steam: 'sources',
   vision: 'sources',
   talk: null,
+  magazines: 'magazines',
 };
 
 /** The part a Settings > Features switch turns on or off ("features.pc" is the PC library's), or null. */
@@ -3669,6 +3745,7 @@ export function settingFeature(key: string): FeatureKey | null {
   if (key.startsWith('sources.steam')) return 'steam';
   if (key.startsWith('sources.vision') || key === 'sources.talkModel') return 'vision';
   if (key === 'interface.timelineGames') return 'history';
+  if (key.startsWith('magazines.')) return 'magazines';
   return null;
 }
 

@@ -12,6 +12,7 @@ import type { FetchLike } from './igdb.js';
 import type { BarcodePacing, ProductNameLookup } from './lookup.js';
 import type { MailMessage, PushMessage, Transports } from './notifications.js';
 import type { ExportDownloader, MailboxOpener } from './mailImport.js';
+import type { PageReader } from './magazines.js';
 
 export const HEADER =
   'id,product-name,console-name,price-in-pennies,include-string,condition-string,sku,notes,cost-basis-in-pennies,quantity,date-entered,date-purchased,grading-company,grading-cert-id,folder';
@@ -126,6 +127,7 @@ export async function testApp(
     itadFetch?: FetchLike;
     ratesFetch?: FetchLike;
     gameflyFetch?: FetchLike;
+    magazineReader?: PageReader;
     ggdealsFetch?: FetchLike;
     visionFetch?: FetchLike;
     mailbox?: MailboxOpener;
@@ -176,6 +178,7 @@ export async function testApp(
       itadFetch: options.itadFetch ?? noNetwork,
       ratesFetch: options.ratesFetch ?? noNetwork,
       gameflyFetch: options.gameflyFetch ?? noNetwork,
+      magazineReader: options.magazineReader,
       ggdealsFetch: options.ggdealsFetch ?? noNetwork,
       visionFetch: options.visionFetch ?? noNetwork,
       mailbox: options.mailbox ?? (async () => {

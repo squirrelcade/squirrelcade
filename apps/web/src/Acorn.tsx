@@ -94,6 +94,28 @@ export function RootsMark({ size = 14 }: { size?: number }) {
   );
 }
 
+/**
+ * Leaves' mark (D177): a leaf, for the magazines (a magazine's pages are its leaves), beside Roots' sprouting acorn.
+ * Decorative.
+ */
+export function LeavesMark({ size = 14 }: { size?: number }) {
+  return (
+    <svg
+      viewBox="0 0 7 8"
+      width={Math.round((size * 7) / 8)}
+      height={size}
+      shapeRendering="crispEdges"
+      aria-hidden="true"
+      focusable="false"
+      style={{ display: 'inline-block', flex: 'none', verticalAlign: '-0.12em' }}
+    >
+      <path d="M4 0h2v1H4zM3 1h4v1H3zM2 2h5v1H2zM1 3h5v1H1zM1 4h4v1H1zM1 5h3v1H1z" fill="#46a36b" />
+      <path d="M5 1h1v1H5zM4 2h1v1H4zM3 3h1v1H3zM2 4h1v1H2z" fill="#2d7a4b" />
+      <path d="M1 6h1v1H1zM0 7h1v1H0z" fill="#6b3a10" />
+    </svg>
+  );
+}
+
 /** Words that say you have a game ("Have it", "Owned") with the Stash's mark before them (D142). */
 export function Have({ children, size = 12 }: { children: ReactNode; size?: number }) {
   return (

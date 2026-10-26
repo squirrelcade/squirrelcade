@@ -36,6 +36,7 @@ describe('help guides', () => {
       steam: 'Steam Web API',
       vision: 'vision model',
       talk: null,
+      magazines: 'Tesseract',
     };
     for (const [part, name] of Object.entries(uses)) if (name) expect([part, services.includes(name)]).toEqual([part, true]);
     for (const name of ['Pushover', 'Pushbullet', 'ntfy', 'Gotify', 'Discord', 'Telegram', 'Slack', 'webhook', 'Apprise', 'UPCitemdb', 'UPC Database', 'PriceCharting', 'OmniDrive', 'redumper']) {

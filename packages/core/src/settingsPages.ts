@@ -11,6 +11,7 @@ export const SETTINGS_PAGES = [
   { id: 'platforms', title: 'Platforms', description: 'Which consoles count and how they are recognized.' },
   { id: 'catalogs', title: 'Catalogs and matching', description: 'Where catalogs come from and what counts as owning a catalog game.' },
   { id: 'pc', title: 'PC library', description: 'Your PC games from Playnite, and how each storefront counts.' },
+  { id: 'magazines', title: 'Magazines', description: 'Leaves: your magazine scans, their text and the reader.' },
   { id: 'wishlist', title: 'Acorns', description: 'Your tastes, as the acorns behind every recommendation (Acorns, in the menu).' },
   { id: 'roots', title: 'Roots', description: "Games in their time: what Squirrelcade reads from each game's Wikipedia article and Wikidata, how long At the time lasts, and the reference sites a game links to." },
   { id: 'sources', title: 'Sources', description: 'Outside services Squirrelcade may ask for information.' },

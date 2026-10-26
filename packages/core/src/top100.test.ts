@@ -54,7 +54,7 @@ describe('features', () => {
       expect(settingDefinitions[key].default).toBe(FEATURE_DEFAULTS[feature as keyof typeof FEATURE_DEFAULTS]);
       expect(settingDefinitions[key].page).toBe('features');
     }
-    expect(FEATURE_DEFAULTS).toEqual({ igdb: true, history: true, pc: false, romm: false, itad: false, mail: false, retroachievements: false, xbox: false, playstation: false, steam: false, vision: false, talk: false });
+    expect(FEATURE_DEFAULTS).toEqual({ igdb: true, history: true, pc: false, romm: false, itad: false, mail: false, retroachievements: false, xbox: false, playstation: false, steam: false, vision: false, talk: false, magazines: false });
   });
 
   it("hides a part's settings while it's off, and never the switches themselves", () => {
@@ -64,6 +64,7 @@ describe('features', () => {
     expect(settingFeature('sources.igdbClientId')).toBe('igdb');
     expect(settingFeature('interface.timelineGames')).toBe('history');
     expect(settingFeature('mail.password')).toBe('mail');
+    expect(settingFeature('magazines.folder')).toBe('magazines');
     expect(settingFeature('sources.xboxApiKey')).toBe('xbox');
     expect(settingFeature('sources.psnMarkPlayed')).toBe('playstation');
     expect(settingFeature('sources.visionKey')).toBe('vision');

@@ -108,6 +108,9 @@ const VIEWER_DETAIL_READS: RegExp[] = [/^\/api\/v1\/copy$/, /^\/api\/v1\/tags$/,
 /** Spending by month, when viewers see what the owner paid. */
 const VIEWER_PAID_READS: RegExp[] = [/^\/api\/v1\/collection\/spending$/];
 
+/** Leaves (D177), when the owner lets people they invite read the magazines. */
+const VIEWER_MAGAZINE_READS: RegExp[] = [/^\/api\/v1\/magazines(\/search|\/\d+|\/issues\/\d+(\/pages\/\d+(\/words)?)?)?$/];
+
 /** The changes a viewer may make: their own sign-out and password, a question about ownership, and a page's error report. */
 const VIEWER_WRITES = new Set(['POST /api/v1/auth/logout', 'POST /api/v1/auth/password', 'POST /api/v1/owned', 'POST /api/v1/system/client-error', 'POST /api/v1/shelf/read', 'POST /api/v1/talk']);
 
@@ -118,6 +121,7 @@ export function viewerMay(method: string, path: string, settings: SettingsServic
     if (settings.get('security.viewersSeePc') && VIEWER_PC_READS.some((r) => r.test(path))) return true;
     if (settings.get('security.viewersSeePlay') && VIEWER_PLAY_READS.some((r) => r.test(path))) return true;
     if (settings.get('security.viewersSeeCopyDetails') && VIEWER_DETAIL_READS.some((r) => r.test(path))) return true;
+    if (settings.get('magazines.viewers') && VIEWER_MAGAZINE_READS.some((r) => r.test(path))) return true;
     return settings.get('security.viewersSeePaid') && VIEWER_PAID_READS.some((r) => r.test(path));
   }
   return VIEWER_WRITES.has(`${method} ${path}`);

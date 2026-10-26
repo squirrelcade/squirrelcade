@@ -16,7 +16,7 @@ import { clearCopy } from './offline';
 import { PasswordModal } from './Password';
 import { useFeature, usePageTitle, useSession, useSetting, useSettings } from './hooks';
 import { DEEP_BUTTON } from './look';
-import { Acorn, NutshellMark, RootsMark, StashMark } from './Acorn';
+import { Acorn, LeavesMark, NutshellMark, RootsMark, StashMark } from './Acorn';
 
 /**
  * The rule the menu is sorted by, said under each section's name (the owner, 2026-10-16): the Stash is what you have,
@@ -27,6 +27,7 @@ export const SECTION_RULE = {
   acorns: 'Games coming in and going out',
   nutshell: 'Your collection, by the numbers',
   roots: 'Games in their time, and since',
+  leaves: 'Your magazines, read and searched',
 } as const;
 
 const SYSTEM_PAGES = [
@@ -82,6 +83,9 @@ const MAIN_PAGES: Record<string, string> = {
   '/updates': 'Stash updates',
   '/notes': 'Your notes',
   '/roots': 'Roots',
+  '/leaves': 'Leaves',
+  '/leaves/search': 'Search the magazines',
+  '/leaves/undated': 'Name these',
 };
 
 /** The browser tab title for a page; null for a platform's, a set's or a friend's page, which shows its name. */
@@ -117,6 +121,8 @@ export function Layout({ children }: { children: ReactNode }) {
   const pcView = new URLSearchParams(location.search).get('view');
   // Roots (the Top 100 lists and console history, D165).
   const historyOn = useFeature('history');
+  const leavesOn = useFeature('magazines');
+  const leavesViewers = useSetting('magazines.viewers', false);
   const rootsView = pcView;
   // Deals come from PriceCharting's emails: listed while collection updates from email read them.
   const mailOn = useFeature('mail');
@@ -295,6 +301,13 @@ export function Layout({ children }: { children: ReactNode }) {
             <NavLink label="Roots" description={SECTION_RULE.roots} leftSection={<RootsMark size={18} />} opened={path.startsWith('/roots')} onClick={() => navigate('/roots')} childrenOffset={28}>
               <NavLink component={Link} to="/roots" label="Consoles" active={path.startsWith('/roots') && rootsView !== 'timeline'} onClick={close} />
               <NavLink component={Link} to="/roots?view=timeline" label="Timeline" active={path === '/roots' && rootsView === 'timeline'} onClick={close} />
+            </NavLink>
+          )}
+          {/* Leaves (D177): the magazine scans, with Leaves on (Settings > Features), for viewers when the owner lets them. */}
+          {leavesOn && (owner || leavesViewers) && (
+            <NavLink label="Leaves" description={SECTION_RULE.leaves} leftSection={<LeavesMark size={18} />} opened={path.startsWith('/leaves')} onClick={() => navigate('/leaves')} childrenOffset={28}>
+              <NavLink component={Link} to="/leaves" label="Magazines" active={path === '/leaves' || /^\/leaves\/(\d+|issue)/.test(path)} onClick={close} />
+              <NavLink component={Link} to="/leaves/search" label="Search" active={path === '/leaves/search'} onClick={close} />
             </NavLink>
           )}
           {/* Friends (0.56.0, D131): all of them, then each by name (their page has Compare and Trades), and adding one. */}

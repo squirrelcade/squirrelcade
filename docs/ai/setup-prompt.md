@@ -297,6 +297,14 @@ On the phone: open the https address, sign in, **Add to Home Screen**. The camer
 
 **Check:** **Stash > PC library** lists my games within a few minutes (its wishlist and deals are under **Acorns**). A PC game's title opens the same page as a console game's.
 
+### Leaves (my magazine scans)
+
+1. Each magazine in a folder of its own, its issues CBZ files (with their ComicInfo.xml).
+2. That folder goes under `volumes:` in the compose file, read-only: `- /path/to/Magazines:/magazines:ro`. Recreate the container.
+3. **Settings > Features:** turn on **Leaves: your magazine scans**. In Docker, it reads `/magazines` by itself. **Settings > Magazines**: **Text already read** (Tesseract's hOCR, if the scans came with it) and **Read the rest of their text at night** (off; Tesseract, in the image, a few issues a night).
+
+**Check:** **Leaves** in the menu shows my magazines within a few minutes; **Search** finds a page by its words once its text is read.
+
 ### RomM links
 
 1. In RomM: my profile > **API tokens** > a new token with the `roms.read` and `platforms.read` scopes only.

@@ -5,7 +5,7 @@ import type { LinkResolver } from './Markdown';
 const files = import.meta.glob('../../../docs/help/*.md', { query: '?raw', import: 'default', eager: true }) as Record<string, string>;
 
 /** The guides in the order of the help's index (docs/help/README.md), with "How matching works" (docs/MATCHING.md). */
-export const HELP_ORDER = ['getting-started', 'ai-setup', 'collection', 'playing', 'your-copies', 'orders', 'selling', 'catalogs', 'matching', 'wishlist', 'store-mode', 'sets', 'roots', 'top100-history', 'features', 'services', 'pc-library', 'romm', 'sharing', 'friends', 'ai-apps', 'notifications', 'backups', 'troubleshooting'];
+export const HELP_ORDER = ['getting-started', 'ai-setup', 'collection', 'playing', 'your-copies', 'orders', 'selling', 'catalogs', 'matching', 'wishlist', 'store-mode', 'sets', 'roots', 'top100-history', 'magazines', 'features', 'services', 'pc-library', 'romm', 'sharing', 'friends', 'ai-apps', 'notifications', 'backups', 'troubleshooting'];
 
 /** Every guide's text by its name ("store-mode"); "README" is the index. */
 export const HELP_TEXTS = new Map(Object.entries(files).map(([path, text]) => [path.split('/').pop()!.replace(/\.md$/, ''), text]));
