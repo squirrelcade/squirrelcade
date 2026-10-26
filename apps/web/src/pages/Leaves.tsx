@@ -35,6 +35,8 @@ interface Issue {
   title: string | null;
   pages: number;
   needsDate: boolean;
+  /** A date nobody gave (D181): from the magazine index, or worked out from its number. */
+  dateFrom: 'index' | 'numbering' | null;
   text: 'none' | 'hocr' | 'ocr' | 'failed';
   version: number;
 }
@@ -434,7 +436,7 @@ const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 
 /** Name these: the issues whose files give no date, a date for each (kept over what the file says). */
 export function UndatedIssuesPage() {
   const queryClient = useQueryClient();
-  const list = useQuery({ queryKey: ['magazines', 'undated'], queryFn: () => api<{ issues: Issue[] }>('/magazines/undated') });
+  const list = useQuery({ queryKey: ['magazines', 'undated'], queryFn: () => api<{ issues: Issue[]; guessed: Issue[] }>('/magazines/undated') });
   const save = useMutation({
     mutationFn: (v: { id: number; year: number; month: number | null }) => api(`/magazines/issues/${v.id}`, { method: 'PUT', json: { year: v.year, month: v.month } }),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['magazines'] }),
@@ -457,13 +459,28 @@ export function UndatedIssuesPage() {
           ))}
         </Stack>
       )}
+      {(list.data?.guessed.length ?? 0) > 0 && (
+        <>
+          <Title order={3} size="h4" mt="xl" mb={4}>
+            Dated by Squirrelcade ({count(list.data!.guessed.length)})
+          </Title>
+          <Text size="sm" c="dimmed" mb="sm">
+            Their files don't say either: these dates come from the magazine index, or from each issue's number between two dated issues of its magazine. Give one another date if it's wrong.
+          </Text>
+          <Stack gap="xs">
+            {list.data!.guessed.map((i) => (
+              <UndatedRow key={i.id} issue={i} onSave={(year, month) => save.mutate({ id: i.id, year, month })} />
+            ))}
+          </Stack>
+        </>
+      )}
     </>
   );
 }
 
 function UndatedRow({ issue, onSave }: { issue: Issue; onSave: (year: number, month: number | null) => void }) {
-  const [year, setYear] = useState<number | string>('');
-  const [month, setMonth] = useState<string | null>(null);
+  const [year, setYear] = useState<number | string>(issue.year ?? '');
+  const [month, setMonth] = useState<string | null>(issue.month ? String(issue.month) : null);
   return (
     <Card withBorder padding="xs">
       <Group gap="sm" wrap="wrap" align="flex-end">
@@ -479,6 +496,7 @@ function UndatedRow({ issue, onSave }: { issue: Issue; onSave: (year: number, mo
         <Button size="compact-sm" disabled={typeof year !== 'number'} onClick={() => typeof year === 'number' && onSave(year, month ? Number(month) : null)}>
           Save
         </Button>
+        {issue.dateFrom && <Badge size="xs" variant="light" color="blue">{issue.dateFrom === 'index' ? 'from the magazine index' : 'from its number'}</Badge>}
         {issue.text !== 'none' && <Badge size="xs" variant="light" color="gray">{issue.text === 'failed' ? "text couldn't be read" : 'text read'}</Badge>}
       </Group>
     </Card>

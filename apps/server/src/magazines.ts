@@ -1,4 +1,4 @@
-import { issueFromFileName, issueLabel, pageNames, parseComicInfo, parseHocr, skippedName, type IssueInfo, type PageWord } from '@squirrelcade/core';
+import { guessDates, issueFromFileName, issueLabel, pageNames, parseComicInfo, parseHocr, skippedName, type IssueInfo, type IssueToDate, type PageWord } from '@squirrelcade/core';
 import Database from 'better-sqlite3';
 import { spawn } from 'node:child_process';
 import { existsSync, type Dirent } from 'node:fs';
@@ -150,6 +150,8 @@ export interface IssueView {
   pages: number;
   /** No date: on Name these, for the owner to give one. */
   needsDate: boolean;
+  /** A date nobody gave (D181): from the magazine index, or worked out from its number; null otherwise. */
+  dateFrom: 'index' | 'numbering' | null;
   text: 'none' | 'hocr' | 'ocr' | 'failed';
   problem: string | null;
   version: number;
@@ -209,6 +211,9 @@ export class MagazineService {
       this.db = new Database(join(this.env.configDir, 'magazines.db'));
       this.db.pragma('journal_mode = WAL');
       this.db.exec(SCHEMA);
+      // D181: where a date nobody gave came from (the magazine index, or the issue's number); null for a file's own.
+      const columns = (this.db.prepare('PRAGMA table_info(issues)').all() as { name: string }[]).map((c) => c.name);
+      if (!columns.includes('date_from')) this.db.exec('ALTER TABLE issues ADD COLUMN date_from TEXT');
     }
     return this.db;
   }
@@ -271,9 +276,10 @@ export class MagazineService {
     // Files gone from the folder: their issues, and their text, forgotten.
     const gone = [...known.keys()].filter((p) => !seen.has(p));
     for (const p of gone) this.forget(p);
+    const dated = this.fillDates();
     const text = await this.importText(progress);
     const issues = (db.prepare('SELECT COUNT(*) AS n FROM issues').get() as { n: number }).n;
-    return `${issues} issues${added > 0 ? `, ${added} new` : ''}${changed > 0 ? `, ${changed} changed` : ''}${gone.length > 0 ? `, ${gone.length} gone` : ''}${failed > 0 ? `, ${failed} couldn't be read` : ''}${text > 0 ? `; text brought in for ${text}` : ''}`;
+    return `${issues} issues${added > 0 ? `, ${added} new` : ''}${changed > 0 ? `, ${changed} changed` : ''}${gone.length > 0 ? `, ${gone.length} gone` : ''}${failed > 0 ? `, ${failed} couldn't be read` : ''}${dated > 0 ? `; ${dated} dated by the magazine index` : ''}${text > 0 ? `; text brought in for ${text}` : ''}`;
   }
 
   private saveIssue(path: string, folder: string, info: IssueInfo, pages: number, size: number, mtime: number, namedBy: string): void {
@@ -284,9 +290,28 @@ export class MagazineService {
     db.prepare(
       `INSERT INTO issues (magazine_id, path, file_size, file_mtime, number, volume, year, month, title, pages, named_by, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
        ON CONFLICT(path) DO UPDATE SET magazine_id = excluded.magazine_id, file_size = excluded.file_size, file_mtime = excluded.file_mtime, number = excluded.number, volume = excluded.volume,
-         year = excluded.year, month = excluded.month, title = excluded.title, pages = excluded.pages, named_by = excluded.named_by, problem = NULL, updated_at = excluded.updated_at`,
+         year = excluded.year, month = excluded.month, date_from = NULL, title = excluded.title, pages = excluded.pages, named_by = excluded.named_by, problem = NULL, updated_at = excluded.updated_at`,
     ).run(magazine, path, size, mtime, info.number, info.volume, info.year, info.month, info.title, pages, namedBy, new Date().toISOString());
     this.contents.delete(path);
+  }
+
+  /**
+   * The dates nobody gave (D181): from the magazine index, or an issue's number between dated ones, worked out again
+   * each time (an owner's date or a file's always wins). How many issues it dated.
+   */
+  fillDates(): number {
+    const db = this.store();
+    const fills = db.transaction(() => {
+      db.prepare('UPDATE issues SET year = NULL, month = NULL, date_from = NULL WHERE date_from IS NOT NULL').run();
+      const rows = db
+        .prepare('SELECT i.id, m.name AS magazine, i.number, i.volume, COALESCE(i.owner_year, i.year) AS year, CASE WHEN i.owner_year IS NOT NULL THEN i.owner_month ELSE i.month END AS month FROM issues i JOIN magazines m ON m.id = i.magazine_id')
+        .all() as IssueToDate[];
+      const guessed = guessDates(rows);
+      const set = db.prepare('UPDATE issues SET year = ?, month = ?, date_from = ? WHERE id = ?');
+      for (const g of guessed) set.run(g.year, g.month, g.from, g.id);
+      return guessed.length;
+    })();
+    return fills;
   }
 
   private forget(path: string): void {
@@ -431,7 +456,7 @@ export class MagazineService {
     );
   }
 
-  private view(r: { id: number; magazine_id: number; magazine: string; number: string | null; volume: string | null; year: number | null; month: number | null; owner_year: number | null; owner_month: number | null; title: string | null; pages: number; text_state: string; problem: string | null; file_mtime: number }): IssueView {
+  private view(r: { id: number; magazine_id: number; magazine: string; number: string | null; volume: string | null; year: number | null; month: number | null; owner_year: number | null; owner_month: number | null; date_from: string | null; title: string | null; pages: number; text_state: string; problem: string | null; file_mtime: number }): IssueView {
     const year = r.owner_year ?? r.year;
     const month = r.owner_month ?? r.month;
     return {
@@ -446,6 +471,7 @@ export class MagazineService {
       title: r.title,
       pages: r.pages,
       needsDate: year === null,
+      dateFrom: r.owner_year !== null ? null : (r.date_from as IssueView['dateFrom']),
       text: r.text_state as IssueView['text'],
       problem: r.problem,
       version: r.file_mtime,
@@ -471,9 +497,16 @@ export class MagazineService {
     return (this.store().prepare(`${this.issueQuery} WHERE COALESCE(i.owner_year, i.year) IS NULL ORDER BY m.name, CAST(i.volume AS INTEGER), CAST(i.number AS INTEGER)`).all() as Parameters<MagazineService['view']>[0][]).map((r) => this.view(r));
   }
 
-  /** The owner's date for an issue (kept over what its file says). */
+  /** The dates Squirrelcade worked out (D181), to check on Name these. */
+  guessed(): IssueView[] {
+    if (!this.enabled()) return [];
+    return (this.store().prepare(`${this.issueQuery} WHERE i.owner_year IS NULL AND i.date_from IS NOT NULL ORDER BY m.name, CAST(i.volume AS INTEGER), CAST(i.number AS INTEGER)`).all() as Parameters<MagazineService['view']>[0][]).map((r) => this.view(r));
+  }
+
+  /** The owner's date for an issue (kept over what its file says); the dates worked out from it follow. */
   setDate(id: number, year: number | null, month: number | null): IssueView | null {
     this.store().prepare('UPDATE issues SET owner_year = ?, owner_month = ? WHERE id = ?').run(year, month, id);
+    this.fillDates();
     return this.issue(id);
   }
 
@@ -528,7 +561,7 @@ export class MagazineService {
 export function registerMagazineRoutes(app: FastifyInstance, magazines: MagazineService, tasks: { enqueue: (name: string) => boolean }): void {
   const off = (reply: { code: (n: number) => { send: (b: unknown) => unknown } }) => reply.code(404).send({ error: 'off', message: 'Leaves is off (Settings > Features).' });
   app.get('/api/v1/magazines', async (_request, reply) => (magazines.enabled() ? { magazines: magazines.magazines(), status: magazines.status() } : off(reply)));
-  app.get('/api/v1/magazines/undated', async (_request, reply) => (magazines.enabled() ? { issues: magazines.undated() } : off(reply)));
+  app.get('/api/v1/magazines/undated', async (_request, reply) => (magazines.enabled() ? { issues: magazines.undated(), guessed: magazines.guessed() } : off(reply)));
   app.get('/api/v1/magazines/search', async (request, reply) => {
     if (!magazines.enabled()) return off(reply);
     const q = request.query as { q?: string; magazine?: string; from?: string; to?: string };

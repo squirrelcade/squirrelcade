@@ -29,7 +29,8 @@ describe('Leaves: the magazine scans (D177)', () => {
     mkdirSync(join(dir, '_work'));
     cbz(join(dir, 'Nintendo Power', 'Nintendo Power #010 (1990-01) Super Mario Bros. 3.cbz'), 4, { Series: 'Nintendo Power', Number: 10, Year: 1990, Month: 1, Title: 'Super Mario Bros. 3', PageCount: 4 });
     cbz(join(dir, 'Nintendo Power', 'Nintendo Power #011 (1990-03).cbz'), 3, { Series: 'Nintendo Power', Number: 11, Year: 1990, Month: 3 });
-    cbz(join(dir, 'GameFan', 'GameFan Vol 01 #01.cbz'), 2, null);
+    cbz(join(dir, 'GameFan', 'GameFan Vol 01 #02.cbz'), 2, null);
+    cbz(join(dir, 'GameFan', 'GameFan Vol 01 #04.cbz'), 2, null);
     cbz(join(dir, '_work', 'scratch.cbz'), 1, null);
     // The text that came with #10, as Tesseract's hOCR.
     mkdirSync(join(dir, '_derived', 'Nintendo Power', 'ocr', 'NP-010'), { recursive: true });
@@ -43,14 +44,14 @@ describe('Leaves: the magazine scans (D177)', () => {
     // Off: none of it.
     expect((await g.app.inject({ url: '/api/v1/magazines', cookies })).statusCode).toBe(404);
     g.settings.update({ 'features.magazines': true, 'magazines.folder': dir });
-    expect(await g.magazines.scan()).toBe('3 issues, 3 new; text brought in for 1');
+    expect(await g.magazines.scan()).toBe('4 issues, 4 new; 1 dated by the magazine index; text brought in for 1');
 
     const { magazines, status } = await get('/api/v1/magazines');
     expect(magazines.map((m: { name: string; issues: number; from: number | null; withText: number }) => [m.name, m.issues, m.from, m.withText])).toEqual([
-      ['GameFan', 1, null, 0],
+      ['GameFan', 2, 1992, 0],
       ['Nintendo Power', 2, 1990, 1],
     ]);
-    expect(status).toMatchObject({ found: true, issues: 3, withText: 1 });
+    expect(status).toMatchObject({ found: true, issues: 4, withText: 1 });
     const np = magazines.find((m: { name: string }) => m.name === 'Nintendo Power');
     const issues = (await get(`/api/v1/magazines/${np.id}`)).issues;
     expect(issues.map((i: { label: string; title: string | null; pages: number; text: string }) => [i.label, i.title, i.pages, i.text])).toEqual([
@@ -68,11 +69,12 @@ describe('Leaves: the magazine scans (D177)', () => {
     expect((await get('/api/v1/magazines/search?q=chrono%20trigger')).hits).toEqual([{ issueId: issues[0].id, page: 1, label: 'Nintendo Power #10 · January 1990', snippet: '[Chrono] [Trigger] preview' }]);
     expect((await get('/api/v1/magazines/search?q=%22trigger%20chrono%22')).hits).toEqual([]);
 
-    // Name these: GameFan's issue has no date; given one, it's kept.
-    const undated = (await get('/api/v1/magazines/undated')).issues;
-    expect(undated.map((i: { label: string }) => i.label)).toEqual(['GameFan Vol. 1 #1']);
-    const dated = await g.app.inject({ method: 'PUT', url: `/api/v1/magazines/issues/${undated[0].id}`, cookies, payload: { year: 1992, month: 9 } });
-    expect(dated.json()).toMatchObject({ label: 'GameFan Vol. 1 #1 · September 1992', needsDate: false });
+    // Name these: the magazine index dates GameFan's #2 (D181), not #4, which the index doesn't know; given one, it's kept.
+    const named = await get('/api/v1/magazines/undated');
+    expect(named.issues.map((i: { label: string }) => i.label)).toEqual(['GameFan Vol. 1 #4']);
+    expect(named.guessed.map((i: { label: string; dateFrom: string }) => [i.label, i.dateFrom])).toEqual([['GameFan Vol. 1 #2 · December 1992', 'index']]);
+    const dated = await g.app.inject({ method: 'PUT', url: `/api/v1/magazines/issues/${named.issues[0].id}`, cookies, payload: { year: 1993, month: 3 } });
+    expect(dated.json()).toMatchObject({ label: 'GameFan Vol. 1 #4 · March 1993', needsDate: false, dateFrom: null });
 
     // The night's reading (Tesseract here a stand-in): #11's three pages, then it's searched too.
     g.settings.update({ 'magazines.ocr': true });
@@ -82,7 +84,7 @@ describe('Leaves: the magazine scans (D177)', () => {
 
     // A file gone from the folder: its issue and its text are forgotten; an unchanged one isn't read again.
     unlinkSync(join(dir, 'Nintendo Power', 'Nintendo Power #011 (1990-03).cbz'));
-    expect(await g.magazines.scan()).toBe('2 issues, 1 gone');
+    expect(await g.magazines.scan()).toBe('3 issues, 1 gone; 1 dated by the magazine index');
     expect((await get('/api/v1/magazines/search?q=tecmo')).hits).toEqual([]);
   });
 

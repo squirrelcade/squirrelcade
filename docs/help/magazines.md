@@ -20,7 +20,7 @@ Squirrelcade reads the folder a few minutes after it starts and then every night
 
 **Leaves** in the menu shows your magazines as covers, with how many issues and their years. A magazine shows its issues by year; an issue opens the **reader**: a page at a time on a phone, two side by side on a wider screen (**Two pages side by side on a wide screen**, as they were printed), turned with the arrows, your keyboard's arrow keys or a swipe; the zoom buttons (or a double tap) to read the small print. The next pages are fetched ahead, and Squirrelcade remembers the page you were on in each issue.
 
-**Name these**: issues whose files don't say when they came out are listed there (a link on Leaves); give each its month and year, and it takes its place among its magazine's years.
+**Name these**: issues whose files don't say when they came out are listed there (a link on Leaves); give each its month and year, and it takes its place among its magazine's years. Before that, Squirrelcade dates what it can itself: from its magazine index (GameFan's volumes and issues, for now) and from an issue's number between two dated issues of its magazine that came out one a month (Computer Gaming World's #41 between #40, October 1987, and #43, January 1988). Those are listed under **Dated by Squirrelcade** on the same page, to check; give one another date if it's wrong, and yours is kept.
 
 ## Searching
 
