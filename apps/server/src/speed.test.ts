@@ -71,8 +71,10 @@ describe('the search and barcodes stay snappy (D171)', () => {
     const first = await stats();
     expect(first.totals).toMatchObject({ copies: 1 });
     const work = vi.spyOn(g.collection, 'items');
+    const played = vi.spyOn(g.play, 'owned');
     const again = await time(stats);
     expect(work).not.toHaveBeenCalled();
+    expect(played).not.toHaveBeenCalled();
     expect(again.value.totals).toEqual(first.totals);
     expect(again.ms).toBeLessThan(STATS_BUDGET_MS);
     // A copy added: worked out again.

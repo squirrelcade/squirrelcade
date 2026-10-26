@@ -7,7 +7,7 @@ import type { CollectionService } from './collection.js';
 import type { CopyDetailsService } from './copyDetails.js';
 import type { CopyCareService } from './copyCare.js';
 import type { Db } from './db/index.js';
-import { catalogEntries, copies } from './db/schema.js';
+import { catalogEntries, copies, playStatus } from './db/schema.js';
 import type { HistoryService } from './history.js';
 import type { IgdbService } from './igdb.js';
 import type { NotesService } from './notes.js';
@@ -99,7 +99,8 @@ const titleOf = (deps: ReportDeps, item: Item) => (item.platformKey ? (deps.cata
 /**
  * The Nutshell's statistics, kept (D183): working them out reads every copy and its IGDB game (1.7 s on a big
  * collection), so they're kept until the copies, their prices, the catalogs or IGDB change (each has its stamp), and
- * only what the person may see is part of the key. Play status and the estimate are read fresh: they're quick.
+ * only what the person may see is part of the key. Play status is kept the same way, until a game's status changes
+ * (it reads every copy's catalog game too); the estimate of unpriced copies is read fresh (one quick query).
  */
 const kept = new WeakMap<ReportDeps, { key: string; stats: Statistics }>();
 
@@ -108,17 +109,31 @@ function copiesStamp(deps: ReportDeps): string {
   return `${c?.n}|${c?.last}|${c?.changed}`;
 }
 
+const keptPlay = new WeakMap<ReportDeps, { key: string; play: Statistics['play'] }>();
+
 export function statistics(deps: ReportDeps, may: Sees): Statistics {
-  const key = [copiesStamp(deps), deps.collection.revision(), deps.catalogs.stamp(), deps.igdb.stamp(), deps.settings.get('general.currency'), may.paid].join('|');
+  const copiesKey = [copiesStamp(deps), deps.collection.revision(), deps.catalogs.stamp()].join('|');
+  const key = [copiesKey, deps.igdb.stamp(), deps.settings.get('general.currency'), may.paid].join('|');
   let mine = kept.get(deps);
   if (mine?.key !== key) {
     mine = { key, stats: workStatistics(deps, may) };
     kept.set(deps, mine);
   }
+  let play: Statistics['play'] = null;
+  if (may.play) {
+    const p = deps.db.select({ n: sql<number>`count(*)`, changed: sql<string>`max(${playStatus.updatedAt})` }).from(playStatus).get();
+    const playKey = `${copiesKey}|${p?.n}|${p?.changed}`;
+    let saved = keptPlay.get(deps);
+    if (saved?.key !== playKey) {
+      saved = { key: playKey, play: playStatistics(deps, may) };
+      keptPlay.set(deps, saved);
+    }
+    play = saved.play;
+  }
   return {
     ...mine.stats,
     estimated: may.paid && deps.care ? deps.care.estimatedTotal() : null,
-    play: playStatistics(deps, may),
+    play,
   };
 }
 
