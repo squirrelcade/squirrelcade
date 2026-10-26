@@ -41,6 +41,8 @@
   --sc-info-line: #a9c5e8;
   --sc-romm-bg: #ece6ff;
   --sc-romm: #4b2fb3;
+  /* A console mark you don't have (D185): faded grey. */
+  --sc-mark-off: #b4b4b9;
 }
 
 [data-mantine-color-scheme='dark'] {
@@ -75,6 +77,7 @@
   --sc-info-line: #26466a;
   --sc-romm-bg: #2a2140;
   --sc-romm: #d9ccff;
+  --sc-mark-off: #4d4d54;
 }
 
 /* Cards and windows on the ground: the kit's surface (the page itself is Mantine's body, the ground). */
@@ -1120,4 +1123,16 @@ button.sc-star {
 }
 [data-jump] {
   scroll-margin-top: 84px;
+}
+
+/* Console marks (D185): their colors lifted on a dark surface, never on the cover banner's light one, whose faded marks
+   are its own grey. */
+[data-mantine-color-scheme='dark'] .sc-mark-on {
+  filter: brightness(1.45) saturate(1.1);
+}
+[data-mantine-color-scheme='dark'] .sc-cover-marks .sc-mark-on {
+  filter: none;
+}
+.sc-cover-marks {
+  --sc-mark-off: #bdbdc2;
 }

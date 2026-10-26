@@ -315,10 +315,10 @@ export const settingDefinitions = {
     page: 'interface',
     section: 'Appearance',
     label: "A cover's PC mark when you don't have it on PC",
-    description: "PC always has the right end of the banner, filled when you have the game on PC. When you don't: a dotted PC mark, or none.",
+    description: "PC always has the right end of the banner, its screen lit when you have the game on PC. When you don't: a faded PC mark, or none.",
     default: 'dotted',
     options: [
-      { value: 'dotted', label: 'A dotted PC mark' },
+      { value: 'dotted', label: 'A faded PC mark' },
       { value: 'none', label: 'No PC mark' },
     ],
     shownWhen: 'interface.coverMarks',

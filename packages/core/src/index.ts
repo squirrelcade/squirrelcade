@@ -43,4 +43,5 @@ export * from './amazon.js';
 export * from './magazines.js';
 export * from './magazineIndex.js';
 export * from './purchaseKind.js';
+export * from './markDrawings.js';
 export * from './purchaseSheet.js';
