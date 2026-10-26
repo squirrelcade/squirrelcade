@@ -265,6 +265,10 @@ With PriceCharting only: Squirrelcade picks up PriceCharting's export email and 
 2. **Check:** **Test sending and reading** says how many export emails it found.
 3. From then on, **My Collection > Download (CSV)** on PriceCharting updates my collection within half an hour. **Settings > Collection > Reminders > Remind me to export after** 7 days sends a weekly reminder.
 
+### On the way: purchases from your email
+
+With the email account set up: **Settings > Email > On the way**: turn on **Watch for games you bought: On the way**, and add the stores I buy from to **Purchase emails from** (eBay and Mercari to start; `gamefly.com` and `superraregames.com` for GameFly and Super Rare Games, or **Find my stores in my email**). What I buy shows on **Acorns > On the way** until it comes (**It's here** adds it). A lot, a pack or a bundle has **Split it into its games** (its price shared evenly, or typed per game). A purchase in another currency gets its price paid in mine at the order day's rate (**Turn other currencies into mine**, on; free, no account).
+
 ### The phone's camera, and away from home
 
 At home, `http://<server>:7575` works on a phone, and Store Mode (Squirrelcade's page for a store) works by typing titles. The barcode camera needs an **HTTPS** address (starting with https://, with a certificate), even at home; away from home, the phone also needs a safe way in. Pick one:

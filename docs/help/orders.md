@@ -52,6 +52,12 @@ Each game bought goes on **Acorns > On the way** with the store, the day, the pr
 - becomes a copy with **It's here**: in the condition a game just bought gets (Settings > Collection), with the price paid and the day of the order filled in, and its window opens on the whole screen for the rest (photos, notes, where it's kept), as Add it does. Two of the same in an order arrive one at a time.
 - leaves the list with **Not coming** (a cancelled order, or not a game).
 
+**Several games, one price.** A lot ("Xbox One Game Lot - Avatar, Aliens, Deus Ex"), a pack (Super Rare Games' packs of three) or a bundle comes in one line with one price. **Split it into its games** lists the games its title names, each matched on its console when Squirrelcade can, and shares the price evenly ("divide it by four"); type a game's own price and the others share what's left. Add or remove games, then **Split it**: each becomes a game on the way of its own, with its share of the price, tax and shipping, and arrives on its own. A line Squirrelcade didn't take for several games has **It's several games** for the same.
+
+**Other currencies.** A purchase in another currency (a UK store's pounds) shows its price paid in your currency (Settings > General), at the rate of the order's day (the European Central Bank's rates, from Frankfurter: free, no account), with the store's own price beside it. **Turn other currencies into mine** (Settings > Email > On the way, on) turns that off; then, or while the day's rate can't be had, the price paid is left for you to type.
+
+GameFly's and Super Rare Games' order emails are read like the others: add `gamefly.com` and `superraregames.com` to **Purchase emails from**.
+
 **Check my email now** looks at once. **Tell me when something is on the way** sends a message (Settings > Notifications) when a look finds a new purchase; it's off to start with.
 
 The first look goes back 14 days (**The first look goes back**); each look after starts where the one before ended, and each email is read once.

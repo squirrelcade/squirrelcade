@@ -14,6 +14,9 @@ import {
   orderTextForModel,
   purchaseSubject,
   readOrderEmail,
+  lotGames,
+  severalGames,
+  splitEvenly,
   NOT_PURCHASE_SUBJECTS_DEFAULT,
   PURCHASE_SUBJECTS_DEFAULT,
   type FoundOrder,
@@ -453,5 +456,37 @@ describe('Find my stores', () => {
       { domain: 'gamestop.com', name: 'GameStop', emails: 1, lastSubject: 'Thank you for your order!', lastDate: at(3), known: true },
       { domain: 'pizza.example', name: 'Pizza Place', emails: 2, lastSubject: 'Your receipt from Pizza Place', lastDate: at(5), known: false },
     ]);
+  });
+});
+
+describe('several games, one price (D173)', () => {
+  const day = '2026-02-13';
+  it("reads GameFly's items, each under Item: with its Price: below", () => {
+    const text = `ORDER CONFIRMATION\n\nThanks for shopping with GameFly! Your purchase details are listed below.\n\nOrder Number: 11112222\nOrder Submitted: 2/13/2026\n\n  Shipping Method: Standard $4.96\n\n  Order Summary\n\n    Item: Star Squirrel Saga (PS5)\n    Price: $29.99\n    Tracking Number: N/A\n\n    Item: Acorn Detective: Death on the River (Switch)\n    Price: $24.99\n    Tracking Number: N/A\n\nSubtotal: $54.98\nTax: $3.36\nShipping: $4.96\nOrder Total: $63.30\n`;
+    const order = readOrderEmail({ subject: 'Your GameFly Order Has Been Confirmed', from: 'support@gamefly.com', fromName: 'GameFly', day, text });
+    expect(order?.items).toEqual([
+      { title: 'Star Squirrel Saga (PS5)', priceCents: 2999, quantity: 1 },
+      { title: 'Acorn Detective: Death on the River (Switch)', priceCents: 2499, quantity: 1 },
+    ]);
+    expect(order).toMatchObject({ orderNumber: '11112222', taxCents: 336, shippingCents: 496, currency: 'USD' });
+    expect(purchaseSubject('Your GameFly Order Has Been Confirmed', PURCHASE_SUBJECTS_DEFAULT, NOT_PURCHASE_SUBJECTS_DEFAULT)).toBe(true);
+    expect(purchaseSubject('GameFly Order Status Update', PURCHASE_SUBJECTS_DEFAULT, NOT_PURCHASE_SUBJECTS_DEFAULT)).toBe(false);
+  });
+
+  it("reads a Super Rare Games pack whose title wraps onto a second line, in pounds", () => {
+    const text = `Thank you for your purchase!\n\nSuper Rare Games\n\nOrder #400001\n\nOrder summary\n-------------\n\n[CLUB] PB#50: Nut Hunter, Game #170, Game\n#171 (Switch) - Exclusive Slipcover! × 1\n\n£93.00\n\nSubtotal\n\n£93.00\n\nShipping\n\n£14.49\n\nDuties\n\n£9.30\n\nTaxes\n\n£0.00\n\nTotal\n\n£116.79 GBP\n`;
+    const order = readOrderEmail({ subject: 'Order #400001 confirmed', from: 'help@superraregames.com', fromName: 'Super Rare Games', day, text });
+    expect(order?.items).toEqual([{ title: '[CLUB] PB#50: Nut Hunter, Game #170, Game #171 (Switch) - Exclusive Slipcover!', priceCents: 9300, quantity: 1 }]);
+    expect(order).toMatchObject({ currency: 'GBP', shippingCents: 1449 });
+    expect(severalGames(order!.items[0]!.title)).toBe(true);
+  });
+
+  it("guesses a lot's games from its listing, and shares a price out to the cent", () => {
+    expect(lotGames('Xbox One / Series X Game Lot - Avatar, Aliens, Deus Ex, Rocket League')).toEqual(['Avatar', 'Aliens', 'Deus Ex', 'Rocket League']);
+    expect(lotGames('Okami HD (Switch)')).toEqual([]);
+    expect(severalGames('Xbox One Game Lot of 17')).toBe(true);
+    expect(severalGames('Mafia III Deluxe Edition (Xbox One)')).toBe(false);
+    expect(splitEvenly(1001, 3)).toEqual([334, 334, 333]);
+    expect(splitEvenly(9300, 3).reduce((a, b) => a + b, 0)).toBe(9300);
   });
 });

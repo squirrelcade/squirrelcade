@@ -66,10 +66,10 @@ const SHOP_TWO = orderMail('shop1@shop', 20, 'orders@limitedrungames.com', 'Orde
   ['Total', '$73.80'],
 ]);
 
-async function owner(mails: FoundMail[]) {
+async function owner(mails: FoundMail[], extra: Parameters<typeof testApp>[0] = {}) {
   const box = gmailBox(mails);
   const { transports, sent } = fakeTransports();
-  g = await testApp({ mailbox: box.open, transports });
+  g = await testApp({ mailbox: box.open, transports, ...extra });
   const cookies = await setUp(g);
   seedCatalogs(g, { owned: [], catalogs: { 'playstation-2': ['Okami', 'Kingdom Hearts'], 'playstation-3': ['Journey', 'Okami HD'], 'game-boy-color': ['Shantae'] } });
   g.settings.update({ 'notifications.emailProvider': 'gmail', 'notifications.smtpUser': 'me@example.com', 'notifications.smtpPassword': 'app password' });
@@ -263,5 +263,72 @@ describe('On the way', () => {
     ]);
     // No email was fetched whole.
     expect(box.searches).toHaveLength(0);
+  });
+});
+
+describe('Several games, one price (D173)', () => {
+  it("splits a lot into its games, sharing its price evenly unless one's is given, and turns pounds into dollars at the order day's rate", async () => {
+    const lot = orderMail('mercari9@mercari', 1, 'no-reply@mercari.com', 'You purchased: PS2 Game Lot - Okami, Kingdom Hearts, Shadow Hearts', [['Item price', '$30.01'], ['Sales tax', '$3.00'], ['Total', '$33.01']]);
+    const pack = orderMail('srg1@srg', 2, 'help@superraregames.com', 'Order #400001 confirmed', [['Journey Pack: Journey, Okami HD (PS3)', '£40.00'], ['Subtotal', '£40.00'], ['Shipping', '£10.00'], ['Total', '£50.00 GBP']]);
+    const asked: string[] = [];
+    const { cookies } = await owner([lot, pack], {
+      ratesFetch: async (url) => {
+        asked.push(url);
+        return Response.json({ amount: 1, base: 'GBP', rates: { USD: 1.25 } });
+      },
+    });
+    g!.settings.update({ 'orders.watch': true, 'orders.watchSenders': ['ebay.com', 'mercari.com', 'superraregames.com'] });
+    expect(await g!.orders.watch()).toBe('2 new on the way (2 purchase emails read).');
+    const list = async () => (await g!.app.inject({ url: '/api/v1/coming', cookies })).json().items as Record<string, unknown>[];
+    const items = await list();
+    const mercariLot = items.find((i) => i.store === 'Mercari')!;
+    const srgPack = items.find((i) => i.store === 'Super Rare Games')!;
+    // Both are several games; the pack's price is in pounds, its dollars at the day's rate (asked once).
+    expect(mercariLot).toMatchObject({ several: true, title: null, paidCents: 3001 });
+    expect(srgPack).toMatchObject({ several: true, currency: 'GBP', paidInCurrencyCents: 4000, paidCents: 5000 });
+    expect(asked).toHaveLength(1);
+    expect(asked[0]).toMatch(/frankfurter\.app\/\d{4}-\d{2}-\d{2}\?from=GBP&to=USD$/);
+
+    // The lot's games, guessed from its listing, each matched on the console it names.
+    const guesses = (await g!.app.inject({ url: `/api/v1/coming/${mercariLot.id}/games`, cookies })).json();
+    expect(guesses.games.map((x: { name: string; title: string | null }) => [x.name, x.title])).toEqual([
+      ['Okami', 'Okami'],
+      ['Kingdom Hearts', 'Kingdom Hearts'],
+      ['Shadow Hearts', null],
+    ]);
+    // Split: one price given, the rest shared to the cent; the tax shared evenly; the lot gone from the list.
+    const split = await g!.app.inject({
+      method: 'POST',
+      url: `/api/v1/coming/${mercariLot.id}/split`,
+      cookies,
+      payload: { games: [{ platformKey: 'playstation-2', title: 'Okami', cents: 2000 }, { platformKey: 'playstation-2', title: 'Kingdom Hearts' }, { platformKey: null, title: 'Shadow Hearts' }] },
+    });
+    expect(split.statusCode).toBe(201);
+    const games = split.json().items as { title: string | null; listingTitle: string; itemCents: number; taxCents: number; lotOf: number }[];
+    expect(games.map((x) => [x.listingTitle, x.title, x.itemCents, x.taxCents, x.lotOf])).toEqual([
+      ['Okami', 'Okami', 2000, 100, mercariLot.id],
+      ['Kingdom Hearts', 'Kingdom Hearts', 501, 100, mercariLot.id],
+      ['Shadow Hearts', null, 500, 100, mercariLot.id],
+    ]);
+    const after = await list();
+    expect(after.some((i) => i.id === mercariLot.id)).toBe(false);
+    expect(after.filter((i) => i.lotOf === mercariLot.id)).toHaveLength(3);
+    // Each arrives on its own, with its share; the email is never read into the lot again.
+    const okami = games[0] as unknown as { id: number };
+    const arrived = (await g!.app.inject({ method: 'POST', url: `/api/v1/coming/${okami.id}/arrived`, cookies })).json();
+    expect(g!.collection.ownCopies().find((c) => c.id === arrived.id)).toMatchObject({ costCents: 2000 });
+    expect(await g!.orders.watch()).toMatch(/^Nothing new on the way/);
+    // A split needs two games; a split lot can't be split again.
+    expect((await g!.app.inject({ method: 'POST', url: `/api/v1/coming/${srgPack.id}/split`, cookies, payload: { games: [{ title: 'Journey' }] } })).statusCode).toBe(400);
+    expect((await g!.app.inject({ method: 'POST', url: `/api/v1/coming/${mercariLot.id}/split`, cookies, payload: { games: [{ title: 'A' }, { title: 'B' }] } })).statusCode).toBe(400);
+    // The pack split in two: its dollars come from its pounds.
+    const halves = (await g!.app.inject({ method: 'POST', url: `/api/v1/coming/${srgPack.id}/split`, cookies, payload: { games: [{ platformKey: 'playstation-3', title: 'Journey' }, { platformKey: 'playstation-3', title: 'Okami HD' }] } })).json().items as { paidCents: number; paidInCurrencyCents: number }[];
+    expect(halves.map((x) => [x.paidInCurrencyCents, x.paidCents])).toEqual([
+      [2000, 2500],
+      [2000, 2500],
+    ]);
+    // Without the rates (the setting off), a price in another currency is left for the owner to type.
+    g!.settings.update({ 'orders.exchangeRates': false });
+    expect(((await list()).find((i) => i.listingTitle === 'Journey') as { paidCents: number | null }).paidCents).toBeNull();
   });
 });

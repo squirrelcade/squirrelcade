@@ -1,4 +1,4 @@
-import { blob, index, integer, sqliteTable, text, uniqueIndex } from 'drizzle-orm/sqlite-core';
+import { blob, index, integer, real, sqliteTable, text, uniqueIndex } from 'drizzle-orm/sqlite-core';
 
 /** One row per setting that differs from its default (see packages/core/src/settings.ts). */
 export const settings = sqliteTable('settings', {
@@ -1214,12 +1214,16 @@ export const comingItems = sqliteTable(
     taxCents: integer('tax_cents'),
     shippingCents: integer('shipping_cents'),
     discountCents: integer('discount_cents'),
+    /** Its currency's value in the home currency on the order's day (D173), when it's another currency; null until known. */
+    rate: real('rate'),
+    /** The lot it was split from ("Several games, one price", D173): the lot's row, now status split. */
+    lotOf: integer('lot_of'),
     /** Who read the email: ai or plain. */
     readBy: text('read_by').notNull(),
     /** The game it is, when Squirrelcade was sure or the owner said. */
     platformKey: text('platform_key'),
     title: text('title'),
-    /** waiting, arrived (a copy now: copyId) or dismissed. */
+    /** waiting, arrived (a copy now: copyId), dismissed, or split (into games of its own, D173). */
     status: text('status').notNull().default('waiting'),
     copyId: integer('copy_id'),
     createdAt: text('created_at').notNull(),

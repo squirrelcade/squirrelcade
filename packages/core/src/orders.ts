@@ -58,7 +58,7 @@ export const ORDER_STORES: readonly { name: string; domains: readonly string[] }
 /** eBay's and Mercari's purchase emails, which On the way reads unless Settings > Email says otherwise. */
 export const WATCH_SENDERS_DEFAULT = ['ebay.com', 'mercari.com'] as const;
 /** Words in a purchase email's subject (eBay's "Order confirmed: ...", Mercari's purchase emails, a store's receipt). */
-export const PURCHASE_SUBJECTS_DEFAULT = ['order confirmed', 'order confirmation', 'purchased', 'purchase', 'you bought', 'you won', 'thanks for your order', 'thank you for your order', 'order received', 'order placed', 'receipt'] as const;
+export const PURCHASE_SUBJECTS_DEFAULT = ['order confirmed', 'order confirmation', 'purchased', 'purchase', 'you bought', 'you won', 'thanks for your order', 'thank you for your order', 'order received', 'order placed', 'order has been confirmed', 'receipt'] as const;
 /** Words in the subject of an email about an order that isn't the purchase (shipping, delivery, a refund) or about a sale. */
 export const NOT_PURCHASE_SUBJECTS_DEFAULT = ['shipped', 'on its way', 'out for delivery', 'delivered', 'arriving', 'tracking', 'cancel', 'refund', 'return', 'offer', 'feedback', 'review', 'rate your', 'sold', 'made the sale', 'price drop', 'watch', 'bid', 'listing'] as const;
 /** The words that, with a game's title, find its order or receipt in a mailbox. */
@@ -431,7 +431,22 @@ export function readOrderEmail(mail: OrderEmail, wanted?: string): FoundOrder | 
     }
     return null;
   };
-  const titleOf = (line: string) => line.replace(AMOUNT, ' ').replace(QTY_WORDS, ' ').replace(TIMES, ' ').replace(/\t+/g, ' ').replace(/\s+/g, ' ').trim();
+  // "Item: Okami (PS2)" (GameFly's): the label isn't the title's.
+  const titleOf = (line: string) =>
+    line.replace(AMOUNT, ' ').replace(QTY_WORDS, ' ').replace(TIMES, ' ').replace(/\t+/g, ' ').replace(/\s+/g, ' ').trim().replace(/^(?:item|product|title|description)\s*:\s*/i, '');
+  /**
+   * A title wrapped onto the next line ("[CLUB] PB#49: The Golden Idol Saga, Game #162, Game" then "#163 (Switch)"): the
+   * lines above line j that it continues, joined to it (two at most).
+   */
+  const unwrapped = (j: number): string => {
+    let title = titleOf(parsed[j]!.line);
+    for (let k = j - 1; k >= Math.max(0, j - 2); k--) {
+      const above = parsed[k]!;
+      if (above.amounts.length > 0 || labelOf(above.line) || aside(above.line) || !/[\p{L}\p{N}]$/u.test(above.line) || !/^[#(\p{Ll}\p{N}]/u.test(title)) break;
+      title = `${titleOf(above.line)} ${title}`;
+    }
+    return title;
+  };
   /**
    * The title of the item priced on line i, and its line: the words before the price, else a line above it, past its
    * count ("QTY: 1"), its console or edition ("Switch"), a note ("Estimated ship date...") and a "Price:" label.
@@ -439,13 +454,14 @@ export function readOrderEmail(mail: OrderEmail, wanted?: string): FoundOrder | 
   const titleFor = (i: number, skip: Set<number>): { title: string; at: number } | null => {
     const { line, amounts } = parsed[i]!;
     const before = titleOf(line.slice(0, amounts[0]!.index));
-    if (/[a-z]{3}/i.test(before)) return { title: before, at: i };
+    // "Price: $29.99" under its item: the label alone isn't a title.
+    if (/[a-z]{3}/i.test(before) && labelOf(before) !== 'price') return { title: before, at: i };
     for (let j = i - 1; j >= Math.max(0, i - 4); j--) {
       const p = parsed[j]!;
       if (p.amounts.length > 0 || skip.has(j)) return null;
       const label = labelOf(p.line);
       if (label === 'price' || (!label && aside(p.line))) continue;
-      return label ? null : { title: titleOf(p.line), at: j };
+      return label ? null : { title: unwrapped(j), at: j };
     }
     return null;
   };
@@ -797,4 +813,30 @@ export function storesSeen(headers: readonly MailHeader[], yes: readonly string[
       return { ...s, name: store?.name ?? usual ?? s.domain, known: Boolean(store) };
     })
     .sort((a, b) => Number(b.known) - Number(a.known) || b.emails - a.emails || a.domain.localeCompare(b.domain));
+}
+
+/** A listing that's several games (a lot, a bundle, a pack of three), for "Several games, one price" (D173). */
+export function severalGames(listing: string): boolean {
+  return /\b(?:lot|bundle|bundled|games pack|pack of \d+)\b|\b\d+\s+games\b/i.test(listing) || (listing.match(/\bgame\s*#\s*\d+/gi) ?? []).length >= 2 || lotGames(listing).length >= 2;
+}
+
+/**
+ * The games a lot's listing names, as a start for the owner to fix (D173): what follows its last " - " or ": " (where
+ * sellers list them: "Xbox One Game Lot - Avatar, Aliens, Deus Ex"), split at commas, slashes and "and", without the
+ * console in brackets or a count. Nothing when it names fewer than two.
+ */
+export function lotGames(listing: string): string[] {
+  const named = listing.split(/\s[-–—]\s|:\s/).pop() ?? '';
+  const games = named
+    .split(/\s*(?:,|\/|&|\+|\band\b)\s*/i)
+    .map((g) => g.replace(/\([^)]*\)|\[[^\]]*\]/g, ' ').replace(/\b(?:lot|bundle|of \d+|\d+ games)\b/gi, ' ').replace(/\s+/g, ' ').trim())
+    .filter((g) => /\p{L}{2}/u.test(g));
+  return games.length >= 2 ? games.slice(0, 40) : [];
+}
+
+/** A price shared evenly by n games, to the cent: the first ones get the cents left over (1001 by 3: 334, 334, 333). */
+export function splitEvenly(cents: number, n: number): number[] {
+  if (n <= 0) return [];
+  const each = Math.floor(cents / n);
+  return Array.from({ length: n }, (_, i) => each + (i < cents - each * n ? 1 : 0));
 }

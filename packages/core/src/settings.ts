@@ -984,6 +984,15 @@ export const settingDefinitions = {
     default: false,
     shownWhen: 'orders.watch',
   }),
+  'orders.exchangeRates': bool({
+    page: 'email',
+    section: 'On the way',
+    label: 'Turn other currencies into mine',
+    description:
+      "A purchase in another currency (a UK store's pounds) gets its price paid in your currency (Settings › General), at the rate of the order's day: the European Central Bank's, from Frankfurter (free, no account). Off, or while the rate can't be had, its price paid stays empty for you to type.",
+    default: true,
+    shownWhen: 'orders.watch',
+  }),
   'orders.watchSubjects': list({
     page: 'email',
     section: 'On the way',

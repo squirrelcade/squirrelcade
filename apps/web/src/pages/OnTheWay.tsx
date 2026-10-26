@@ -1,13 +1,13 @@
-import { Alert, Anchor, Autocomplete, Badge, Button, Card, Group, Loader, Stack, Text } from '@mantine/core';
+import { Alert, Anchor, Autocomplete, Badge, Button, Card, CloseButton, Group, Loader, Modal, NumberInput, Select, Stack, Text, TextInput } from '@mantine/core';
 import { useDebouncedValue } from '@mantine/hooks';
-import { COMPLETENESS_LABELS, type Completeness } from '@squirrelcade/core';
-import { IconExternalLink, IconMailSearch, IconPackage } from '@tabler/icons-react';
+import { KNOWN_PLATFORMS } from '@squirrelcade/core';
+import { IconExternalLink, IconMailSearch, IconPackage, IconPlus } from '@tabler/icons-react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Link } from 'react-router';
 import { api } from '../api';
 import { PageHeader } from '../components';
-import { CopyDetailsModal, TOUCHED, type CopyRef } from '../CopyDetails';
+import { addedCopyRef, CopyDetailsModal, TOUCHED, type CopyRef } from '../CopyDetails';
 import { date, money, timeAgo } from '../format';
 import { GameTitle } from '../GameDrawer';
 import { notifyError, notifySuccess, useSetting } from '../hooks';
@@ -27,14 +27,20 @@ export interface ComingItem {
   taxCents: number | null;
   shippingCents: number | null;
   discountCents: number | null;
+  /** In your currency (another currency's at the order day's rate, D173), or null while that's unknown. */
   paidCents: number | null;
+  /** In the email's own currency, when it's another. */
+  paidInCurrencyCents: number | null;
+  /** Several games for one price: a lot, a pack, a bundle (D173). */
+  several: boolean;
+  lotOf: number | null;
   readBy: string;
   platformKey: string | null;
   platform: string | null;
   title: string | null;
   entryId: number | null;
   maybe: { platformKey: string; platform: string; title: string }[];
-  status: 'waiting' | 'arrived' | 'dismissed';
+  status: 'waiting' | 'arrived' | 'dismissed' | 'split';
   createdAt: string;
 }
 
@@ -46,50 +52,6 @@ interface OrdersStatus {
   reader: 'ai' | 'plain';
   lastWatch: { at: string; ok: boolean; message: string } | null;
   waiting: number;
-}
-
-/** The copy's fields its window needs (GET /api/v1/game), as Store Mode's Add it fetches them. */
-interface GameCopy {
-  id: number;
-  copyKey: string;
-  completeness: string;
-  costCents: number | null;
-  datePurchased: string | null;
-  notes: string;
-  slots: string[];
-  estimatedCents: number | null;
-  gradingCompany: string;
-  gradingCertId: string;
-}
-
-/** A copy just added, as its window takes it (D153): fetched from the game's copies, or made from what Add it gave. */
-export async function addedCopyRef(added: { id: number; key: string; platformKey: string; platform: string; title: string }, fallbackCompleteness: string): Promise<CopyRef> {
-  let found: GameCopy | undefined;
-  try {
-    const view = await api<{ copies: GameCopy[] }>(`/game?platform=${encodeURIComponent(added.platformKey)}&title=${encodeURIComponent(added.title)}`);
-    found = view.copies.find((c) => c.id === added.id);
-  } catch {
-    // Its window opens anyway, with what It's here gave it.
-  }
-  const completeness = found?.completeness ?? fallbackCompleteness;
-  return {
-    copyKey: found?.copyKey ?? added.key,
-    title: added.title,
-    platform: added.platform,
-    condition: COMPLETENESS_LABELS[completeness as Completeness] ?? completeness,
-    copy: {
-      id: added.id,
-      completeness,
-      costCents: found?.costCents ?? null,
-      datePurchased: found?.datePurchased ?? null,
-      notes: found?.notes ?? '',
-      slots: found?.slots ?? [],
-      estimatedCents: found?.estimatedCents ?? null,
-      platformKey: added.platformKey,
-      gradingCompany: found?.gradingCompany ?? '',
-      gradingCertId: found?.gradingCertId ?? '',
-    },
-  };
 }
 
 /** Says which game a listing is: a search of the games Squirrelcade knows, or one of the games it may be. */
@@ -135,6 +97,105 @@ function WhichGame({ item, onPick }: { item: ComingItem; onPick: (game: { platfo
   );
 }
 
+/** One game of a lot, in its split: its title, its console, and its own price (empty: a share of the rest). */
+interface LotGame {
+  title: string;
+  platformKey: string | null;
+  price: number | string;
+}
+
+/** Shares a price to the cent, as the server does (the first ones get the cents left over). */
+const evenly = (cents: number, n: number) => Array.from({ length: n }, (_, i) => Math.floor(cents / n) + (i < cents - Math.floor(cents / n) * n ? 1 : 0));
+
+/**
+ * Several games, one price (D173): a lot, a pack or a bundle made a game of its own for each, the games its listing
+ * names to start with. A price left empty is a share of what's left of the lot's (evenly, the owner's way: "divide it
+ * by four"); each one can be typed instead.
+ */
+function SplitLot({ item, onClose, onDone }: { item: ComingItem | null; onClose: () => void; onDone: () => void }) {
+  const currency = useSetting('general.currency', 'USD');
+  const guesses = useQuery({
+    queryKey: ['coming', 'games', item?.id],
+    queryFn: () => api<{ games: { name: string; platformKey: string | null; title: string | null }[]; paidCents: number | null }>(`/coming/${item!.id}/games`),
+    enabled: item !== null,
+  });
+  const [games, setGames] = useState<LotGame[]>([]);
+  useEffect(() => {
+    if (!guesses.data) return;
+    const found = guesses.data.games.map((g) => ({ title: g.title ?? g.name, platformKey: g.platformKey, price: '' as number | string }));
+    setGames(found.length >= 2 ? found : [...found, ...Array.from({ length: 2 - found.length }, () => ({ title: '', platformKey: null, price: '' as number | string }))]);
+  }, [guesses.data]);
+  const lotCents = guesses.data?.paidCents ?? null;
+  const typed = games.reduce((sum, g) => sum + (g.price === '' ? 0 : Math.round(Number(g.price) * 100)), 0);
+  const open = games.filter((g) => g.price === '').length;
+  const shares = lotCents === null ? [] : evenly(Math.max(0, lotCents - typed), open);
+  const consoles = [...KNOWN_PLATFORMS].sort((a, b) => a.name.localeCompare(b.name)).map((p) => ({ value: p.key, label: p.name }));
+  const set = (k: number, change: Partial<LotGame>) => setGames((all) => all.map((g, i) => (i === k ? { ...g, ...change } : g)));
+  const split = useMutation({
+    mutationFn: () =>
+      api(`/coming/${item!.id}/split`, {
+        method: 'POST',
+        // The server shares the price in the email's own currency: a typed price is in yours, so it's sent only then.
+        json: { games: games.filter((g) => g.title.trim()).map((g) => ({ platformKey: g.platformKey, title: g.title.trim(), cents: g.price === '' || item!.paidInCurrencyCents !== null ? null : Math.round(Number(g.price) * 100) })) },
+      }),
+    onSuccess: () => {
+      notifySuccess(`${games.filter((g) => g.title.trim()).length} games on the way, each with its share.`, 'Split');
+      onDone();
+    },
+    onError: (err) => notifyError(err),
+  });
+  let shared = 0;
+  return (
+    <Modal opened={item !== null} onClose={onClose} title={item ? `Several games, one price · ${item.listingTitle}` : ''} size="lg">
+      {!guesses.data ? (
+        <Loader />
+      ) : (
+        <Stack gap="xs">
+          <Text size="sm" c="dimmed">
+            Each game gets its own line on the way, and arrives on its own.{' '}
+            {lotCents !== null ? `The ${money(lotCents, currency)} is shared evenly; type a game's price to give it its own, and the rest share what's left.` : 'The email gave no price.'}
+          </Text>
+          {games.map((g, k) => {
+            const share = g.price === '' && lotCents !== null ? shares[shared++] : undefined;
+            return (
+              <Group key={k} gap="xs" align="flex-end" wrap="nowrap">
+                <TextInput label={k === 0 ? 'Game' : undefined} aria-label={`Game ${k + 1}`} value={g.title} onChange={(e) => set(k, { title: e.currentTarget.value })} style={{ flex: 2 }} maxLength={200} />
+                <Select label={k === 0 ? 'Console' : undefined} aria-label={`Console of game ${k + 1}`} data={consoles} value={g.platformKey} onChange={(v) => set(k, { platformKey: v })} searchable style={{ flex: 1.3 }} placeholder="Which?" />
+                <NumberInput
+                  label={k === 0 ? `Price (${currency})` : undefined}
+                  aria-label={`Price of game ${k + 1}`}
+                  value={g.price}
+                  onChange={(v) => set(k, { price: v })}
+                  min={0}
+                  decimalScale={2}
+                  allowNegative={false}
+                  placeholder={share !== undefined ? (share / 100).toFixed(2) : ''}
+                  disabled={item?.paidInCurrencyCents != null}
+                  w={110}
+                />
+                <CloseButton aria-label={`Remove game ${k + 1}`} onClick={() => setGames((all) => all.filter((_, i) => i !== k))} disabled={games.length <= 2} mb={6} />
+              </Group>
+            );
+          })}
+          {item?.paidInCurrencyCents != null && (
+            <Text size="xs" c="dimmed">
+              Bought in {item.currency}: shared evenly in it, then each game's share is turned into {currency} at the order day's rate.
+            </Text>
+          )}
+          <Group justify="space-between">
+            <Button variant="subtle" leftSection={<IconPlus size={14} />} onClick={() => setGames((all) => [...all, { title: '', platformKey: all.at(-1)?.platformKey ?? null, price: '' }])} disabled={games.length >= 40}>
+              Another game
+            </Button>
+            <Button onClick={() => split.mutate()} loading={split.isPending} disabled={games.filter((g) => g.title.trim()).length < 2}>
+              Split it
+            </Button>
+          </Group>
+        </Stack>
+      )}
+    </Modal>
+  );
+}
+
 /**
  * On the way (D156): games bought that haven't arrived, from the purchase emails Squirrelcade watches for (eBay and
  * Mercari, and the senders Settings > Email lists). They're not in the collection, not counted, and never sent to
@@ -151,6 +212,7 @@ export function OnTheWayPage() {
   const list = useQuery({ queryKey: ['coming'], queryFn: () => api<{ on: boolean; items: ComingItem[] }>('/coming'), refetchInterval: 30_000 });
   const status = useQuery({ queryKey: ['orders', 'status'], queryFn: () => api<OrdersStatus>('/orders'), refetchInterval: 30_000 });
   const [editing, setEditing] = useState<CopyRef | null>(null);
+  const [splitting, setSplitting] = useState<ComingItem | null>(null);
   const refresh = () => Promise.all(['coming', 'orders', ...TOUCHED].map((k) => queryClient.invalidateQueries({ queryKey: [k] })));
   const check = useMutation({
     mutationFn: () => api('/coming/check', { method: 'POST' }),
@@ -173,7 +235,7 @@ export function OnTheWayPage() {
   const arrived = useMutation({
     mutationFn: async (item: ComingItem) => {
       const added = await api<{ id: number; key: string; platformKey: string; platform: string; title: string }>(`/coming/${item.id}/arrived`, { method: 'POST' });
-      return addedCopyRef(added, boughtCondition);
+      return addedCopyRef(added, added, boughtCondition);
     },
     onSuccess: async (ref) => {
       await refresh();
@@ -249,7 +311,8 @@ export function OnTheWayPage() {
                       <Text size="sm">
                         {item.store}
                         {item.orderDate ? `, ${date(item.orderDate, dateFormat)}` : ''}
-                        {item.paidCents !== null ? ` · ${money(item.paidCents, cur)}` : ''}
+                        {item.paidCents !== null ? ` · ${money(item.paidCents, currency)}` : ''}
+                        {item.paidInCurrencyCents !== null ? ` (${money(item.paidInCurrencyCents, cur)}${item.paidCents === null ? ', not turned into yours yet' : ''})` : ''}
                         {item.quantity > 1 ? ` · ${item.quantity} of them` : ''}
                         {item.link && (
                           <>
@@ -273,7 +336,20 @@ export function OnTheWayPage() {
                         {known ? ` · listed as “${item.listingTitle}”` : ''}
                         {item.orderNumber ? ` · order ${item.orderNumber}` : ''}
                       </Text>
+                      {item.several && (
+                        <Group gap={6}>
+                          <Text size="xs">Several games for one price?</Text>
+                          <Button size="compact-xs" variant="light" onClick={() => setSplitting(item)}>
+                            Split it into its games
+                          </Button>
+                        </Group>
+                      )}
                       {!known && <WhichGame item={item} onPick={(g) => pick.mutate({ id: item.id, ...g })} />}
+                      {!known && !item.several && item.lotOf === null && (
+                        <Anchor size="xs" c="dimmed" onClick={() => setSplitting(item)}>
+                          It's several games
+                        </Anchor>
+                      )}
                       {known && (
                         <Anchor size="xs" c="dimmed" onClick={() => pick.mutate({ id: item.id, platformKey: '', title: '' })}>
                           Not this game?
@@ -301,6 +377,14 @@ export function OnTheWayPage() {
         </Stack>
       )}
       <CopyDetailsModal copy={editing} added onClose={() => setEditing(null)} />
+      <SplitLot
+        item={splitting}
+        onClose={() => setSplitting(null)}
+        onDone={() => {
+          setSplitting(null);
+          void refresh();
+        }}
+      />
     </>
   );
 }

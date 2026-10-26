@@ -123,6 +123,8 @@ export interface BuildOptions {
   steamFetch?: FetchLike;
   /** Replaces the network for IsThereAnyDeal (tests use a fake). */
   itadFetch?: FetchLike;
+  /** Exchange rates for purchases in another currency (Frankfurter's, D173). */
+  ratesFetch?: FetchLike;
   /** The vision model's HTTP calls (Check a shelf), replaced in tests. */
   visionFetch?: FetchLike;
   /** Replaces the network for GG.deals (tests use a fake). */
@@ -516,7 +518,7 @@ export async function buildApp(options: BuildOptions = {}): Promise<Squirrelcade
   // Settings > Email's one test: sending from your account, and reading its mailbox.
   app.post('/api/v1/email/test', async () => ({ send: await notifications.testEmail(), read: await mail.test() }));
   // Prices from your order emails and On the way (D155, D156): the same mailbox, read-only, with the AI model if set up.
-  const orders = new OrderService({ db, settings, mail, collection, lookup, helpers, vision, log, notifications, open: options.mailbox ?? imapMailbox });
+  const orders = new OrderService({ db, settings, mail, collection, lookup, helpers, vision, log, notifications, open: options.mailbox ?? imapMailbox, ratesFetch: options.ratesFetch });
   registerOrderRoutes(app, orders, tasks);
   lookup.setComing(() => orders.index());
   const deals = new DealsService(settings, mail, catalogs, wishlist, igdb, notifications);

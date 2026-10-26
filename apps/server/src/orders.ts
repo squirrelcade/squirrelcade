@@ -5,6 +5,7 @@ import {
   ITEM_MATCH,
   itemCost,
   KNOWN_PLATFORMS,
+  lotGames,
   normalizeTitle,
   orderItemFor,
   orderItemScore,
@@ -17,6 +18,8 @@ import {
   productPlatform,
   purchaseSubject,
   readOrderEmail,
+  severalGames,
+  splitEvenly,
   storesSeen,
   type FoundOrder,
   type OrderEmail,
@@ -30,6 +33,7 @@ import { simpleParser } from 'mailparser';
 import type { Logger } from 'pino';
 import { CopyError, type CollectionService } from './collection.js';
 import type { Db } from './db/index.js';
+import type { FetchLike } from './igdb.js';
 import { appState, comingItems, copies, platforms } from './db/schema.js';
 import { HelperError, type HelperQueue } from './helper.js';
 import type { LookupService } from './lookup.js';
@@ -141,7 +145,14 @@ export interface ComingView {
   taxCents: number | null;
   shippingCents: number | null;
   discountCents: number | null;
+  /** In the home currency (D173): converted at the order day's rate, or null while that's unknown. */
   paidCents: number | null;
+  /** Its value in another currency, as the email gave it, when it's in one. */
+  paidInCurrencyCents: number | null;
+  /** A lot, a pack or a bundle: several games for one price (D173), to split. */
+  several: boolean;
+  /** The lot it was split from. */
+  lotOf: number | null;
   readBy: string;
   /** The game it is, when Squirrelcade is sure or the owner said; else null, with the games it may be. */
   platformKey: string | null;
@@ -149,7 +160,7 @@ export interface ComingView {
   title: string | null;
   entryId: number | null;
   maybe: { platformKey: string; platform: string; title: string }[];
-  status: 'waiting' | 'arrived' | 'dismissed';
+  status: 'waiting' | 'arrived' | 'dismissed' | 'split';
   createdAt: string;
 }
 
@@ -178,8 +189,43 @@ export class OrderService {
       log: Logger;
       notifications: Pick<NotificationService, 'notice'> | null;
       open: MailboxOpener;
+      /** For the exchange rates (Frankfurter's); the network's fetch unless a test gives one. */
+      ratesFetch?: FetchLike;
     },
   ) {}
+
+  /** Exchange rates kept, by "day|from|to" (a past day's rate doesn't change). */
+  private readonly rates = new Map<string, number>();
+
+  /** A currency's value in another on a day (D173), from Frankfurter (the European Central Bank's rates); null when it can't be had. */
+  private async rateOf(from: string, to: string, day: string): Promise<number | null> {
+    if (from === to) return 1;
+    const key = `${day}|${from}|${to}`;
+    const kept = this.rates.get(key);
+    if (kept !== undefined) return kept;
+    try {
+      const res = await (this.d.ratesFetch ?? fetch)(`https://api.frankfurter.app/${day}?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}`, { signal: AbortSignal.timeout(10_000) });
+      if (!res.ok) return null;
+      const rate = ((await res.json()) as { rates?: Record<string, unknown> }).rates?.[to];
+      if (typeof rate !== 'number' || !(rate > 0)) return null;
+      this.rates.set(key, rate);
+      return rate;
+    } catch {
+      return null;
+    }
+  }
+
+  /** The games on the way in another currency get their rate, where it's still missing (each look tries again). */
+  private async fillRates(): Promise<void> {
+    if (!this.d.settings.get('orders.exchangeRates')) return;
+    const home = this.d.settings.get('general.currency');
+    const rows = this.d.db.select().from(comingItems).where(and(eq(comingItems.status, 'waiting'), isNull(comingItems.rate))).all();
+    for (const r of rows) {
+      if (!r.currency || r.currency === home) continue;
+      const rate = await this.rateOf(r.currency, home, r.orderDate ?? r.createdAt.slice(0, 10));
+      if (rate !== null) this.d.db.update(comingItems).set({ rate }).where(eq(comingItems.id, r.id)).run();
+    }
+  }
 
   findOn(): boolean {
     return this.d.settings.get('orders.find') === true;
@@ -573,6 +619,7 @@ export class OrderService {
       if (order) added.push(...this.addComing(refOf(mail.id), order));
     });
     this.writeState(SEEN_KEY, [...fresh.map((m) => refOf(m.id)), ...seen].slice(0, KEEP_SEEN));
+    await this.fillRates();
     this.d.log.info({ context: 'orders' }, `On the way: ${fresh.length} purchase emails read, ${added.length} new`);
     if (added.length > 0 && s.get('orders.watchNotify')) {
       const names = added.map((a) => `${a.title ?? a.listingTitle} (${a.store})`);
@@ -644,16 +691,101 @@ export class OrderService {
   coming(all = false): ComingView[] {
     const rows = this.d.db.select().from(comingItems).orderBy(desc(comingItems.createdAt), desc(comingItems.id)).all();
     const month = new Date(Date.now() - 30 * 86_400_000).toISOString();
-    return rows.filter((r) => r.status === 'waiting' || (all && (r.updatedAt ?? r.createdAt) >= month)).map((r) => this.view(r));
+    return rows.filter((r) => r.status === 'waiting' || (all && r.status !== 'split' && (r.updatedAt ?? r.createdAt) >= month)).map((r) => this.view(r));
   }
 
-  /** One's price paid, as Settings > Email counts it now. */
-  private paidOf(r: typeof comingItems.$inferSelect): number | null {
+  /** One's price paid, as Settings > Email counts it now, in its own currency. */
+  private paidInCurrency(r: typeof comingItems.$inferSelect): number | null {
     const counts = this.d.settings.get('orders.paidCounts') as PaidCounts;
     if (r.itemCents === null) return null;
     if (counts === 'item') return r.itemCents;
     if (counts === 'tax') return r.itemCents + (r.taxCents ?? 0);
     return Math.max(0, r.itemCents + (r.taxCents ?? 0) + (r.shippingCents ?? 0) - (r.discountCents ?? 0));
+  }
+
+  /** Whether one's price is in another currency than the home one. */
+  private foreign(r: typeof comingItems.$inferSelect): boolean {
+    return r.currency !== null && r.currency !== this.d.settings.get('general.currency');
+  }
+
+  /** One's price paid in the home currency (D173): another currency's at the order day's rate, or null without one. */
+  private paidOf(r: typeof comingItems.$inferSelect): number | null {
+    const paid = this.paidInCurrency(r);
+    if (paid === null || !this.foreign(r)) return paid;
+    return this.d.settings.get('orders.exchangeRates') && r.rate ? Math.round(paid * r.rate) : null;
+  }
+
+  /**
+   * Several games, one price (D173): a lot, a pack or a bundle on the way becomes a game of its own for each, in the
+   * order given. A game's price is its own when given; the others share what's left of the lot's evenly. The tax, the
+   * shipping and the discount are shared evenly. The lot is kept, as split, so its email never adds it again.
+   */
+  split(id: number, games: { platformKey: string | null; title: string; cents: number | null }[]): ComingView[] {
+    const row = this.d.db.select().from(comingItems).where(eq(comingItems.id, id)).get();
+    if (!row || row.status !== 'waiting') throw new CopyError("That isn't on the way.");
+    if (games.length < 2 || games.length > 40) throw new CopyError('Name two games or more (40 at most).');
+    const n = games.length;
+    const all = (cents: number | null) => (cents === null ? null : cents * row.quantity);
+    const lot = all(row.itemCents);
+    const given = games.reduce((sum, g) => sum + (g.cents ?? 0), 0);
+    const rest = splitEvenly(Math.max(0, (lot ?? 0) - given), games.filter((g) => g.cents === null).length);
+    const shares = (cents: number | null) => (cents === null ? games.map(() => null) : splitEvenly(cents, n));
+    const [tax, shipping, discount] = [shares(all(row.taxCents)), shares(all(row.shippingCents)), shares(all(row.discountCents))];
+    const now = new Date().toISOString();
+    const made: (typeof comingItems.$inferSelect)[] = [];
+    this.d.db.transaction((tx) => {
+      let open = 0;
+      games.forEach((g, k) => {
+        const itemCents = g.cents ?? (lot === null ? null : rest[open++]!);
+        const child = tx
+          .insert(comingItems)
+          .values({
+            mailRef: row.mailRef,
+            // After its lot's own place, so an email's items stay one each.
+            itemIndex: (row.itemIndex + 1) * 1000 + k,
+            store: row.store,
+            orderDate: row.orderDate,
+            orderNumber: row.orderNumber,
+            link: row.link,
+            listingTitle: g.title.slice(0, 200),
+            quantity: 1,
+            currency: row.currency,
+            itemCents,
+            taxCents: tax[k]!,
+            shippingCents: shipping[k]!,
+            discountCents: discount[k]!,
+            rate: row.rate,
+            lotOf: row.id,
+            readBy: row.readBy,
+            platformKey: g.platformKey,
+            title: g.platformKey ? g.title.slice(0, 200) : null,
+            status: 'waiting',
+            createdAt: now,
+            updatedAt: now,
+          })
+          .returning()
+          .get();
+        made.push(child);
+      });
+      tx.update(comingItems).set({ status: 'split', updatedAt: now }).where(eq(comingItems.id, row.id)).run();
+    });
+    return made.map((r) => this.view(r));
+  }
+
+  /**
+   * The games a lot may be, to start its split (D173): the ones its listing names, each with the game Squirrelcade takes
+   * it for on the console the listing names (or anywhere), and the lot's whole price paid.
+   */
+  lotGuesses(id: number): { games: { name: string; platformKey: string | null; platform: string | null; title: string | null }[]; paidCents: number | null } | null {
+    const row = this.d.db.select().from(comingItems).where(eq(comingItems.id, id)).get();
+    if (!row) return null;
+    const platformKey = productPlatform(row.listingTitle);
+    const games = lotGames(row.listingTitle).map((name) => {
+      const found = platformKey ? this.d.lookup.search(name, { platformKey, limit: 1, brief: true, followed: false })[0] : this.d.lookup.productMatch(name).results[0];
+      return { name, platformKey: found?.platformKey ?? platformKey, platform: found?.platform ?? (platformKey ? this.platformName(platformKey) : null), title: found?.title ?? null };
+    });
+    const paid = this.paidOf(row);
+    return { games, paidCents: paid === null ? null : paid * row.quantity };
   }
 
   private view(r: typeof comingItems.$inferSelect): ComingView {
@@ -674,6 +806,9 @@ export class OrderService {
       shippingCents: r.shippingCents,
       discountCents: r.discountCents,
       paidCents: paid,
+      paidInCurrencyCents: this.foreign(r) ? this.paidInCurrency(r) : null,
+      several: r.lotOf === null && severalGames(r.listingTitle),
+      lotOf: r.lotOf,
       readBy: r.readBy,
       platformKey: r.platformKey,
       platform: game?.platform ?? (r.platformKey ? this.platformName(r.platformKey) : null),
@@ -814,6 +949,25 @@ export function registerOrderRoutes(app: FastifyInstance, orders: OrderService, 
     const game = typeof b.platformKey === 'string' && typeof b.title === 'string' && b.title.trim() ? { platformKey: b.platformKey, title: b.title.trim().slice(0, 200) } : null;
     const view = orders.setGame(Number((request.params as { id: string }).id), game);
     return view ?? reply.code(404).send({ error: 'not-found', message: "That isn't on the way." });
+  });
+  // Several games, one price (D173): what the lot may be, and the lot made a game of its own for each.
+  app.get('/api/v1/coming/:id/games', async (request, reply) => orders.lotGuesses(Number((request.params as { id: string }).id)) ?? reply.code(404).send({ error: 'not-found', message: "That isn't on the way." }));
+  app.post('/api/v1/coming/:id/split', async (request, reply) => {
+    const b = (request.body ?? {}) as { games?: unknown };
+    const games = Array.isArray(b.games)
+      ? b.games.flatMap((g: unknown) => {
+          const x = (g ?? {}) as { platformKey?: unknown; title?: unknown; cents?: unknown };
+          if (typeof x.title !== 'string' || !x.title.trim()) return [];
+          const cents = typeof x.cents === 'number' && Number.isInteger(x.cents) && x.cents >= 0 ? x.cents : null;
+          return [{ platformKey: typeof x.platformKey === 'string' && x.platformKey ? x.platformKey : null, title: x.title.trim(), cents }];
+        })
+      : [];
+    try {
+      return reply.code(201).send({ items: orders.split(Number((request.params as { id: string }).id), games) });
+    } catch (err) {
+      if (err instanceof CopyError) return reply.code(400).send({ error: 'invalid', message: err.message });
+      throw err;
+    }
   });
   app.post('/api/v1/coming/:id/dismiss', async (request, reply) => (orders.dismiss(Number((request.params as { id: string }).id)) ? { ok: true } : reply.code(404).send({ error: 'not-found', message: "That isn't on the way." })));
   app.post('/api/v1/coming/:id/arrived', async (request, reply) => {
