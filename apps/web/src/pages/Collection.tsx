@@ -22,6 +22,7 @@ import { useGameNotes } from '../notes';
 import { usePlaceNotes, type Vocabulary } from '../places';
 import { PlayBadge, type Play } from '../Playing';
 import { TestBadge } from '../CopyDetails';
+import { ConsoleMark } from '../ConsoleMark';
 
 /** The collection's totals and each platform's (GET /api/v1/collection/summary). */
 export interface CollectionSummary {
@@ -391,6 +392,12 @@ export function CollectionPage() {
           aria-label="Platform"
           placeholder="All platforms"
           data={(summary.data?.platforms ?? []).map((p) => ({ value: p.key, label: `${p.name} (${p.games})` }))}
+          renderOption={({ option }) => (
+            <Group gap={6} wrap="nowrap">
+              <ConsoleMark platformKey={option.value} name={option.label} size={12} />
+              {option.label}
+            </Group>
+          )}
           value={platform || null}
           onChange={(v) => set('platform', v ?? '')}
           clearable

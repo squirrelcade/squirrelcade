@@ -5,6 +5,7 @@ import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import { useSearchParams } from 'react-router';
 import { GameTitle, useOpenGame } from './GameDrawer';
 import { useSetting } from './hooks';
+import { CoverMarks } from './ConsoleMark';
 
 /**
  * Game lists two ways and the A–Z bar beside them (the owner, 2026-10-24: "on the right-hand side a letter system so I
@@ -196,7 +197,7 @@ export function CoverTile({
   const src = covers && !failed ? (coverId ? igdbCoverUrl(coverId, 'cover_big') : (imageUrl ?? null)) : null;
   return (
     <Stack gap={4} {...(jump !== undefined ? jumpMark(jump) : {})}>
-      <Box aria-hidden="true" style={{ cursor: platformKey ? 'pointer' : undefined }} onClick={() => platformKey && open(platformKey, title)}>
+      <Box aria-hidden="true" pos="relative" style={{ cursor: platformKey ? 'pointer' : undefined }} onClick={() => platformKey && open(platformKey, title)}>
         <AspectRatio ratio={3 / 4}>
           {src ? (
             <Image src={src} radius="sm" alt="" loading="lazy" fit="cover" onError={() => setFailed(true)} style={dim ? { filter: 'grayscale(1)', opacity: 0.5 } : undefined} />
@@ -208,6 +209,8 @@ export function CoverTile({
             </Center>
           )}
         </AspectRatio>
+        {/* The consoles you have it on, in the corner (D175). */}
+        {platformKey && <CoverMarks title={title} coverWidth={110} />}
       </Box>
       <Text size="xs" lineClamp={2} component="div">
         {platformKey ? <GameTitle platformKey={platformKey} title={title} size="xs" /> : title}

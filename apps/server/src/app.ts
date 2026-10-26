@@ -46,6 +46,7 @@ import { PlacesService, registerPlaceRoutes } from './places.js';
 import { catalogTarget, registerGameRoutes } from './games.js';
 import { ItadClient, PcPriceService, registerPcPriceRoutes, type PcPrice } from './itad.js';
 import { GameFlyService, registerGameFlyRoutes } from './gamefly.js';
+import { MarksService, registerMarkRoutes } from './marks.js';
 import { GgDealsService, ggAsPcPrice, type GgPrice } from './ggdeals.js';
 import { registerRetroAchievementsRoutes, RetroAchievementsService } from './retroachievements.js';
 import { AchievementsService, registerAchievementRoutes, xboxHttpsGet, type PsnApi, type XboxGet } from './achievements.js';
@@ -343,6 +344,7 @@ export async function buildApp(options: BuildOptions = {}): Promise<Squirrelcade
   // worked out per console starts over, and consoles of their own get their catalogs soon.
   collection.events.on('remapped', () => {
     catalogs.invalidate();
+    lookup.forgetCopies();
     wishlist.invalidate();
     romm.invalidate();
     igdb.forgetPlatforms();
@@ -520,6 +522,8 @@ export async function buildApp(options: BuildOptions = {}): Promise<Squirrelcade
   // GameFly as a place to buy (D174): its prices for the wishlist's first games, read by a task, kept.
   const gamefly = new GameFlyService(db, settings, () => wishlist.compute().master, log, options.gameflyFetch, options.gameflyFetch ? 0 : undefined);
   registerGameFlyRoutes(app, gamefly);
+  // The consoles each game is yours on, for its marks on covers and beside titles (D175).
+  registerMarkRoutes(app, new MarksService(db, collection, catalogs, pc));
   const mail = new MailImportService(db, settings, collection, log, notifications, options.mailbox, options.exportDownload);
   registerMailRoutes(app, mail, tasks);
   // Settings > Email's one test: sending from your account, and reading its mailbox.

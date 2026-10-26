@@ -817,7 +817,8 @@ export function storesSeen(headers: readonly MailHeader[], yes: readonly string[
 
 /** A listing that's several games (a lot, a bundle, a pack of three), for "Several games, one price" (D173). */
 export function severalGames(listing: string): boolean {
-  return /\b(?:lot|bundle|bundled|games pack|pack of \d+)\b|\b\d+\s+games\b/i.test(listing) || (listing.match(/\bgame\s*#\s*\d+/gi) ?? []).length >= 2 || lotGames(listing).length >= 2;
+  // Its own words only: a listing's commas and slashes are as often its console's ("Xbox One/Series X, 2021").
+  return /\b(?:lot|bundle|bundled|games pack|pack of \d+)\b|\b\d+\s+games\b/i.test(listing) || (listing.match(/\bgame\s*#\s*\d+/gi) ?? []).length >= 2;
 }
 
 /**
@@ -826,7 +827,8 @@ export function severalGames(listing: string): boolean {
  * console in brackets or a count. Nothing when it names fewer than two.
  */
 export function lotGames(listing: string): string[] {
-  const named = listing.split(/\s[-–—]\s|:\s/).pop() ?? '';
+  // Without what's in brackets first (the console, the year): its commas aren't between games.
+  const named = listing.replace(/\([^)]*\)|\[[^\]]*\]/g, ' ').split(/\s[-–—]\s|:\s/).pop() ?? '';
   const games = named
     .split(/\s*(?:,|\/|&|\+|\band\b)\s*/i)
     .map((g) => g.replace(/\([^)]*\)|\[[^\]]*\]/g, ' ').replace(/\b(?:lot|bundle|of \d+|\d+ games)\b/gi, ' ').replace(/\s+/g, ' ').trim())

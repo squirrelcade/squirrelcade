@@ -15,7 +15,7 @@ import {
 } from '@squirrelcade/core';
 import { createHash } from 'node:crypto';
 import { gzipSync } from 'node:zlib';
-import { and, asc, eq, inArray, isNull, ne } from 'drizzle-orm';
+import { and, asc, eq, inArray, isNull, ne, sql } from 'drizzle-orm';
 import type { FastifyInstance, FastifyRequest } from 'fastify';
 import { isViewer, shown } from './access.js';
 import type { Logger } from 'pino';
@@ -537,6 +537,13 @@ export class LookupService {
     const owned = this.batch?.owned ?? this.ownedByTitle();
     const results: LookupResult[] = [];
     const covered = new Set<string>();
+    // What's looked up for each answer (its PC storefronts, its sets) waits until the matches are cut to the answers
+    // returned: a short query matches thousands of games (D171).
+    const later = new Map<LookupResult, { pc: string; sets?: [string, string[]] }>();
+    const push = (r: LookupResult, pc: string, sets?: [string, string[]]) => {
+      results.push(r);
+      later.set(r, { pc, sets });
+    };
 
     for (const p of this.catalogs.allMatches()) {
       if (options.platformKey && p.key !== options.platformKey) continue;
@@ -558,14 +565,14 @@ export class LookupService {
                     ? 'unconfirmed'
                     : 'need';
         for (const m of t.matches) covered.add(`${p.key}|${m.productId}`);
-        results.push({
+        push({
           platformKey: p.key,
           platform: p.name,
           title: t.target.title,
           answer,
           ownedAs: t.matches.map((m) => m.title),
           ownedOn: elsewhere,
-          ownedOnPc: this.pcOwnership(t.target.title),
+          ownedOnPc: [],
           maybe: t.suggestions.map((s) => s.title),
           wishlist: wishlist.index.get(`${p.key}|${normalizeTitle(t.target.title)}`) ?? null,
           preference: preferences.get(`${p.key}|${normalizeTitle(t.target.title)}`) ?? null,
@@ -573,8 +580,7 @@ export class LookupService {
           entryId: t.target.id,
           pending: t.matches.length > 0 && t.matches.every((m) => m.method === 'pending'),
           ownedProductIds: t.matches.filter((m) => m.method !== 'pending').map((m) => m.productId),
-          sets: this.sets.setsOf(p.key, [t.target.title, ...(t.target.altTitles ?? [])]),
-        });
+        }, t.target.title, [p.key, [t.target.title, ...(t.target.altTitles ?? [])]]);
       }
     }
 
@@ -587,7 +593,7 @@ export class LookupService {
           const relevance = rankOf(g.names);
           if (relevance === 0 || (options.exact && relevance < 3)) continue;
           const elsewhere = [...(owned.get(matchKey(baseTitle(g.names[0]!))) ?? [])];
-          results.push({ platformKey: list.key, platform: list.name, title: g.names[0]!, answer: 'not-tracked', ownedAs: [], ownedOn: elsewhere, ownedOnPc: this.pcOwnership(g.names[0]!), maybe: [], wishlist: null, relevance });
+          push({ platformKey: list.key, platform: list.name, title: g.names[0]!, answer: 'not-tracked', ownedAs: [], ownedOn: elsewhere, ownedOnPc: [], maybe: [], wishlist: null, relevance }, g.names[0]!);
         }
       }
     }
@@ -598,19 +604,19 @@ export class LookupService {
       const relevance = rankOf([g.title]);
       if (relevance === 0 || (options.exact && relevance < 3)) continue;
       const elsewhere = [...(owned.get(matchKey(baseTitle(g.title))) ?? [])].filter((name) => name !== g.platform);
-      results.push({
+      push({
         platformKey: g.platformKey,
         platform: g.platform,
         title: g.title,
         answer: elsewhere.length > 0 ? 'own-elsewhere' : 'need',
         ownedAs: [],
         ownedOn: elsewhere,
-        ownedOnPc: this.pcOwnership(g.title),
+        ownedOnPc: [],
         maybe: g.maybe ?? [],
         wishlist: null,
         relevance,
         sets: g.sets,
-      });
+      }, g.title);
     }
 
     // Owned games outside any catalog (other regions, untracked platforms, odd releases).
@@ -624,7 +630,7 @@ export class LookupService {
         seen.add(id);
         const relevance = rankOf([r.title]);
         if (relevance === 0 || (options.exact && relevance < 3)) continue;
-        results.push({
+        push({
           platformKey: r.key,
           platform: r.name,
           title: r.title,
@@ -632,39 +638,25 @@ export class LookupService {
           ownedAs: [r.title],
           ownedProductIds: [r.productId],
           ownedOn: [],
-          ownedOnPc: this.pcOwnership(r.title),
+          ownedOnPc: [],
           maybe: [],
           wishlist: null,
           relevance,
-          sets: this.sets.setsOf(r.key, [r.title]),
-        });
+        }, r.title, [r.key, [r.title]]);
       }
     }
 
     // What owned copies are worth, from the last export, and which releases they are (not for a brief search).
-    const values = new Map<string, number>();
-    const releases = new Map<string, { region: string; consoleLabel: string }>();
-    if (!options.brief) {
-      for (const r of this.db
-        .select({
-          productId: copies.productId,
-          key: platforms.key,
-          valueCents: copies.valueCents,
-          quantity: copies.quantity,
-          region: copies.region,
-          consoleLabel: copies.consoleLabel,
-        })
-        .from(copies)
-        .innerJoin(platforms, eq(platforms.id, copies.platformId))
-        .where(isNull(copies.goneAt))
-        .all()) {
-        const k = `${r.key}|${r.productId}`;
-        releases.set(k, { region: r.region, consoleLabel: r.consoleLabel });
-        if (r.valueCents === null) continue;
-        values.set(k, (values.get(k) ?? 0) + r.valueCents * r.quantity);
-      }
+    const order: Record<Answer, number> = { need: 0, check: 1, unconfirmed: 2, 'own-elsewhere': 3, own: 4, 'own-not-in-catalog': 5, 'not-a-target': 6, 'not-tracked': 7 };
+    const kept = results.sort((a, b) => b.relevance - a.relevance || order[a.answer] - order[b.answer] || a.title.localeCompare(b.title) || a.platform.localeCompare(b.platform)).slice(0, limit);
+    for (const r of kept) {
+      const l = later.get(r);
+      if (!l) continue;
+      r.ownedOnPc = this.pcOwnership(l.pc);
+      if (l.sets) r.sets = this.sets.setsOf(l.sets[0], l.sets[1]);
     }
-    for (const r of results) {
+    const { values, releases } = options.brief ? { values: new Map<string, number>(), releases: new Map<string, { region: string; consoleLabel: string }>() } : this.copyValues();
+    for (const r of kept) {
       const ids = r.ownedProductIds ?? [];
       const known = ids.filter((id) => values.has(`${r.platformKey}|${id}`));
       r.ownedValueCents = known.length > 0 ? known.reduce((sum, id) => sum + values.get(`${r.platformKey}|${id}`)!, 0) : null;
@@ -673,13 +665,9 @@ export class LookupService {
       delete r.ownedProductIds;
     }
 
-    const order: Record<Answer, number> = { need: 0, check: 1, unconfirmed: 2, 'own-elsewhere': 3, own: 4, 'own-not-in-catalog': 5, 'not-a-target': 6, 'not-tracked': 7 };
     const notes = options.brief ? new Map<string, string>() : this.notes();
     const coming = options.brief ? new Map<string, OnTheWayBrief>() : this.coming();
-    return results
-      .sort((a, b) => b.relevance - a.relevance || order[a.answer] - order[b.answer] || a.title.localeCompare(b.title) || a.platform.localeCompare(b.platform))
-      .slice(0, limit)
-      .map((r) => {
+    return kept.map((r) => {
         if (options.brief) return r;
         const romm = (r.answer === 'own' || r.answer === 'own-not-in-catalog') && this.rommLink ? this.rommLink(r.platformKey, [r.title, ...r.ownedAs]) : null;
         const reviews = this.igdb?.reviewsOf(r.platformKey, r.title) ?? null;
@@ -778,7 +766,49 @@ export class LookupService {
       .all();
   }
 
+  /** Kept until a copy is added, changed or gone (its count, newest id or last change): each search read them all. */
+  private copiesCache: { stamp: string; byTitle?: Map<string, Set<string>>; values?: { values: Map<string, number>; releases: Map<string, { region: string; consoleLabel: string }> } } | null = null;
+
+  /** Copies moved to another console (their console changes, not their last change): read again. */
+  forgetCopies(): void {
+    this.copiesCache = null;
+  }
+
+  private copiesStamp(): string {
+    const c = this.db.select({ n: sql<number>`count(*)`, last: sql<number>`max(${copies.id})`, changed: sql<string>`max(${copies.updatedAt})` }).from(copies).get();
+    return `${c?.n}|${c?.last}|${c?.changed}`;
+  }
+
+  private copiesKept(): NonNullable<LookupService['copiesCache']> {
+    const stamp = this.copiesStamp();
+    if (this.copiesCache?.stamp !== stamp) this.copiesCache = { stamp };
+    return this.copiesCache;
+  }
+
+  /** What owned copies are worth, from the last export, and which releases they are, by "platform key|product id". */
+  private copyValues(): { values: Map<string, number>; releases: Map<string, { region: string; consoleLabel: string }> } {
+    const kept = this.copiesKept();
+    if (kept.values) return kept.values;
+    const values = new Map<string, number>();
+    const releases = new Map<string, { region: string; consoleLabel: string }>();
+    for (const r of this.db
+      .select({ productId: copies.productId, key: platforms.key, valueCents: copies.valueCents, quantity: copies.quantity, region: copies.region, consoleLabel: copies.consoleLabel })
+      .from(copies)
+      .innerJoin(platforms, eq(platforms.id, copies.platformId))
+      .where(isNull(copies.goneAt))
+      .all()) {
+      const k = `${r.key}|${r.productId}`;
+      releases.set(k, { region: r.region, consoleLabel: r.consoleLabel });
+      if (r.valueCents === null) continue;
+      values.set(k, (values.get(k) ?? 0) + r.valueCents * r.quantity);
+    }
+    kept.values = { values, releases };
+    return kept.values;
+  }
+
   private ownedByTitle(): Map<string, Set<string>> {
+    const kept = this.copiesKept();
+    if (kept.byTitle) return kept.byTitle;
     const map = new Map<string, Set<string>>();
     const rows = this.db
       .select({ title: copies.title, name: platforms.name })
@@ -790,6 +820,7 @@ export class LookupService {
       const key = matchKey(baseTitle(r.title));
       map.set(key, (map.get(key) ?? new Set()).add(r.name));
     }
+    kept.byTitle = map;
     return map;
   }
 

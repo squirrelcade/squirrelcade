@@ -8,6 +8,7 @@ import { PageHeader, SortableTh, type SortDirection } from '../components';
 import { count, date, wholeMoney } from '../format';
 import { useFeature, useSetting } from '../hooks';
 import { TimelinePanel } from './History';
+import { ConsoleMark } from '../ConsoleMark';
 
 interface PlatformRow {
   id: number;
@@ -113,6 +114,7 @@ export function PlatformsPage() {
               <Table.Tr key={p.id}>
                 <Table.Td>
                   <Group gap={6}>
+                    <ConsoleMark platformKey={p.key} name={p.name} owned={p.copies > 0} size={14} />
                     <Anchor component={Link} to={completion.has(p.key) ? `/platforms/${p.key}` : `/collection?platform=${p.key}`} fw={500}>
                       {p.name}
                     </Anchor>

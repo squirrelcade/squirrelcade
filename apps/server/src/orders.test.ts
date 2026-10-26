@@ -269,7 +269,7 @@ describe('On the way', () => {
 describe('Several games, one price (D173)', () => {
   it("splits a lot into its games, sharing its price evenly unless one's is given, and turns pounds into dollars at the order day's rate", async () => {
     const lot = orderMail('mercari9@mercari', 1, 'no-reply@mercari.com', 'You purchased: PS2 Game Lot - Okami, Kingdom Hearts, Shadow Hearts', [['Item price', '$30.01'], ['Sales tax', '$3.00'], ['Total', '$33.01']]);
-    const pack = orderMail('srg1@srg', 2, 'help@superraregames.com', 'Order #400001 confirmed', [['Journey Pack: Journey, Okami HD (PS3)', '£40.00'], ['Subtotal', '£40.00'], ['Shipping', '£10.00'], ['Total', '£50.00 GBP']]);
+    const pack = orderMail('srg1@srg', 2, 'help@superraregames.com', 'Order #400001 confirmed', [['PS3 Bundle - Journey, Okami HD', '£40.00'], ['Subtotal', '£40.00'], ['Shipping', '£10.00'], ['Total', '£50.00 GBP']]);
     const asked: string[] = [];
     const { cookies } = await owner([lot, pack], {
       ratesFetch: async (url) => {
@@ -332,3 +332,4 @@ describe('Several games, one price (D173)', () => {
     expect(((await list()).find((i) => i.listingTitle === 'Journey') as { paidCents: number | null }).paidCents).toBeNull();
   });
 });
+

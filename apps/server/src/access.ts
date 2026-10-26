@@ -90,6 +90,8 @@ const VIEWER_READS: RegExp[] = [
   /^\/api\/v1\/wishlist$/,
   // GameFly's prices beside the wishlist (D174): a store's own prices, nothing of the owner's.
   /^\/api\/v1\/gamefly$/,
+  // Which consoles each game is yours on, for its marks (D175).
+  /^\/api\/v1\/marks$/,
   /^\/api\/v1\/wishlist\/export$/,
   /^\/api\/v1\/wishlist\/platforms\/[^/]+$/,
 ];

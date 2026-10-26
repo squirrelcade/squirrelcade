@@ -177,7 +177,9 @@ export async function uiTest(target, account, check) {
       });
     };
     const settle = async () => {
-      await page.waitForLoadState('networkidle');
+      // A page whose game reads Wikipedia or Wikidata at that moment (Roots) may not go quiet when they're slow
+      // ("Waiting for wdqs1014: 8.8 seconds lagged", 2026-10-25): the checks after it don't need them, so it goes on.
+      await page.waitForLoadState('networkidle', { timeout: 15000 }).catch(() => undefined);
       await page.waitForTimeout(200);
     };
     const pageProblems = async () => {
@@ -334,10 +336,11 @@ export async function uiTest(target, account, check) {
     // Section titles are upper case on the page, and innerText gives them as shown.
     const shown = await drawer.innerText();
     check('ui: a title opens the game drawer', found.length === 0 && /your cop(y|ies)/i.test(shown), found.join(' | ') || (/your cop(y|ies)/i.test(shown) ? '' : shown.slice(0, 200)));
-    // The chest before "Have it" and "You own it" in the drawer, and on the console's Owned tab (D142).
+    // The chest before "You own it" in the drawer, and on the console's Owned tab (D142; the head's Have it chip is its
+    // consoles' marks now, D175).
     const drawerChests = await drawer.locator('svg[viewBox="0 0 7 6"]').count();
     const tabChest = await page.getByRole('tab', { name: 'Owned', exact: true }).locator('svg[viewBox="0 0 7 6"]').count();
-    check("ui: the Stash's chest marks a game you have, in the drawer and on the Owned tab", drawerChests >= 2 && tabChest === 1, `drawer: ${drawerChests}, tab: ${tabChest}`);
+    check("ui: the Stash's chest marks a game you have, in the drawer and on the Owned tab", drawerChests >= 1 && tabChest === 1, `drawer: ${drawerChests}, tab: ${tabChest}`);
     await page.keyboard.press('Escape');
     await drawer.waitFor({ state: 'hidden', timeout: 5000 });
     check('ui: Escape closes the drawer', !new URL(page.url()).searchParams.has('game'), page.url());
@@ -1050,7 +1053,7 @@ export async function uiTest(target, account, check) {
       `${dupText}; shown: ${dupShown}; link: ${dupLink}; copies ${sums.totals.copies}, games ${sums.totals.games}`,
     );
     // The header's search filters by console (the owner, 2026-10-16): a chip for each console among the matches; one
-    // tapped shows that console's only, and the list stays open.
+    // tapped shows that console's only, and the list stays open. A game is one line, its consoles' marks on it (D175).
     for (const platformKey of ['playstation-3', 'playstation-4', 'nintendo-switch']) {
       await page.request.post(`${base}/api/v1/collection/copies`, { data: { platformKey, title: 'Chipfilter Quest', completeness: 'complete' } });
     }
@@ -1058,14 +1061,15 @@ export async function uiTest(target, account, check) {
     const consoleChips = page.getByRole('group', { name: 'Filter by console' });
     await consoleChips.waitFor({ timeout: 10000 });
     const chipsBefore = await page.getByRole('option', { name: /Chipfilter Quest/ }).count();
+    const marksBefore = await page.getByRole('option', { name: /Chipfilter Quest/ }).getByRole('img').count();
     await consoleChips.getByText(/^PlayStation 4 1$/).click();
     await page.waitForTimeout(400);
     const chipOptions = await page.getByRole('option', { name: /Chipfilter Quest/ }).allInnerTexts();
     found = await pageProblems();
     check(
       "ui: the header's search filters its matches by console",
-      found.length === 0 && chipsBefore === 3 && chipOptions.length === 1 && /PlayStation 4/.test(chipOptions[0] ?? ''),
-      found.join(' | ') || `before ${chipsBefore}, after ${JSON.stringify(chipOptions)}`,
+      found.length === 0 && chipsBefore === 1 && marksBefore === 3 && chipOptions.length === 1 && /PlayStation 4/.test(chipOptions[0] ?? ''),
+      found.join(' | ') || `before ${chipsBefore} (${marksBefore} marks), after ${JSON.stringify(chipOptions)}`,
     );
     await page.getByLabel('Find a game', { exact: true }).fill('');
     await page.keyboard.press('Escape');
@@ -1104,7 +1108,8 @@ export async function uiTest(target, account, check) {
     await page.goto(`${base}/collection?game=${encodeURIComponent('playstation-3|Tearaway')}`);
     const gameHead = page.locator('.sc-game-head');
     await gameHead.waitFor({ timeout: 10000 });
-    const haveChip = await gameHead.getByText(/Have it/).count();
+    // Its consoles as marks (D175), the one you have it on filled: "Its consoles: Have it".
+    const haveChip = await gameHead.getByRole('group', { name: /^Its consoles: Have it/ }).count();
     const worthRing = await gameHead.getByLabel(/^Worth /).count();
     const oldTop = await page.getByRole('button', { name: /^Edit (my|a) copy/ }).count();
     await page.getByRole('button', { name: /^Worth .*: show its value over time/ }).first().click();

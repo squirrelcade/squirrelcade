@@ -7,6 +7,8 @@ import { Link, useNavigate } from 'react-router';
 import { StashMark } from './Acorn';
 import { ANSWERS, type Answer } from './choices';
 import { ConsoleChips, isConsoleChip } from './ConsoleChips';
+import { ConsoleMark } from './ConsoleMark';
+import { isOwned, oneLinePerGame } from './oneLine';
 import { api } from './api';
 import { recentGames, useOpenGame, type RecentGame } from './GameDrawer';
 import { useFeature, useSetting } from './hooks';
@@ -17,6 +19,8 @@ interface Found {
   platform: string;
   title: string;
   answer: Answer;
+  /** The PC storefronts you have it on for good. */
+  ownedOnPc?: string[];
 }
 
 /** A PC library game the search found (GET /api/v1/pc/games): its title and its storefronts. */
@@ -84,13 +88,14 @@ export function HeaderSearch() {
   // Without a search typed, the games opened lately.
   const [recent, setRecent] = useState<RecentGame[]>([]);
   const spread = query.length >= 2 ? (found.data ?? []) : [];
-  // On a console chosen, its own matches (the top 30's on it while the server answers); else the first `limit`.
-  const results =
-    query.length < 2
-      ? recent.map((r) => ({ ...r, answer: null }))
-      : consoleKey
-        ? (onConsole.data ?? spread.filter((r) => r.platformKey === consoleKey))
-        : spread.slice(0, limit);
+  // On a console chosen, its own matches (the top 30's on it while the server answers); else one line per game (D175),
+  // its consoles' marks beside it, the first `limit` games.
+  const perConsole: (Omit<Found, 'answer'> & { answer: Answer | null })[] =
+    query.length < 2 ? recent.map((r) => ({ ...r, answer: null })) : consoleKey ? (onConsole.data ?? spread.filter((r) => r.platformKey === consoleKey)) : spread;
+  const lines = query.length >= 2 && !consoleKey ? oneLinePerGame(perConsole).slice(0, limit) : perConsole.map((r) => ({ key: `${r.platformKey}|${r.title}`, title: r.title, consoles: [r], owned: isOwned(r.answer), onPc: (r.ownedOnPc?.length ?? 0) > 0 }));
+  // The console a line opens: the one you have it on (the newest), else its best match's.
+  const openOn = (l: (typeof lines)[number]) => [...l.consoles].reverse().find((c) => isOwned(c.answer)) ?? l.consoles[0]!;
+  const results = lines;
   // PC games aren't on a console: they leave the list while one is chosen.
   const pcResults = query.length >= 2 && !consoleKey ? (pcFound.data?.items ?? []) : [];
   const fetching = found.isFetching || pcFound.isFetching || onConsole.isFetching;
@@ -105,8 +110,9 @@ export function HeaderSearch() {
       if (!g) return;
       navigate(`/pc?q=${encodeURIComponent(g.title)}`);
     } else {
-      const r = results[Number(value)];
-      if (!r) return;
+      const l = results[Number(value)];
+      if (!l) return;
+      const r = openOn(l);
       open(r.platformKey, r.title);
     }
     setText('');
@@ -177,16 +183,42 @@ export function HeaderSearch() {
             {results.length === 0 && pcResults.length === 0 ? (
               <Combobox.Empty>{fetching ? 'Looking…' : pcOn ? 'No game by that name' : 'No game by that name on your consoles'}</Combobox.Empty>
             ) : (
-              results.map((r, i) => (
-                <Combobox.Option value={String(i)} key={`${r.platformKey}|${r.title}`}>
+              results.map((l, i) => {
+                const r = openOn(l);
+                return (
+                <Combobox.Option value={String(i)} key={l.key}>
                   <Group justify="space-between" wrap="nowrap" gap="xs">
                     <div style={{ minWidth: 0 }}>
                       <Text size="sm" truncate>
-                        {r.title}
+                        {l.title}
                       </Text>
-                      <Text size="xs" c="dimmed">
-                        {r.platform}
-                      </Text>
+                      {/* Its consoles' marks (D175): filled where you have it, dotted where you don't, PC last; a mark opens it there. */}
+                      <Group gap={4} wrap="wrap" mt={2}>
+                        {l.consoles.map((c) => (
+                          <ConsoleMark
+                            key={c.platformKey}
+                            platformKey={c.platformKey}
+                            name={c.platform}
+                            owned={isOwned(c.answer)}
+                            size={14}
+                            onClick={(ev) => {
+                              ev.preventDefault();
+                              ev.stopPropagation();
+                              open(c.platformKey, c.title);
+                              setText('');
+                              combobox.closeDropdown();
+                              input.current?.blur();
+                            }}
+                          />
+                        ))}
+                        {l.onPc && <ConsoleMark platformKey="pc" name="PC" size={14} />}
+                        {/* One console (a console chosen, or a game on one only): its name too. */}
+                        {l.consoles.length === 1 && (
+                          <Text size="xs" c="dimmed">
+                            {l.consoles[0]!.platform}
+                          </Text>
+                        )}
+                      </Group>
                     </div>
                     {r.answer && (
                       <Badge
@@ -201,7 +233,8 @@ export function HeaderSearch() {
                     )}
                   </Group>
                 </Combobox.Option>
-              ))
+                );
+              })
             )}
             {pcResults.length > 0 && (
               <Combobox.Group label="PC library">

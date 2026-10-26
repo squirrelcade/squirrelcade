@@ -4,6 +4,7 @@ import { IconChevronDown, IconChevronUp, IconHelp, IconSelector } from '@tabler/
 import { Link } from 'react-router';
 import { useEffect, useState, type ReactNode } from 'react';
 import { useSetting } from './hooks';
+import { CoverMarks } from './ConsoleMark';
 
 /** Which way a sortable table is sorted. */
 export type SortDirection = 'asc' | 'desc';
@@ -122,12 +123,20 @@ export function StatusBadge({ status }: { status: string }) {
  * Box art from IGDB, when it's downloaded and "Show cover art" is on. In a list
  * where some games have covers, pass `placeholder` so the others keep the space.
  */
-export function Cover({ id, width = 30, placeholder = false }: { id?: string | null; width?: number; placeholder?: boolean }) {
+export function Cover({ id, width = 30, placeholder = false, title }: { id?: string | null; width?: number; placeholder?: boolean; title?: string }) {
   const show = useSetting('interface.showCoverArt', true);
   if (!show || (!id && !placeholder)) return null;
   const height = Math.round((width * 4) / 3);
   if (!id) return <Box w={width} h={height} bg="var(--mantine-color-default-hover)" style={{ borderRadius: 3, flex: 'none' }} />;
-  return <Image src={igdbCoverUrl(id, width > 90 ? 'cover_big' : 'cover_small')} w={width} h={height} radius={3} fit="cover" loading="lazy" alt="" style={{ flex: 'none' }} />;
+  const image = <Image src={igdbCoverUrl(id, width > 90 ? 'cover_big' : 'cover_small')} w={width} h={height} radius={3} fit="cover" loading="lazy" alt="" style={{ flex: 'none' }} />;
+  // The game's title given: the consoles you have it on, in the cover's corner (D175). Too small a cover has none.
+  if (!title || width < 40) return image;
+  return (
+    <Box pos="relative" style={{ flex: 'none', display: 'inline-block', lineHeight: 0 }}>
+      {image}
+      <CoverMarks title={title} coverWidth={width} />
+    </Box>
+  );
 }
 
 /** The "?" beside a page's title: its guide in Help (docs/help). */

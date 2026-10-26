@@ -9,6 +9,7 @@ import { HelpLink } from '../components';
 import { count, date, wholeMoney } from '../format';
 import { useFeature, useSetting } from '../hooks';
 import { generationName, launchDay, type ConsoleHistoryView } from './History';
+import { ConsoleMark } from '../ConsoleMark';
 
 /** What the head reads of a console's catalog (GET /api/v1/catalogs/:key). */
 export interface ConsoleCounts {
@@ -119,6 +120,7 @@ export function ConsoleHead({ d, tab, tiles, canEdit, onAdd }: { d: ConsoleCount
           </div>
         )}
         <Group gap={8} wrap="nowrap" align="center">
+          <ConsoleMark platformKey={d.platform.key} name={d.platform.name} owned={d.counts.owned > 0} size={28} />
           <h1 id="console-h" className="sc-console-title">
             {d.platform.name}
           </h1>

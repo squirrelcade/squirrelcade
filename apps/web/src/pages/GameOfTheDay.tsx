@@ -9,7 +9,8 @@ import { Acorns } from '../Acorn';
 import { GameStars, ReviewsRing, RommChip, ScoreRing, type GameStar } from '../GameHeader';
 import type { RommLink } from '../Romm';
 import { notifyError, useCanEdit, useSetting } from '../hooks';
-import { DEEP_BUTTON, dot } from '../look';
+import { DEEP_BUTTON } from '../look';
+import { ConsoleMark } from '../ConsoleMark';
 import { PreferencePicker } from '../Preference';
 
 /** Today's game (GET /api/v1/gotd). */
@@ -99,7 +100,7 @@ export function GameOfTheDayCard({ mb, className }: { mb?: MantineSpacing; class
           </h2>
           <Group gap={8}>
             <span className="sc-chip">
-              <span className="sc-dot" style={dot(g.platformKey, g.platform)} />
+              <ConsoleMark platformKey={g.platformKey} name={g.platform} owned={false} size={14} />
               {g.platform}
             </span>
             <span className="sc-chip">#{g.rank} on your wishlist</span>

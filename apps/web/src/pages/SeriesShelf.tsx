@@ -11,6 +11,7 @@ import { count } from '../format';
 import { GameTitle, useOpenGame } from '../GameDrawer';
 import { jumpMark, LetterBar, useListView, ViewSwitch } from '../GameViews';
 import { usePageTitle, useSetting, useSettings } from '../hooks';
+import { ConsoleMark } from '../ConsoleMark';
 
 /** A series counted by game (GET /api/v1/series?by=game). */
 interface SeriesByGame {
@@ -142,7 +143,11 @@ function SeriesGames({ name }: { name: string }) {
                     </Table.Td>
                     <Table.Td>{g.released?.slice(0, 4) ?? ''}</Table.Td>
                     <Table.Td>
-                      <Text size="sm">{g.consoles.map((c) => (c.status === 'owned' ? `${c.platform} ✓` : c.platform)).join(', ')}</Text>
+                      <Group gap={4} wrap="wrap">
+                        {g.consoles.map((c) => (
+                          <ConsoleMark key={c.platformKey} platformKey={c.platformKey} name={c.platform} owned={c.status === 'owned'} size={14} />
+                        ))}
+                      </Group>
                     </Table.Td>
                     <Table.Td>
                       {g.had ? (

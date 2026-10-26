@@ -39,6 +39,7 @@ import { PreferencePicker } from '../Preference';
 import { RommLinks, type RommLink } from '../Romm';
 import { PlayBadge, type Play } from '../Playing';
 import { sortRows, useSort } from '../sort';
+import { ConsoleMark } from '../ConsoleMark';
 
 /** A history text as the API sends it (see apps/server/src/history.ts). */
 export interface HistoryText {
@@ -1021,7 +1022,7 @@ export function TimelinePanel() {
                   {launched.length > 0 && (
                     <Group gap={6} mb={those.length > 0 ? 4 : 0}>
                       {launched.map((c) => (
-                        <Badge key={c.platformKey} variant="light" style={{ textTransform: 'none' }} component={Link} to={`/roots/${c.platformKey}?tab=${c.hasHistory ? 'history' : 'top100'}`}>
+                        <Badge key={c.platformKey} variant="light" style={{ textTransform: 'none' }} component={Link} to={`/roots/${c.platformKey}?tab=${c.hasHistory ? 'history' : 'top100'}`} leftSection={<ConsoleMark platformKey={c.platformKey} name={c.name} owned={c.tracked} size={11} />}>
                           {c.name} launches
                         </Badge>
                       ))}

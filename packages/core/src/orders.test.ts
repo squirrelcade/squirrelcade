@@ -486,6 +486,11 @@ describe('several games, one price (D173)', () => {
     expect(lotGames('Okami HD (Switch)')).toEqual([]);
     expect(severalGames('Xbox One Game Lot of 17')).toBe(true);
     expect(severalGames('Mafia III Deluxe Edition (Xbox One)')).toBe(false);
+    // Real listings' brackets and genres aren't lists of games.
+    expect(severalGames('Halo: Infinite (Microsoft Xbox One/Xbox Series X, 2021)')).toBe(false);
+    expect(severalGames("Akiba's Beat PS4 (Sony PlayStation 4, 2016) CIB Complete w/ Manual")).toBe(false);
+    expect(severalGames('Happy Feet Two PS3 Action & Adventure 3D Compatible w/ Manual')).toBe(false);
+    expect(lotGames('Halo: Infinite (Microsoft Xbox One/Xbox Series X, 2021)')).toEqual([]);
     expect(splitEvenly(1001, 3)).toEqual([334, 334, 333]);
     expect(splitEvenly(9300, 3).reduce((a, b) => a + b, 0)).toBe(9300);
   });

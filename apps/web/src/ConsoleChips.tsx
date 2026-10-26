@@ -1,4 +1,5 @@
 import { Chip, Group } from '@mantine/core';
+import { ConsoleMark } from './ConsoleMark';
 
 /** Whether the focus went to a console chip (a chip's label moves it to its box when clicked): a search box stays open then. */
 export const isConsoleChip = (el: EventTarget | null): boolean => el instanceof Element && el.closest('[data-console-chips]') !== null;
@@ -35,7 +36,8 @@ export function ConsoleChips({
       </Chip>
       {consoles.map(([key, c]) => (
         <Chip key={key} size="xs" variant="light" checked={value === key} onChange={() => onChange(value === key ? null : key)}>
-          {c.name} {c.n}
+          <ConsoleMark platformKey={key} name={c.name} size={10} style={{ marginRight: 4 }} />
+          {`${c.name} ${c.n}`}
         </Chip>
       ))}
     </Group>

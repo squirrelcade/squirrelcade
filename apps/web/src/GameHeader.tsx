@@ -5,7 +5,6 @@ import { Acorn, Star } from './Acorn';
 import { Cover } from './components';
 import { count } from './format';
 import { useSetting } from './hooks';
-import { dot } from './look';
 export { RommChip } from './Romm';
 
 /**
@@ -150,16 +149,6 @@ export function GameStars({ stars }: { stars: GameStar[] }) {
   );
 }
 
-/** A game's console as a chip, with its maker's color dot. */
-export function ConsoleChip({ platformKey, platform }: { platformKey: string; platform: string }) {
-  return (
-    <span className="sc-chip">
-      <span className="sc-dot" style={dot(platformKey, platform)} />
-      {platform}
-    </span>
-  );
-}
-
 /**
  * The game page's head: its cover, its chips, its name with the stars, a line of what it is, and the two circles
  * (beside it on a computer, under it on a phone).
@@ -168,7 +157,7 @@ export function GameHeader({ coverId, title, chips, stars, sub, rings }: { cover
   return (
     <div className="sc-game-head">
       <div className="sc-game-head-main">
-        <Cover id={coverId} width={90} placeholder />
+        <Cover id={coverId} width={90} placeholder title={title} />
         <Stack gap={6} style={{ minWidth: 0 }}>
           <span style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>{chips}</span>
           <h2 className="sc-game-name">{title}</h2>

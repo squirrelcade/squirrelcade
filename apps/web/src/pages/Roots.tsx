@@ -7,7 +7,7 @@ import { RootsMark } from '../Acorn';
 import { api } from '../api';
 import { PageHeader } from '../components';
 import { notifyError, useCanEdit, useFeature, usePageTitle, useSetting, useSettings } from '../hooks';
-import { dot } from '../look';
+import { ConsoleMark } from '../ConsoleMark';
 import { ConsoleHistoryTab, generationName, TimelinePanel, Top100Tab, useAllConsoles } from './History';
 
 /** The consoles as the timeline knows them (GET /api/v1/history/timeline). */
@@ -138,7 +138,7 @@ export function RootsPage() {
                           onClick={() => navigate(`/roots/${c.platformKey}?tab=${c.hasHistory ? 'history' : 'top100'}`)}
                         >
                           <Group gap={8} wrap="nowrap">
-                            <span className="sc-dot" style={dot(c.platformKey, c.name)} />
+                            <ConsoleMark platformKey={c.platformKey} name={c.name} owned={c.tracked} size={16} />
                             <Anchor component={Link} to={`/roots/${c.platformKey}?tab=${c.hasHistory ? 'history' : 'top100'}`} fw={600} size="sm" c="inherit" underline="hover" onClick={(e) => e.stopPropagation()}>
                               {c.name}
                             </Anchor>
@@ -198,7 +198,7 @@ export function RootsConsolePage() {
         help="roots"
         title={
           <Group gap={10} wrap="nowrap" component="span">
-            <span className="sc-dot" style={dot(key, c?.name ?? key)} />
+            <ConsoleMark platformKey={key} name={c?.name ?? key} owned={Boolean(c?.tracked)} size={22} />
             {c?.name ?? key}
           </Group>
         }

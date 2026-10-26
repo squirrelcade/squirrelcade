@@ -22,7 +22,8 @@ import { RegionBadge } from './Region';
 import { type RommLink } from './Romm';
 import { Acorn, Acorns, Reviews, StashMark } from './Acorn';
 import { gameFlyLabel, useGameFly } from './GameFly';
-import { ConsoleChip, GameHeader, ReviewsRing, RommChip, ScoreRing, type GameStar, type HeaderReviews } from './GameHeader';
+import { ConsoleMark } from './ConsoleMark';
+import { GameHeader, ReviewsRing, RommChip, ScoreRing, type GameStar, type HeaderReviews } from './GameHeader';
 import { ConsoleRowChips, CopiesFrame, Fact, GetItCard, KeptIn, OnPc, OtherConsoles, Thumbs, WorthGraph, WorthValue, type ConsoleCopy, type ConsoleRow } from './CopiesCard';
 
 /** One game on one console (GET /api/v1/game). */
@@ -378,7 +379,7 @@ export function GameCover({ platformKey, title, id, width, placeholder }: { plat
         open(platformKey, title);
       }}
     >
-      <Cover id={id} width={width} placeholder={placeholder} />
+      <Cover id={id} width={width} placeholder={placeholder} title={title} />
     </Box>
   );
 }
@@ -534,7 +535,6 @@ export function GameDrawer() {
   // Copies on every console, the consoles you have it on besides this one, the ones it's on that you don't have yet.
   const copiesCount = g ? g.consoles.reduce((n, r) => n + r.copies.reduce((m, x) => m + x.quantity, 0), 0) : 0;
   const otherConsoles = g ? g.consoles.filter((r) => !r.current && r.copies.length > 0).length : 0;
-  const notYet = g && (owned > 0 || otherConsoles > 0) ? g.consoles.filter((r) => !r.current && r.copies.length === 0 && r.status !== null && WANTED.has(r.status)) : [];
   const consolesHad = g ? g.consoles.filter((r) => r.copies.length > 0).length : 0;
   const pcStores = g ? [...new Set(g.pc.map((x) => x.storefront))] : [];
   const haveLabel = !g
@@ -596,12 +596,22 @@ export function GameDrawer() {
             stars={g.stars}
             chips={
               <>
-                <ConsoleChip platformKey={g.platformKey} platform={g.platform} />
-                {haveLabel && (
-                  <span className="sc-chip" data-tone="have">
-                    <StashMark size={13} /> {haveLabel}
-                  </span>
-                )}
+                {/* Its consoles' marks (D175, the owner on Azur Lane: Crosswave): filled where you have it, dotted where you
+                    don't, this one outlined, PC apart at the end; a mark opens it there. */}
+                <span role="group" aria-label={haveLabel ? `Its consoles: ${haveLabel}` : 'Its consoles'} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+                  {(g.consoles.length > 0 ? g.consoles : [{ platformKey: g.platformKey, platform: g.platform, current: true, via: null, copies: owned > 0 ? [{ quantity: owned }] : [] }]).map((r) => (
+                    <ConsoleMark
+                      key={r.platformKey}
+                      platformKey={r.platformKey}
+                      name={r.platform}
+                      owned={r.copies.length > 0 || Boolean(r.via)}
+                      size={20}
+                      onClick={r.current ? undefined : () => openGame(r.platformKey, g.title)}
+                      style={r.current ? { outline: '2px solid var(--sc-cade)', outlineOffset: 2, borderRadius: 2 } : undefined}
+                    />
+                  ))}
+                  {g.pc.length > 0 && <ConsoleMark platformKey="pc" name={`PC · ${[...new Set(g.pc.map((x) => x.storefront))].join(', ')}`} size={20} onClick={g.platformKey === 'pc' ? undefined : () => openGame('pc', g.title)} />}
+                </span>
                 {owned === 0 && g.wishlist?.rank ? (
                   <span className="sc-chip" data-tone="want">
                     <Acorn size={13} /> #{g.wishlist.rank} on your wishlist
@@ -613,11 +623,6 @@ export function GameDrawer() {
                     Missing
                   </span>
                 )}
-                {notYet.slice(0, 2).map((r) => (
-                  <button key={r.platformKey} type="button" className="sc-chip" data-tone="missing" onClick={() => openGame(r.platformKey, g.title)}>
-                    {r.platform}: not yet
-                  </button>
-                ))}
                 <RommChip link={g.romm} />
               </>
             }
@@ -740,6 +745,12 @@ export function GameDrawer() {
                         Edit this copy
                       </Button>
                     )}
+                    {/* Another copy, beside the last copy's Edit this copy, a button like it (the owner, 2026-10-24). */}
+                    {canEdit && i === g.copies.length - 1 && g.platformKey !== 'pc' && (
+                      <Button size="compact-sm" variant="default" leftSection={<IconPlus size={14} />} onClick={() => setAdding({ platformKey: g.platformKey, platform: g.platform, title: g.title })}>
+                        Add a copy
+                      </Button>
+                    )}
                   </Group>
                   {x.source === 'squirrelcade' && !x.missingSince && (
                     <Text size="xs" c="dimmed" mt={4}>
@@ -832,15 +843,10 @@ export function GameDrawer() {
                   )}
                 </Box>
               ))}
-              <OtherConsoles rows={g.consoles} currency={currency} canEdit={canEdit} onEdit={(r, x) => setEditing(otherRef(r, x))} onOpen={(k) => openGame(k, g.title)} />
-              <OnPc pc={g.pc} links={g.pcLinks} current={g.platformKey === 'pc'} onOpen={() => openGame('pc', g.title)} />
-              {canEdit && (
+              {/* The other consoles' and PC's copies are a tap on their tabs above (D175): no repeat under the copy. */}
+              {g.platformKey === 'pc' && <OnPc pc={g.pc} links={g.pcLinks} current onOpen={() => openGame('pc', g.title)} />}
+              {canEdit && spare && (
                 <Group gap="xs">
-                  {g.platformKey !== 'pc' && (
-                    <Button size="compact-sm" variant="subtle" leftSection={<IconPlus size={14} />} onClick={() => setAdding({ platformKey: g.platformKey, platform: g.platform, title: g.title })}>
-                      Add a copy
-                    </Button>
-                  )}
                   {spare && (
                     <Text size="xs" c="dimmed">
                       You have {owned} copies of it.{' '}

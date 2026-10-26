@@ -39,6 +39,8 @@ import { Verdict } from '../Verdict';
 import { PreferencePicker } from '../Preference';
 import { Link, useSearchParams } from 'react-router';
 import { ConsoleChips } from '../ConsoleChips';
+import { ConsoleMark } from '../ConsoleMark';
+import { isOwned, oneLinePerGame } from '../oneLine';
 import { Acorns, Reviews, type ReviewsOf } from '../Acorn';
 
 
@@ -382,6 +384,10 @@ export function StorePage() {
   const [consoleKey, setConsoleKey] = useState<string | null>(null);
   useEffect(() => setConsoleKey(null), [query]);
   const shown = consoleKey ? results?.filter((r) => r.platformKey === consoleKey) : results;
+  // One card per game (D175), its consoles' marks on it: a mark shows that console's answer; the first answer to start.
+  const games = shown ? oneLinePerGame(shown) : undefined;
+  const [chosenOn, setChosenOn] = useState<Record<string, string>>({});
+  useEffect(() => setChosenOn({}), [query]);
   const loading = barcode ? barcodeSearch.isFetching : titleSearch.isFetching;
   const failed = barcode ? barcodeSearch.error : titleSearch.error;
   const offlineAt = (barcode ? barcodeSearch.data?.offlineAt : titleSearch.data?.offlineAt) ?? null;
@@ -590,10 +596,11 @@ export function StorePage() {
         </Alert>
       )}
       {results && results.length > 0 && <ConsoleChips results={results} value={consoleKey} onChange={setConsoleKey} />}
-      {shown?.map((r) => {
+      {games?.map((g) => {
+        const r = g.consoles.find((c) => c.platformKey === chosenOn[g.key]) ?? g.first;
         const reason = reasonOf(r);
         return (
-        <Card key={`${r.platformKey}|${r.title}`} withBorder padding="sm">
+        <Card key={g.key} withBorder padding="sm">
           {/* The verdict, and beside it, as tall as it, Add it for a game you can buy here (D153). */}
           <div className="sc-verdict-row">
             <Verdict answer={r.answer} reason={reason.text} />
@@ -610,6 +617,23 @@ export function StorePage() {
             <Stack gap={2} style={{ minWidth: 0 }}>
               <GameTitle platformKey={r.platformKey} title={r.title} fw={600} size="md" withNote={false} />
               <GameStars stars={r.stars ?? []} />
+              {/* Its consoles' marks (D175): filled where you have it, dotted where you don't, PC last; tap one for its answer. */}
+              {(g.consoles.length > 1 || g.onPc) && (
+                <Group gap={6} my={2} aria-label="Its consoles">
+                  {g.consoles.map((c) => (
+                    <ConsoleMark
+                      key={c.platformKey}
+                      platformKey={c.platformKey}
+                      name={c.platform}
+                      owned={isOwned(c.answer)}
+                      size={18}
+                      onClick={() => setChosenOn((x) => ({ ...x, [g.key]: c.platformKey }))}
+                      style={c.platformKey === r.platformKey ? { outline: '2px solid var(--mantine-color-text)', outlineOffset: 2, borderRadius: 2 } : undefined}
+                    />
+                  ))}
+                  {g.onPc && <ConsoleMark platformKey="pc" name="PC" size={18} />}
+                </Group>
+              )}
               <Group gap={6}>
                 <Text size="sm" c="dimmed">
                   {r.platform}

@@ -302,6 +302,26 @@ export const settingDefinitions = {
     description: 'Show box art in lists when it is available.',
     default: true,
   }),
+  'interface.coverMarks': bool({
+    page: 'interface',
+    section: 'Appearance',
+    label: 'Console marks on covers',
+    description:
+      "A small banner in the top right corner of every game's cover with the marks of the consoles you have it on: the two newest, one per company (two of one only when that's all you have it on), and PC at the right end.",
+    default: true,
+  }),
+  'interface.coverMarksPc': select({
+    page: 'interface',
+    section: 'Appearance',
+    label: "A cover's PC mark when you don't have it on PC",
+    description: "PC always has the right end of the banner, filled when you have the game on PC. When you don't: a dotted PC mark, or none.",
+    default: 'dotted',
+    options: [
+      { value: 'dotted', label: 'A dotted PC mark' },
+      { value: 'none', label: 'No PC mark' },
+    ],
+    shownWhen: 'interface.coverMarks',
+  }),
   'interface.preferenceStyle': select({
     page: 'interface',
     section: 'Appearance',
