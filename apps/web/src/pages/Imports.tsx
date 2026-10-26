@@ -64,7 +64,17 @@ interface Outcome {
 function PurchaseSheetNote() {
   const data = useQuery({ queryKey: ['purchase-sheet'], queryFn: () => api<{ on: boolean; audit: { writes: unknown[]; missing: unknown[] } | null }>('/purchase-sheet') });
   const a = data.data?.audit;
-  if (!data.data?.on || !a || a.writes.length + a.missing.length === 0) return null;
+  if (!data.data?.on) return null;
+  // Its page is always one click away while it's on (D184): the upload is there, before any audit has something to say.
+  if (!a || a.writes.length + a.missing.length === 0)
+    return (
+      <Text size="sm" mb="md">
+        <Anchor component={Link} to="/updates/purchases" fw={600}>
+          Your purchases
+        </Anchor>
+        : upload a purchases CSV, or see what the last one would change{a ? ' (nothing to do now)' : ''}.
+      </Text>
+    );
   return (
     <Alert color="blue" variant="light" mb="md" title="Your purchases">
       {a.writes.length} of your copies could get their price and order from it, and {a.missing.length} games you bought aren't in your collection.{' '}
