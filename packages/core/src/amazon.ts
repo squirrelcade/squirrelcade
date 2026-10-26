@@ -71,6 +71,23 @@ export function orderPageDate(text: string): string | null {
   return null;
 }
 
+const SHORT_MONTHS = ['jan', 'feb', 'mar', 'apr', 'may', 'jun', 'jul', 'aug', 'sep', 'oct', 'nov', 'dec'];
+
+/**
+ * The day an order page or email says it arrives ("Arriving November 5", "Expected by Wed, Nov 5", "Estimated delivery:
+ * November 5, 2026"; D184), its year the order's (or the next, for a month before the order's). Null when it doesn't say.
+ */
+export function arrivingDate(text: string, orderDay: string | null): string | null {
+  const m = /\b(?:arriving|arrives|expected(?:\s+delivery)?(?:\s+by)?|estimated\s+delivery(?:\s+date)?|delivery\s+estimate|get\s+it(?:\s+by)?|guaranteed\s+delivery)\s*:?\s*(?:(?:mon|tue|tues|wed|wednes|thu|thur|thurs|fri|sat|satur|sun)(?:day)?\.?,?\s+)?(jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|june?|july?|aug(?:ust)?|sep(?:t(?:ember)?)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?)\.?\s+(\d{1,2})(?:,?\s+(\d{4}))?/i.exec(text);
+  if (!m) return null;
+  const month = SHORT_MONTHS.indexOf(m[1]!.slice(0, 3).toLowerCase()) + 1;
+  const day = Number(m[2]);
+  if (month < 1 || day < 1 || day > 31) return null;
+  let year = m[3] ? Number(m[3]) : Number((orderDay ?? new Date().toISOString()).slice(0, 4));
+  if (!m[3] && orderDay && month < Number(orderDay.slice(5, 7))) year++;
+  return `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+}
+
 /**
  * An order page's text (copied from the shop's page, or read from a screenshot), read as an order email is (D176):
  * its items with their prices, its total, tax and shipping, its number and the day it was placed (else `today`).
@@ -89,6 +106,7 @@ export function readOrderPage(text: string, today: string, store?: string): Foun
     order.store = 'Amazon';
     order.orderNumber = AMAZON_ORDER.exec(text)?.[0] ?? order.orderNumber;
   } else if (store) order.store = store;
+  order.expectedOn = arrivingDate(text, order.date);
   return order;
 }
 

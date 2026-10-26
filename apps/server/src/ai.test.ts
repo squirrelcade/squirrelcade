@@ -442,6 +442,10 @@ describe('AI apps: keys for apps on the home network', () => {
     expect((await g.app.inject({ url: '/api/v1/coming', cookies })).json().items).toHaveLength(2);
     const keys = (await g.app.inject({ url: '/api/v1/ai/keys', cookies })).json().keys as { name: string; canWrite: boolean }[];
     expect(keys.map((k) => [k.name, k.canWrite])).toEqual([['Amazon task', true], ['Reader', false]]);
+    // Any item may be sent (D184): a controller isn't a game, a code is left out; nothing is added for either.
+    expect((await call(writer.key, 'record_on_the_way', { title: 'Xbox Wireless Controller - Xbox Series X', store: 'Amazon', order_number: '111-0000011-0000011', item_id: 'B000000011' })).structuredContent).toMatchObject({ status: 'not_a_game', id: null });
+    expect((await call(writer.key, 'record_on_the_way', { title: 'Halo 3 - Xbox 360 [Digital Code]', store: 'Amazon', order_number: '111-0000012-0000012', item_id: 'B000000012' })).structuredContent).toMatchObject({ status: 'digital_code', id: null });
+    expect((await g.app.inject({ url: '/api/v1/coming', cookies })).json().items).toHaveLength(2);
   });
 });
 

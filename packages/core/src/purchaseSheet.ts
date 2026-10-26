@@ -5,6 +5,8 @@
  * Video game? (Yes, or Accessory/hardware), Product page.
  */
 
+import { arrivingDate } from './amazon.js';
+
 /** One item of the sheet. */
 export interface PurchaseRow {
   /** Order number and ASIN together: the row's key, so it's brought in once. */
@@ -19,9 +21,13 @@ export interface PurchaseRow {
   seller: string;
   condition: string;
   status: string;
+  /** The sheet's own guess ("Video game?"): only a hint (D184), Squirrelcade decides what's a game itself. */
   kind: 'game' | 'hardware' | 'other';
   /** Cancelled, returned or refunded: not a purchase. */
   gone: boolean;
+  /** Not shipped yet (a pre-order), and the day it's expected when the status says (D184). */
+  coming: boolean;
+  expectedOn: string | null;
 }
 
 const money = (s: string | undefined) => {
@@ -70,6 +76,8 @@ export function readPurchaseSheet(rows: readonly (readonly string[])[]): Purchas
       status,
       kind: kind === 'yes' || kind === 'game' ? 'game' : /accessor|hardware/.test(kind) ? 'hardware' : 'other',
       gone: /^(yes|true|1|x)$/i.test(cancelled) || /^cancel|return complete|refund/i.test(status),
+      coming: /not yet shipped|pre-?order|arriving|preparing for shipment|shipping soon|release date/i.test(status),
+      expectedOn: arrivingDate(status, /^\d{4}-\d{2}-\d{2}/.exec(at(r, c.date))?.[0] ?? null),
     });
   }
   return out;

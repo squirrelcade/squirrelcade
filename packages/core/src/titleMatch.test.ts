@@ -50,6 +50,10 @@ describe('matchTitles', () => {
     expect(same('Deadly Premonition: The Director\'s Cut', 'Deadly Premonition').kind).toBe('edition');
     // Two steps at once are a little less sure, still the same game.
     expect(same("Disney's Cars 2", 'Cars 2: The Video Game').confidence).toBeCloseTo(0.88);
+    // A toys-to-life starter pack is its game (D184); another game's "Starter Pack" isn't taken for an edition.
+    expect(same('LEGO Dimensions Starter Pack', 'LEGO Dimensions').kind).toBe('edition');
+    expect(same('Skylanders Trap Team Starter Pack', 'Skylanders: Trap Team').kind).toBe('edition');
+    expect(same('Disney Infinity 3.0 Edition: Starter Pack', 'Disney Infinity 3.0 Edition').kind).toBe('edition');
   });
 
   it('never takes another number for the same game', () => {

@@ -35,6 +35,8 @@ export interface FoundOrder {
   link: string | null;
   /** Who read it: the AI model, or Squirrelcade's own rules. */
   readBy: 'ai' | 'plain';
+  /** The day it's expected (YYYY-MM-DD), when the page or email says ("Arriving November 5"; D184). */
+  expectedOn?: string | null;
 }
 
 /** Settings > Email > "What counts as the price paid": the item's price, with its share of the tax, or of the tax and shipping. */

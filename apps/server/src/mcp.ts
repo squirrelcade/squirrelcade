@@ -200,7 +200,7 @@ function buildServer(caller: AiCaller, tools: AiTools, deps: McpDeps, limits: Ca
       {
         title: 'Say a game bought is on the way',
         description:
-          "Puts a game bought on On the way, as a purchase email would: title, shop, and what's known (console, order day, price paid in cents, order number, item id such as Amazon's ASIN, expected delivery). It becomes a copy only when the owner says it arrived; nothing is edited or deleted. Known by its order number and item id, so saying it again, or an order that came by email or a purchases CSV too, is one entry (an Amazon game its email didn't name gets named). One game per call.",
+          "Puts a game bought on On the way, as a purchase email would: any item may be sent (every new item of an order), and only a game is added (not_a_game for a console or an accessory; digital_code for a console game bought as a code, left out unless the owner counts them). Title, shop, and what's known (console, order day, price paid in cents, order number, item id such as Amazon's ASIN, expected delivery). It becomes a copy only when the owner says it arrived; nothing is edited or deleted. Known by its order number and item id, so saying it again, or an order that came by email or a purchases CSV too, is one entry (an Amazon game its email didn't name gets named). One game per call.",
         inputSchema: ON_THE_WAY_INPUT,
         outputSchema: ON_THE_WAY_OUTPUT,
         annotations: { title: 'Record on the way', readOnlyHint: false, destructiveHint: false, idempotentHint: true, openWorldHint: false },
@@ -222,9 +222,9 @@ function buildServer(caller: AiCaller, tools: AiTools, deps: McpDeps, limits: Ca
               expectedOn: input.expected_delivery,
               link: input.link,
             });
-            return { status, id: item.id, title: item.title, platform: item.platform, listing: item.listingTitle, expected_delivery: item.expectedOn };
+            return { status, id: item?.id ?? null, title: item?.title ?? null, platform: item?.platform ?? null, listing: item?.listingTitle ?? null, expected_delivery: item?.expectedOn ?? null };
           },
-          (r) => (r.status === 'known' ? 0 : 1),
+          (r) => (r.status === 'added' || r.status === 'named' ? 1 : 0),
         ),
     );
   }

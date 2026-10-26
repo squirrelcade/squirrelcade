@@ -14,8 +14,9 @@ interface Audit {
   games: number;
   gone: number;
   writes: { key: string; item: string; date: string | null; unitCents: number | null; orderNumber: string; platform: string; title: string; copyId: number; copyCostCents: number | null; copyDate: string | null }[];
-  missing: { key: string; item: string; date: string | null; unitCents: number | null; orderNumber: string; platform: string | null; title: string | null }[];
+  missing: { key: string; item: string; date: string | null; unitCents: number | null; orderNumber: string; platform: string | null; title: string | null; coming?: boolean; expectedOn?: string | null }[];
   consoles: { item: string; date: string | null; platform: string }[];
+  leftOut?: { item: string; date: string | null; why: string }[];
 }
 
 /**
@@ -181,6 +182,11 @@ export function PurchaseSheetPage() {
                           {m.unitCents !== null ? money(m.unitCents, currency) : '—'}
                           {m.date ? `, ${date(m.date, dateFormat)}` : ''}
                         </Text>
+                        {m.coming && (
+                          <Text size="xs" c="blue">
+                            Not shipped yet{m.expectedOn ? `: expected ${date(m.expectedOn, dateFormat)}` : ''}
+                          </Text>
+                        )}
                       </Table.Td>
                     </Table.Tr>
                   ))}
@@ -197,6 +203,22 @@ export function PurchaseSheetPage() {
                 <Text key={k} size="sm">
                   {c.platform}: {c.item}
                   {c.date ? `, ${date(c.date, dateFormat)}` : ''}
+                </Text>
+              ))}
+            </Stack>
+          )}
+          {(a.leftOut?.length ?? 0) > 0 && (
+            <Stack gap={4}>
+              <Title order={3} size="h4">
+                Left out ({count(a.leftOut!.length)})
+              </Title>
+              <Text size="xs" c="dimmed">
+                Not put on the way or written anywhere. Console games bought as digital codes count when Settings › Email › Count console games bought as digital codes is on.
+              </Text>
+              {a.leftOut!.map((l, k) => (
+                <Text key={k} size="sm">
+                  {l.item}
+                  {l.date ? `, ${date(l.date, dateFormat)}` : ''}: {l.why}
                 </Text>
               ))}
             </Stack>

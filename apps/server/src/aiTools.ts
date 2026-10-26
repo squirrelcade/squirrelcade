@@ -594,7 +594,7 @@ export const SEARCH_OUTPUT = {
 const day = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'A day as YYYY-MM-DD');
 /** record_on_the_way (D179): a game bought, for On the way. */
 export const ON_THE_WAY_INPUT = {
-  title: z.string().min(1).max(200).describe("The game's title, as the shop names it (its console in it is fine: \"Okami - PlayStation 2\")."),
+  title: z.string().min(1).max(200).describe("The item's name, as the shop gives it (its console in it is fine: \"Okami - PlayStation 2\"). Any item may be sent: only a game is put on the way."),
   platform: z.string().max(60).optional().describe('Its console (a key, name or short name), when known.'),
   store: z.string().min(1).max(60).describe('Where it was bought ("Amazon", "eBay").'),
   order_date: day.optional().describe('The day it was ordered.'),
@@ -606,11 +606,13 @@ export const ON_THE_WAY_INPUT = {
   link: z.string().url().max(500).optional().describe('The order or the listing on the shop\'s site.'),
 };
 export const ON_THE_WAY_OUTPUT = {
-  status: z.enum(['added', 'named', 'known']).describe('added: new on On the way; named: an order already waiting got its game named; known: it was there already.'),
-  id: z.number(),
+  status: z
+    .enum(['added', 'named', 'known', 'not_a_game', 'digital_code'])
+    .describe('added: new on On the way; named: an order already waiting got its game named; known: it was there already; not_a_game: not a game (a console, an accessory...), nothing added; digital_code: a console game bought as a code, left out (Settings > Email counts them when the owner wants).'),
+  id: z.number().nullable(),
   title: z.string().nullable().describe('The game Squirrelcade takes it for; null when the owner is to say which.'),
   platform: z.string().nullable(),
-  listing: z.string(),
+  listing: z.string().nullable(),
   expected_delivery: z.string().nullable(),
 };
 

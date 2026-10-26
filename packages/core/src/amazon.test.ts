@@ -1,4 +1,15 @@
 import { describe, expect, it } from 'vitest';
+import { arrivingDate } from './amazon.js';
+
+describe('the day an order says it arrives (D184)', () => {
+  it('reads Arriving, Expected by and Estimated delivery, the year the order\'s or the next', () => {
+    expect(arrivingDate('Arriving November 5', '2026-09-08')).toBe('2026-11-05');
+    expect(arrivingDate('Expected by Wed, Nov 5', '2026-09-08')).toBe('2026-11-05');
+    expect(arrivingDate('Estimated delivery: January 12', '2026-12-20')).toBe('2027-01-12');
+    expect(arrivingDate('Estimated delivery: November 5, 2026', null)).toBe('2026-11-05');
+    expect(arrivingDate('Delivered October 2', '2026-09-08')).toBeNull();
+  });
+});
 import { amazonUnknown, isAmazonUnknown, orderPageDate, readAmazonHistory, readAmazonOrder, readOrderPage } from './amazon.js';
 
 // Made-up emails and pages in the shapes Amazon sends and shows (no one's real order).

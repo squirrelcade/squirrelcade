@@ -32,6 +32,12 @@ const REPRINT =
 const TRAILING_EDITION =
   /\s*[(:\-–—]?\s*((?:director['’]?s cut)|(?:game of the year|goty)(?: edition)?|(?:complete|definitive|special|limited|collector['’]?s|deluxe|digital deluxe|super deluxe|gold|ultimate|premium|legendary|enhanced|anniversary|royal|launch|day one|steelbook|signature) edition)\)?\s*$/i;
 
+/**
+ * A toys-to-life game's starter pack (the game with its portal and first figures, D184): an edition of the game for
+ * whether you have it ("LEGO Dimensions Starter Pack" is LEGO Dimensions), though catalogs keep the two apart.
+ */
+const TOYS_STARTER = /^((?:lego dimensions|skylanders\b.*|disney infinity\b.*|starlink\b.*))\s*[(:\-–—]?\s*(starter (?:pack|kit|set))\)?\s*$/i;
+
 /** Words at the end of a name that every game of a film or show has ("Cars 2: The Video Game"). */
 const GENERIC_SUBTITLES: string[][] = [
   ['the', 'official', 'video', 'game'],
@@ -149,9 +155,13 @@ export function titleShape(title: string): TitleShape {
   if (base !== rest) edition ??= rest.slice(base.length).replace(/^[\s:\-–—(]+|[\s)]+$/g, '') || null;
   else {
     const m = TRAILING_EDITION.exec(rest);
+    const toy = m ? null : TOYS_STARTER.exec(rest);
     if (m && m.index > 1) {
       base = rest.slice(0, m.index).trim();
       edition ??= m[1]!;
+    } else if (toy) {
+      base = toy[1]!.trim();
+      edition ??= toy[2]!;
     }
   }
   // A demo is compared without the word, so it's found as the game's demo (and never counted as the game).

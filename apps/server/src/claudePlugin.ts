@@ -128,7 +128,7 @@ Squirrelcade is the user's own video game collection manager, running on their h
 - \`get_game\`: one game's copies: condition, sealed, box, manual, region, grading and value.
 - \`get_wishlist\`: the wishlist (the Acorns wishlist), best first: each game's acorns (how much the user wants it, 0 to 100), priority and the rules behind it, for all consoles or one.
 - \`list_platforms\`: the consoles, with how many games each has.
-- \`record_on_the_way\`: only with a key the user made to put games on On the way (Settings > Claude and AI apps). It puts one game they bought (title, shop, and what's known: console, order day, price paid in cents, order number, item id such as Amazon's ASIN, expected delivery) on On the way, where they check it and add it when it arrives. It never changes the collection. Use it only when the user says they bought a game, one call per game.
+- \`record_on_the_way\`: only with a key the user made to put games on On the way (Settings > Claude and AI apps). It puts one game they bought (title, shop, and what's known: console, order day, price paid in cents, order number, item id such as Amazon's ASIN, expected delivery) on On the way, where they check it and add it when it arrives. It never changes the collection. Use it when the user says they bought something, one call per item: any item may be sent, and it answers not_a_game for a console or an accessory and digital_code for a console game bought as a code, adding nothing for either.
 
 Say a game is owned only when the tool says so, and present near misses as maybes. Values are PriceCharting's market values in the collection's currency. When the tools can't be reached, Squirrelcade answers on the user's home network only: say so.
 `;

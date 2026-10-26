@@ -1,6 +1,9 @@
 import {
   dayIn,
   findPlatforms,
+  isAccessory,
+  isConsoleHardware,
+  isDigitalCode,
   gmailOrderSearch,
   gmailPurchaseSearch,
   fromAmazon,
@@ -140,6 +143,13 @@ export interface StoredFound extends FoundPrice {
 }
 
 /** A game on the way (GET /api/v1/coming). */
+/** What an item bought is (D184): see OrderService.classify. */
+export type ItemKind =
+  | { kind: 'game'; game: { platformKey: string; title: string } | null; platformKey: string | null }
+  | { kind: 'digital'; platformKey: string | null }
+  | { kind: 'hardware'; platformKey: string }
+  | { kind: 'other' };
+
 export interface ComingView {
   id: number;
   store: string;
@@ -662,7 +672,7 @@ export class OrderService {
    * once by its order number and item id (the ASIN or the shop's own). Already waiting on that order (an email's or a
    * CSV's), it's the same one: an Amazon game its email didn't name is named, nothing is added.
    */
-  recordOnTheWay(r: { title: string; platform?: string; store: string; orderDate?: string; priceCents?: number; currency?: string; orderNumber?: string; itemId?: string; expectedOn?: string; link?: string }): { status: 'added' | 'named' | 'known'; item: ComingView } {
+  recordOnTheWay(r: { title: string; platform?: string; store: string; orderDate?: string; priceCents?: number; currency?: string; orderNumber?: string; itemId?: string; expectedOn?: string; link?: string }): { status: 'added' | 'named' | 'known' | 'not_a_game' | 'digital_code'; item: ComingView | null } {
     const orderNumber = r.orderNumber?.trim() || null;
     const itemId = r.itemId?.trim() || null;
     const ref = `connector:${orderNumber ?? ''}|${itemId ?? normalizeTitle(r.title)}`;
@@ -674,7 +684,12 @@ export class OrderService {
       if (r.expectedOn) this.d.db.update(comingItems).set({ ...expected, updatedAt: now }).where(eq(comingItems.id, mine.id)).run();
       return { status: 'known', item: this.view({ ...mine, ...expected }) };
     }
-    const game = this.matchListing(listing);
+    // Any item may be sent (D184): only a game goes on the way; a console game bought as a code is left out unless
+    // Settings > Email counts them.
+    const kind = this.classify(listing, { orderDate: r.orderDate ?? null, coming: Boolean(r.expectedOn) });
+    if (kind.kind === 'digital') return { status: 'digital_code', item: null };
+    if (kind.kind !== 'game') return { status: 'not_a_game', item: null };
+    const game = kind.game;
     const rowKey = orderNumber && itemId ? `${orderNumber}|${itemId}` : null;
     if (orderNumber) {
       const same = this.d.db.select().from(comingItems).where(and(eq(comingItems.orderNumber, orderNumber), eq(comingItems.status, 'waiting'))).all();
@@ -707,7 +722,7 @@ export class OrderService {
     });
     const row = this.d.db.select().from(comingItems).where(eq(comingItems.mailRef, ref)).get()!;
     // A console said that the title's words didn't settle: the owner then picks the game on it.
-    const platformKey = row.platformKey ?? (r.platform ? findPlatforms(r.platform, this.d.db.select({ key: platforms.key, name: platforms.name }).from(platforms).all())[0]?.key ?? null : null);
+    const platformKey = row.platformKey ?? game?.platformKey ?? kind.platformKey ?? (r.platform ? findPlatforms(r.platform, this.d.db.select({ key: platforms.key, name: platforms.name }).from(platforms).all())[0]?.key ?? null : null);
     const set = { ...expected, platformKey, updatedAt: now };
     this.d.db.update(comingItems).set(set).where(eq(comingItems.id, row.id)).run();
     if (rowKey) this.d.db.insert(purchaseRows).values({ key: rowKey, kind: 'coming', copyId: null, appliedAt: now }).onConflictDoNothing().run();
@@ -741,6 +756,7 @@ export class OrderService {
           shippingCents: cost.shippingCents,
           discountCents: cost.discountCents,
           readBy: order.readBy,
+          expectedOn: order.expectedOn ?? null,
           platformKey: game?.platformKey ?? null,
           title: game?.title ?? null,
           status: 'waiting',
@@ -757,6 +773,41 @@ export class OrderService {
   /** The game a listing's title is, when Squirrelcade is sure (for other sources, D178). */
   gameOf(listing: string): { platformKey: string; title: string } | null {
     return this.matchListing(listing);
+  }
+
+  /**
+   * What an item bought is (D184), for the purchases CSV and Claude's connector, which send every item: a game (the one
+   * Squirrelcade is sure of, else only its console, or neither, for the owner to say), a console game bought as a code
+   * (left out unless Settings > Email counts them), a console, or something else. A sheet's own guess is only a hint.
+   */
+  classify(item: string, opts: { hint?: 'game' | 'hardware' | 'other'; seller?: string; orderDate?: string | null; coming?: boolean } = {}): ItemKind {
+    const platformKey = productPlatform(item);
+    if (isDigitalCode(item, opts.seller) && platformKey !== 'pc' && !this.d.settings.get('orders.countDigitalCodes')) return { kind: 'digital', platformKey };
+    const game = this.matchListing(item);
+    // A pre-order whose name says no console is the release coming out after the order, not the one a catalog has
+    // ("The Legend of Zelda: Ocarina of Time", ordered in 2026 for the Switch 2, isn't the N64's).
+    if (game && !platformKey && opts.coming && opts.orderDate) {
+      const on = this.d.lookup.releasedAfter(game.title, opts.orderDate);
+      if (on && on !== game.platformKey) return { kind: 'game', game: { platformKey: on, title: game.title }, platformKey: on };
+    }
+    if (game) return { kind: 'game', game, platformKey: game.platformKey };
+    if (isConsoleHardware(item) || (opts.hint === 'hardware' && !platformKey)) return platformKey ? { kind: 'hardware', platformKey } : { kind: 'other' };
+    if (isAccessory(item)) return { kind: 'other' };
+    // A console in its name and nothing else it could be: a game ("Stranger of Paradise - PlayStation 5", which a
+    // sheet's keyword guess took for hardware).
+    if (platformKey) return { kind: 'game', game: null, platformKey };
+    if (opts.hint === 'hardware') return { kind: 'other' };
+    // No console in its name: a game's title anywhere makes it a game; a pre-order's console is the one IGDB has it
+    // coming out on after the order.
+    const { results } = this.d.lookup.productMatch(item);
+    const best = results[0];
+    const titled = best && orderItemScore(item, best.title) >= ITEM_MATCH ? best.title : null;
+    if (!titled && opts.hint !== 'game') return { kind: 'other' };
+    if (titled && opts.coming && opts.orderDate) {
+      const on = this.d.lookup.releasedAfter(titled, opts.orderDate);
+      if (on) return { kind: 'game', game: { platformKey: on, title: titled }, platformKey: on };
+    }
+    return { kind: 'game', game: null, platformKey: null };
   }
 
   /** The game a listing's title is, when Squirrelcade is sure: its console named, or one console's game only, and the title's words all there. */

@@ -1022,6 +1022,13 @@ export const settingDefinitions = {
     default: true,
     shownWhen: 'orders.watch',
   }),
+  'orders.countDigitalCodes': bool({
+    page: 'email',
+    section: 'On the way',
+    label: 'Count console games bought as digital codes',
+    description: "Off: a console game bought as a code to redeem (\"[Digital Code]\", \"Online Game Code\") isn't put on the way or written on a copy from a purchases CSV or Claude's connector; it's listed as left out. PC games count either way.",
+    default: false,
+  }),
   'orders.amazonEmails': bool({
     page: 'email',
     section: 'On the way',

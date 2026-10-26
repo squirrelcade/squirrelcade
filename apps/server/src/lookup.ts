@@ -940,6 +940,24 @@ export class LookupService {
       if (typed.length > 0) return { query: cleaned, results: merge(typed, elsewhere?.results ?? []) };
       const close = this.closest(cleaned, platformKey);
       if (close.length > 0) return { query: close[0]!.title, results: merge(close, shortHere?.results ?? [], elsewhere?.results ?? []) };
+      // A game the named console's catalog doesn't have yet (a new release, or a remaster: "The Legend of Zelda: Ocarina
+      // of Time - Nintendo Switch 2" found only on the N64), known by its title elsewhere: on the named console, when
+      // IGDB has it there or the name is that title and nothing more (D184).
+      if (elsewhere && (this.igdb?.findByKey(platformKey, elsewhere.query) || matchKey(cleaned) === matchKey(elsewhere.query))) {
+        const here: LookupResult = {
+          platformKey,
+          platform: this.catalogs.allMatches().find((m) => m.key === platformKey)?.name ?? KNOWN_PLATFORMS.find((k) => k.key === platformKey)?.name ?? platformKey,
+          title: elsewhere.query,
+          answer: 'need',
+          ownedAs: [],
+          ownedOn: [...new Set(elsewhere.results.filter((r) => r.answer === 'own' || r.answer === 'own-not-in-catalog').map((r) => r.platform))],
+          ownedOnPc: [],
+          maybe: [],
+          wishlist: null,
+          relevance: 3,
+        };
+        return { query: elsewhere.query, results: merge([here], elsewhere.results) };
+      }
     }
     if (shortHere) return { query: shortHere.query, results: merge(shortHere.results, elsewhere?.results ?? []) };
     if (elsewhere) return { query: elsewhere.query, results: elsewhere.results };
@@ -969,6 +987,21 @@ export class LookupService {
     const best = [...scored.values()].sort((a, b) => b.score - a.score).slice(0, 5);
     // Each one's full answer (value, cover, note), as a search for it gives.
     return best.flatMap((b) => this.search(b.title, { platformKey: b.key, exact: true, limit: 1, followed: false }));
+  }
+
+  /**
+   * The one console where IGDB has a game of this title coming out on or after a day (D184): a pre-order whose name
+   * says no console ("The Legend of Zelda: Ocarina of Time", ordered for a new console's release) is that one. Null
+   * when IGDB isn't set up, or none or several are.
+   */
+  releasedAfter(title: string, day: string): string | null {
+    if (!this.igdb) return null;
+    const found = new Set<string>();
+    for (const p of this.db.select({ key: platforms.key }).from(platforms).all()) {
+      const g = this.igdb.findByKey(p.key, title);
+      if (g?.released && g.released >= day) found.add(p.key);
+    }
+    return found.size === 1 ? [...found][0]! : null;
   }
 
   saveBarcode(raw: string, platformKey: string, title: string): boolean {

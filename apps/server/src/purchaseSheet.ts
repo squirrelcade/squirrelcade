@@ -1,4 +1,4 @@
-import { baseTitle, KNOWN_PLATFORMS, matchKey, parseCsv, productPlatform, readPurchaseSheet, type PurchaseRow } from '@squirrelcade/core';
+import { baseTitle, KNOWN_PLATFORMS, matchKey, parseCsv, readPurchaseSheet, type PurchaseRow } from '@squirrelcade/core';
 import { and, eq, isNull } from 'drizzle-orm';
 import type { FastifyInstance } from 'fastify';
 import { existsSync } from 'node:fs';
@@ -43,6 +43,9 @@ export interface SheetMissing {
   platform: string | null;
   /** The game Squirrelcade takes it for; null when it isn't sure (then it's for the owner to say). */
   title: string | null;
+  /** Not shipped yet (a pre-order), and the day it's expected (D184). */
+  coming?: boolean;
+  expectedOn?: string | null;
 }
 
 /** The audit (D178): what the sheet's games would change, shown before anything is written. */
@@ -55,6 +58,8 @@ export interface SheetAudit {
   missing: SheetMissing[];
   /** Hardware rows that name a console (a console bought, its accessories). */
   consoles: { item: string; date: string | null; platform: string }[];
+  /** What was left out, and why (D184): console games bought as digital codes, rows the sheet called games that aren't. */
+  leftOut?: { item: string; date: string | null; why: string }[];
 }
 
 /**
@@ -148,26 +153,37 @@ export class PurchaseSheetService {
       const k = `${c.key}|${matchKey(baseTitle(c.title))}`;
       mine.set(k, [...(mine.get(k) ?? []), c]);
     }
-    const audit: SheetAudit = { at: new Date().toISOString(), rows: rows.length, games: 0, gone: 0, writes: [], missing: [], consoles: [] };
+    const audit: SheetAudit = { at: new Date().toISOString(), rows: rows.length, games: 0, gone: 0, writes: [], missing: [], consoles: [], leftOut: [] };
     const taken = new Set<number>();
     for (const [i, r] of rows.entries()) {
       if (i % 20 === 19) {
         progress(`${i + 1} of ${rows.length}`);
         await new Promise((resolve) => setImmediate(resolve));
       }
-      if (r.kind === 'hardware') {
-        const p = productPlatform(r.item);
-        if (p && !r.gone) audit.consoles.push({ item: r.item, date: r.date, platform: nameOf(p) });
+      if (r.gone) {
+        if (r.kind === 'game') audit.gone++;
         continue;
       }
-      if (r.kind !== 'game') continue;
-      if (r.gone) {
-        audit.gone++;
+      if (done.has(r.key)) {
+        audit.games++;
+        continue;
+      }
+      // Every row is read (D184): Squirrelcade decides what's a game, the sheet's "Video game?" only a hint.
+      const kind = this.d.orders.classify(r.item, { hint: r.kind, seller: r.seller, orderDate: r.date, coming: r.coming });
+      if (kind.kind === 'hardware') {
+        audit.consoles.push({ item: r.item, date: r.date, platform: nameOf(kind.platformKey) });
+        continue;
+      }
+      if (kind.kind === 'digital') {
+        audit.leftOut!.push({ item: r.item, date: r.date, why: 'a console game bought as a digital code' });
+        continue;
+      }
+      if (kind.kind === 'other') {
+        if (r.kind === 'game') audit.leftOut!.push({ item: r.item, date: r.date, why: "marked a video game, but it doesn't read as one" });
         continue;
       }
       audit.games++;
-      if (done.has(r.key)) continue;
-      const game = this.d.orders.gameOf(r.item);
+      const game = kind.game;
       const owned = game ? (mine.get(`${game.platformKey}|${matchKey(baseTitle(game.title))}`) ?? []) : [];
       // Already written from this order: nothing to do. Else the copy without an order yet, the one without a price first.
       if (owned.some((c) => c.orderNumber === r.orderNumber)) continue;
@@ -177,8 +193,8 @@ export class PurchaseSheetService {
         taken.add(copy.id);
         audit.writes.push({ key: r.key, item: r.item, date: r.date, unitCents: r.unitCents, orderNumber: r.orderNumber, asin: r.asin, platformKey: game.platformKey, platform: nameOf(game.platformKey), title: game.title, copyId: copy.id, copyCostCents: copy.costCents || null, copyDate: copy.datePurchased });
       } else if (!game || owned.length === 0) {
-        const p = game?.platformKey ?? productPlatform(r.item);
-        audit.missing.push({ key: r.key, item: r.item, date: r.date, unitCents: r.unitCents, orderNumber: r.orderNumber, platformKey: p, platform: p ? nameOf(p) : null, title: game?.title ?? null });
+        const p = game?.platformKey ?? kind.platformKey;
+        audit.missing.push({ key: r.key, item: r.item, date: r.date, unitCents: r.unitCents, orderNumber: r.orderNumber, platformKey: p, platform: p ? nameOf(p) : null, title: game?.title ?? null, coming: r.coming, expectedOn: r.expectedOn });
       }
     }
     this.save(AUDIT_KEY, audit);
@@ -208,7 +224,7 @@ export class PurchaseSheetService {
     }
     for (const m of audit.missing.filter((x) => want.has(x.key))) {
       if (this.d.db.select().from(purchaseRows).where(eq(purchaseRows.key, m.key)).get()) continue;
-      this.d.orders.putOnTheWay(`sheet:${m.key}`, {
+      const [put] = this.d.orders.putOnTheWay(`sheet:${m.key}`, {
         store: 'Amazon',
         date: m.date,
         orderNumber: m.orderNumber,
@@ -220,7 +236,10 @@ export class PurchaseSheetService {
         totalCents: null,
         link: /^\d{3}-\d{7}-\d{7}$/.test(m.orderNumber) ? `https://www.amazon.com/your-orders/order-details?orderID=${m.orderNumber}` : null,
         readBy: 'plain',
+        expectedOn: m.expectedOn ?? null,
       });
+      // The game the audit decided on (a pre-order's coming release, D184), not what its bare name matches again.
+      if (put && m.platformKey && m.title && (put.title !== m.title || put.platformKey !== m.platformKey)) this.d.orders.setGame(put.id, { platformKey: m.platformKey, title: m.title });
       this.d.db.insert(purchaseRows).values({ key: m.key, kind: 'coming', copyId: null, appliedAt: now }).onConflictDoNothing().run();
       onTheWay++;
     }
