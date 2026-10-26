@@ -2,6 +2,7 @@ import {
   dayIn,
   gmailOrderSearch,
   gmailPurchaseSearch,
+  fromAmazon,
   isAmazonUnknown,
   ITEM_MATCH,
   orderPageDate,
@@ -614,6 +615,7 @@ export class OrderService {
           const from = m.from.toLowerCase();
           if (!(from === want || from.endsWith(`@${want}`) || from.endsWith(`.${want}`))) continue;
           if (!purchase(m.subject)) continue;
+          if (!s.get('orders.amazonEmails') && fromAmazon(m.from)) continue;
           fresh.push(m);
         }
       }
@@ -648,6 +650,11 @@ export class OrderService {
   }
 
   /** An order's items as games on the way (each once: an email's item is never added twice); the new ones. */
+  /** An order's items put on the way (each once, by ref and place), as an email's are: for other sources (D178). */
+  putOnTheWay(ref: string, order: FoundOrder): ComingView[] {
+    return this.addComing(ref, order);
+  }
+
   private addComing(ref: string, order: FoundOrder): ComingView[] {
     const now = new Date().toISOString();
     const out: ComingView[] = [];
@@ -688,6 +695,11 @@ export class OrderService {
   }
 
   /** The game a listing's title is, when Squirrelcade is sure: its console named, or one console's game only, and the title's words all there. */
+  /** The game a listing's title is, when Squirrelcade is sure (for other sources, D178). */
+  gameOf(listing: string): { platformKey: string; title: string } | null {
+    return this.matchListing(listing);
+  }
+
   private matchListing(listing: string): { platformKey: string; title: string } | null {
     // A lot or a bundle is several games: the owner says which.
     if (/\b(lot|bundle|bundled)\b|\b\d+\s+games\b/i.test(listing)) return null;

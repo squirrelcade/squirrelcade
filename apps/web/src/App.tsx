@@ -65,6 +65,7 @@ const PlatformDetailPage = page(() => import('./pages/PlatformDetail').then((m) 
 const PlatformsPage = page(() => import('./pages/Platforms').then((m) => m.PlatformsPage));
 const RootsPage = page(() => import('./pages/Roots').then((m) => m.RootsPage));
 const RootsConsolePage = page(() => import('./pages/Roots').then((m) => m.RootsConsolePage));
+const PurchaseSheetPage = page(() => import('./pages/PurchaseSheet').then((m) => m.PurchaseSheetPage));
 const LeavesPage = page(() => import('./pages/Leaves').then((m) => m.LeavesPage));
 const MagazinePage = page(() => import('./pages/Leaves').then((m) => m.MagazinePage));
 const IssueReaderPage = page(() => import('./pages/Leaves').then((m) => m.IssueReaderPage));
@@ -333,6 +334,7 @@ function Shell({ noConnection = false }: { noConnection?: boolean }) {
             <Route path="/collection/report" element={<ReportPage />} />
             <Route path="/roots" element={<RootsPage />} />
             <Route path="/roots/:key" element={<RootsConsolePage />} />
+            <Route path="/updates/purchases" element={<OwnerOnly><PurchaseSheetPage /></OwnerOnly>} />
             <Route path="/leaves" element={<LeavesPage />} />
             <Route path="/leaves/search" element={<MagazineSearchPage />} />
             <Route path="/leaves/undated" element={<OwnerOnly><UndatedIssuesPage /></OwnerOnly>} />

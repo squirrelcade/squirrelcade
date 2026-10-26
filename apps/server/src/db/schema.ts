@@ -473,6 +473,9 @@ export const copies = sqliteTable(
     notes: text('notes').notNull(),
     dateEntered: text('date_entered'),
     datePurchased: text('date_purchased'),
+    /** The order it was bought in, and the shop's own number for it (Amazon's ASIN): from a purchases spreadsheet (D178). */
+    orderNumber: text('order_number'),
+    asin: text('asin'),
     gradingCompany: text('grading_company').notNull(),
     gradingCertId: text('grading_cert_id').notNull(),
     folder: text('folder').notNull(),
@@ -1194,6 +1197,15 @@ export const friendFiles = sqliteTable('friend_files', {
  * kept (the store, the day, the listing's title, the amounts), never the email: which one it was is a hash of its
  * Message-ID, with the item's place in it, so an item is added once.
  */
+/** A purchases spreadsheet's rows brought in (D178), by order number and ASIN: written to a copy, or put on the way, once. */
+export const purchaseRows = sqliteTable('purchase_rows', {
+  key: text('key').primaryKey(),
+  /** copy (its price and order written on a copy) or coming (put on On the way). */
+  kind: text('kind').notNull(),
+  copyId: integer('copy_id'),
+  appliedAt: text('applied_at').notNull(),
+});
+
 export const comingItems = sqliteTable(
   'coming_items',
   {

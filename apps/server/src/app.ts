@@ -48,6 +48,7 @@ import { ItadClient, PcPriceService, registerPcPriceRoutes, type PcPrice } from 
 import { GameFlyService, registerGameFlyRoutes } from './gamefly.js';
 import { MarksService, registerMarkRoutes } from './marks.js';
 import { MagazineService, registerMagazineRoutes, type PageReader } from './magazines.js';
+import { PurchaseSheetService, registerPurchaseSheetRoutes } from './purchaseSheet.js';
 import { GgDealsService, ggAsPcPrice, type GgPrice } from './ggdeals.js';
 import { registerRetroAchievementsRoutes, RetroAchievementsService } from './retroachievements.js';
 import { AchievementsService, registerAchievementRoutes, xboxHttpsGet, type PsnApi, type XboxGet } from './achievements.js';
@@ -128,9 +129,9 @@ export interface BuildOptions {
   itadFetch?: FetchLike;
   /** Exchange rates for purchases in another currency (Frankfurter's, D173). */
   ratesFetch?: FetchLike;
-  /** GameFly's search, for its prices (D174). */
   /** Leaves' page reader (Tesseract), for tests (D177). */
   magazineReader?: PageReader;
+  /** GameFly's search, for its prices (D174). */
   gameflyFetch?: FetchLike;
   /** The vision model's HTTP calls (Check a shelf), replaced in tests. */
   visionFetch?: FetchLike;
@@ -173,6 +174,7 @@ export interface SquirrelcadeApp {
   pcPrices: PcPriceService;
   gamefly: GameFlyService;
   magazines: MagazineService;
+  purchaseSheet: PurchaseSheetService;
   mail: MailImportService;
   orders: OrderService;
   gotd: GameOfTheDayService;
@@ -609,6 +611,9 @@ export async function buildApp(options: BuildOptions = {}): Promise<Squirrelcade
   const magazines = new MagazineService(settings, env, log, options.magazineReader);
   registerMagazineRoutes(app, magazines, tasks);
   app.addHook('onClose', async () => magazines.close());
+  // A purchases spreadsheet (D178): read on a schedule, its audit shown before anything is written.
+  const purchaseSheet = new PurchaseSheetService({ db, settings, env, log, collection, orders });
+  registerPurchaseSheetRoutes(app, purchaseSheet, tasks);
   registerPlayRoutes(app, play, (platformKey, title) => catalogTarget(catalogs, platformKey, title)?.target.title ?? null);
   registerCopyDetailRoutes(app, details, settings);
   // Storage locations made quick (D157): Pack a place, a shelf photo's games in one place, the Places page.
@@ -655,6 +660,15 @@ export async function buildApp(options: BuildOptions = {}): Promise<Squirrelcade
     interval: () => (videos.enabled() ? 86_400_000 : null),
     firstRunDelayMs: 30 * 60_000,
     run: async (_log, progress) => videos.readChannels(progress),
+  });
+  tasks.register({
+    name: 'purchase-sheet',
+    title: 'Read the purchases spreadsheet',
+    description: 'Reads your purchases spreadsheet (Settings > Sources) and works out what it would change: shown on Stash updates, written only when you choose.',
+    interval: () => (purchaseSheet.enabled() ? settings.get('sources.purchaseCsvHours') * 3_600_000 : null),
+    firstRunDelayMs: 5 * 60_000,
+    run: async (_log, progress) => purchaseSheet.refresh(progress),
+    quiet: (m) => m === 'No purchases spreadsheet',
   });
   tasks.register({
     name: 'magazines-scan',
@@ -1047,6 +1061,7 @@ export async function buildApp(options: BuildOptions = {}): Promise<Squirrelcade
     pcPrices,
     gamefly,
     magazines,
+    purchaseSheet,
     mail,
     orders,
     gotd,

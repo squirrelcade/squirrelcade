@@ -1,7 +1,7 @@
 import { issueFromFileName, issueLabel, pageNames, parseComicInfo, parseHocr, skippedName, type IssueInfo, type PageWord } from '@squirrelcade/core';
 import Database from 'better-sqlite3';
 import { spawn } from 'node:child_process';
-import { existsSync } from 'node:fs';
+import { existsSync, type Dirent } from 'node:fs';
 import { open, readdir, readFile, stat } from 'node:fs/promises';
 import { basename, join, relative } from 'node:path';
 import { inflateRawSync } from 'node:zlib';
@@ -235,14 +235,25 @@ export class MagazineService {
     const known = new Map((db.prepare('SELECT path, file_size AS size, file_mtime AS mtime FROM issues').all() as { path: string; size: number; mtime: number }[]).map((r) => [r.path, r]));
     for (const dir of (await readdir(root, { withFileTypes: true })).filter((d) => d.isDirectory() && !skippedName(d.name, skip))) {
       progress(dir.name);
-      for (const file of (await readdir(join(root, dir.name), { withFileTypes: true })).filter((f) => f.isFile() && /\.cbz$/i.test(f.name) && !skippedName(f.name, skip))) {
+      // A folder or file that can't be read (its permissions) is said in the log and passed over: the rest is read,
+      // and what was read of it before is kept.
+      let files: Dirent[];
+      try {
+        files = await readdir(join(root, dir.name), { withFileTypes: true });
+      } catch (err) {
+        failed++;
+        this.log.warn({ context: 'magazines' }, `${dir.name} couldn't be read: ${err instanceof Error ? err.message : String(err)}`);
+        for (const p of known.keys()) if (p.startsWith(`${dir.name}/`)) seen.add(p);
+        continue;
+      }
+      for (const file of files.filter((f) => f.isFile() && /\.cbz$/i.test(f.name) && !skippedName(f.name, skip))) {
         const path = join(root, dir.name, file.name);
         const rel = relative(root, path).replace(/\\/g, '/');
         seen.add(rel);
-        const st = await stat(path);
-        const was = known.get(rel);
-        if (was && was.size === st.size && was.mtime === Math.round(st.mtimeMs)) continue;
         try {
+          const st = await stat(path);
+          const was = known.get(rel);
+          if (was && was.size === st.size && was.mtime === Math.round(st.mtimeMs)) continue;
           const items = await zipContents(path);
           const info = items.find((i) => /(^|\/)comicinfo\.xml$/i.test(i.name));
           const fromInfo = info ? parseComicInfo((await zipRead(path, info)).toString('utf8')) : null;

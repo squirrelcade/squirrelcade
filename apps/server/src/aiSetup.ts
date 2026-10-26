@@ -48,6 +48,7 @@ const LINKED: SettingKey[] = [
   'storage.backupCopyFolder',
   'storage.backupRetention',
   'collection.dropFolderEnabled',
+  'sources.purchaseCsv',
   'collection.exportReminderDays',
   'sources.barcodeLookup',
   'sources.upcDatabaseKey',
@@ -152,6 +153,7 @@ export function setupBrief(deps: BriefDeps, address: string, now = new Date()): 
     `- **Backups:** ${backups.length > 0 ? `${backups.length}, the newest ${day(backups[0]!.createdAt)}` : 'none yet'}; second backup folder ${deps.backups.copyFolder() ? 'set' : 'not set'}.`,
   );
   lines.push(`- **Watched folder:** ${settings.get('collection.dropFolderEnabled') ? 'on' : 'off'}.`);
+  lines.push(`- **Purchases CSV** (D178): ${settings.get('sources.purchaseCsv') ? `on; ${lastRun('purchase-sheet')}` : 'off'}.`);
   lines.push('- **Optional parts** (Settings > Features):');
   for (const k of Object.keys(FEATURE_SETTINGS) as FeatureKey[]) {
     const name = label(FEATURE_SETTINGS[k] as SettingKey);

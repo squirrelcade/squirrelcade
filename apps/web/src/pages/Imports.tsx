@@ -60,6 +60,21 @@ interface Outcome {
 }
 
 /** Collection updates: upload PriceCharting's export (CSV or zip), confirm or discard held updates, and the history with each update's report. */
+/** A purchases CSV's audit waiting (D178): how much it would change, and the way to it. */
+function PurchaseSheetNote() {
+  const data = useQuery({ queryKey: ['purchase-sheet'], queryFn: () => api<{ on: boolean; audit: { writes: unknown[]; missing: unknown[] } | null }>('/purchase-sheet') });
+  const a = data.data?.audit;
+  if (!data.data?.on || !a || a.writes.length + a.missing.length === 0) return null;
+  return (
+    <Alert color="blue" variant="light" mb="md" title="Your purchases">
+      {a.writes.length} of your copies could get their price and order from it, and {a.missing.length} games you bought aren't in your collection.{' '}
+      <Anchor component={Link} to="/updates/purchases" fw={600}>
+        See what it would change
+      </Anchor>
+    </Alert>
+  );
+}
+
 export function ImportsPage() {
   const queryClient = useQueryClient();
   const dateFormat = useSetting('general.dateFormat', 'us');
@@ -114,6 +129,7 @@ export function ImportsPage() {
         title="Stash updates"
         description="Under Acorns, with the rest of what comes into your Stash and goes out of it: PriceCharting's export brings your collection in (the CSV file, or the collection.zip it arrives in), and Send to PriceCharting takes the copies you add here out to it."
       />
+      <PurchaseSheetNote />
       {pending.map((p) => (
         <Alert key={p.id} color="yellow" icon={<IconAlertTriangle />} title={`${p.fileName} is waiting for you`} mb="md">
           <Stack gap="xs">

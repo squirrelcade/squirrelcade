@@ -1022,6 +1022,14 @@ export const settingDefinitions = {
     default: true,
     shownWhen: 'orders.watch',
   }),
+  'orders.amazonEmails': bool({
+    page: 'email',
+    section: 'On the way',
+    label: "Read Amazon's emails",
+    description: "Amazon's order emails don't name what you bought, so each game waits on On the way until its order page names it. Off: Amazon's emails are left alone (when a purchases CSV has your Amazon orders, Settings > Sources).",
+    default: true,
+    shownWhen: 'orders.watch',
+  }),
   'orders.watchSubjects': list({
     page: 'email',
     section: 'On the way',
@@ -2456,6 +2464,33 @@ export const settingDefinitions = {
     max: 168,
     unit: 'hours',
     shownWhen: 'sources.gamefly',
+  }),
+  'sources.purchaseCsv': bool({
+    page: 'sources',
+    section: 'Purchases CSV',
+    label: 'Read a purchases CSV',
+    description:
+      "A CSV of what you've bought, one row per item (an Amazon order history kept up to date, say; its columns by name: Order date, Order #, Item, ASIN, Qty, Unit price, Shipment status, Video game?...). Upload one on Stash updates > Your purchases, or have something of your own drop them in the folder below. Squirrelcade only reads them: nothing changes in your collection until you say so.",
+    default: false,
+  }),
+  'sources.purchaseCsvFolder': path({
+    page: 'sources',
+    section: 'Purchases CSV',
+    label: 'Folder',
+    description: "The folder whose CSV files are read (each row once, by its order number and ASIN), and where an uploaded one is saved. Empty means a purchases folder in Squirrelcade's config folder.",
+    default: '',
+    shownWhen: 'sources.purchaseCsv',
+  }),
+  'sources.purchaseCsvHours': num({
+    page: 'sources',
+    section: 'Purchases CSV',
+    label: 'Read it every',
+    description: 'How often the folder is read again (reading changes nothing in your collection).',
+    default: 24,
+    min: 1,
+    max: 168,
+    unit: 'hours',
+    shownWhen: 'sources.purchaseCsv',
   }),
   'sources.raUsername': text({
     page: 'sources',
