@@ -345,7 +345,7 @@ The first five have a card in **Settings > Sources**, with **Save and test**:
 2. Give me a summary table: each part, whether it works, and where it lives (Squirrelcade's address, the compose file's folder, the config folder with its backups and their second copy, each extra's settings page).
 3. List what's left for another day.
 4. Tell me where help is: **Help** in the menu, the **?** on each page, **System > Status**.
-5. Mention once, without pushing, the extras I didn't choose. One of them: **Settings > Claude and AI apps** lets Claude (or another AI app) read my collection and answer "do I have this game?"; a plugin there works in the Claude app's Cowork and in Claude Code. A key made there with **It may also put games on On the way** lets a task of mine (one that reads my orders) tell Squirrelcade about games I've bought (record_on_the_way); it never changes my collection.
+5. Mention once, without pushing, the extras I didn't choose. One of them: **Settings > Claude and AI apps** lets Claude (or another AI app) read my collection and answer "do I have this game?"; a plugin there works in the Claude app's Cowork and in Claude Code. Ticking **This plugin may also put games on On the way** before downloading the plugin lets Claude, or a task of mine that reads my orders, tell Squirrelcade about games I've bought (record_on_the_way); it never changes my collection.
 
 ## A settings file
 

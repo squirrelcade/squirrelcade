@@ -82,6 +82,24 @@ describe('the plugin for Claude Code and Cowork', () => {
     expect(tools.result.tools.map((t: { name: string }) => t.name).sort()).toEqual(['check_ownership', 'get_game', 'get_wishlist', 'list_platforms', 'search_games']);
     const check = await relay.ask(3, 'tools/call', { name: 'check_ownership', arguments: { titles: ['Cars 2'] } });
     expect(check.result.structuredContent.results[0]).toMatchObject({ status: 'owned' });
+    expect(files.get('squirrelcade/skills/game-collection/SKILL.md')).toContain("this plugin's key only reads");
+  });
+
+  it('with its box ticked, its own key may also put games on On the way (D180)', async () => {
+    const res = await g.app.inject({ method: 'POST', url: '/api/v1/ai/plugin', cookies, payload: { address: 'http://192.168.1.20:7575/', onTheWay: true } });
+    expect(res.statusCode).toBe(200);
+    const files = new Map(readZip(res.rawPayload).map((e) => [e.name, e.read().toString('utf8')]));
+    expect(JSON.parse(files.get('squirrelcade/.claude-plugin/plugin.json')!).description).toContain('On the way');
+    expect(files.get('squirrelcade/skills/game-collection/SKILL.md')).toContain('this plugin may also put games the user bought on On the way');
+    const key = JSON.parse(files.get('squirrelcade/.mcp.json')!).mcpServers.squirrelcade.env.SQUIRRELCADE_KEY;
+    expect((await g.app.inject({ url: '/api/v1/ai/keys', cookies })).json().keys).toEqual([expect.objectContaining({ name: 'Claude plugin (Code and Cowork)', canWrite: true })]);
+    await g.app.listen({ port: 0, host: '127.0.0.1' });
+    const port = (g.app.server.address() as AddressInfo).port;
+    const relay = startRelay({ SQUIRRELCADE_URL: `http://127.0.0.1:${port}`, SQUIRRELCADE_KEY: key });
+    await relay.ask(1, 'initialize', hello);
+    relay.tell('notifications/initialized');
+    const tools = await relay.ask(2, 'tools/list');
+    expect(tools.result.tools.map((t: { name: string }) => t.name)).toContain('record_on_the_way');
   });
 
   it('says in words when the key is wrong or Squirrelcade is out of reach', async () => {

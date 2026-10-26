@@ -69,6 +69,8 @@ export function AiExtras() {
   const [keyName, setKeyName] = useState('Claude Code');
   // A key that may also put games on On the way (D179), for a task of the owner's own.
   const [keyWrites, setKeyWrites] = useState(false);
+  // The plugin's own key may put games on On the way too (D180).
+  const [pluginWrites, setPluginWrites] = useState(false);
   // A key just made: shown this once.
   const [made, setMade] = useState<{ name: string; key: string } | null>(null);
   // The address Claude reaches Squirrelcade at on the home network (the one this page was opened at, unless changed).
@@ -111,7 +113,7 @@ export function AiExtras() {
   // The plugin for Claude Code and Cowork (0.57.0): a new key in a zip, saved as a file.
   const downloadPlugin = useMutation({
     mutationFn: async () => {
-      const res = await fetch('/api/v1/ai/plugin', { method: 'POST', credentials: 'same-origin', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ address: home }) });
+      const res = await fetch('/api/v1/ai/plugin', { method: 'POST', credentials: 'same-origin', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ address: home, onTheWay: pluginWrites }) });
       if (!res.ok) {
         let body: { error?: string; message?: string } = {};
         try {
@@ -211,6 +213,14 @@ export function AiExtras() {
             </Text>
           </Alert>
         )}
+        <Checkbox
+          label="This plugin may also put games on On the way"
+          description="Tell Claude about a game you bought (or have a task of yours do it) and it goes on On the way, to check and add when it arrives. It never changes your collection. Unticked, the plugin only reads."
+          checked={pluginWrites}
+          onChange={(e) => setPluginWrites(e.currentTarget.checked)}
+          mb="sm"
+          maw={560}
+        />
         <Button onClick={() => downloadPlugin.mutate()} loading={downloadPlugin.isPending} disabled={!on || !home.trim()} mb="md">
           Download the plugin
         </Button>

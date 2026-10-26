@@ -116,12 +116,12 @@ lines.on('close', () => {
 `;
 
 /** The skill: when Claude should reach for Squirrelcade's tools, and how to read their answers. */
-const SKILL = `---
+const skill = (onTheWay: boolean) => `---
 name: game-collection
 description: Answer questions about the user's video game collection from their own Squirrelcade. Use when they ask whether they own a game, which games of a list they have (a garage sale, a store shelf, a photo of games), what they have on a console, what's sealed or complete, what a copy is worth, or what's on their wishlist.
 ---
 
-Squirrelcade is the user's own video game collection manager, running on their home network. Its tools, from the squirrelcade connector, read the collection (this plugin's key only reads):
+Squirrelcade is the user's own video game collection manager, running on their home network. Its tools, from the squirrelcade connector, read the collection${onTheWay ? ', and this plugin may also put games the user bought on On the way' : " (this plugin's key only reads)"}:
 
 - \`check_ownership\`: up to 50 titles at once, each with a console if known. Use it for every "do I have..." question and for lists (read the titles from a photo or a page first). It answers owned, possible or not owned, with a confidence, how the titles differ (an edition, a printing), the near misses, and a missing game's place on the wishlist.
 - \`search_games\`: the collection by title words, console, physical or digital, PC storefront and condition, a page at a time.
@@ -133,17 +133,17 @@ Squirrelcade is the user's own video game collection manager, running on their h
 Say a game is owned only when the tool says so, and present near misses as maybes. Values are PriceCharting's market values in the collection's currency. When the tools can't be reached, Squirrelcade answers on the user's home network only: say so.
 `;
 
-const README = `# Squirrelcade
+const readme = (onTheWay: boolean) => `# Squirrelcade
 
 Your video game collection from your own Squirrelcade, in Claude Code and Cowork on this computer. Ask Claude whether you own a game, which games of a list or a photo you already have, what's sealed on a console, what a copy is worth, or what's on your wishlist.
 
 ## How it works
 
-The plugin starts a small relay on this computer (server/relay.mjs, which needs Node.js 18 or later). The relay passes Claude's questions to your Squirrelcade on your home network, with a read-only key, and passes the answers back. Away from home it can't reach Squirrelcade.
+The plugin starts a small relay on this computer (server/relay.mjs, which needs Node.js 18 or later). The relay passes Claude's questions to your Squirrelcade on your home network, with ${onTheWay ? 'a key that reads and may put games on On the way' : 'a read-only key'}, and passes the answers back. Away from home it can't reach Squirrelcade.
 
 ## Data
 
-Titles, consoles and filters from your questions go to your own Squirrelcade, and its answers go to Claude. The plugin carries the key that lets it in: the key only reads, works from your home network only (unless Squirrelcade's settings say otherwise), and is revoked on Squirrelcade's Settings › Claude and AI apps.
+Titles, consoles and filters from your questions go to your own Squirrelcade, and its answers go to Claude. The plugin carries the key that lets it in: the key ${onTheWay ? 'reads, and may put games you say you bought on On the way (never into your collection itself)' : 'only reads'}, works from your home network only (unless Squirrelcade's settings say otherwise), and is revoked on Squirrelcade's Settings › Claude and AI apps.
 `;
 
 export interface ClaudePluginInput {
@@ -151,15 +151,17 @@ export interface ClaudePluginInput {
   address: string;
   key: string;
   version: string;
+  /** Its key may also put games on On the way (D180: record_on_the_way). */
+  onTheWay?: boolean;
 }
 
 /** The plugin as a zip with one folder, ready for Customize › Plugins › Add › Upload plugin. */
-export function claudePluginZip({ address, key, version }: ClaudePluginInput, at = new Date()): Buffer {
+export function claudePluginZip({ address, key, version, onTheWay = false }: ClaudePluginInput, at = new Date()): Buffer {
   const manifest = {
     name: 'squirrelcade',
     displayName: 'Squirrelcade',
     version,
-    description: "Your video game collection from your own Squirrelcade, in Claude Code and Cowork on this computer: do I have it, what's sealed, what's on my wishlist. Read-only.",
+    description: `Your video game collection from your own Squirrelcade, in Claude Code and Cowork on this computer: do I have it, what's sealed, what's on my wishlist.${onTheWay ? ' It may also put games you bought on On the way.' : ' Read-only.'}`,
     author: { name: 'Squirrelcade', url: 'https://squirrelcade.com' },
     license: 'AGPL-3.0-only',
   };
@@ -172,8 +174,8 @@ export function claudePluginZip({ address, key, version }: ClaudePluginInput, at
     ['.claude-plugin/plugin.json', `${JSON.stringify(manifest, null, 2)}\n`],
     ['.mcp.json', `${JSON.stringify(mcp, null, 2)}\n`],
     ['server/relay.mjs', RELAY_SOURCE],
-    ['skills/game-collection/SKILL.md', SKILL],
-    ['README.md', README],
+    ['skills/game-collection/SKILL.md', skill(onTheWay)],
+    ['README.md', readme(onTheWay)],
   ];
   return writeZip(
     files.map(([name, text]) => ({ name: `squirrelcade/${name}`, data: Buffer.from(text, 'utf8') })),

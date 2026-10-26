@@ -1063,15 +1063,18 @@ export async function registerAiAuthRoutes(app: FastifyInstance, ai: AiAuthServi
     });
     // The plugin for Claude Code and Cowork on a computer (0.57.0, D133): a new key, written into the plugin's zip.
     scope.post('/api/v1/ai/plugin', async (request, reply) => {
-      const b = (request.body ?? {}) as { name?: unknown; address?: unknown };
+      const b = (request.body ?? {}) as { name?: unknown; address?: unknown; onTheWay?: unknown };
       const address = pluginAddress(b.address);
       if (!address) return reply.code(400).send({ error: 'invalid', message: "Give Squirrelcade's address on your home network, such as http://192.168.1.20:7575." });
       if (!ai.on()) return reply.code(409).send({ error: 'off', message: 'Turn on "Let AI apps read your collection" first.' });
       const userId = keyOwner(request);
       if (userId === undefined) return reply.code(409).send({ error: 'no-owner', message: 'Create the first account first.' });
+      // Ticked, the plugin's own key may also put games on On the way (D180); only the owner's.
+      const onTheWay = b.onTheWay === true;
+      if (onTheWay && auth.users().find((u) => u.id === userId)?.role !== 'owner') return reply.code(403).send({ error: 'forbidden', message: "Only the owner's plugin may put games on the way." });
       let made: ReturnType<AiAuthService['makeKey']>;
       try {
-        made = ai.makeKey(typeof b.name === 'string' && b.name.trim() ? b.name : 'Claude plugin (Code and Cowork)', userId);
+        made = ai.makeKey(typeof b.name === 'string' && b.name.trim() ? b.name : 'Claude plugin (Code and Cowork)', userId, onTheWay);
       } catch (err) {
         if (err instanceof OAuthError) return reply.code(400).send({ error: err.code, message: err.message });
         throw err;
@@ -1080,7 +1083,7 @@ export async function registerAiAuthRoutes(app: FastifyInstance, ai: AiAuthServi
         .header('Content-Type', 'application/zip')
         .header('Content-Disposition', 'attachment; filename="squirrelcade-plugin.zip"')
         .header('Cache-Control', 'no-store')
-        .send(claudePluginZip({ address, key: made.key, version: APP_VERSION.replace(/-.*$/, '') }));
+        .send(claudePluginZip({ address, key: made.key, version: APP_VERSION.replace(/-.*$/, ''), onTheWay }));
     });
     scope.delete('/api/v1/ai/keys/:id', async (request) => ({ revoked: ai.revokeKey(Number((request.params as { id: string }).id)) }));
     scope.get('/api/v1/ai/calls', async () => ({ calls: ai.calls(100) }));
