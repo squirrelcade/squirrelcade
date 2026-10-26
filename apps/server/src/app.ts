@@ -624,7 +624,7 @@ export async function buildApp(options: BuildOptions = {}): Promise<Squirrelcade
   registerSellingRoutes(app, new SellingService(db, settings, collection, details, care, igdb, catalogs, play, log));
   registerShareRoutes(app, shares, settings);
   // Help > AI-assisted setup (0.29.0): what the setup prompt says about this install, and its links.
-  registerAiSetupRoutes(app, { env, settings, collection, catalogs, backups, tasks, pc, auth, shares, health: () => computeHealth({ env, settings, backups, pc, problems: () => achievements.problems() }).health });
+  registerAiSetupRoutes(app, { env, settings, collection, catalogs, backups, tasks, pc, auth, shares, writeKeys: () => aiAuth.keys().filter((k) => k.canWrite).length, health: () => computeHealth({ env, settings, backups, pc, problems: () => achievements.problems() }).health });
   registerReportRoutes(app, { db, settings, collection, catalogs, wishlist, igdb, notes, play, details, pc, history, care });
   registerHistoryRoutes(app, history);
   registerCopiesRoutes(app, copies, (platformKey, title) => igdb.coverOf(platformKey, title));

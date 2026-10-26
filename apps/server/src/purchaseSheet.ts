@@ -91,11 +91,11 @@ export class PurchaseSheetService {
   }
 
   /** The rows of every CSV in the folder, each row once (a later file's row in place of an earlier one's). */
-  private async rows(): Promise<PurchaseRow[]> {
+  private async rows(): Promise<PurchaseRow[] | null> {
     const folder = this.folder();
-    if (!existsSync(folder)) throw new Error(`The purchases folder isn't there (${folder}): upload a CSV, or make the folder.`);
-    const names = (await readdir(folder)).filter((n) => n.toLowerCase().endsWith('.csv')).sort();
-    if (names.length === 0) throw new Error('No CSV in the purchases folder yet.');
+    // Nothing there yet (no upload, the owner's own task not run yet) isn't a failure: there's nothing to read.
+    const names = existsSync(folder) ? (await readdir(folder)).filter((n) => n.toLowerCase().endsWith('.csv')).sort() : [];
+    if (names.length === 0) return null;
     const byKey = new Map<string, PurchaseRow>();
     for (const name of names) {
       const rows = readPurchaseSheet(parseCsv((await readFile(join(folder, name), 'utf8')).replace(/^﻿/, '')));
@@ -122,6 +122,7 @@ export class PurchaseSheetService {
     if (!this.enabled()) return 'Purchases CSV import is off';
     progress('Reading the purchases CSVs');
     const rows = await this.rows();
+    if (!rows) return 'No purchases CSV yet: upload one, or save one in its folder';
     this.save(ROWS_KEY, { at: new Date().toISOString(), rows });
     const audit = await this.work(rows, progress);
     return `${rows.length} rows, ${audit.games} games: ${audit.writes.length} to write on your copies, ${audit.missing.length} not in your collection`;

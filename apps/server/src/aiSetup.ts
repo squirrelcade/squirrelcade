@@ -100,6 +100,8 @@ export interface BriefDeps {
   pc: PcService;
   auth: AuthService;
   shares: ShareService;
+  /** How many keys may put games on On the way (D179). */
+  writeKeys?: () => number;
   /** System > Status's problems (folders, space, backups, the parts' own). */
   health: () => { level: 'warning' | 'error'; message: string }[];
 }
@@ -154,6 +156,8 @@ export function setupBrief(deps: BriefDeps, address: string, now = new Date()): 
   );
   lines.push(`- **Watched folder:** ${settings.get('collection.dropFolderEnabled') ? 'on' : 'off'}.`);
   lines.push(`- **Purchases CSV** (D178): ${settings.get('sources.purchaseCsv') ? `on; ${lastRun('purchase-sheet')}` : 'off'}.`);
+  const writers = deps.writeKeys?.() ?? 0;
+  lines.push(`- **Keys that put games on On the way** (record_on_the_way, D179): ${writers > 0 ? writers : 'none (every key and app only reads)'}.`);
   lines.push('- **Optional parts** (Settings > Features):');
   for (const k of Object.keys(FEATURE_SETTINGS) as FeatureKey[]) {
     const name = label(FEATURE_SETTINGS[k] as SettingKey);

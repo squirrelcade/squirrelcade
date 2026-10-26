@@ -121,13 +121,14 @@ name: game-collection
 description: Answer questions about the user's video game collection from their own Squirrelcade. Use when they ask whether they own a game, which games of a list they have (a garage sale, a store shelf, a photo of games), what they have on a console, what's sealed or complete, what a copy is worth, or what's on their wishlist.
 ---
 
-Squirrelcade is the user's own video game collection manager, running on their home network. Its tools, from the squirrelcade connector, only read:
+Squirrelcade is the user's own video game collection manager, running on their home network. Its tools, from the squirrelcade connector, read the collection (this plugin's key only reads):
 
 - \`check_ownership\`: up to 50 titles at once, each with a console if known. Use it for every "do I have..." question and for lists (read the titles from a photo or a page first). It answers owned, possible or not owned, with a confidence, how the titles differ (an edition, a printing), the near misses, and a missing game's place on the wishlist.
 - \`search_games\`: the collection by title words, console, physical or digital, PC storefront and condition, a page at a time.
 - \`get_game\`: one game's copies: condition, sealed, box, manual, region, grading and value.
 - \`get_wishlist\`: the wishlist (the Acorns wishlist), best first: each game's acorns (how much the user wants it, 0 to 100), priority and the rules behind it, for all consoles or one.
 - \`list_platforms\`: the consoles, with how many games each has.
+- \`record_on_the_way\`: only with a key the user made to put games on On the way (Settings > Claude and AI apps). It puts one game they bought (title, shop, and what's known: console, order day, price paid in cents, order number, item id such as Amazon's ASIN, expected delivery) on On the way, where they check it and add it when it arrives. It never changes the collection. Use it only when the user says they bought a game, one call per game.
 
 Say a game is owned only when the tool says so, and present near misses as maybes. Values are PriceCharting's market values in the collection's currency. When the tools can't be reached, Squirrelcade answers on the user's home network only: say so.
 `;

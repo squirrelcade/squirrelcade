@@ -69,7 +69,10 @@ describe('a purchases CSV (D178)', () => {
     };
     // Off by default: no upload.
     expect((await g.app.inject({ method: 'POST', url: '/api/v1/purchase-sheet/upload', cookies, ...form(csv) })).statusCode).toBe(400);
-    g.settings.update({ 'sources.purchaseCsv': true, 'sources.purchaseCsvFolder': dir });
+    // On, with nothing in its folder yet: nothing to read, and no failure.
+    g.settings.update({ 'sources.purchaseCsv': true, 'sources.purchaseCsvFolder': join(dir, 'empty') });
+    expect(await g.purchaseSheet.refresh()).toBe('No purchases CSV yet: upload one, or save one in its folder');
+    g.settings.update({ 'sources.purchaseCsvFolder': dir });
     expect((await g.app.inject({ method: 'POST', url: '/api/v1/purchase-sheet/upload', cookies, ...form('Not,a,purchases,file') })).statusCode).toBe(400);
     const up = await g.app.inject({ method: 'POST', url: '/api/v1/purchase-sheet/upload', cookies, ...form(csv) });
     expect(up.json()).toMatchObject({ rows: 5 });

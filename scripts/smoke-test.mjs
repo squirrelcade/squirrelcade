@@ -124,6 +124,28 @@ const shared = await fetch(`${base}${r.data.path}`);
 check('a share link opens without signing in', shared.status === 200 && (await shared.json()).kind === 'wishlist', String(shared.status));
 r = await call('GET', '/tasks');
 check('tasks listed', r.data.map((t) => t.name).sort().join(',') === 'backup,catalog-build,export-reminder,game-of-the-day,gamefly-prices,health-check,housekeeping,igdb-sync,import-folder,loan-reminders,magazines-read,magazines-scan,mail-import,orders-watch,pc-discover,pc-prices,pc-read,psn-sync,purchase-sheet,ra-sync,release-reminders,romm-sync,roots-read,steam-sync,videos-read,xbox-sync', r.data.map((t) => t.name).join(','));
+// The connector's one tool that writes (D179), for a key made to: a made-up order onto On the way, once, then dismissed.
+r = await call('PUT', '/settings', { changes: { 'ai.enabled': true } });
+r = await call('POST', '/ai/keys', { name: 'Smoke writer', canWrite: true });
+check('a key that may put games on the way is made', r.status === 201 && r.data.canWrite === true, String(r.status));
+{
+  const writer = r.data;
+  const mcp = async (method, params) => {
+    const res = await fetch(`${target.replace(/\/+$/, '')}/mcp`, { method: 'POST', headers: { authorization: `Bearer ${writer.key}`, accept: 'application/json, text/event-stream', 'content-type': 'application/json' }, body: JSON.stringify({ jsonrpc: '2.0', id: 1, method, params }) });
+    return (await res.json()).result;
+  };
+  const tools = (await mcp('tools/list'))?.tools?.map((t) => t.name) ?? [];
+  check('the key sees record_on_the_way beside the read tools', tools.includes('record_on_the_way') && tools.includes('check_ownership'), tools.join(','));
+  const order = { title: 'Journey - PlayStation 3', store: 'Smoke Shop', order_date: '2026-10-20', price_cents: 1500, order_number: 'SMOKE-1', item_id: 'SMOKE-ITEM-1', expected_delivery: '2026-10-30' };
+  const first = (await mcp('tools/call', { name: 'record_on_the_way', arguments: order }))?.structuredContent;
+  const again = (await mcp('tools/call', { name: 'record_on_the_way', arguments: order }))?.structuredContent;
+  check('a made-up order goes on the way once', first?.status === 'added' && again?.status === 'known' && again?.id === first?.id, JSON.stringify([first, again]));
+  r = await call('GET', '/coming');
+  const item = r.data.items?.find((i) => i.orderNumber === 'SMOKE-1');
+  check('On the way shows it, expected on its day', item?.expectedOn === '2026-10-30' && item?.itemCents === 1500, JSON.stringify(item ?? null).slice(0, 200));
+  if (item) await call('POST', `/coming/${item.id}/dismiss`);
+  await call('DELETE', `/ai/keys/${writer.id}`);
+}
 r = await call('POST', '/tasks/health-check/run');
 await new Promise((res) => setTimeout(res, 1500));
 r = await call('GET', '/tasks');
