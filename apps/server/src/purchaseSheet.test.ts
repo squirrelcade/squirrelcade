@@ -106,6 +106,27 @@ describe('a purchases CSV (D178)', () => {
     expect(g.purchaseSheet.audit()!.missing.map((m) => m.item)).toContain('Hades - Nintendo Switch [Digital Code]');
   });
 
+  it("names a new release though its console's catalog has a close other game, and records an order already pasted once (D186)", async () => {
+    dir = mkdtempSync(join(tmpdir(), 'squirrelcade-sheet-'));
+    g = await testApp();
+    const cookies = await setUp(g);
+    // The Switch 2's catalog has another Zelda (close in words), not this one yet; the N64's has it.
+    seedCatalogs(g, { owned: [['1', 'Okami', 'PlayStation 2']], catalogs: { 'nintendo-64': ['The Legend of Zelda: Ocarina of Time'], 'nintendo-switch-2': ['The Legend of Zelda: Tears of the Kingdom - Nintendo Switch 2 Edition', 'Mario Kart World'] } });
+    // Its name as Amazon writes it, with the trademark sign.
+    expect(g.orders.gameOf('The Legend of Zelda\u2122: Ocarina of Time - Nintendo Switch 2')).toEqual({ platformKey: 'nintendo-switch-2', title: 'The Legend of Zelda: Ocarina of Time' });
+    // The order pasted first (no item id), then said again through the connector with its ASIN: one entry, filled in.
+    const page = await g.app.inject({ method: 'POST', url: '/api/v1/coming/page', cookies, payload: { text: 'Order placed September 8, 2026\nOrder # 111-0000040-0000040\nThe Legend of Zelda: Ocarina of Time\n$59.88\nAmazon.com' } });
+    expect(page.statusCode).toBe(201);
+    const said = g.orders.recordOnTheWay({ title: 'The Legend of Zelda\u2122: Ocarina of Time - Nintendo Switch 2', store: 'Amazon', orderDate: '2026-09-08', priceCents: 5988, orderNumber: '111-0000040-0000040', itemId: 'B000000040', expectedOn: '2026-11-05' });
+    expect(said.status).toBe('known');
+    const coming = (await g.app.inject({ url: '/api/v1/coming', cookies })).json().items as { orderNumber: string; title: string | null; platformKey: string | null; expectedOn: string | null }[];
+    expect(coming.filter((c) => c.orderNumber === '111-0000040-0000040')).toEqual([expect.objectContaining({ title: 'The Legend of Zelda: Ocarina of Time', platformKey: 'nintendo-switch-2', expectedOn: '2026-11-05' })]);
+    // Said again: still the one.
+    expect(g.orders.recordOnTheWay({ title: 'The Legend of Zelda: Ocarina of Time - Nintendo Switch 2', store: 'Amazon', orderNumber: '111-0000040-0000040', itemId: 'B000000040' }).status).toBe('known');
+    // Another item of the same order with an item id of its own is its own entry.
+    expect(g.orders.recordOnTheWay({ title: 'Mario Kart World - Nintendo Switch 2', store: 'Amazon', orderNumber: '111-0000040-0000040', itemId: 'B000000041' }).status).toBe('added');
+  });
+
   it('takes an uploaded CSV into its folder, and reads every CSV there, each row once', async () => {
     dir = mkdtempSync(join(tmpdir(), 'squirrelcade-sheet-'));
     // An earlier file with the first two rows, and an upload with them all: the same rows aren't counted twice.

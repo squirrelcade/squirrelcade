@@ -1,4 +1,5 @@
 import {
+  baseTitle,
   dayIn,
   findPlatforms,
   isAccessory,
@@ -13,6 +14,7 @@ import {
   itemCost,
   KNOWN_PLATFORMS,
   lotGames,
+  matchKey,
   normalizeTitle,
   orderItemFor,
   orderItemScore,
@@ -693,10 +695,21 @@ export class OrderService {
     const rowKey = orderNumber && itemId ? `${orderNumber}|${itemId}` : null;
     if (orderNumber) {
       const same = this.d.db.select().from(comingItems).where(and(eq(comingItems.orderNumber, orderNumber), eq(comingItems.status, 'waiting'))).all();
-      const twin = same.find((x) => game && x.platformKey === game.platformKey && x.title === game.title) ?? same.find((x) => isAmazonUnknown(x.listingTitle));
+      // The same item: one with this item id, or one with none (a pasted page, an email: D186) that's the same game or
+      // title, an Amazon game its email didn't name, or the order's only one waiting whose game isn't known.
+      const idOf = (ref: string) => (/^(?:connector|sheet):/.test(ref) ? ref.slice(ref.indexOf('|') + 1) : null);
+      const mayBe = same.filter((x) => idOf(x.mailRef) === null || idOf(x.mailRef) === itemId);
+      const titleKey = (t: string) => matchKey(baseTitle(t.replace(/[\u2122\u00ae\u00a9]/g, '').replace(/\s+-\s+[^-]+$/, '')));
+      const twin =
+        mayBe.find((x) => game && x.platformKey === game.platformKey && x.title === game.title) ??
+        mayBe.find((x) => isAmazonUnknown(x.listingTitle)) ??
+        mayBe.find((x) => titleKey(x.title ?? x.listingTitle) === titleKey(game?.title ?? r.title)) ??
+        (same.length === 1 && mayBe.length === 1 && !mayBe[0]!.title ? mayBe[0] : undefined);
       if (twin) {
         const unnamed = isAmazonUnknown(twin.listingTitle);
-        const set = { ...expected, ...(unnamed ? { listingTitle: listing, platformKey: game?.platformKey ?? null, title: game?.title ?? null } : {}), ...(twin.itemCents === null && r.priceCents !== undefined ? { itemCents: r.priceCents } : {}), updatedAt: now };
+        // The game as this says it (its console named: the Switch 2's, not the N64's a bare title matched).
+        const better = !unnamed && game && (twin.platformKey !== game.platformKey || twin.title !== game.title) ? { platformKey: game.platformKey, title: game.title } : {};
+        const set = { ...expected, ...better, ...(unnamed ? { listingTitle: listing, platformKey: game?.platformKey ?? null, title: game?.title ?? null } : {}), ...(twin.itemCents === null && r.priceCents !== undefined ? { itemCents: r.priceCents } : {}), updatedAt: now };
         this.d.db.update(comingItems).set(set).where(eq(comingItems.id, twin.id)).run();
         if (rowKey) this.d.db.insert(purchaseRows).values({ key: rowKey, kind: 'coming', copyId: null, appliedAt: now }).onConflictDoNothing().run();
         return { status: unnamed ? 'named' : 'known', item: this.view({ ...twin, ...set }) };
@@ -811,7 +824,9 @@ export class OrderService {
   }
 
   /** The game a listing's title is, when Squirrelcade is sure: its console named, or one console's game only, and the title's words all there. */
-  private matchListing(listing: string): { platformKey: string; title: string } | null {
+  private matchListing(name: string): { platformKey: string; title: string } | null {
+    // A shop's trademark signs aren't part of the title (D186).
+    const listing = name.replace(/[™®©]/g, '');
     // A lot or a bundle is several games: the owner says which.
     if (/\b(lot|bundle|bundled)\b|\b\d+\s+games\b/i.test(listing)) return null;
     const { platformKey, results } = this.d.lookup.productMatch(listing);

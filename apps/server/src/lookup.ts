@@ -879,7 +879,9 @@ export class LookupService {
    * names first: that console's answers come first (the Xbox One's Mafia III before the PS4's), then the rest as good as
    * they match.
    */
-  productMatch(productName: string): { platformKey: string | null; query: string; results: LookupResult[] } {
+  productMatch(name: string): { platformKey: string | null; query: string; results: LookupResult[] } {
+    // A shop's trademark signs aren't part of the title ("The Legend of Zelda™: Ocarina of Time", D186).
+    const productName = name.replace(/[™®©]/g, '');
     const platformKey = productPlatform(productName);
     const { query, results } = this.productSearch(productName, platformKey);
     const ranked = results
@@ -938,11 +940,10 @@ export class LookupService {
     if (platformKey) {
       const typed = this.search(cleaned, { platformKey, limit: 15, followed: false });
       if (typed.length > 0) return { query: cleaned, results: merge(typed, elsewhere?.results ?? []) };
-      const close = this.closest(cleaned, platformKey);
-      if (close.length > 0) return { query: close[0]!.title, results: merge(close, shortHere?.results ?? [], elsewhere?.results ?? []) };
       // A game the named console's catalog doesn't have yet (a new release, or a remaster: "The Legend of Zelda: Ocarina
       // of Time - Nintendo Switch 2" found only on the N64), known by its title elsewhere: on the named console, when
-      // IGDB has it there or the name is that title and nothing more (D184).
+      // IGDB has it there or the name is that title and nothing more (D184); before the closest words, so a close other game
+      // on that console isn't taken for it ("Tears of the Kingdom" for "Ocarina of Time", D186).
       if (elsewhere && (this.igdb?.findByKey(platformKey, elsewhere.query) || matchKey(cleaned) === matchKey(elsewhere.query))) {
         const here: LookupResult = {
           platformKey,
@@ -958,6 +959,8 @@ export class LookupService {
         };
         return { query: elsewhere.query, results: merge([here], elsewhere.results) };
       }
+      const close = this.closest(cleaned, platformKey);
+      if (close.length > 0) return { query: close[0]!.title, results: merge(close, shortHere?.results ?? [], elsewhere?.results ?? []) };
     }
     if (shortHere) return { query: shortHere.query, results: merge(shortHere.results, elsewhere?.results ?? []) };
     if (elsewhere) return { query: elsewhere.query, results: elsewhere.results };
