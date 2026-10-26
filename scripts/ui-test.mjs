@@ -30,6 +30,9 @@ async function throughTheSteps(win) {
     const save = win.getByRole('button', { name: 'Save and close', exact: true });
     if (await save.isVisible()) {
       await save.click();
+      // A slow runner can take the click while the step is still settling: once more if the window stays open.
+      const closed = await win.waitFor({ state: 'detached', timeout: 8000 }).then(() => true, () => false);
+      if (!closed && (await save.isVisible().catch(() => false))) await save.click();
       return;
     }
     await win.getByRole('button', { name: /^(Next|Skip)$/ }).click();
