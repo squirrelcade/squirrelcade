@@ -335,7 +335,7 @@ export function Layout({ children }: { children: ReactNode }) {
           </Text>
           {/* The version this server runs, small and grey (D170, the owner: "visible, but not conspicuous"), so an update can be checked at a glance. */}
           {version && (
-            <Text size="10px" className="sc-muted" px="sm" pb="xs" style={{ opacity: 0.7 }} title="The version of Squirrelcade this server runs">
+            <Text size="10px" className="sc-muted" px="sm" pb="xs" title="The version of Squirrelcade this server runs">
               Squirrelcade {version.replace(/-([0-9a-f]{7,})$/, ' · $1')}
             </Text>
           )}
