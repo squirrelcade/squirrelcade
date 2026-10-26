@@ -67,6 +67,7 @@ What changed in each version of Squirrelcade (called Gamefolio before 0.35.0). T
 
 ### Fixed
 
+- **The search and barcode scans were slow** (D171): since Consoles you follow, each search read every followed console's whole IGDB list, so a search took about 3 seconds and a new barcode could take more than Store Mode's 10-second wait, then answer "This barcode isn't one you saved" as if offline. IGDB's lists are now kept in memory, a barcode's answer leaves the followed consoles out, and a console you collect no longer shows its games twice (once as Not tracked).
 - **Games counted as owned through an unrelated game** (D159): with cross-generation games on (the default), a game with another name in Japanese, Korean or Chinese (IGDB gives many) could count as owned through any game on the console before or after it that also had one: on one collection, 746 games, such as 173 Switch games "owned" as a Wii U copy of Zumba Fitness World Party. They showed as owned on their console's checklist and in Store Mode, and were left off the wishlist. Names in other scripts are now told apart by their own letters, so only the same name matches. Your completion percentages can go down after this update: the games that come back as missing were never yours.
 
 ## 1.2.0 (2026-10-15): Add it, prices from your order emails, On the way, places and numbered sets

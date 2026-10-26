@@ -513,7 +513,7 @@ export class LookupService {
    */
   private batch: { owned: Map<string, Set<string>>; rows: { productId: string; title: string; key: string; name: string }[]; preferences: Map<string, string> } | null = null;
 
-  search(query: string, options: { platformKey?: string; exact?: boolean; sameTitle?: boolean; limit?: number; brief?: boolean; every?: boolean } = {}): LookupResult[] {
+  search(query: string, options: { platformKey?: string; exact?: boolean; sameTitle?: boolean; limit?: number; brief?: boolean; every?: boolean; followed?: boolean } = {}): LookupResult[] {
     const q = normalizeTitle(query);
     // every: all the games Store Mode knows, unranked (the offline copy).
     if (!options.every && q.length < 2) return [];
@@ -578,17 +578,16 @@ export class LookupService {
       }
     }
 
-    // A game of a console you follow but don't collect (D169): IGDB's list, "Not tracked" there; never in the offline copy.
-    if (!options.every) {
-      for (const key of this.followed()) {
-        if (options.platformKey && key !== options.platformKey) continue;
-        const row = this.db.select({ id: platforms.id, name: platforms.name }).from(platforms).where(eq(platforms.key, key)).get();
-        if (!row || !this.igdb) continue;
-        for (const g of this.igdb.games(row.id)) {
-          const relevance = rankOf([g.name, ...g.altNames]);
+    // A game of a console you follow but don't collect (D169): IGDB's list, "Not tracked" there; never in the offline copy,
+    // nor a barcode's answer. The lists are read once and kept (D171): reading them on each keystroke made every search slow.
+    if (!options.every && options.followed !== false) {
+      for (const list of this.followedLists()) {
+        if (options.platformKey && list.key !== options.platformKey) continue;
+        for (const g of list.games) {
+          const relevance = rankOf(g.names);
           if (relevance === 0 || (options.exact && relevance < 3)) continue;
-          const elsewhere = [...(owned.get(matchKey(baseTitle(g.name))) ?? [])];
-          results.push({ platformKey: key, platform: row.name, title: g.name, answer: 'not-tracked', ownedAs: [], ownedOn: elsewhere, ownedOnPc: this.pcOwnership(g.name), maybe: [], wishlist: null, relevance });
+          const elsewhere = [...(owned.get(matchKey(baseTitle(g.names[0]!))) ?? [])];
+          results.push({ platformKey: list.key, platform: list.name, title: g.names[0]!, answer: 'not-tracked', ownedAs: [], ownedOn: elsewhere, ownedOnPc: this.pcOwnership(g.names[0]!), maybe: [], wishlist: null, relevance });
         }
       }
     }
@@ -691,6 +690,24 @@ export class LookupService {
 
   /** The consoles you follow without collecting them (D169), set by the app: their games answer "Not tracked". */
   followed: () => string[] = () => [];
+
+  /** The followed consoles' IGDB lists, kept until IGDB's data, the consoles followed or the catalogs change (D171). */
+  private followedCache: { stamp: string; lists: { key: string; name: string; games: { names: string[] }[] }[] } | null = null;
+
+  /** The consoles you follow that have no catalog (a collected console answers from its catalog), with their IGDB games. */
+  private followedLists(): { key: string; name: string; games: { names: string[] }[] }[] {
+    if (!this.igdb) return [];
+    const keys = this.followed();
+    if (keys.length === 0) return [];
+    const stamp = `${this.igdb.stamp()}|${this.catalogs.stamp()}|${keys.join(',')}`;
+    if (this.followedCache?.stamp === stamp) return this.followedCache.lists;
+    const collected = new Set(this.catalogs.allMatches().map((p) => p.key));
+    const wanted = new Set(keys.filter((k) => !collected.has(k)));
+    const rows = wanted.size === 0 ? [] : this.db.select({ id: platforms.id, key: platforms.key, name: platforms.name }).from(platforms).all().filter((p) => wanted.has(p.key));
+    const lists = rows.map((row) => ({ key: row.key, name: row.name, games: this.igdb!.games(row.id).map((g) => ({ names: [g.name, ...g.altNames] })) }));
+    this.followedCache = { stamp, lists };
+    return lists;
+  }
 
   /** The offline copies built last: with your notes (the owner's), and without (a viewer's, when notes aren't shared). */
   private offlineCopies = new Map<boolean, { at: number; stamp: string; copy: OfflineCopy; body: string; etag: string; gzip?: Buffer }>();
@@ -877,7 +894,7 @@ export class LookupService {
         if (n === 1 && normalizeTitle(run).length < 4) continue;
         const title = known.get(matchKey(run));
         if (!title) continue;
-        const results = this.search(title, { sameTitle: true, limit: 15 });
+        const results = this.search(title, { sameTitle: true, limit: 15, followed: false });
         if (results.length === 0) continue;
         if (!platformKey || results.some((r) => r.platformKey === platformKey)) {
           if (!elsewhere || n >= elsewhere.words - 1) return { query: title, results };
@@ -888,7 +905,7 @@ export class LookupService {
 
     const cleaned = cleanProductTitle(productName);
     if (platformKey) {
-      const typed = this.search(cleaned, { platformKey, limit: 15 });
+      const typed = this.search(cleaned, { platformKey, limit: 15, followed: false });
       if (typed.length > 0) return { query: cleaned, results: merge(typed, elsewhere?.results ?? []) };
       const close = this.closest(cleaned, platformKey);
       if (close.length > 0) return { query: close[0]!.title, results: merge(close, shortHere?.results ?? [], elsewhere?.results ?? []) };
@@ -896,7 +913,7 @@ export class LookupService {
     if (shortHere) return { query: shortHere.query, results: merge(shortHere.results, elsewhere?.results ?? []) };
     if (elsewhere) return { query: elsewhere.query, results: elsewhere.results };
 
-    let results = this.search(cleaned, { limit: 15 });
+    let results = this.search(cleaned, { limit: 15, followed: false });
     if (results.length > 0) return { query: cleaned, results };
     const close = this.closest(cleaned, null);
     if (close.length > 0) return { query: close[0]!.title, results: close };
@@ -904,7 +921,7 @@ export class LookupService {
     for (let n = cleanedWords.length - 1; n >= 1; n--) {
       const query = cleanedWords.slice(0, n).join(' ');
       if (query.length < 4) break;
-      results = this.search(query, { limit: 15 });
+      results = this.search(query, { limit: 15, followed: false });
       if (results.length > 0) return { query, results };
     }
     return { query: cleaned, results: [] };
@@ -920,7 +937,7 @@ export class LookupService {
     }
     const best = [...scored.values()].sort((a, b) => b.score - a.score).slice(0, 5);
     // Each one's full answer (value, cover, note), as a search for it gives.
-    return best.flatMap((b) => this.search(b.title, { platformKey: b.key, exact: true, limit: 1 }));
+    return best.flatMap((b) => this.search(b.title, { platformKey: b.key, exact: true, limit: 1, followed: false }));
   }
 
   saveBarcode(raw: string, platformKey: string, title: string): boolean {

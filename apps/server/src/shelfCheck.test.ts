@@ -221,6 +221,8 @@ describe("a shelf's fixes and the console's full list", () => {
     const wii = g.db.select({ id: platforms.id }).from(platforms).where(eq(platforms.key, 'wii')).get()!.id;
     const game = (id: number, name: string, gameType: string | null = 'Main Game') => ({ platformId: wii, igdbId: id, data: JSON.stringify({ id, name, altNames: [], coverId: null, genres: [], themes: [], perspectives: [], franchise: null, japanese: null, released: null, gameType }) });
     g.db.insert(igdbGames).values([game(1, 'Okami'), game(2, 'Super Mario Galaxy'), game(3, 'Xenoblade Chronicles: Extra Pack', 'DLC'), game(4, 'Wii Sports')]).run();
+    // Written straight to the database: forgotten as a download forgets them (the lists are kept, D171).
+    g.igdb.forgetPlatforms();
     expect((await g.app.inject({ url: '/api/v1/shelf/titles/wii', cookies })).json()).toEqual({ titles: ['Super Mario Galaxy', 'Wii Sports'] });
     g.settings.update({ 'interface.shelfFullList': false });
     expect((await g.app.inject({ url: '/api/v1/shelf/titles/wii', cookies })).json()).toEqual({ titles: [] });

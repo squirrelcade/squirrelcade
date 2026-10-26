@@ -153,6 +153,8 @@ export interface IgdbPlatformStatus {
  */
 export class IgdbService {
   private indexes = new Map<number, (title: string) => IgdbGame | undefined>();
+  /** Each platform's games, read once and kept until the next download (D171): a search or a keystroke reads them. */
+  private lists = new Map<number, IgdbGame[]>();
   private platformIds = new Map<string, number | null>();
   private revision = 0;
 
@@ -274,6 +276,7 @@ export class IgdbService {
       }
     }
     this.indexes.clear();
+    this.lists.clear();
     this.revision++;
     if (done.length === 0 && failed.length > 0) throw new IgdbError(`Every platform failed; the details are on Settings > Sources.`);
     return `${done.length > 0 ? `Games per platform: ${done.join(', ')}` : 'Nothing to update'}${failed.length > 0 ? `. Failed: ${failed.join(', ')}` : ''}`;
@@ -281,15 +284,20 @@ export class IgdbService {
 
   /** Every IGDB game of a platform, as last downloaded (none before the first download). */
   games(platformId: number): IgdbGame[] {
-    // Other names a game shares with another, or that are file names, would make two games one (withoutSharedNames).
-    return withoutSharedNames(
-      this.db
-        .select({ data: igdbGames.data })
-        .from(igdbGames)
-        .where(eq(igdbGames.platformId, platformId))
-        .all()
-        .map((r) => JSON.parse(r.data) as IgdbGame),
-    );
+    let list = this.lists.get(platformId);
+    if (!list) {
+      // Other names a game shares with another, or that are file names, would make two games one (withoutSharedNames).
+      list = withoutSharedNames(
+        this.db
+          .select({ data: igdbGames.data })
+          .from(igdbGames)
+          .where(eq(igdbGames.platformId, platformId))
+          .all()
+          .map((r) => JSON.parse(r.data) as IgdbGame),
+      );
+      this.lists.set(platformId, list);
+    }
+    return list;
   }
 
   private indexFor(platformId: number) {
@@ -347,6 +355,9 @@ export class IgdbService {
   /** Forgets which platform each key is, after platforms were added (another region's console of its own). */
   forgetPlatforms(): void {
     this.platformIds.clear();
+    this.lists.clear();
+    this.indexes.clear();
+    this.revision++;
   }
 
   /**

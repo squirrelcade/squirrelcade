@@ -221,6 +221,8 @@ describe('catalogs from Wikipedia', () => {
     });
     // A PAL-only disc, a download-only game and an add-on: only the disc joins the catalog.
     g.db.insert(igdbGames).values([game(9001, 'Euro Only Racer', [826]), game(9002, 'Download Only Thing', []), game(9003, 'Racer Track Pack', [826], 'DLC')]).run();
+    // Written straight to the database: forgotten as a download forgets them (the lists are kept, D171).
+    g.igdb.forgetPlatforms();
     await build();
     const entries = async () => ((await detail()).entries as { title: string; status: string; source: string }[]).map((e) => `${e.title}: ${e.status} (${e.source})`);
     const added = (await entries()).filter((e) => /Euro Only|Download Only|Track Pack/.test(e));
