@@ -2,7 +2,9 @@
 
 What changed in each version of Squirrelcade (called Gamefolio before 0.35.0). The decisions behind these (D01, D02...) are in [docs/DECISIONS.md](docs/DECISIONS.md), each with a tag to roll it back.
 
-## 1.3.0 (not released yet): the game page, and games in their time
+## 1.3.0 (not yet released): the game page, games in their time, the magazines, and what you buy
+
+On edge as 1.3.0-rc.1 for the owner's hand test; their fixes are added here before 1.3.0 is released.
 
 ### Added
 

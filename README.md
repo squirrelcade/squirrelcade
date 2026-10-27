@@ -15,11 +15,13 @@ Squirrelcade is a free web app for video game collectors. You run it yourself, i
 - **What to get next:** your Acorns wishlist ranks the games you don't have by your own rules (the consoles, genres and series you like, reviews, your own picks), with games coming soon and deals.
 - **Store Mode on your phone:** scan a game's barcode in a shop and see at once whether you have it, or photograph a whole shelf and get a checklist of what you need. It works with no signal. **Add it** puts a game in your collection on the spot, with what you paid, photos and where it's kept in one window, now or after the whole haul.
 - **Where everything is:** each copy's storage location, filled in by scanning a bag's or a case's QR label and then its games.
-- **Your order emails (optional):** what you paid, found in your order emails (the item price, or with tax and shipping, as you choose), and the games you bought on eBay, Mercari or elsewhere listed as on the way until they arrive.
+- **On the way (optional):** the games you bought, waiting to be checked and added when they arrive: from your purchase emails (eBay, Mercari, Amazon, GameFly, Super Rare Games and other shops), a shop's order page pasted or screenshotted, Amazon's order history download, or a purchases CSV of your own. What you paid can be found in your order emails too.
 - **Selling and trading:** a ready listing for eBay or Mercari, a record of what you sold, and trades that come out even with friends who run Squirrelcade too.
 - **Sharing:** let family look without changing anything, or send a wishlist link for birthdays.
 - **Talk to it (optional):** with an AI model of your choosing (any service, one at home, or none), ask about your collection in plain words and tell it what you bought.
-- **And more:** sets such as Limited Run Games and Super Rare Games in their release order, what you've played, loans, photos of your copies, each console's Top 100 and history, your PC games from Playnite, messages to your phone, automatic backups, and an API for other tools.
+- **Games in their time:** each game's reviews and magazines of its day (from Wikipedia), each console's Top 100 and history, **Now in** and the **Time machine** (what came out on a date in past decades), and, with a free YouTube key if you like, its reviews and trailers on video.
+- **Your magazine scans (optional):** your scanned game magazines (CBZ files) read on any screen, searched by their text, and linked to the games on their pages.
+- **And more:** sets such as Limited Run Games and Super Rare Games in their release order, what you've played, loans, photos of your copies, your PC games from Playnite, messages to your phone, automatic backups, and an API for other tools.
 
 ## Install it
 
@@ -52,7 +54,7 @@ Pick one of three ways:
 ## The first visit
 
 1. **Create your account.** You're the collection's owner; you can invite family as viewers later. From outside your home network, the first page also asks for a one-time **setup code**, which Squirrelcade writes in its log (`docker logs squirrelcade`), so nobody else can claim a new install.
-2. **Bring your games in.** Upload an export, or use **Add a game** to type them in one at a time: pick the console, type the title, and say what you paid if you like.
+2. **Bring your games in.** Upload an export, or use **Add a game** to type them in one at a time: pick the console, type the title, and a short walk-through asks the condition, what you paid and your notes, then the photos (each skippable).
 3. **Let it build your checklists.** A console gets its catalog a few minutes after it has 6 different games. Then each console's page shows what you're missing, and your Acorns wishlist fills in.
 
 [Getting started](docs/help/getting-started.md) walks through it, page by page.
@@ -76,11 +78,11 @@ Your AI can write it up for you: paste **[the request prompt](docs/ai/request-pr
 
 ## Optional: ask Claude about your collection
 
-With **Settings > Claude and AI apps** turned on, Claude can read your collection (never change it): "Which of these 30 garage-sale games do I already have?", "What's sealed on my PS3 shelf?", "What's at the top of my wishlist, and why?". On your home network, **Download the plugin** there and upload it in the Claude app (Customize > Plugins), for Cowork and Claude Code; nothing is opened to the internet. [Claude and AI apps](docs/help/ai-apps.md) has the steps and the other ways in.
+With **Settings > Claude and AI apps** turned on, Claude can read your collection: "Which of these 30 garage-sale games do I already have?", "What's sealed on my PS3 shelf?", "What's at the top of my wishlist, and why?". On your home network, **Download the plugin** there and upload it in the Claude app (Customize > Plugins), for Cowork and Claude Code; nothing is opened to the internet. Tick **This plugin may also put games on On the way** before downloading it, and Claude can also note a game you bought (it waits on On the way; your collection itself never changes). [Claude and AI apps](docs/help/ai-apps.md) has the steps and the other ways in.
 
 ## Privacy
 
-Your collection stays on your server. Squirrelcade has no tracking of any kind and no account with anyone. It contacts Wikipedia (for catalogs), and only the services you turn on: IGDB, IsThereAnyDeal, RetroAchievements, your RomM, your mailbox (read only, for PriceCharting's exports and, if you like, your order emails), the AI model you choose for Check a shelf, Talk and order emails, the ways to send you messages, and so on. When you connect Claude, the answers to its questions go to Claude; what you paid and your notes only if you allow it. [What leaves your server](docs/help/features.md#what-leaves-your-server) has the full list.
+Your collection stays on your server. Squirrelcade has no tracking of any kind and no account with anyone. It contacts Wikipedia (for catalogs), and only the services you turn on: IGDB, YouTube, GameFly, IsThereAnyDeal, RetroAchievements, your RomM, your mailbox (read only, for PriceCharting's exports and, if you like, your order emails), the AI model you choose for Check a shelf, Talk and order emails, the ways to send you messages, and so on. When you connect Claude, the answers to its questions go to Claude; what you paid and your notes only if you allow it. [What leaves your server](docs/help/features.md#what-leaves-your-server) has the full list.
 
 ## Credits
 

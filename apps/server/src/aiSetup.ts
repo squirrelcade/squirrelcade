@@ -13,6 +13,8 @@ import type { TaskRunner } from './tasks.js';
 /** The task that shows whether each optional part works (its last run), if it has one. */
 const FEATURE_TASK: Partial<Record<FeatureKey, string>> = {
   igdb: 'igdb-sync',
+  history: 'roots-read',
+  magazines: 'magazines-scan',
   pc: 'pc-read',
   romm: 'romm-sync',
   itad: 'pc-prices',
@@ -47,11 +49,30 @@ const LINKED: SettingKey[] = [
   'security.publicCheck',
   'storage.backupCopyFolder',
   'storage.backupRetention',
+  'tasks.backupIntervalDays',
   'collection.dropFolderEnabled',
+  'platforms.minUniqueGames',
+  'collection.addWizard',
+  'collection.addWizardFields',
+  'collection.addWizardPhotos',
+  'orders.watch',
+  'orders.watchSenders',
+  'orders.amazonEmails',
+  'orders.exchangeRates',
   'sources.purchaseCsv',
+  'sources.gamefly',
   'collection.exportReminderDays',
   'sources.barcodeLookup',
   'sources.upcDatabaseKey',
+  'interface.coverMarks',
+  'interface.coverMarksPc',
+  'roots.videos',
+  'roots.videoChannels',
+  'sources.youtubeKey',
+  'roots.youtubeDailyUnits',
+  'magazines.ocr',
+  'magazines.viewers',
+  'ai.enabled',
   'collection.goal',
   'selling.ebayFeePercent',
   'collection.ripConsoles',
@@ -61,7 +82,13 @@ const LINKED: SettingKey[] = [
 const PAGES: [string, string][] = [
   ['/welcome', 'The welcome guide (your games in, consoles, catalogs, covers, the wishlist)'],
   ['/collection/add', 'Acorns > Add a game (a game typed in by hand)'],
-  ['/updates', 'Stash > Stash updates (upload an export; Send to PriceCharting)'],
+  ['/updates', 'Acorns > Stash updates (upload an export; Send to PriceCharting and its Check these)'],
+  ['/coming', "Acorns > On the way (games bought, not here yet; Add from an order page, Amazon's order history), with its switch on"],
+  ['/updates/purchases', 'Stash updates > Your purchases (a purchases CSV and its audit), with the purchases CSV on'],
+  ['/system/review', 'System > Review (look-alike titles to answer; Review > Magazines with the magazines on)'],
+  ['/roots?view=now-in', 'Roots > Now in (the Time machine beside it), with Roots on'],
+  ['/leaves', 'Leaves (the magazines, Search, Name these), with the magazines on'],
+  ['/settings/ai', 'Settings > Claude and AI apps (the connector, the plugin download)'],
   ['/system/status', 'System > Status (health, the setup checklist, the support file)'],
   ['/system/tasks', 'System > Tasks (each background job, and why one failed)'],
   ['/system/logs', 'System > Logs'],
@@ -155,7 +182,11 @@ export function setupBrief(deps: BriefDeps, address: string, now = new Date()): 
     `- **Backups:** ${backups.length > 0 ? `${backups.length}, the newest ${day(backups[0]!.createdAt)}` : 'none yet'}; second backup folder ${deps.backups.copyFolder() ? 'set' : 'not set'}.`,
   );
   lines.push(`- **Watched folder:** ${settings.get('collection.dropFolderEnabled') ? 'on' : 'off'}.`);
+  lines.push(
+    `- **On the way** (Settings > Email > On the way): ${settings.get('orders.watch') ? `on, purchase emails from ${(settings.get('orders.watchSenders') as string[]).length} stores; ${lastRun('orders-watch')}` : 'off (the page and its menu entry show once it is on)'}.`,
+  );
   lines.push(`- **Purchases CSV** (D178): ${settings.get('sources.purchaseCsv') ? `on; ${lastRun('purchase-sheet')}` : 'off'}.`);
+  lines.push(`- **Videos on a game's page:** ${settings.get('roots.videos') ? 'on' : 'off'}; YouTube API key ${settings.get('sources.youtubeKey') ? 'set' : 'not set (the video channels and Find its videos need one)'}.`);
   const writers = deps.writeKeys?.() ?? 0;
   lines.push(`- **Keys that put games on On the way** (record_on_the_way, D179): ${writers > 0 ? writers : 'none (every key and app only reads)'}.`);
   lines.push('- **Optional parts** (Settings > Features):');
@@ -165,7 +196,8 @@ export function setupBrief(deps: BriefDeps, address: string, now = new Date()): 
       lines.push(`  - ${name}: off.`);
       continue;
     }
-    const missing = FEATURE_SETUP[k].filter((key) => !has(values[key])).map((key) => label(key));
+    // In Docker an empty Magazines folder means /magazines (the folder mounted there), so it isn't missing.
+    const missing = FEATURE_SETUP[k].filter((key) => !has(values[key]) && !(key === 'magazines.folder' && deps.env.inDocker)).map((key) => label(key));
     if (k === 'pc') {
       // The PC library reads Playnite's backups from its folder, or takes a reading uploaded by hand.
       const pc = deps.pc.status();

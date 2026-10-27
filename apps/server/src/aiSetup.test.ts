@@ -77,5 +77,8 @@ describe('AI-assisted setup', () => {
     expect(state).toContain('- **Catalogs:** none yet');
     expect(state).toContain('PC library (Playnite): off.');
     expect(state).toContain('- **Messages:** none set up.');
+    expect(state).toContain('- **On the way** (Settings > Email > On the way): off');
+    expect(state).toContain("- **Videos on a game's page:** off; YouTube API key not set");
+    expect(state).toContain('Leaves: your magazine scans: off.');
   });
 });

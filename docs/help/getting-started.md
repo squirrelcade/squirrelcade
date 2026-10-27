@@ -8,7 +8,8 @@ Squirrelcade keeps track of a video game collection. Bring yours in from an expo
 - Store Mode for your phone: scan or type a game in a store and see at once whether you have it;
 - your copies looked after (where each is, tests, standard photos) and, when you sell one, its listing written for eBay or Mercari;
 - what you played, with your achievements from RetroAchievements, Xbox, PlayStation and Steam if you like;
-- each console's Top 100 games and history, and every copy you have of each game.
+- each console's Top 100 games and history, games in their time (Now in, the Time machine), and every copy you have of each game;
+- your scanned game magazines, if you have some, read and searched (Leaves).
 
 **Squirrelcade works on its own:** no AI, no outside account and no subscription. Only your games are needed. Everything else (values from PriceCharting, covers from IGDB, your PC games from Playnite, links to RomM, notifications, Claude) is optional and can be switched on or off: see [Optional parts](features.md). Rather have an AI assistant take you through the setup? See [AI-assisted setup](ai-setup.md).
 
@@ -38,7 +39,8 @@ After that, the menu on the left has everything (on a phone, the bar at the bott
 | **Stash** | Your collection: your copies, as a list or a grid, with filters, and a spreadsheet download. Under it: **Recently added** (the copies just in, finished in one place: condition, price paid, the rip, where it's kept), **Copies** (every copy of each game across consoles, and your PC games beside them), **Upgrades**, **Improve** (what each copy is missing), **Backlog**, **Loans**, **Places** (where each game is kept) and, with the PC library on, **PC library** (your PC games, counted apart from your consoles). |
 | **Acorns** | Games coming in and going out: **Add a game**, **On the way** (when it's on), **Stash updates** (PriceCharting's exports coming in, with what each one added and removed, and your new copies going out to PriceCharting), the **Acorns wishlist** (the games worth getting next), **Coming soon**, **Past releases** (the ones that came out around this time in past years), **Deals**, **For sale**, **Sales** (what you sold, and what to sell next), **Acorns ranking** (the rules that give acorns), and with the PC library on, the **PC wishlist** and **PC deals** (its games on sale now). |
 | **Nutshell** | Your collection, by the numbers (it was called the Almanac): **Platforms** (each console's completion, its catalog, its Top 100 and its history; **Timeline** shows consoles and landmark games by year), **Series** (each series you have a game of, as box art, every game counted once wherever you have it), **Sets** (your own sets beyond consoles: a publisher's releases, a series), **Statistics** (your collection counted every way) and **Report** (every copy, to print). |
-| **Roots** | Games in their time, and since: each console's history and its Top 100 list, and the **Timeline** of consoles and landmark games (with Roots on, Settings > Features). See [Roots](roots.md). |
+| **Roots** | Games in their time, and since: each console's history and its Top 100 list, the **Timeline** of consoles and landmark games, **Now in** (today's date a decade back at a time, with **On this day**) and the **Time machine** (any date) (with Roots on, Settings > Features). See [Roots](roots.md). |
+| **Leaves** | Your scanned game magazines, with the magazines on (Settings > Features; off to start): read, searched, and linked to their games. See [Leaves](magazines.md). |
 | **Friends** | Your collection next to your friends': each friend's page has **Compare** and **Trades**. See [Friends](friends.md). |
 | **Store Mode** | For your phone in a store: **Scan** at the top (and in the bar at the bottom on a phone) opens it with the camera on. |
 | **Settings**, **System** | Everything you can change, and under System: **Review** (titles that look alike, for you to answer: the same game, or not; its count shows on System), the server's status, tasks, backups and logs. |
@@ -46,7 +48,7 @@ After that, the menu on the left has everything (on a phone, the bar at the bott
 **Today**, card by card:
 
 - **The game of the day:** its acorns and where they come from, and its reviews.
-- **This week in game history:** games that came out this week in earlier years.
+- **This week in game history:** games that came out this week in earlier years (its **Month** side: this month's, every year).
 - **Releases** on your consoles in the next seven days (the arrows look at the weeks ahead).
 - **Deals** against the market value.
 - **Your last update** and the collection's pulse: copies, your goal, copies added each year, by console.

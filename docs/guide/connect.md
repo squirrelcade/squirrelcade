@@ -7,14 +7,18 @@ Each of these is optional, and each has one home: its card on **Settings > Sourc
 | [Covers and game details](#covers-and-game-details-igdb) | Box art, genres, series, developers; a much better wishlist | A free Twitch developer application | 5 minutes |
 | [Messages](#messages) | A summary after each update, alerts, release reminders | Email, or a phone or chat app | 5 minutes |
 | [Exports from your email](#exports-from-your-email) | Your collection updated by itself after you export on PriceCharting | Your mailbox's app password | 5 minutes |
+| [On the way](#on-the-way) | The games you bought, waiting to be checked and added when they arrive | Nothing, or your mailbox (for purchase emails) | 5 minutes |
 | [Family and friends](#family-and-friends) | Viewers, a gift link for your wishlist, a game check without an account | Step 3 done | 10 minutes |
 | [PC library](#pc-library-playnite) | Your PC games from every store, next to your console copies | Playnite on a Windows PC, a shared folder | 15 minutes |
-| [Leaves](#leaves-your-magazine-scans) | Your magazine scans, read on any screen and searched | A folder of CBZ scans | 10 minutes |
+| [Leaves](#leaves-your-magazine-scans) | Your magazine scans, read on any screen, searched and linked to their games | A folder of CBZ scans | 10 minutes |
+| [Videos](#videos-youtube) | A game's reviews and trailers on video, from YouTube channels | A free YouTube key | 10 minutes |
 | [PC game prices](#pc-game-prices) | Prices and lows for the PC wishlist | The PC library, a free key | 5 minutes |
 | [RomM](#romm) | Links from your games to your RomM, to play them | A RomM server | 5 minutes |
 | [RetroAchievements](#retroachievements) | What you beat and mastered in classic games, in each game's drawer | A free account's key | 5 minutes |
 | [Xbox, PlayStation and Steam achievements](#xbox-playstation-and-steam-achievements) | Your achievements and trophies, in each game's drawer (Steam's in the PC library) | A free key, or a sign-in token (PlayStation) | 5 minutes each |
 | [Barcodes](#barcodes) | Store Mode naming barcodes it hasn't seen | Nothing, or a free key | 2 minutes |
+| [GameFly's prices](#gameflys-prices) | GameFly's new and used prices beside the wishlist's games | Nothing | 1 minute |
+| [Claude](#claude) | Ask Claude about your collection; if you like, tell it what you bought | The Claude app, Node.js | 10 minutes |
 | [Selling, a goal, tests and rips](#selling-a-goal-tests-and-rips) | Listings written for eBay and Mercari, a goal, tested and ripped copies | Nothing | 5 minutes |
 | [A start page or automation](#a-start-page-or-automation) | Your totals on Homepage; other tools asking what you own | The API key | 5 minutes |
 
@@ -35,6 +39,18 @@ Free with a Twitch account: [IGDB keys](../help/features.md#igdb-keys) has the s
 PriceCharting emails a link to your export when you ask for one; Squirrelcade can pick it up from your mailbox and update your collection by itself. **Settings > Email:** fill in your email account once (your address and an app password; your provider's steps are under **Set it up, step by step**), then turn on **Stash updates from your email**. **Check:** **Test sending and reading** says how many export emails it found. Then **Settings > Collection > Reminders > Remind me to export after** 7 days sends a message with PriceCharting's page each week. See [Your collection](../help/collection.md#from-your-email).
 
 ![Stash updates from your email turned on: the mailbox, its app password and server, Test the mailbox, and Export on PriceCharting](img/features-mail.jpg)
+
+## On the way
+
+**Acorns > On the way** keeps the games you've bought until they arrive (**It's here** adds each one, with the store, the day and the price filled in). Turn it on with **Settings > Email > On the way > Watch for games you bought: On the way** (off to start); the page then shows in the menu. Ways in, any or all:
+
+- **Purchase emails** (with your email account set up, as above): add your stores to **Purchase emails from** (eBay and Mercari to start; tap Amazon, Super Rare Games and the others, type `gamefly.com`, or **Find my stores in my email**). Amazon's emails don't name the game, so it waits as "a video game" until its order page names it.
+- **A shop's order page:** **Add from an order page** on On the way: paste the page (Ctrl+A, Ctrl+C) or a screenshot of it.
+- **Amazon's order history:** on Amazon, Account > **Request your data** > **Your Orders**; then **Amazon's order history** on On the way takes the zip.
+- **A purchases CSV** of your own: **Settings > Sources > Purchases CSV** (off to start), then **Stash updates > Your purchases**. Nothing changes until you tick rows and press **Write the chosen**.
+- **Claude**, with the plugin's On the way box ticked ([Claude](#claude)).
+
+See [Order emails](../help/orders.md).
 
 ## Family and friends
 
@@ -69,9 +85,13 @@ See [Sharing your collection](../help/sharing.md).
          - /path/to/Magazines:/magazines:ro
    ```
 
-3. **Settings > Features:** turn on **Leaves: your magazine scans** and save. In Docker, Squirrelcade looks in `/magazines` by itself (**Settings > Magazines** has the rest).
+3. **Settings > Features:** turn on **Leaves: your magazine scans** and save. In Docker, Squirrelcade looks in `/magazines` by itself (**Settings > Magazines** has the rest: the text that came with the scans, **Read the rest of their text at night** with Tesseract, already in the image, and who may read them).
 
-**Check:** **Leaves** shows your magazines within a few minutes. See [Leaves](../help/magazines.md).
+**Check:** **Leaves** shows your magazines within a few minutes. The games found on their pages are linked (the doubtful ones on **Leaves > Review**), and a review a game's Roots cites from an issue you have shows **Open your scan**. See [Leaves](../help/magazines.md).
+
+## Videos (YouTube)
+
+**Settings > Roots > Videos on a game's page** (off to start) shows a game's videos: pasted ones and IGDB's trailers need nothing. The **Video channels** (IGN, GameSpot, Gaming Historian to start) and **Find its videos** (a search of each channel for one game, when you press it) need a free YouTube Data API key: [A YouTube key](../help/roots.md#a-youtube-key) has the steps, and it goes in **Settings > Sources > YouTube (videos)**. **YouTube's units Squirrelcade may use a day** (Settings > Roots, 8,000 of the key's 10,000) keeps the searches from using up the nightly reading's room.
 
 ## PC game prices
 
@@ -96,6 +116,14 @@ On [retroachievements.org](https://retroachievements.org), signed in: **Settings
 ## Barcodes
 
 Store Mode names a barcode it hasn't seen by asking a barcode service: **Settings > Sources > Barcodes**. UPCitemdb needs nothing (about 100 lookups a day); [UPC Database](https://upcdatabase.org) needs a free account's key, alone or after UPCitemdb. Every name is kept for good, so each barcode is asked once.
+
+## GameFly's prices
+
+**Settings > Sources > GameFly:** turn on **GameFly's prices on the wishlist**. Its new and used prices then show beside the wishlist's games on the consoles it sells, read once a day. No account.
+
+## Claude
+
+**Settings > Claude and AI apps:** turn on **Let AI apps read your collection**, check **Squirrelcade's address on your home network**, and **Download the plugin**; in the Claude app, **Customize > Plugins > Add > Upload plugin**. It works in Cowork and Claude Code on your computers at home (it needs Node.js) and only reads, unless you tick **This plugin may also put games on On the way** before downloading: then Claude, or a task of yours, can note a game you bought; it waits on On the way. See [Claude and AI apps](../help/ai-apps.md).
 
 ## Selling, a goal, tests and rips
 

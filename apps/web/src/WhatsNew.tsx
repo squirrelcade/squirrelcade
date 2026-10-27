@@ -14,9 +14,12 @@ export interface Section {
   lines: string[];
 }
 
-/** A version's number without its build ("0.2.0-01eeef1" -> "0.2.0"); null for a development build. */
+/**
+ * A version's number without its build or pre-release ("0.2.0-01eeef1" and "1.3.0-rc.1-01eeef1" -> "0.2.0", "1.3.0");
+ * null for a development build.
+ */
 function release(version: string): string | null {
-  return /^(\d+\.\d+\.\d+)(?:-[0-9a-f]{7,})?$/.exec(version)?.[1] ?? null;
+  return /^(\d+\.\d+\.\d+)(?:-(?:alpha|beta|rc)\.?\d*)?(?:-[0-9a-f]{7,})?$/.exec(version)?.[1] ?? null;
 }
 
 /** Whether version a comes after version b (both "1.2.3"). */

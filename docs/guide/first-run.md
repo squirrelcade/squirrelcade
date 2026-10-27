@@ -20,7 +20,7 @@ The **welcome guide** starts right after. Its first step brings your games in, w
 
 - **From PriceCharting** (if you keep your collection there): **My Collection > Download (CSV)**. PriceCharting emails you a link; the file is `collection.zip`. Drop the zip into the welcome guide as it is (or the CSV inside it). Keep its name if you unzip it (`collection_YYYYMMDD.csv`): its date is the date of the prices. It brings each copy's value (a spreadsheet of your own can too, with a Value column).
 - **From another app or a spreadsheet:** an export from CLZ Games, GAMEYE or VGCollect, or a spreadsheet of your own saved as CSV with a **Title** and a **Console** column: see [a spreadsheet of your own](../help/collection.md#a-spreadsheet-of-your-own-instead).
-- **By hand:** **Add games one at a time** opens **Add a game** (also in the menu, under **Acorns**). Pick the console, type the title, and say what you paid if you like. When you're done, **Back to the welcome guide** at the top of the page takes you to the next step. (Later, **System > Status > Open the welcome guide** brings it back.)
+- **By hand:** **Add games one at a time** opens **Add a game** (also in the menu, under **Acorns**). Pick the console, type the title, and **Add it**: a short walk-through asks its condition, what you paid, the day and your notes, then the photos that condition calls for (each with **Skip**), and **Save and close**. When you're done, **Back to the welcome guide** at the top of the page takes you to the next step. (Later, **System > Status > Open the welcome guide** brings it back.)
 
 An export shows what Squirrelcade found in it: how many games on which consoles, and anything it couldn't read. **Next** works once at least one game is in.
 
@@ -50,8 +50,8 @@ An export shows what Squirrelcade found in it: how many games on which consoles,
 
 ![The setup checklist: the collection and catalogs done, the first backup still to come, and the optional steps](img/status-setup.jpg)
 
-- **Almanac > Platforms** lists your consoles with their completion (for example "PlayStation 3: 312 of 1,847").
-- **Collection** lists your copies, with their value from a PriceCharting export (or none, for games added by hand).
+- **Nutshell > Platforms** lists your consoles with their completion (for example "PlayStation 3: 312 of 1,847").
+- **Stash** lists your copies, with their value from a PriceCharting export (or none, for games added by hand).
 - **System > Review** may have questions: titles that look alike ("Doraemon 2" and "Doraemon 2: Nobita no Toys Land Daibouken"). Answer a few; each answer counts everywhere. [How matching works](../MATCHING.md) explains when a copy counts.
 
 Numbers that look wrong? Open a console's page, then a game you own that shows as missing: its drawer says what the catalog has and why the copy didn't count.
