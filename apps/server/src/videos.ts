@@ -51,6 +51,12 @@ const KEEP_DAYS = 30;
 export class YouTubeError extends Error {}
 
 /** YouTube: its oEmbed (no key), its Data API (with the key), a channel's page and feed (no key). */
+/** YouTube's search answers titles with HTML entities ("Zelda&#39;s"). */
+const decodeEntities = (s: string) => s.replace(/&#(\d+);/g, (_m, n: string) => String.fromCharCode(Number(n))).replace(/&quot;/g, '"').replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>');
+
+/** YouTube's day for its units: it starts at midnight Pacific time. */
+const youtubeDay = () => new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Los_Angeles' }).format(new Date());
+
 export class YouTubeClient {
   constructor(
     private readonly settings: SettingsService,
@@ -65,7 +71,11 @@ export class YouTubeClient {
     return this.fetchImpl(url, { headers: { 'user-agent': 'Mozilla/5.0 (Squirrelcade)', 'accept-language': 'en-US' }, signal: AbortSignal.timeout(20_000) });
   }
 
-  private async api<T>(path: string, params: Record<string, string>): Promise<T> {
+  /** Told each call's cost in YouTube's units (D193), to keep to the day's budget. */
+  onUnits: (units: number) => void = () => undefined;
+
+  private async api<T>(path: string, params: Record<string, string>, units = 1): Promise<T> {
+    this.onUnits(units);
     const res = await this.get(`${API}/${path}?${new URLSearchParams({ ...params, key: this.key() })}`);
     if (!res.ok) {
       const body = (await res.json().catch(() => null)) as { error?: { message?: string } } | null;
@@ -119,6 +129,16 @@ export class YouTubeClient {
     return { videos, next: body.nextPageToken ?? null };
   }
 
+  /** A channel's videos found by YouTube's search for words (100 units; D193: finds the old ones its upload list caps away). */
+  async search(channelId: string, q: string): Promise<ListedVideo[]> {
+    const body = await this.api<{ items?: { id?: { videoId?: string }; snippet?: { title?: string; publishedAt?: string } }[] }>(
+      'search',
+      { part: 'snippet', channelId, q, type: 'video', maxResults: '25', order: 'relevance' },
+      100,
+    );
+    return (body.items ?? []).flatMap((i) => (i.id?.videoId && i.snippet?.title ? [{ videoId: i.id.videoId, title: decodeEntities(i.snippet.title), publishedAt: i.snippet.publishedAt ?? null }] : []));
+  }
+
   /** A channel's newest uploads from its public feed (no key); none when YouTube doesn't serve it. */
   async feed(channelId: string): Promise<ListedVideo[]> {
     const res = await this.get(`https://www.youtube.com/feeds/videos.xml?channel_id=${channelId}`);
@@ -145,7 +165,10 @@ export class VideosService {
     private readonly log: Logger,
     /** Titles beyond the catalogs' to match videos to: the Top 100 games of the consoles you follow (D169). */
     private readonly extraTitles: () => string[] = () => [],
-  ) {}
+  ) {
+    // Every call to YouTube's API counts against the day's units (D193).
+    this.youtube.onUnits = (units) => this.countUnits(units);
+  }
 
   enabled(): boolean {
     return this.settings.get('features.history') && this.settings.get('roots.videos');
@@ -191,6 +214,57 @@ export class VideosService {
     } catch (err) {
       this.log.debug({ context: 'videos', err }, `No IGDB videos for ${title}`);
     }
+  }
+
+  /** YouTube's units used today and the day's budget (D193). */
+  units(): { used: number; budget: number; left: number } {
+    const used = (this.lookup(`youtube-units:${youtubeDay()}`)?.value as number | null) ?? 0;
+    const budget = this.settings.get('roots.youtubeDailyUnits');
+    return { used, budget, left: Math.max(0, budget - used) };
+  }
+
+  private countUnits(units: number): void {
+    const day = youtubeDay();
+    const used = (this.lookup(`youtube-units:${day}`)?.value as number | null) ?? 0;
+    this.remember(`youtube-units:${day}`, used + units);
+  }
+
+  /**
+   * Find its videos (D193): each video channel searched for the game with YouTube's search (100 units a channel), what
+   * names the game kept as a channel's read keeps it. It finds the reviews a channel's upload list caps away (IGN's
+   * and GameSpot's before about 2018). Never past the day's budget: it stops before a search would go over.
+   */
+  async findVideos(platformKey: string, title: string): Promise<{ searched: string[]; skipped: string[]; found: number; units: { used: number; budget: number; left: number } }> {
+    if (!this.enabled()) throw new YouTubeError("Roots' videos are off (Settings > Roots).");
+    if (!this.youtube.key()) throw new YouTubeError('Find its videos needs a YouTube key (Settings > Sources > YouTube).');
+    const keys = this.keysOf(platformKey, title);
+    const index = videoTitleIndex([title, ...keys]);
+    const searched: string[] = [];
+    const skipped: string[] = [];
+    let found = 0;
+    const now = new Date().toISOString();
+    for (const channel of parseVideoChannels(this.settings.get('roots.videoChannels')).filter((c) => c.on)) {
+      if (this.units().left < 100) {
+        skipped.push(channel.name);
+        continue;
+      }
+      const lookupKey = `channel:${channel.handle.toLowerCase()}`;
+      const known = this.lookup(lookupKey)?.value as { id?: string; fullAt?: string } | null;
+      const id = known?.id ?? (await this.youtube.channelId(channel.handle));
+      if (!id) continue;
+      if (!known?.id) this.remember(lookupKey, { ...known, id });
+      searched.push(channel.name);
+      for (const v of await this.youtube.search(id, title)) {
+        if (!gameInVideoTitle(v.title, index)) continue;
+        found++;
+        this.db
+          .insert(gameVideos)
+          .values({ titleKey: keys[0] ?? normalizeTitle(title), videoId: v.videoId, title: v.title, channel: channel.name, publishedAt: v.publishedAt, source: 'channel', era: null, kind: videoKind(v.title), seenAt: now })
+          .onConflictDoUpdate({ target: [gameVideos.titleKey, gameVideos.videoId], set: { title: v.title, publishedAt: v.publishedAt, seenAt: now } })
+          .run();
+      }
+    }
+    return { searched, skipped, found, units: this.units() };
   }
 
   /** A game's videos for its page: At the time (before it came out and its first months), and Looking back. */
@@ -364,6 +438,18 @@ export function registerVideoRoutes(app: FastifyInstance, videos: VideosService)
     const q = request.query as { platform?: string; title?: string; video?: string };
     return { removed: q.platform && q.title && q.video ? videos.remove(q.platform, q.title, q.video) : false };
   });
+  // Find its videos (D193): each channel searched for the game, within the day's YouTube budget.
+  app.post('/api/v1/game/videos/find', async (request, reply) => {
+    const b = (request.body ?? {}) as { platform?: unknown; title?: unknown };
+    if (typeof b.platform !== 'string' || typeof b.title !== 'string' || !b.title.trim()) return reply.code(400).send({ error: 'invalid', message: 'Give a platform key and a title.' });
+    try {
+      return await videos.findVideos(b.platform, b.title.trim());
+    } catch (err) {
+      if (err instanceof YouTubeError) return reply.code(400).send({ error: 'invalid', message: err.message });
+      throw err;
+    }
+  });
+  app.get('/api/v1/videos/units', async () => videos.units());
   app.get('/api/v1/videos/thumb/:id', async (request, reply) => {
     const data = await videos.thumbnail((request.params as { id: string }).id);
     if (!data) return reply.code(404).send({ error: 'not-found', message: 'No such video.' });

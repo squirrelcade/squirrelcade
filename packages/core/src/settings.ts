@@ -608,6 +608,16 @@ export const settingDefinitions = {
     min: 5,
     max: 100,
   }),
+  'roots.youtubeDailyUnits': num({
+    page: 'roots',
+    section: 'Videos',
+    label: "YouTube's units Squirrelcade may use a day",
+    description: "A YouTube key gives 10,000 units a day (reading a channel's videos costs 1 per 50; Find its videos costs 100 per channel searched). Squirrelcade stops before this many, so the channels' daily reading always has room. YouTube's day starts at midnight Pacific time.",
+    default: 8000,
+    min: 100,
+    max: 10000,
+    unit: 'units',
+  }),
   'roots.atTimeMonths': num({
     page: 'roots',
     section: 'At the time',

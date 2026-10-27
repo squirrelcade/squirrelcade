@@ -9,7 +9,7 @@ import { RootsMark, StashMark } from './Acorn';
 import { api } from './api';
 import { count } from './format';
 import { useOpenGame } from './GameDrawer';
-import { notifyError, useCanEdit, useFeature, useSetting } from './hooks';
+import { notifyError, notifySuccess, useCanEdit, useFeature, useSetting } from './hooks';
 import { InTheMagazines } from './pages/LeavesGames';
 import { DrawerHistory, type HistoryText } from './pages/History';
 
@@ -645,6 +645,7 @@ export function RootsPart({ platformKey, title, history }: { platformKey: string
                       </Empty>
                     )}
                     {canEdit && videosOn && <AddVideo platformKey={platformKey} title={title} era="time" />}
+                    {canEdit && videosOn && videosQuery.data?.keyed && <FindVideos platformKey={platformKey} title={title} />}
                   </Card>
                 </Stack>
               </SimpleGrid>
@@ -718,5 +719,37 @@ export function RootsPart({ platformKey, title, history }: { platformKey: string
         </>
       )}
     </Stack>
+  );
+}
+
+/**
+ * Find its videos (D193): each video channel searched for the game with YouTube's search (100 units a channel), for
+ * the reviews a channel's upload list caps away (IGN's and GameSpot's before about 2018); the day's units left beside it.
+ */
+function FindVideos({ platformKey, title }: { platformKey: string; title: string }) {
+  const queryClient = useQueryClient();
+  const units = useQuery({ queryKey: ['videos', 'units'], queryFn: () => api<{ used: number; budget: number; left: number }>('/videos/units') });
+  const find = useMutation({
+    mutationFn: () => api<{ searched: string[]; skipped: string[]; found: number }>('/game/videos/find', { method: 'POST', json: { platform: platformKey, title } }),
+    onSuccess: async (r) => {
+      notifySuccess(
+        `${r.found} video${r.found === 1 ? '' : 's'} found on ${r.searched.join(', ') || 'no channel'}${r.skipped.length > 0 ? `; ${r.skipped.join(', ')} left for tomorrow (today's YouTube budget is spent)` : ''}.`,
+        'Find its videos',
+      );
+      await Promise.all([queryClient.invalidateQueries({ queryKey: ['game', 'videos'] }), queryClient.invalidateQueries({ queryKey: ['videos', 'units'] })]);
+    },
+    onError: (err) => notifyError(err),
+  });
+  return (
+    <Group gap="xs" mt={4} wrap="wrap">
+      <Button size="compact-xs" variant="light" onClick={() => find.mutate()} loading={find.isPending} disabled={(units.data?.left ?? 0) < 100}>
+        Find its videos
+      </Button>
+      {units.data && (
+        <Text size="xs" c="dimmed">
+          {units.data.left.toLocaleString()} of today's {units.data.budget.toLocaleString()} YouTube units left (100 a channel)
+        </Text>
+      )}
+    </Group>
   );
 }

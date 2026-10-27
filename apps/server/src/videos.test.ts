@@ -20,6 +20,11 @@ function fakeYouTube() {
       if (u.searchParams.get('key') !== 'test-key') return Response.json({ error: { message: 'API key not valid.' } }, { status: 400 });
       if (u.pathname.endsWith('/channels')) return Response.json({ items: [{ id: 'UCKy1dAqELo0zrOtPkf0eTMw' }] });
       if (u.pathname.endsWith('/videos')) return Response.json({ items: [] });
+      // YouTube's search of a channel (D193): an old review its upload list caps away, and something else.
+      if (u.pathname.endsWith('/search')) {
+        expect(u.searchParams.get('channelId')).toBe('UCKy1dAqELo0zrOtPkf0eTMw');
+        return Response.json({ items: [{ id: { videoId: 'OLDREVIEW01' }, snippet: { title: 'Super Metroid Review - IGN&#39;s old take', publishedAt: '2006-01-01T00:00:00Z' } }, { id: { videoId: 'OTHER000001' }, snippet: { title: 'Metroid Prime 4 trailer', publishedAt: '2024-01-01T00:00:00Z' } }] });
+      }
       if (u.pathname.endsWith('/playlistItems')) {
         expect(u.searchParams.get('playlistId')).toBe('UUKy1dAqELo0zrOtPkf0eTMw');
         const item = (videoId: string, title: string, publishedAt: string) => ({ snippet: { title, publishedAt, resourceId: { videoId } } });
@@ -76,5 +81,28 @@ describe("Roots' videos (D168)", () => {
     // Taken off.
     expect((await g.app.inject({ method: 'DELETE', url: '/api/v1/game/videos?platform=super-nintendo&title=Super%20Metroid&video=PASTED00001', cookies })).json()).toEqual({ removed: true });
     expect((await page()).time.map((x: { videoId: string }) => x.videoId)).not.toContain('PASTED00001');
+  });
+
+  it("finds a game's videos with YouTube's search of each channel, within the day's units (D193)", async () => {
+    const yt = fakeYouTube();
+    g = await testApp({ youtubeFetch: yt.fetch, igdbFetch });
+    const cookies = await setUp(g);
+    seedCatalogs(g, { owned: [['1', 'Super Metroid', 'Super Nintendo']], catalogs: { 'super-nintendo': ['Super Metroid'] } });
+    g.settings.update({ 'roots.videos': true, 'roots.videoChannels': ['IGN | @IGN | on'] });
+    const find = () => g.app.inject({ method: 'POST', url: '/api/v1/game/videos/find', cookies, payload: { platform: 'super-nintendo', title: 'Super Metroid' } });
+    // No key: it says what it needs.
+    expect((await find()).statusCode).toBe(400);
+    g.settings.update({ 'sources.youtubeKey': 'test-key' });
+    const r = (await find()).json();
+    expect(r).toMatchObject({ searched: ['IGN'], skipped: [], found: 1 });
+    // The channel's id (1 unit) and its search (100).
+    expect(r.units).toMatchObject({ used: 101, budget: 8000, left: 7899 });
+    const v = (await g.app.inject({ url: '/api/v1/game/videos?platform=super-nintendo&title=Super%20Metroid', cookies })).json();
+    expect([...v.time, ...v.later].map((x: { videoId: string; title: string }) => [x.videoId, x.title])).toContainEqual(['OLDREVIEW01', "Super Metroid Review - IGN's old take"]);
+    // Never past the day's budget: with under 100 left, the channel is skipped and nothing is asked.
+    g.settings.update({ 'roots.youtubeDailyUnits': 150 });
+    const searches = yt.calls.filter((c) => c.includes('/search')).length;
+    expect((await find()).json()).toMatchObject({ searched: [], skipped: ['IGN'], found: 0, units: { used: 101, left: 49 } });
+    expect(yt.calls.filter((c) => c.includes('/search')).length).toBe(searches);
   });
 });

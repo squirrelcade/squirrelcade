@@ -68,6 +68,8 @@ Free, about five minutes, in your Google account:
 
 With the key, each channel's whole list of videos is read once (a big channel like IGN's takes a few thousand of the day's 10,000 free units, and a while), then its newest videos each night; every 30 days the whole list is read again, as YouTube asks of what's kept from it, and a video gone from the channel goes from Squirrelcade too. Only the videos about your games are kept. A pasted video gets its date with the key too.
 
+**Find its videos** (under a game's Videos of the day, with a YouTube key) searches each video channel that's on for the game with YouTube's own search, and keeps what it finds like a channel's read. It finds the reviews a channel's list of uploads leaves out: YouTube lists only a channel's newest 20,000 videos, so IGN's and GameSpot's reviews from before about 2018 aren't in it. Each channel's search costs 100 of the 10,000 units a YouTube key gets a day; the button shows how many are left today, and Squirrelcade never goes past **YouTube's units Squirrelcade may use a day** (8,000, Settings > Roots), so the channels' nightly reading always has room. YouTube's day starts at midnight Pacific time.
+
 ## Settings > Roots
 
 - **Read each game's Wikipedia article** (on): off, a game's Roots has only what comes with Squirrelcade, and Wikipedia isn't asked about games.
