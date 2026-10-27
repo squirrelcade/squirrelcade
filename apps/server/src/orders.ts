@@ -259,6 +259,11 @@ export class OrderService {
     return this.d.settings.get('orders.watch') === true;
   }
 
+  /** On the way's page is shown (D195): its own switch, with or without the purchase emails read. */
+  pageOn(): boolean {
+    return this.d.settings.get('orders.page') === true;
+  }
+
   /** Whether emails go to the AI model: Settings > Email says so, and a model is set up. */
   private aiReady(): boolean {
     return this.d.settings.get('orders.reader') === 'ai' && this.d.vision.ready();
@@ -1094,7 +1099,7 @@ export class OrderService {
   /** Store Mode's index: each game on the way by "platform key|normalized title". */
   index(): Map<string, OnTheWay> {
     const map = new Map<string, OnTheWay>();
-    if (!this.watchOn()) return map;
+    if (!this.pageOn()) return map;
     for (const r of this.d.db.select().from(comingItems).where(eq(comingItems.status, 'waiting')).orderBy(comingItems.createdAt).all()) {
       if (!r.platformKey || !r.title) continue;
       map.set(`${r.platformKey}|${normalizeTitle(r.title)}`, { id: r.id, store: r.store, orderDate: r.orderDate, paidCents: this.paidOf(r) });
@@ -1165,7 +1170,7 @@ export function registerOrderRoutes(app: FastifyInstance, orders: OrderService, 
     return { ok: true };
   });
 
-  app.get('/api/v1/coming', async (request) => ({ on: orders.watchOn(), items: orders.coming((request.query as { all?: string }).all === '1') }));
+  app.get('/api/v1/coming', async (request) => ({ on: orders.pageOn(), watch: orders.watchOn(), items: orders.coming((request.query as { all?: string }).all === '1') }));
   app.post('/api/v1/coming/check', async (_request, reply) => {
     if (!orders.watchOn()) return off(reply, 'watch');
     return { queued: tasks.enqueue('orders-watch') };

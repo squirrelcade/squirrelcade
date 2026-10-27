@@ -39,7 +39,7 @@ When an order has several games, its tax, shipping and discount are shared out b
 
 Games get here from your purchase emails (below), an order page or Amazon's order history pasted in, a purchases CSV, or a task of your own through Claude's connector (a key made to put games on On the way: [Claude and AI apps](ai-apps.md)).
 
-Turn on **Watch for games you bought: On the way**. Squirrelcade then looks through your purchase emails every 24 hours (**Look every**, from 1 hour to a week), from eBay and Mercari to start with. To add more stores to **Purchase emails from**:
+The page shows to start, email or not; **Settings > Features > On the way** hides it and its menu entry. To have your purchase emails read for it, turn on **Watch for games you bought: On the way** (Settings > Email > On the way). Squirrelcade then looks through your purchase emails every 24 hours (**Look every**, from 1 hour to a week), from eBay and Mercari to start with. To add more stores to **Purchase emails from**:
 
 - **Tap a store** under the list (Amazon, GameStop, Target, Walmart, Best Buy, Limited Run Games, Super Rare Games, Fangamer, Play-Asia): the stores whose order emails Squirrelcade's own reader knows.
 - **Find my stores in my email** looks through your purchase emails from the last year (**Look at order emails from the last**) and lists every store they came from, with how many and the newest one's subject, the stores Squirrelcade reads first. Tick the ones you buy games from and **Add the ticked**. Only the emails' senders and subjects are read for this, and nothing is kept.

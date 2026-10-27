@@ -212,7 +212,9 @@ export function OnTheWayPage() {
   const dateFormat = useSetting('general.dateFormat', 'us');
   const counts = useSetting('orders.paidCounts', 'item');
   const boughtCondition = useSetting('collection.boughtCondition', 'complete');
-  const on = useSetting('orders.watch', false) === true;
+  // The page's own switch (D195); the email switch only says whether purchase emails are read.
+  const on = useSetting('orders.page', true) === true;
+  const watching = useSetting('orders.watch', false) === true;
   const list = useQuery({ queryKey: ['coming'], queryFn: () => api<{ on: boolean; items: ComingItem[] }>('/coming'), refetchInterval: 30_000 });
   const status = useQuery({ queryKey: ['orders', 'status'], queryFn: () => api<OrdersStatus>('/orders'), refetchInterval: 30_000 });
   const [editing, setEditing] = useState<CopyRef | null>(null);
@@ -272,7 +274,7 @@ export function OnTheWayPage() {
       <PageHeader
         help="orders"
         title="On the way"
-        description="Games you bought that haven't arrived, found in your purchase emails. They aren't in your collection yet: not counted, not on your lists, never sent to PriceCharting. When one comes, It's here adds it with what you paid and the day, and opens its window for the rest."
+        description="Games you bought that haven't arrived: from an order page, Amazon's order history, a purchases CSV, Claude or your purchase emails. They aren't in your collection yet: not counted, not on your lists, never sent to PriceCharting. When one comes, It's here adds it with what you paid and the day, and opens its window for the rest."
         actions={
           <Group gap="xs">
             <Button variant="default" leftSection={<IconClipboardText size={16} />} onClick={() => setPaging({ into: null })}>
@@ -285,7 +287,7 @@ export function OnTheWayPage() {
                 </Button>
               )}
             </FileButton>
-            {on && (
+            {on && watching && (
               <Button variant="default" leftSection={<IconMailSearch size={16} />} loading={check.isPending} onClick={() => check.mutate()} disabled={!s?.account}>
                 Check my email now
               </Button>
@@ -296,14 +298,23 @@ export function OnTheWayPage() {
       {!on ? (
         <Text c="dimmed">
           On the way is off.{' '}
-          <Anchor component={Link} to="/settings/email#setting-orders.watch">
-            Turn it on in Settings › Email
+          <Anchor component={Link} to="/settings/features#setting-orders.page">
+            Turn it on in Settings › Features
           </Anchor>{' '}
-          to have Squirrelcade look for your eBay and Mercari purchases (and the stores you name) every day or as often as you like.
+          to keep the games you bought here until they arrive.
         </Text>
       ) : (
         <Stack gap="sm">
-          {s?.problem && (
+          {!watching && (
+            <Text size="xs" c="dimmed">
+              Your purchase emails aren't read for it.{' '}
+              <Anchor component={Link} to="/settings/email#setting-orders.watch" size="xs">
+                Settings › Email › On the way
+              </Anchor>{' '}
+              has Squirrelcade look for your eBay and Mercari purchases (and the stores you name) every day or as often as you like.
+            </Text>
+          )}
+          {watching && s?.problem && (
             <Alert color="yellow" p="xs">
               {s.problem}{' '}
               <Anchor component={Link} to="/settings/email" size="sm" c="inherit" fw={600} underline="always">

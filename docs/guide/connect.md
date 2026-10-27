@@ -42,7 +42,7 @@ PriceCharting emails a link to your export when you ask for one; Squirrelcade ca
 
 ## On the way
 
-**Acorns > On the way** keeps the games you've bought until they arrive (**It's here** adds each one, with the store, the day and the price filled in). Turn it on with **Settings > Email > On the way > Watch for games you bought: On the way** (off to start); the page then shows in the menu. Ways in, any or all:
+**Acorns > On the way** keeps the games you've bought until they arrive (**It's here** adds each one, with the store, the day and the price filled in). It's in the menu to start (**Settings > Features > On the way** hides it); your purchase emails are read for it only with **Settings > Email > On the way > Watch for games you bought: On the way** on (off to start). Ways in, any or all:
 
 - **Purchase emails** (with your email account set up, as above): add your stores to **Purchase emails from** (eBay and Mercari to start; tap Amazon, Super Rare Games and the others, type `gamefly.com`, or **Find my stores in my email**). Amazon's emails don't name the game, so it waits as "a video game" until its order page names it.
 - **A shop's order page:** **Add from an order page** on On the way: paste the page (Ctrl+A, Ctrl+C) or a screenshot of it.

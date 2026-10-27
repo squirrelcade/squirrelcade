@@ -937,6 +937,18 @@ export async function uiTest(target, account, check) {
       found.length === 0 && lookUp && mailboxSaid && comingInMenu === 1 && findAccess.length === 0 && comingAccess.length === 0,
       [...found, ...findAccess, ...comingAccess].join(' | ') || `look up ${lookUp}, said ${mailboxSaid}, menu ${comingInMenu}`,
     );
+    // On the way's own switch (D195): the page shows with no email read for it, and hides with Settings > Features.
+    await page.goto(`${base}/coming`);
+    const nav = page.locator('nav.mantine-AppShell-navbar');
+    const emailFree = await page.getByText("Your purchase emails aren't read for it.").waitFor({ timeout: 10000 }).then(() => true, () => false);
+    const shownFree = await nav.getByText('On the way', { exact: true }).count();
+    await page.request.put(`${base}/api/v1/settings`, { data: { changes: { 'orders.page': false } } });
+    await page.goto(`${base}/coming`);
+    const offSaid = await page.getByText('On the way is off.').waitFor({ timeout: 10000 }).then(() => true, () => false);
+    const hidden = await nav.getByText('On the way', { exact: true }).count();
+    await page.request.put(`${base}/api/v1/settings`, { data: { changes: { 'orders.page': true } } });
+    found = await pageProblems();
+    check("ui: On the way shows without email, and its own switch hides it (D195)", found.length === 0 && emailFree && shownFree === 1 && offSaid && hidden === 0, found.join(' | ') || `email-free ${emailFree}, menu ${shownFree}, off ${offSaid}, hidden ${hidden}`);
 
     // Ready to sell, after a rip: the listing for eBay says the disc was read in full; Mercari has its own condition. The
     // sale recorded there is on Collection > Sales, in money and meals, and taken back; Sold in a copy's window asks too.

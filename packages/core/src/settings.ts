@@ -1025,7 +1025,7 @@ export const settingDefinitions = {
     section: 'On the way',
     label: 'Watch for games you bought: On the way',
     description:
-      "Squirrelcade looks through your purchase emails from eBay, Mercari and the senders you list below, as often as you set, and puts each game you bought on Acorns › On the way with the store, the day, the price paid and the listing: not in your collection yet, not counted anywhere, never sent to PriceCharting. When it arrives, It's here adds it with that filled in and opens its window; Store Mode says when a game you scan is on the way. Only the store, the day, the items and the amounts are kept, never an email; the email is read as Read order emails with says. Off until you turn it on.",
+      "Whether your purchase emails are read for On the way (the page itself is Settings › Features › On the way). Squirrelcade looks through your purchase emails from eBay, Mercari and the senders you list below, as often as you set, and puts each game you bought on Acorns › On the way with the store, the day, the price paid and the listing: not in your collection yet, not counted anywhere, never sent to PriceCharting. When it arrives, It's here adds it with that filled in and opens its window; Store Mode says when a game you scan is on the way. Only the store, the day, the items and the amounts are kept, never an email; the email is read as Read order emails with says. Off until you turn it on.",
     default: false,
   }),
   'orders.watchHours': num({
@@ -1750,6 +1750,16 @@ export const settingDefinitions = {
       'Each console\'s catalog comes from Wikipedia\'s "List of … games" page (split pages such as "(A–C)" are found automatically). To use other pages, add a line "console key: Page title" (several pages separated by ";"), for example "playstation-3: List of PlayStation 3 games".',
     default: [],
     advanced: true,
+  }),
+
+  // On the way's own switch (D195): the page shows whether or not purchase emails are read (Settings > Email).
+  'orders.page': bool({
+    page: 'features',
+    section: 'Optional features',
+    label: 'On the way',
+    description:
+      "Acorns › On the way: the games you bought that haven't arrived, to check and add when they come. They get there from a shop's order page or Amazon's order history pasted in, a purchases CSV, Claude, or your purchase emails (Settings › Email › On the way, which only says whether emails are read). Off: the page and its menu entry are hidden, and Store Mode doesn't say a game is on the way.",
+    default: true,
   }),
 
   // Wishlist scoring (Acorns > Acorns ranking)

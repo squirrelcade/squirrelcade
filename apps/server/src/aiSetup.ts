@@ -55,6 +55,7 @@ const LINKED: SettingKey[] = [
   'collection.addWizard',
   'collection.addWizardFields',
   'collection.addWizardPhotos',
+  'orders.page',
   'orders.watch',
   'orders.watchSenders',
   'orders.amazonEmails',
@@ -83,7 +84,7 @@ const PAGES: [string, string][] = [
   ['/welcome', 'The welcome guide (your games in, consoles, catalogs, covers, the wishlist)'],
   ['/collection/add', 'Acorns > Add a game (a game typed in by hand)'],
   ['/updates', 'Acorns > Stash updates (upload an export; Send to PriceCharting and its Check these)'],
-  ['/coming', "Acorns > On the way (games bought, not here yet; Add from an order page, Amazon's order history), with its switch on"],
+  ['/coming', "Acorns > On the way (games bought, not here yet; Add from an order page, Amazon's order history), shown unless Settings > Features > On the way is off"],
   ['/updates/purchases', 'Stash updates > Your purchases (a purchases CSV and its audit), with the purchases CSV on'],
   ['/system/review', 'System > Review (look-alike titles to answer; Review > Magazines with the magazines on)'],
   ['/roots?view=now-in', 'Roots > Now in (the Time machine beside it), with Roots on'],
@@ -183,7 +184,7 @@ export function setupBrief(deps: BriefDeps, address: string, now = new Date()): 
   );
   lines.push(`- **Watched folder:** ${settings.get('collection.dropFolderEnabled') ? 'on' : 'off'}.`);
   lines.push(
-    `- **On the way** (Settings > Email > On the way): ${settings.get('orders.watch') ? `on, purchase emails from ${(settings.get('orders.watchSenders') as string[]).length} stores; ${lastRun('orders-watch')}` : 'off (the page and its menu entry show once it is on)'}.`,
+    `- **On the way** (Acorns > On the way, its switch in Settings > Features): ${settings.get('orders.page') ? 'shown' : 'hidden, with its menu entry'}; purchase emails ${settings.get('orders.watch') ? `read (Settings > Email > On the way), from ${(settings.get('orders.watchSenders') as string[]).length} stores; ${lastRun('orders-watch')}` : 'not read (Settings > Email > On the way, off)'}.`,
   );
   lines.push(`- **Purchases CSV** (D178): ${settings.get('sources.purchaseCsv') ? `on; ${lastRun('purchase-sheet')}` : 'off'}.`);
   lines.push(`- **Videos on a game's page:** ${settings.get('roots.videos') ? 'on' : 'off'}; YouTube API key ${settings.get('sources.youtubeKey') ? 'set' : 'not set (the video channels and Find its videos need one)'}.`);

@@ -238,6 +238,17 @@ describe('On the way', () => {
     expect(((await g!.app.inject({ url: '/api/v1/lookup?q=Okami&platform=playstation-2', cookies })).json() as { title: string; onTheWay: unknown }[]).find((r) => r.title === 'Okami')?.onTheWay).toMatchObject({ id: lot.id });
   });
 
+  it('shows the page on its own switch, whether or not purchase emails are read (D195)', async () => {
+    const { cookies } = await owner([]);
+    const coming = async () => (await g!.app.inject({ url: '/api/v1/coming', cookies })).json() as { on: boolean; watch: boolean };
+    // On to start, with no email set up.
+    expect(await coming()).toMatchObject({ on: true, watch: false });
+    g!.settings.update({ 'orders.watch': true });
+    expect(await coming()).toMatchObject({ on: true, watch: true });
+    g!.settings.update({ 'orders.page': false, 'orders.watch': false });
+    expect(await coming()).toMatchObject({ on: false, watch: false });
+  });
+
   it("finds the stores of your purchase emails from their headers alone, for On the way's list", async () => {
     const mercari = orderMail('mercari2@mercari', 5, 'no-reply@mercari.com', 'You purchased Shantae', [['Item price', '$30.00']]);
     const gamestop = orderMail('gs1@gamestop', 30, 'notifications@info.gamestop.com', 'Thank you for your order!', [['Item price', '$59.99']]);

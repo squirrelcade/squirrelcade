@@ -150,8 +150,8 @@ export function Layout({ children }: { children: ReactNode }) {
     path === '/collection/sales' ||
     path === '/updates' ||
     path === '/pc/wishlist';
-  // On the way (D156): games bought that haven't arrived, while Settings > Email watches for them.
-  const comingOn = useSetting('orders.watch', false) === true && owner;
+  // On the way (D156): games bought that haven't arrived, shown on its own switch (Settings > Features: D195).
+  const comingOn = useSetting('orders.page', true) === true && owner;
   const coming = useQuery({ queryKey: ['coming'], queryFn: () => api<{ items: unknown[] }>('/coming'), enabled: !!session?.authenticated && comingOn, staleTime: 60_000 });
   const comingCount = coming.data?.items.length ?? 0;
   // Statistics and Report are the Nutshell's (the Almanac's from 2026-10-06), with the consoles and sets; their addresses stay.
