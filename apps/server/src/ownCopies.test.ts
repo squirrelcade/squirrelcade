@@ -120,9 +120,18 @@ describe('copies of Squirrelcade\'s own', () => {
     // Given its PriceCharting ID, Puppeteer moves to the CSV, with what was paid and its condition (item and box: 8).
     expect((await g.app.inject({ method: 'PUT', url: `/api/v1/send/pricecharting/${fresh.id}/product`, cookies, payload: { pcId: 'abc' } })).statusCode).toBe(400);
     expect((await g.app.inject({ method: 'PUT', url: `/api/v1/send/pricecharting/${fresh.id}/product`, cookies, payload: { pcId: '45678' } })).json()).toEqual({ ok: true });
-    const after = (await g.app.inject({ url: '/api/v1/send/pricecharting', cookies })).json();
+    let after = (await g.app.inject({ url: '/api/v1/send/pricecharting', cookies })).json();
     expect(after.text).toBe('');
+    // No export of the owner's has that ID, so nothing here can vouch for it (D187): it waits on Check these, out of the
+    // CSV, until the owner says it's right.
+    expect(after.toSend.find((c: { id: number }) => c.id === fresh.id)).toMatchObject({ pcId: '45678', check: 'flagged', why: [expect.stringContaining("can't check it")] });
+    expect(after.csv).not.toContain('45678');
+    expect((await g.app.inject({ method: 'POST', url: `/api/v1/send/pricecharting/${fresh.id}/confirm`, cookies })).json()).toEqual({ ok: true });
+    after = (await g.app.inject({ url: '/api/v1/send/pricecharting', cookies })).json();
+    expect(after.toSend.find((c: { id: number }) => c.id === fresh.id)).toMatchObject({ check: 'confirmed' });
     expect(after.csv).toContain('45678,8,1,800,,');
+    // The ones an export vouches for are fine as they are.
+    expect(after.toSend.find((c: { id: number }) => c.id === second.id)).toMatchObject({ check: 'ok', why: [], pcName: 'Uncharted (Playstation 3)' });
     // A graded copy goes with who graded it and its certificate; grading on a copy that isn't graded doesn't go.
     expect((await edit(fresh.id, { completeness: 'graded', gradingCompany: 'WATA', gradingCertId: '123456-001' })).statusCode).toBe(200);
     expect((await edit(again.id, { gradingCompany: 'PSA' })).statusCode).toBe(200);
@@ -138,6 +147,28 @@ describe('copies of Squirrelcade\'s own', () => {
     const outcome = update(row('1', 'Uncharted', 'Playstation 3', 1000), row('1', 'Uncharted', 'Playstation 3', 1000, 'Item, Box, and Manual', '19.97'), BASE[1]!, row('3', 'Flower', 'Playstation 3', 2500, 'New'), row('45678', 'Puppeteer', 'Playstation 3', 1100, 'Item and Box'));
     expect(outcome.report.copies).toMatchObject({ added: 0 });
     expect(items('Puppeteer')).toMatchObject([{ id: fresh.id, source: 'pricecharting', costCents: 800, valueCents: 1100 }]);
+  });
+
+  it("checks a pasted PriceCharting ID against the owner's exports, and lets a mistake be changed or taken back (D187)", async () => {
+    update(...BASE);
+    const copy = (await add({ platformKey: 'playstation-3', title: 'Puppeteer', completeness: 'complete' })).json().copy;
+    const put = (pcId: string, pasted = '') => g.app.inject({ method: 'PUT', url: `/api/v1/send/pricecharting/${copy.id}/product`, cookies, payload: { pcId, pasted } });
+    const mine = async () => (await send()).toSend.find((c) => c.id === copy.id) as unknown as { pcId: string | null; check: string | null; why: string[] };
+    // Another game's ID (a misread): Flower's, which the export knows.
+    expect((await put('3')).statusCode).toBe(200);
+    expect(await mine()).toMatchObject({ pcId: '3', check: 'flagged', why: ['PriceCharting calls it "Flower"'] });
+    expect((await g.app.inject({ url: '/api/v1/send/pricecharting.csv', cookies })).body).not.toMatch(/\r\n3,/);
+    // Changed: another ID; the pasted Item Details' UPC is checked against the game's barcode.
+    await g.app.inject({ method: 'POST', url: '/api/v1/barcodes', cookies, payload: { code: '711719000001', platformKey: 'playstation-3', title: 'Puppeteer' } });
+    expect((await put('77777', 'Genre: Platformer\nUPC: 711719999999\nPriceCharting ID: 77777')).statusCode).toBe(200);
+    expect((await mine()).why).toEqual(['Another barcode: PriceCharting\'s 711719999999, this game\'s 711719000001']);
+    // The game's own barcode in what was pasted vouches for an ID no export has.
+    expect((await put('77778', 'UPC: 711719000001\nPriceCharting ID: 77778')).statusCode).toBe(200);
+    expect(await mine()).toMatchObject({ check: 'ok', why: [] });
+    // Taken back: no ID, by title again.
+    expect((await put('')).statusCode).toBe(200);
+    expect(await mine()).toMatchObject({ pcId: null, check: null });
+    expect((await send()).text).toContain('Puppeteer');
   });
 
   it('gives each copy to send the barcode Squirrelcade knows for its game on its console (D154)', async () => {

@@ -1,4 +1,4 @@
-import { Anchor, Badge, Button, Card, Group, Stack, Table, Text, Textarea, TextInput, Title } from '@mantine/core';
+import { Alert, Anchor, Badge, Button, Card, Group, List, Stack, Table, Text, Textarea, TextInput, Title } from '@mantine/core';
 import { priceChartingBarcodeUrl, priceChartingIdIn, priceChartingUrl } from '@squirrelcade/core';
 import { IconClipboard, IconCopy, IconDownload, IconExternalLink, IconSend } from '@tabler/icons-react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
@@ -21,6 +21,11 @@ interface SendCopy {
   goneReason: string | null;
   /** Its PriceCharting product id, when Squirrelcade knows it: then it goes in the CSV with its details. */
   pcId: string | null;
+  /** The ID's check (D187): flagged ones wait on Check these, out of the CSV, until the owner confirms them. */
+  check: 'ok' | 'confirmed' | 'flagged' | null;
+  why: string[];
+  /** PriceCharting's name and console for the ID, from the owner's exports. */
+  pcName: string | null;
   /** A barcode Squirrelcade knows for the game on its console: "Find it" opens that product on PriceCharting (D154). */
   barcode: string | null;
   costCents: number | null;
@@ -71,8 +76,10 @@ const noId = () =>
  * within the tap (an iPhone shows its own Paste button first), picks the ID out of it and saves (D154). nextAt, set
  * when this copy is the next one waiting for an ID after a save, brings it into view with the focus on Find it.
  */
-function PriceChartingId({ c, currency, nextAt, onSaved }: { c: SendCopy; currency: string; nextAt: number; onSaved: (id: number) => Promise<unknown> }) {
+function PriceChartingId({ c, currency, nextAt, onSaved, compact = false }: { c: SendCopy; currency: string; nextAt: number; onSaved: (id: number) => Promise<unknown>; compact?: boolean }) {
   const [value, setValue] = useState('');
+  // What was pasted with the ID (Item Details whole): its UPC is checked against the game's barcode (D187).
+  const pasted = useRef('');
   const row = useRef<HTMLDivElement>(null);
   const find = useRef<HTMLAnchorElement>(null);
   useEffect(() => {
@@ -81,9 +88,10 @@ function PriceChartingId({ c, currency, nextAt, onSaved }: { c: SendCopy; curren
     find.current?.focus({ preventScroll: true });
   }, [nextAt]);
   const save = useMutation({
-    mutationFn: (pcId: string) => api(`/send/pricecharting/${c.id}/product`, { method: 'PUT', json: { pcId } }),
+    mutationFn: (pcId: string) => api(`/send/pricecharting/${c.id}/product`, { method: 'PUT', json: { pcId, pasted: pasted.current } }),
     onSuccess: async () => {
-      notifySuccess(`${c.title} goes in the CSV now, with its details.`);
+      notifySuccess(`${c.title} has its PriceCharting ID: checked, it goes in the CSV with its details (or on Check these, if something doesn't match).`);
+      pasted.current = '';
       setValue('');
       await onSaved(c.id);
     },
@@ -99,23 +107,26 @@ function PriceChartingId({ c, currency, nextAt, onSaved }: { c: SendCopy; curren
     }
     const id = priceChartingIdIn(text);
     if (!id) return noId();
+    pasted.current = text;
     setValue(id);
     save.mutate(id);
   }
   return (
     <Group ref={row} gap="xs" wrap="wrap" align="center" role="group" aria-label={c.title}>
-      <Text size="sm" style={{ minWidth: 0, flex: '1 1 12rem' }}>
-        {nextAt > 0 && (
-          <Badge size="xs" variant="light" mr={6} style={{ verticalAlign: 'middle' }}>
-            Next
-          </Badge>
-        )}
-        {c.title}{' '}
-        <Text span size="xs" c="dimmed">
-          {c.platform ?? '?'} · {c.condition}
-          {c.costCents ? ` · paid ${money(c.costCents, currency)}` : ''}
+      {!compact && (
+        <Text size="sm" style={{ minWidth: 0, flex: '1 1 12rem' }}>
+          {nextAt > 0 && (
+            <Badge size="xs" variant="light" mr={6} style={{ verticalAlign: 'middle' }}>
+              Next
+            </Badge>
+          )}
+          {c.title}{' '}
+          <Text span size="xs" c="dimmed">
+            {c.platform ?? '?'} · {c.condition}
+            {c.costCents ? ` · paid ${money(c.costCents, currency)}` : ''}
+          </Text>
         </Text>
-      </Text>
+      )}
       <Anchor ref={find} href={c.barcode ? priceChartingBarcodeUrl(c.barcode) : priceChartingUrl(c.title, c.platform ?? '')} target="_blank" rel="noreferrer" size="xs">
         Find it on PriceCharting
       </Anchor>
@@ -129,10 +140,13 @@ function PriceChartingId({ c, currency, nextAt, onSaved }: { c: SendCopy; curren
         onChange={(e) => setValue(e.currentTarget.value.replace(/\D/g, ''))}
         // What was copied with its label ("PriceCharting ID: 12345", or Item Details whole) gives just the ID.
         onPaste={(e) => {
-          const id = priceChartingIdIn(e.clipboardData.getData('text'));
+          const text = e.clipboardData.getData('text');
+          const id = priceChartingIdIn(text);
           e.preventDefault();
-          if (id) setValue(id);
-          else noId();
+          if (id) {
+            pasted.current = text;
+            setValue(id);
+          } else noId();
         }}
         onKeyDown={(e) => e.key === 'Enter' && value && save.mutate(value)}
       />
@@ -143,6 +157,36 @@ function PriceChartingId({ c, currency, nextAt, onSaved }: { c: SendCopy; curren
       )}
       <Button size="compact-xs" variant="default" disabled={!value} loading={save.isPending} onClick={() => save.mutate(value)}>
         Save
+      </Button>
+    </Group>
+  );
+}
+
+/**
+ * A copy's PriceCharting ID fixed after the fact (D187): another ID typed or pasted, or taken back (it goes by title
+ * again), until the copy is marked sent.
+ */
+function FixId({ c, currency, onDone }: { c: SendCopy; currency: string; onDone: () => Promise<unknown> }) {
+  const [open, setOpen] = useState(false);
+  const clear = useMutation({
+    mutationFn: () => api(`/send/pricecharting/${c.id}/product`, { method: 'PUT', json: { pcId: '' } }),
+    onSuccess: async () => {
+      notifySuccess(`${c.title}'s PriceCharting ID is taken back: it goes by title again.`);
+      await onDone();
+    },
+    onError: (err) => notifyError(err),
+  });
+  return (
+    <Group gap={4} wrap="wrap">
+      {open ? (
+        <PriceChartingId c={c} currency={currency} nextAt={0} compact onSaved={async () => { setOpen(false); await onDone(); }} />
+      ) : (
+        <Button size="compact-xs" variant="subtle" onClick={() => setOpen(true)} aria-label={`Change the PriceCharting ID of ${c.title}`}>
+          Change
+        </Button>
+      )}
+      <Button size="compact-xs" variant="subtle" color="gray" loading={clear.isPending} onClick={() => clear.mutate()} aria-label={`Take back the PriceCharting ID of ${c.title}`}>
+        Take it back
       </Button>
     </Group>
   );
@@ -190,7 +234,9 @@ export function SendToPriceCharting() {
   }, [next]);
   const d = data.data;
   if (!d || d.toSend.length + d.waiting.length + d.toRemove.length === 0) return null;
-  const withId = d.toSend.filter((c) => c.pcId !== null);
+  // Checked IDs go in the CSV; a flagged one waits on Check these until the owner looks (D187).
+  const withId = d.toSend.filter((c) => c.pcId !== null && c.check !== 'flagged');
+  const toCheck = d.toSend.filter((c) => c.pcId !== null && c.check === 'flagged');
   const byTitle = d.toSend.filter((c) => c.pcId === null);
   const unread = byTitle.filter((c) => !c.conditionReadThere);
 
@@ -221,6 +267,8 @@ export function SendToPriceCharting() {
           </Text>
         )}
 
+        {toCheck.length > 0 && <CheckThese copies={toCheck} currency={currency} onDone={refresh} />}
+
         {withId.length > 0 && (
           <Stack gap="xs">
             <Title order={5}>With their details: PriceCharting's CSV importer ({count(withId.length)})</Title>
@@ -237,6 +285,7 @@ export function SendToPriceCharting() {
                     <Table.Th>Paid</Table.Th>
                     <Table.Th>Bought</Table.Th>
                     <Table.Th>Notes</Table.Th>
+                    <Table.Th />
                   </Table.Tr>
                 </Table.Thead>
                 <Table.Tbody>
@@ -263,6 +312,9 @@ export function SendToPriceCharting() {
                         <Text size="xs" lineClamp={2}>
                           {c.notes ? c.notes.slice(0, 300) : '—'}
                         </Text>
+                      </Table.Td>
+                      <Table.Td>
+                        <FixId c={c} currency={currency} onDone={refresh} />
                       </Table.Td>
                     </Table.Tr>
                   ))}
@@ -361,5 +413,57 @@ export function SendToPriceCharting() {
         )}
       </Stack>
     </Card>
+  );
+}
+
+/**
+ * Check these (D187): the copies whose PriceCharting ID didn't check out against your exports (another game's name,
+ * console, region, edition or barcode there), or that no export of yours can vouch for. They stay out of the CSV until
+ * you look and say it's right, because PriceCharting adds every row of it as a new copy and a misread can't be taken
+ * back there.
+ */
+function CheckThese({ copies, currency, onDone }: { copies: SendCopy[]; currency: string; onDone: () => Promise<unknown> }) {
+  const confirm = useMutation({
+    mutationFn: (c: SendCopy) => api(`/send/pricecharting/${c.id}/confirm`, { method: 'POST' }),
+    onSuccess: async (_r, c) => {
+      notifySuccess(`${c.title} goes in the CSV.`);
+      await onDone();
+    },
+    onError: (err) => notifyError(err),
+  });
+  return (
+    <Alert variant="light" color="yellow" title={`Check these (${count(copies.length)})`} id="check-these">
+      <Text size="sm" mb="xs" maw={720}>
+        Their PriceCharting IDs don't match what your exports say, or no export of yours has them. They stay out of the CSV until you look: open each on PriceCharting, and
+        say it's right, change it, or take it back.
+      </Text>
+      <Stack gap="sm">
+        {copies.map((c) => (
+          <Stack key={c.id} gap={2}>
+            <Text size="sm" fw={600}>
+              {c.title}{' '}
+              <Text span size="xs" c="dimmed" fw={400}>
+                {c.platform ?? '?'} · {c.condition} · #{c.pcId}
+                {c.pcName ? ` · on PriceCharting: ${c.pcName}` : ''}
+              </Text>
+            </Text>
+            <List size="xs" spacing={0}>
+              {c.why.map((w) => (
+                <List.Item key={w}>{w}</List.Item>
+              ))}
+            </List>
+            <Group gap="xs" wrap="wrap">
+              <Anchor href={c.barcode ? priceChartingBarcodeUrl(c.barcode) : priceChartingUrl(c.title, c.platform ?? '')} target="_blank" rel="noreferrer" size="xs">
+                Find it on PriceCharting
+              </Anchor>
+              <Button size="compact-xs" variant="light" loading={confirm.isPending && confirm.variables?.id === c.id} onClick={() => confirm.mutate(c)} aria-label={`The PriceCharting ID of ${c.title} is right`}>
+                It's right
+              </Button>
+              <FixId c={c} currency={currency} onDone={onDone} />
+            </Group>
+          </Stack>
+        ))}
+      </Stack>
+    </Alert>
   );
 }

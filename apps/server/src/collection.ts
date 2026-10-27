@@ -16,6 +16,8 @@ import {
   parseAnyCollection,
   consoleFor,
   parseConsoleLabel,
+  matchTitles,
+  SAME_GAME_AT,
   removalPercent,
   type CollectionDiff,
   type CollectionParseResult,
@@ -163,6 +165,14 @@ export interface SendCopy {
   title: string;
   platform: string | null;
   platformKey: string | null;
+  /**
+   * Its PriceCharting ID's check (D187): ok (the owner's own exports show it's this game), confirmed (the owner said so
+   * after a flag), or flagged (why: what disagrees, or that nothing here can vouch for it); null without an ID.
+   */
+  check: 'ok' | 'confirmed' | 'flagged' | null;
+  why: string[];
+  /** PriceCharting's name and console for the ID, when the owner's exports have it. */
+  pcName: string | null;
   condition: string;
   /** Its line for PriceCharting's paste importer ("Title Console Condition"). */
   line: string;
@@ -871,6 +881,8 @@ export class CollectionService {
     }
     const item = (c: CopyRow, platformKey: string | null, platform: string | null): SendCopy => {
       const word = PASTE_WORD[c.completeness as Completeness];
+      const pcId = PC_ID.test(c.productId) ? c.productId : (known.get(`${c.platformId}|${gameKey(c.title)}`) ?? null);
+      const checked = pcId ? this.checkPriceChartingId(c, pcId) : { check: null, why: [], pcName: null };
       return {
         id: c.id,
         key: c.key,
@@ -884,7 +896,8 @@ export class CollectionService {
         sentAt: c.sentAt,
         goneAt: c.goneAt,
         goneReason: c.goneReason,
-        pcId: PC_ID.test(c.productId) ? c.productId : (known.get(`${c.platformId}|${gameKey(c.title)}`) ?? null),
+        pcId,
+        ...checked,
         barcode: codes.get(`${c.platformId}|${gameKey(c.title)}`) ?? null,
         costCents: c.costCents,
         datePurchased: c.datePurchased,
@@ -915,28 +928,90 @@ export class CollectionService {
         .filter((c) => c.pcId === null)
         .map((c) => c.line)
         .join('\n'),
-      // The CSV importer's file: the copies whose product is known, with their details.
+      // The CSV importer's file: the copies whose product is known and checked, with their details. A flagged one stays
+      // out until the owner confirms it (D187): PriceCharting adds every row as a new copy, and a misread can't be taken
+      // back there.
       csv: priceChartingCsv(
-        toSend.map((c) => ({ ...c, completeness: completeness.get(c.id) ?? 'unknown' })),
+        toSend.filter((c) => c.pcId === null || c.check !== 'flagged').map((c) => ({ ...c, completeness: completeness.get(c.id) ?? 'unknown' })),
         folder,
       ),
     };
   }
 
   /**
-   * Gives a copy added here its PriceCharting product id (the "PriceCharting ID" on the game's page there), so it can
-   * go in the CSV importer with its details. Only a copy of Squirrelcade's own that isn't sent yet; false otherwise.
+   * A PriceCharting ID checked against what the owner's own exports say of it (D187): PriceCharting's name for that
+   * product beside the copy's title (another game, or another edition), its console and region beside the copy's, the
+   * same game's own ID in an export, the value far from the same game's, and the UPC pasted with it beside the game's
+   * barcode. An ID no export has can't be vouched for here: it's flagged for the owner to look at once. Nothing is
+   * fetched from PriceCharting: only the owner's exports and what they pasted (PriceCharting's OK covers those).
    */
-  setPriceChartingId(id: number, pcId: string): boolean {
+  checkPriceChartingId(c: CopyRow, pcId: string): { check: 'ok' | 'confirmed' | 'flagged'; why: string[]; pcName: string | null } {
+    const why: string[] = [];
+    const product = this.db
+      .select({ title: copies.title, consoleLabel: copies.consoleLabel, platformId: copies.platformId, region: copies.region, valueCents: copies.valueCents })
+      .from(copies)
+      .where(and(eq(copies.productId, pcId), sql`${copies.source} != 'squirrelcade'`))
+      .orderBy(sql`${copies.goneAt} is not null`, asc(copies.id))
+      .get();
+    const game = gameKey(c.title);
+    // The same game on the copy's console in the owner's exports (one read of that console's export copies).
+    const sameGame = this.db
+      .select({ productId: copies.productId, title: copies.title, valueCents: copies.valueCents })
+      .from(copies)
+      .where(and(eq(copies.platformId, c.platformId ?? -1), sql`${copies.source} != 'squirrelcade'`))
+      .all()
+      .filter((x) => PC_ID.test(x.productId) && gameKey(x.title) === game);
+    if (product) {
+      const m = matchTitles(c.title, product.title);
+      if (!m || m.confidence < SAME_GAME_AT) why.push(`PriceCharting calls it "${product.title}"`);
+      else if (m.kind === 'edition') why.push(`Another edition: "${product.title}"`);
+      if (c.platformId !== null && product.platformId !== null && product.platformId !== c.platformId) why.push(`Another console: ${product.consoleLabel}`);
+      else if (product.region !== c.region) why.push(`Another region: ${product.consoleLabel}`);
+      const theirs = sameGame.find((x) => x.productId !== pcId && x.valueCents);
+      if (theirs && product.valueCents && theirs.valueCents && Math.max(product.valueCents, theirs.valueCents) > 3 * Math.min(product.valueCents, theirs.valueCents)) why.push('Its value is far from the same game\'s in your export');
+    }
+    // The UPC pasted with the ID, beside the game's own barcode: the same vouches for an ID no export has.
+    const barcode = this.db.select({ code: barcodes.code, title: barcodes.title }).from(barcodes).where(eq(barcodes.platformId, c.platformId ?? -1)).all().find((b) => gameKey(b.title) === game);
+    const digits = (s: string) => s.replace(/\D/g, '').replace(/^0+/, '');
+    const sameBarcode = Boolean(c.pcUpc && barcode && digits(barcode.code) === digits(c.pcUpc));
+    if (c.pcUpc && barcode && !sameBarcode) why.push(`Another barcode: PriceCharting's ${c.pcUpc}, this game's ${barcode.code}`);
+    else if (!product && !sameBarcode) why.push("Your PriceCharting exports don't have this ID, so Squirrelcade can't check it: open it on PriceCharting and make sure it's this game");
+    const other = sameGame.find((x) => x.productId !== pcId);
+    if (other && !product) why.push(`Your export has this game as #${other.productId}`);
+    const pcName = product ? `${product.title} (${product.consoleLabel})` : null;
+    if (why.length === 0) return { check: 'ok', why, pcName };
+    return { check: c.pcConfirmed === pcId ? 'confirmed' : 'flagged', why, pcName };
+  }
+
+  /**
+   * Gives a copy added here its PriceCharting product id (the "PriceCharting ID" on the game's page there), so it can
+   * go in the CSV importer with its details, or takes it back (an empty id, D187: a mistake fixed) until the copy is
+   * marked sent. The Item Details pasted with it gives the UPC its check compares. Only a copy of Squirrelcade's own
+   * that isn't sent yet; false otherwise.
+   */
+  setPriceChartingId(id: number, pcId: string, pasted = ''): boolean {
+    const c = this.db.select().from(copies).where(and(eq(copies.id, id), isNull(copies.goneAt), isNull(copies.sentAt), eq(copies.source, 'squirrelcade'))).get();
+    if (pcId === '') {
+      if (!c) return false;
+      const platform = c.platformId !== null ? this.db.select({ key: platforms.key }).from(platforms).where(eq(platforms.id, c.platformId)).get() : undefined;
+      // Back to the id a copy added here starts with, so it goes by title again.
+      const own = `g-${createHash('sha1').update(`${platform?.key ?? ''}|${gameKey(c.title)}`).digest('hex').slice(0, 12)}`;
+      this.db.update(copies).set({ productId: own, pcConfirmed: null, pcUpc: null, updatedAt: new Date().toISOString() }).where(eq(copies.id, id)).run();
+      return true;
+    }
     if (!PC_ID.test(pcId)) throw new CopyError("A PriceCharting ID is a number (on the game's page there, under Item Details).");
-    const at = new Date().toISOString();
-    return (
-      this.db
-        .update(copies)
-        .set({ productId: pcId, updatedAt: at })
-        .where(and(eq(copies.id, id), isNull(copies.goneAt), isNull(copies.sentAt), eq(copies.source, 'squirrelcade')))
-        .run().changes > 0
-    );
+    if (!c) return false;
+    const upc = /\bUPC\s*:?\s*([0-9][0-9 -]{6,16}[0-9])/i.exec(pasted)?.[1]?.replace(/[\s-]/g, '') ?? null;
+    this.db.update(copies).set({ productId: pcId, pcConfirmed: null, pcUpc: upc, updatedAt: new Date().toISOString() }).where(eq(copies.id, id)).run();
+    return true;
+  }
+
+  /** The owner looked at a flagged PriceCharting ID and says it's right (D187): it goes in the CSV. */
+  confirmPriceChartingId(id: number): boolean {
+    const c = this.db.select().from(copies).where(and(eq(copies.id, id), isNull(copies.goneAt), isNull(copies.sentAt), eq(copies.source, 'squirrelcade'))).get();
+    if (!c || !PC_ID.test(c.productId)) return false;
+    this.db.update(copies).set({ pcConfirmed: c.productId, updatedAt: new Date().toISOString() }).where(eq(copies.id, id)).run();
+    return true;
   }
 
   /** Notes the copies as pasted into PriceCharting's importer (they wait for the export that has them); returns how many. */

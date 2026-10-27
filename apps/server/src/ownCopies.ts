@@ -186,15 +186,20 @@ export function registerOwnCopyRoutes(
 
   // A copy added here gets its PriceCharting ID (from the game's page there), so it goes in the CSV with its details.
   app.put('/api/v1/send/pricecharting/:id/product', async (request, reply) => {
-    const pcId = String((request.body as { pcId?: unknown } | null)?.pcId ?? '').trim();
+    const b = (request.body ?? {}) as { pcId?: unknown; pasted?: unknown };
+    const pcId = String(b.pcId ?? '').trim();
     try {
-      if (!collection.setPriceChartingId(Number((request.params as { id: string }).id), pcId)) return reply.code(404).send({ error: 'not-found', message: 'No copy added here and not sent yet has that id.' });
+      // An empty id takes it back (D187); what was pasted with it gives its UPC to check.
+      if (!collection.setPriceChartingId(Number((request.params as { id: string }).id), pcId, typeof b.pasted === 'string' ? b.pasted.slice(0, 5000) : '')) return reply.code(404).send({ error: 'not-found', message: 'No copy added here and not sent yet has that id.' });
     } catch (err) {
       if (err instanceof CopyError) return reply.code(400).send({ error: 'invalid', message: err.message });
       throw err;
     }
     return { ok: true };
   });
+
+  // A flagged PriceCharting ID the owner looked at and says is right (D187).
+  app.post('/api/v1/send/pricecharting/:id/confirm', async (request, reply) => (collection.confirmPriceChartingId(Number((request.params as { id: string }).id)) ? { ok: true } : reply.code(404).send({ error: 'not-found', message: 'No copy waiting with a PriceCharting ID has that id.' })));
 
   app.post('/api/v1/send/pricecharting/sent', async (request, reply) => {
     const list = ids(request.body);

@@ -690,7 +690,9 @@ export async function uiTest(target, account, check) {
       await pasteIn(alpha.getByLabel('PriceCharting ID of Paste Test Alpha', { exact: true }), 'PriceCharting ID: 98765');
       await alpha.getByRole('button', { name: 'Save' }).click();
     }
-    await csvTable.getByText('Paste Test Alpha').waitFor({ timeout: 10000 });
+    // No export of this install has the ID, so it waits on Check these, out of the CSV, until it's said to be right (D187).
+    const checkThese = page.locator('#check-these');
+    await checkThese.getByText('Paste Test Alpha').waitFor({ timeout: 10000 });
     await beta.getByText('Next', { exact: true }).waitFor({ timeout: 10000 });
     const focusedIn = () => page.evaluate(() => document.activeElement?.closest('[role="group"]')?.getAttribute('aria-label') ?? document.activeElement?.textContent ?? '');
     await page.waitForFunction(() => document.activeElement?.closest('[role="group"]')?.getAttribute('aria-label') === 'Paste Test Beta', null, { timeout: 5000 }).catch(() => undefined);
@@ -703,19 +705,26 @@ export async function uiTest(target, account, check) {
     const othersWaiting = (await (await page.request.get(`${base}/api/v1/send/pricecharting`)).json()).toSend.filter((c) => c.pcId === null && c.title !== 'Paste Test Beta');
     const afterBeta = othersWaiting[0]?.title ?? 'Download the CSV';
     await beta.getByRole('button', { name: 'Save' }).click();
-    await csvTable.getByText('Paste Test Beta').waitFor({ timeout: 10000 });
+    await checkThese.getByText('Paste Test Beta').waitFor({ timeout: 10000 });
     await page.waitForFunction((want) => (document.activeElement?.closest('[role="group"]')?.getAttribute('aria-label') ?? document.activeElement?.textContent ?? '').includes(want), afterBeta, { timeout: 5000 }).catch(() => undefined);
     const afterBetaFocused = await focusedIn();
+    const heldCsv = await (await page.request.get(`${base}/api/v1/send/pricecharting.csv`)).text();
+    // Looked at and said to be right: then they go in the CSV.
+    for (const title of ['Paste Test Alpha', 'Paste Test Beta']) {
+      await checkThese.getByRole('button', { name: `The PriceCharting ID of ${title} is right` }).click();
+      await csvTable.getByText(title).waitFor({ timeout: 10000 });
+    }
     const pasteCsv = await (await page.request.get(`${base}/api/v1/send/pricecharting.csv`)).text();
     found = await pageProblems();
     check(
-      `ui: Find it opens a game by its barcode; ${clipboard ? 'Paste' : 'a paste in the box'} gives a copy its PriceCharting ID, and the next copy waiting gets the focus`,
+      `ui: Find it opens a game by its barcode; ${clipboard ? 'Paste' : 'a paste in the box'} gives a copy its PriceCharting ID, the next copy waiting gets the focus, and an ID no export vouches for waits on Check these until it's said to be right`,
       found.length === 0 &&
         alphaFind === 'https://www.pricecharting.com/search-products?type=prices&q=711719000017' &&
         /\?type=prices&q=Paste%20Test%20Beta%20/.test(betaFind ?? '') &&
         betaFocused === 'Paste Test Beta' &&
         betaBox === '54321' &&
         afterBetaFocused.includes(afterBeta) &&
+        !/98765|54321/.test(heldCsv) &&
         /\r\n98765,1,1,/.test(pasteCsv) &&
         /\r\n54321,1,1,/.test(pasteCsv),
       found.join(' | ') || JSON.stringify({ clipboard, alphaFind, betaFind, betaFocused, betaBox, afterBeta, afterBetaFocused, pasteCsv }),

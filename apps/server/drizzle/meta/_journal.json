@@ -351,6 +351,13 @@
       "when": 1792987092437,
       "tag": "0049_on_the_way_writes",
       "breakpoints": true
+    },
+    {
+      "idx": 50,
+      "version": "6",
+      "when": 1793059478275,
+      "tag": "0050_pricecharting_checks",
+      "breakpoints": true
     }
   ]
 }

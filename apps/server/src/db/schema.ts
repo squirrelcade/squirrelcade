@@ -476,6 +476,10 @@ export const copies = sqliteTable(
     /** The order it was bought in, and the shop's own number for it (Amazon's ASIN): from a purchases spreadsheet (D178). */
     orderNumber: text('order_number'),
     asin: text('asin'),
+    /** The PriceCharting ID the owner confirmed for this copy after its check flagged it (D187); another ID isn't confirmed. */
+    pcConfirmed: text('pc_confirmed'),
+    /** The UPC in the Item Details pasted with its PriceCharting ID, to check against the game's barcode (D187). */
+    pcUpc: text('pc_upc'),
     gradingCompany: text('grading_company').notNull(),
     gradingCertId: text('grading_cert_id').notNull(),
     folder: text('folder').notNull(),
