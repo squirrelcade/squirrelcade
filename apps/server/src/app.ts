@@ -1,7 +1,7 @@
 import cookie from '@fastify/cookie';
 import multipart from '@fastify/multipart';
 import fastifyStatic from '@fastify/static';
-import { FEATURE_SETTINGS, normalizeTitle, settingDefinitions, type FeatureKey, type SettingDefinition } from '@squirrelcade/core';
+import { dayIn, FEATURE_SETTINGS, normalizeTitle, settingDefinitions, type FeatureKey, type SettingDefinition } from '@squirrelcade/core';
 import { eq } from 'drizzle-orm';
 import Fastify, { LogController, type FastifyBaseLogger, type FastifyInstance } from 'fastify';
 import { existsSync, mkdirSync } from 'node:fs';
@@ -56,6 +56,7 @@ import { psnApi } from './psn.js';
 import { imapMailbox, MailImportService, registerMailRoutes, type ExportDownloader, type MailboxOpener } from './mailImport.js';
 import { OrderService, registerOrderRoutes } from './orders.js';
 import { registerMcpRoute } from './mcp.js';
+import { registerTimeMachineRoutes, TimeMachineService } from './timeMachine.js';
 import { FriendsService, registerFriendRoutes } from './friends.js';
 import { GameOfTheDayService, registerGotdRoutes } from './gotd.js';
 import { DealsService, registerDealRoutes } from './deals.js';
@@ -612,6 +613,17 @@ export async function buildApp(options: BuildOptions = {}): Promise<Squirrelcade
   registerMagazineRoutes(app, magazines, tasks);
   app.addHook('onClose', async () => magazines.close());
   // A purchases spreadsheet (D178): read on a schedule, its audit shown before anything is written.
+  // Now in and the Time machine (D190): the games out and the magazines on sale around a date.
+  const timeMachine = new TimeMachineService({ db, settings, igdb, history, magazines, log });
+  registerTimeMachineRoutes(app, timeMachine, () => dayIn(settings.get('general.timeZone')));
+  // Its release index made a minute after start, so the first visit doesn't wait for it.
+  setTimeout(() => {
+    try {
+      timeMachine.warm();
+    } catch (err) {
+      log.debug({ context: 'history', err }, "Now in's release index wasn't made ahead");
+    }
+  }, 60_000).unref();
   const purchaseSheet = new PurchaseSheetService({ db, settings, env, log, collection, orders });
   registerPurchaseSheetRoutes(app, purchaseSheet, tasks);
   registerPlayRoutes(app, play, (platformKey, title) => catalogTarget(catalogs, platformKey, title)?.target.title ?? null);

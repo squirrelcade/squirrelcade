@@ -1,4 +1,4 @@
-import { guessDates, issueFromFileName, issueLabel, pageNames, parseComicInfo, parseHocr, skippedName, type IssueInfo, type IssueToDate, type PageWord } from '@squirrelcade/core';
+import { coverLeadFor, guessDates, issueFromFileName, issueLabel, pageNames, parseComicInfo, parseHocr, skippedName, type IssueInfo, type IssueToDate, type PageWord } from '@squirrelcade/core';
 import Database from 'better-sqlite3';
 import { spawn } from 'node:child_process';
 import { existsSync, type Dirent } from 'node:fs';
@@ -499,6 +499,29 @@ export class MagazineService {
   undated(): IssueView[] {
     if (!this.enabled()) return [];
     return (this.store().prepare(`${this.issueQuery} WHERE COALESCE(i.owner_year, i.year) IS NULL ORDER BY m.name, CAST(i.volume AS INTEGER), CAST(i.number AS INTEGER)`).all() as Parameters<MagazineService['view']>[0][]).map((r) => this.view(r));
+  }
+
+  /**
+   * The issues on sale in a window of days (D190: Now in and the Time machine): the month an issue was on the
+   * newsstand is its cover's month less the magazine's lead (a setting), and it counts when that month overlaps.
+   */
+  onSale(from: string, to: string): IssueView[] {
+    if (!this.enabled()) return [];
+    const usual = this.settings.get('magazines.coverLeadMonths');
+    const own = this.settings.get('magazines.coverLead');
+    const rows = this.store()
+      .prepare(`${this.issueQuery} WHERE COALESCE(i.owner_year, i.year) IS NOT NULL AND COALESCE(i.owner_month, i.month) IS NOT NULL`)
+      .all() as Parameters<MagazineService['view']>[0][];
+    const out: IssueView[] = [];
+    for (const r of rows) {
+      const year = r.owner_year ?? r.year!;
+      const month = (r.owner_year !== null ? r.owner_month : r.month)!;
+      const t = year * 12 + (month - 1) - coverLeadFor(r.magazine, usual, own);
+      const first = `${Math.floor(t / 12)}-${String((t % 12) + 1).padStart(2, '0')}-01`;
+      const last = `${Math.floor(t / 12)}-${String((t % 12) + 1).padStart(2, '0')}-31`;
+      if (first <= to && last >= from) out.push(this.view(r));
+    }
+    return out.sort((a, b) => a.magazine.localeCompare(b.magazine) || (a.year ?? 0) - (b.year ?? 0) || (a.month ?? 0) - (b.month ?? 0));
   }
 
   /** The dates Squirrelcade worked out (D181), to check on Name these. */

@@ -36,6 +36,14 @@ Both show the consoles you collect; **Consoles you don't collect too**, on Roots
 
 A console Roots knows that you don't collect (the Vectrex, the Game Boy, the Saturn, the arcade...) is **followed**: it gets what helps you know it, never what counts it. IGDB's list of its games (box art on its Top 100, details and ratings), your RomM's games for it (**In RomM**, **Play on RomM**, and its count on its card here), a page for each of its games (its Roots, videos, series and shops), and its games in the header's search and Store Mode, marked **Not tracked**. Never a checklist, a percentage, the Stash's numbers or acorns. Each card says **Followed** with **Stop following** (and **Follow** back); **Settings › Platforms › Consoles you follow** turns following off for all of them, for whoever minds the disk space (IGDB's list takes a few megabytes a console; the pictures aren't kept). A console becomes collected as before: own a few different games of it (Settings › Platforms › Unique games to track a console).
 
+## Now in and the Time machine
+
+**Roots > Now in** takes today's day and month a decade back at a time: on October 26, 2026, **Now in the 2010s** is October 26, 2016, then the 2000s, the 90s, the 80s and the 70s. Each shows the games that came out from two weeks before that day to two weeks after (the 70s two months either side, when there were few games and most were arcade ones), the most important first (IGDB's rating and how many ratings it rests on, a Top 100 place), each with its consoles' marks (yours in color), and its trailer to play right there. Under them, the magazines of yours in Leaves that were on sale then: a magazine's cover date ran a month or so ahead of the newsstand, so a November issue shows in October. Tap one to read it.
+
+**Roots > Time machine** is the same for any day: pick it, or step a day, a week or a month at a time.
+
+The games come from IGDB's lists of your consoles and the ones you follow (Settings > Sources > IGDB), so a console Squirrelcade doesn't know has none. Settings > Roots > Now in and the Time machine: **Days either side of a date** (14), **A decade's own window** ("1970s: 60"), **Decades Now in goes back** (5) and **Games shown in a window** (20). Settings > Magazines: **How far a cover's date ran ahead** (a month) and **A magazine's own** ("Nintendo Power: 2").
+
 ## Videos
 
 With **Settings › Roots › Videos on a game's page** on (it's off to start), a game's Roots plays its videos: **Videos of the day** under At the time (its trailers, commercials, the reviews of its first months), **Videos since** under Looking back. Tap one to play it right there, in YouTube's privacy-enhanced player (the whole screen on a phone; full screen from the player's own button), or **Watch on YouTube**. The thumbnails come from your server, which keeps a copy of each; YouTube's player loads only when you press play.

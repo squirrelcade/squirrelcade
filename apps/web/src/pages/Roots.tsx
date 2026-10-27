@@ -9,6 +9,7 @@ import { PageHeader } from '../components';
 import { notifyError, useCanEdit, useFeature, usePageTitle, useSetting, useSettings } from '../hooks';
 import { ConsoleMark } from '../ConsoleMark';
 import { ConsoleHistoryTab, generationName, TimelinePanel, Top100Tab, useAllConsoles } from './History';
+import { NowInPanel, TimeMachinePanel } from './TimeMachine';
 
 /** The consoles as the timeline knows them (GET /api/v1/history/timeline). */
 interface Consoles {
@@ -74,7 +75,8 @@ export function RootsPage() {
   const [params] = useSearchParams();
   const navigate = useNavigate();
   const on = useFeature('history');
-  const view = params.get('view') === 'timeline' ? 'timeline' : 'consoles';
+  const asked = params.get('view');
+  const view = asked === 'timeline' || asked === 'now-in' || asked === 'time-machine' ? asked : 'consoles';
   const timeline = useQuery({ queryKey: ['history', 'timeline'], queryFn: () => api<Consoles>('/history/timeline'), enabled: on && view === 'consoles' });
   const listed = (timeline.data?.consoles ?? []).filter((c) => c.hasHistory || c.hasTop100);
   // The consoles you collect, or all of them with the switch (remembered; the timeline follows it).
@@ -108,6 +110,10 @@ export function RootsPage() {
         <Stack gap="md">
           {view === 'timeline' ? (
             <TimelinePanel />
+          ) : view === 'now-in' ? (
+            <NowInPanel />
+          ) : view === 'time-machine' ? (
+            <TimeMachinePanel />
           ) : timeline.isLoading ? (
             <Loader />
           ) : (

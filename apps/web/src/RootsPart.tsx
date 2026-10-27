@@ -170,7 +170,7 @@ function SourceLine({ s }: { s: RootsSource }) {
 }
 
 /** A video on a game's page (GET /api/v1/game/videos). */
-interface GameVideo {
+export interface GameVideo {
   videoId: string;
   title: string;
   channel: string | null;
@@ -179,7 +179,7 @@ interface GameVideo {
   kind: string | null;
 }
 
-interface GameVideos {
+export interface GameVideos {
   status: 'off' | 'ready';
   time: GameVideo[];
   later: GameVideo[];
@@ -190,7 +190,7 @@ interface GameVideos {
  * The player (D168): YouTube's privacy-enhanced player in a window (the whole screen on a phone), full screen too; the
  * frame sends its origin, as YouTube's player needs (Squirrelcade's own pages send only same-origin referrers).
  */
-function VideoPlayer({ video, onClose }: { video: GameVideo | null; onClose: () => void }) {
+export function VideoPlayer({ video, onClose }: { video: GameVideo | null; onClose: () => void }) {
   const narrow = useMediaQuery('(max-width: 48em)');
   return (
     <Modal opened={video !== null} onClose={onClose} size="xl" fullScreen={Boolean(narrow)} title={video?.title} centered>
