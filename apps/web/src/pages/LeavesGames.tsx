@@ -4,7 +4,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useRef, useState } from 'react';
 import { Link } from 'react-router';
 import { api } from '../api';
-import { ConsoleMark, consoleName } from '../ConsoleMark';
+import { ConsoleMark, consoleName, useOwnedMarks } from '../ConsoleMark';
 import { useOpenGame } from '../GameDrawer';
 import { notifyError, notifySuccess, useCanEdit } from '../hooks';
 import { PageHeader } from '../components';
@@ -44,6 +44,13 @@ function colorOf(m: Mention): string {
   return 'var(--mantine-color-gray-5)';
 }
 
+/** A mention without its full answer (a long list's), given have-it from the owned-consoles map. */
+function withOwned(m: Mention, owned: string[]): Mention {
+  if (m.answer !== undefined || !m.platformKey) return m;
+  const mine = owned.includes(m.platformKey);
+  return { ...m, answer: mine ? 'own' : owned.length > 0 ? 'own-elsewhere' : null, ownedOn: mine ? [] : owned.map(consoleName) };
+}
+
 function answerText(m: Mention): string {
   if (m.answer === 'own' || m.answer === 'own-not-in-catalog') return 'You have it';
   if (m.answer === 'own-elsewhere') return `You have it on ${(m.ownedOn ?? []).join(', ') || 'another console'}`;
@@ -52,7 +59,8 @@ function answerText(m: Mention): string {
 }
 
 /** A game's card on the page (D192): have it and on what, RomM's Play, this page's score, its other mentions; a maybe's answers. */
-function GameCard({ m, onDone }: { m: Mention; onDone: () => void }) {
+function GameCard({ m: given, onDone }: { m: Mention; onDone: () => void }) {
+  const m = withOwned(given, useOwnedMarks()(given.title));
   const open = useOpenGame();
   const canEdit = useCanEdit();
   const queryClient = useQueryClient();
@@ -267,7 +275,8 @@ function MarkGame({ box, onClose, onSave }: { box: [number, number, number, numb
 /** An issue's games, page by page (D191, D192): each with whether you have it, opening at its page. */
 export function IssueGames({ issueId }: { issueId: number }) {
   const data = useQuery({ queryKey: ['magazines', 'issue-games', issueId], queryFn: () => api<{ games: Mention[] }>(`/magazines/issues/${issueId}/games`) });
-  const games = data.data?.games ?? [];
+  const owned = useOwnedMarks();
+  const games = (data.data?.games ?? []).map((m) => withOwned(m, owned(m.title)));
   if (games.length === 0) return null;
   return (
     <Card withBorder padding="sm">

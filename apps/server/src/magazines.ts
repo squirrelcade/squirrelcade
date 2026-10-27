@@ -999,7 +999,9 @@ export function registerMagazineRoutes(
     if (!title?.trim()) return reply.code(400).send({ error: 'invalid', message: 'Give a title.' });
     return { mentions: magazines.mentionsOf(title.trim()) };
   });
-  app.get('/api/v1/magazines/issues/:id/games', async (request) => ({ games: magazines.gamesOn(Number((request.params as { id: string }).id)).map((m) => ({ ...m, ...answerOf(m) })) }));
+  // A whole issue's games, or the maybes to review: without each one's full answer (a lookup each made a long list
+  // slow); the page answers have-it from the owned-consoles map it already has.
+  app.get('/api/v1/magazines/issues/:id/games', async (request) => ({ games: magazines.gamesOn(Number((request.params as { id: string }).id)) }));
   // A page's games (D192), with the scan's size their boxes are in, and each one's answer (have it, wishlist...).
   app.get('/api/v1/magazines/issues/:id/pages/:n/games', async (request) => {
     const { id, n } = request.params as { id: string; n: string };
@@ -1027,7 +1029,7 @@ export function registerMagazineRoutes(
     return done ? { ok: true } : reply.code(404).send({ error: 'not-found', message: 'No such game on a page.' });
   });
   app.delete('/api/v1/magazines/mentions/:id', async (request) => ({ removed: magazines.forgetMention(Number((request.params as { id: string }).id)) }));
-  app.get('/api/v1/magazines/review', async () => ({ mentions: magazines.toReview().map((m) => ({ ...m, ...answerOf(m) })) }));
+  app.get('/api/v1/magazines/review', async () => ({ mentions: magazines.toReview() }));
   // "This is page 28" (D191): the issue's printed page numbers from here on.
   app.put('/api/v1/magazines/issues/:id/page-offset', async (request, reply) => {
     const b = (request.body ?? {}) as { filePage?: unknown; printed?: unknown };
