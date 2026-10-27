@@ -484,10 +484,12 @@ export function GameDrawer() {
   const allSets = useQuery({ queryKey: ['sets'], queryFn: () => api<{ key: string; name: string }[]>('/sets'), enabled: Boolean(platformKey && title) });
   const change = useMutation({
     mutationFn: (c: Change) => api(c.path, { method: c.method, json: c.json }),
-    onSuccess: async (d, c) => {
+    onSuccess: (d, c) => {
       // A copy added at the goal says so (one in, one out).
       if (c.done) notifySuccess(c.done + overGoalNote(d));
-      await Promise.all(TOUCHED.map((k) => queryClient.invalidateQueries({ queryKey: [k] })));
+      // The page catches up behind: waiting for every answer on it to come back kept the drawer's buttons disabled
+      // on a slow server.
+      void Promise.all(TOUCHED.map((k) => queryClient.invalidateQueries({ queryKey: [k] })));
     },
     onError: (err) => notifyError(err),
   });
