@@ -580,14 +580,14 @@ export function CopyDetailsModal({
       if (detailChanged) await api('/copy', { method: 'PUT', json: detailsJson() });
       return copyChanged || detailChanged;
     },
-    onSuccess: async (saved, then) => {
-      if (saved) {
-        notifySuccess(`${copy?.title ?? 'The copy'}: saved.`);
-        await refresh();
-      }
+    onSuccess: (saved, then) => {
+      if (saved) notifySuccess(`${copy?.title ?? 'The copy'}: saved.`);
+      // The window goes at once, the page catching up behind it: waiting for every answer on the page to come back
+      // first kept it open on a slow server (the same as its opening, D172).
       if (then === 'next') onNext?.();
       else if (then === 'scan') onScanNext?.();
       else onClose();
+      if (saved) void refresh();
     },
     onError: (err) => notifyError(err),
   });
