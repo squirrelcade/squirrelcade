@@ -156,7 +156,7 @@ describe('Leaves: the magazine scans (D177)', () => {
       `<div class='ocr_page'>${lines.map((ws, y) => `<span class='ocr_line'>${ws.map((w, x) => `<span class='ocrx_word' title='bbox ${x * 100} ${y * 40} ${x * 100 + 90} ${y * 40 + (y === 0 ? 60 : 20)}; x_wconf 95'>${w}</span>`).join(' ')}</span>`).join('')}</div>`;
     const pages: Record<number, string> = {
       1: hocrLines([['Contents']]),
-      2: hocrLines([['SUPER', 'METROID'], ['Samus', 'returns', 'in', 'Super', 'Metroid', 'the', 'best', 'yet'], ['9.0', '9.0', '9.5', '9.0'], ['Mega', 'Man', 'X', 'sneaks', 'in']]),
+      2: hocrLines([['SUPER', 'METROID'], ['Samus', 'returns', 'in', 'Super', 'Metroid', 'the', 'best', 'yet'], ['9.0', '9.0', '9.5', '9.0'], ['Wario', 'Land', 'sneaks', 'in']]),
       3: hocrLines([['Next', 'month']]),
     };
     g = await testApp({ magazineReader: async () => pages[Object.keys(pages).length === 0 ? 1 : (read++ % 3) + 1]! });
@@ -171,7 +171,7 @@ describe('Leaves: the magazine scans (D177)', () => {
     // The titles on the pages: from the games out around June 1994.
     const result = await g.magazines.spotGames(() => [
       { platformKey: 'super-nintendo', title: 'Super Metroid', day: '1994-04-18' },
-      { platformKey: 'super-nintendo', title: 'Mega Man X', day: '1994-01-01' },
+      { platformKey: 'super-nintendo', title: 'Wario Land', day: '1994-01-01' },
       { platformKey: 'super-nintendo', title: 'Donkey Kong Country', day: '1994-11-21' },
     ]);
     expect(result).toBe('1 issues looked through: 1 games linked, 1 to answer on Review > Magazines');
@@ -180,19 +180,19 @@ describe('Leaves: the magazine scans (D177)', () => {
     expect((await g.app.inject({ url: '/api/v1/game/magazines?title=Donkey%20Kong%20Country', cookies })).json().mentions).toEqual([
       expect.objectContaining({ page: 3, source: 'citation', score: '9/10', printed: 'EGM' }),
     ]);
-    // Mega Man X is a maybe (three short words in small type): on Review > Magazines.
+    // Wario Land is a maybe (two words in small type): on Review > Magazines.
     const review = (await g.app.inject({ url: '/api/v1/magazines/review', cookies })).json().mentions;
-    expect(review.map((m: { title: string; state: string }) => [m.title, m.state])).toEqual([['Mega Man X', 'suggested']]);
+    expect(review.map((m: { title: string; state: string }) => [m.title, m.state])).toEqual([['Wario Land', 'suggested']]);
     // The owner says yes: linked, and a rule for those words from now on.
     expect((await g.app.inject({ method: 'POST', url: `/api/v1/magazines/mentions/${review[0].id}/answer`, cookies, payload: { answer: 'yes' } })).json()).toEqual({ ok: true });
     expect((await g.app.inject({ url: '/api/v1/magazines/review', cookies })).json().mentions).toEqual([]);
-    await g.magazines.spotGames(() => [{ platformKey: 'super-nintendo', title: 'Mega Man X', day: '1994-01-01' }, { platformKey: 'super-nintendo', title: 'Super Metroid', day: '1994-04-18' }]);
-    expect((await g.app.inject({ url: '/api/v1/game/magazines?title=Mega%20Man%20X', cookies })).json().mentions).toEqual([expect.objectContaining({ state: 'linked', confidence: 1 })]);
+    await g.magazines.spotGames(() => [{ platformKey: 'super-nintendo', title: 'Wario Land', day: '1994-01-01' }, { platformKey: 'super-nintendo', title: 'Super Metroid', day: '1994-04-18' }]);
+    expect((await g.app.inject({ url: '/api/v1/game/magazines?title=Wario%20Land', cookies })).json().mentions).toEqual([expect.objectContaining({ state: 'linked', confidence: 1 })]);
     // A game marked by hand (its logo), and a page's games with the scan's size.
     const marked = await g.app.inject({ method: 'POST', url: `/api/v1/magazines/issues/${issueId}/pages/1/mentions`, cookies, payload: { platformKey: 'super-nintendo', title: 'Stunt Race FX', box: [10, 10, 200, 80] } });
     expect(marked.json()).toMatchObject({ title: 'Stunt Race FX', source: 'owner', state: 'linked', box: [10, 10, 200, 80] });
     const page2 = (await g.app.inject({ url: `/api/v1/magazines/issues/${issueId}/pages/2/games`, cookies })).json();
-    expect(page2.games.map((m: { title: string }) => m.title).sort()).toEqual(['Mega Man X', 'Super Metroid']);
+    expect(page2.games.map((m: { title: string }) => m.title).sort()).toEqual(['Super Metroid', 'Wario Land']);
     expect(page2.games[0]).toHaveProperty('answer');
   });
 

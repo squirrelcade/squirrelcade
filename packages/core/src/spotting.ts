@@ -27,6 +27,12 @@ export interface Spotted {
 
 const STOP = new Set(['the', 'a', 'an', 'of', 'and', 'to', 'in', 'on', 'for', 'vs']);
 
+/** The spotter's rules' version: an issue is looked through again when they change (D192). */
+export const SPOT_VERSION = 2;
+
+/** A sequel's number or a year in a title makes it surer ("Suikoden IV", "NCAA Football 2005"). */
+const NUMBERED = /^(?:\d+|[ivx]+)$/;
+
 /** A word as compared: lower case, accents and punctuation gone. */
 export const spotWord = (w: string) =>
   w
@@ -44,8 +50,9 @@ function variants(title: string): { words: string[]; penalty: number }[] {
   if (colon.length > 1) {
     const main = wordsOf(colon[0]!);
     const sub = wordsOf(colon.slice(1).join(' '));
-    if (main.filter((w) => !STOP.has(w)).length >= 2) out.push({ words: main, penalty: 0.1 });
-    if (sub.filter((w) => !STOP.has(w)).length >= 2) out.push({ words: sub, penalty: 0.1 });
+    // A main title alone is often the series' name ("Tomb Raider" for Tomb Raider: Legend): much less sure.
+    if (main.filter((w) => !STOP.has(w)).length >= 2) out.push({ words: main, penalty: 0.2 });
+    if (sub.filter((w) => !STOP.has(w)).length >= 2) out.push({ words: sub, penalty: 0.15 });
   }
   return out.filter((v) => v.words.length > 0);
 }
@@ -77,6 +84,9 @@ export function spotTitles(words: readonly PageWord[], candidates: readonly Spot
       first.set(v.words[0]!, list);
     }
   }
+  // A title that begins other candidates' titles is a series' name as often as a game ("Final Fantasy").
+  const titleWords = [...byTitle.keys()];
+  const startsOthers = new Set(titleWords.filter((t) => titleWords.some((o) => o !== t && o.startsWith(`${t} `))));
   const found = new Map<string, Spotted & { times: number }>();
   let i = 0;
   while (i < page.length) {
@@ -94,8 +104,14 @@ export function spotTitles(words: readonly PageWord[], candidates: readonly Spot
     const box: [number, number, number, number] = [Math.min(...span.map((w) => w.box[0])), Math.min(...span.map((w) => w.box[1])), Math.max(...span.map((w) => w.box[2])), Math.max(...span.map((w) => w.box[3]))];
     const big = span.some((w) => w.box[3] - w.box[1] >= 1.6 * median);
     const meaningful = best.words.filter((w) => !STOP.has(w)).length;
-    const base = meaningful >= 3 ? 0.8 : meaningful === 2 ? 0.72 : big ? 0.62 : 0.4;
-    const confidence = Math.min(1, base - best.penalty + (big ? 0.12 : 0));
+    const base = meaningful >= 3 ? 0.9 : meaningful === 2 ? 0.78 : big ? 0.62 : 0.4;
+    // Words going straight on after it (a capital, a number, no stop between) make it the start of a longer title.
+    const lastWord = span[span.length - 1]!;
+    const nextWord = words[i + best.words.length];
+    const sameLine = nextWord !== undefined && Math.abs(nextWord.box[1] - lastWord.box[1]) < (lastWord.box[3] - lastWord.box[1]) / 2;
+    const goesOn = sameLine && !/[.,;:!?)"”]$/.test(lastWord.text) && /^(?:[A-Z][a-z]|\d|[IVX]+\b)/.test(nextWord.text);
+    const series = startsOthers.has(best.words.join(' ')) && best.penalty === 0;
+    const confidence = Math.min(1, base - best.penalty + (big ? 0.1 : 0) + (best.words.some((w) => NUMBERED.test(w)) ? 0.05 : 0) - (goesOn ? 0.15 : 0) - (series ? 0.15 : 0));
     const key = `${best.c.platformKey}|${best.c.title}`;
     const had = found.get(key);
     if (had) {
@@ -104,7 +120,7 @@ export function spotTitles(words: readonly PageWord[], candidates: readonly Spot
     } else found.set(key, { platformKey: best.c.platformKey, title: best.c.title, printed: span.map((w) => w.text).join(' '), confidence, box, times: 1 });
     i += best.words.length;
   }
-  return [...found.values()].map(({ times, ...s }) => ({ ...s, confidence: Math.round(Math.min(1, s.confidence + (times > 1 ? 0.1 : 0)) * 100) / 100 }));
+  return [...found.values()].map(({ times, ...s }) => ({ ...s, confidence: Math.round(Math.min(1, s.confidence + (times > 1 ? 0.08 : 0)) * 100) / 100 }));
 }
 
 /**

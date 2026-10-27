@@ -1,4 +1,4 @@
-import { baseTitle, citationMonth, citedIssueNumber, matchKey, scoresOn, spotTitles, spotWord, type SpotCandidate, coverLeadFor, guessDates, magazineOf, printedPage, issueFromFileName, issueLabel, pageNames, parseComicInfo, parseHocr, skippedName, type IssueInfo, type IssueToDate, type PageWord } from '@squirrelcade/core';
+import { baseTitle, citationMonth, citedIssueNumber, matchKey, scoresOn, SPOT_VERSION, spotTitles, spotWord, type SpotCandidate, coverLeadFor, guessDates, magazineOf, printedPage, issueFromFileName, issueLabel, pageNames, parseComicInfo, parseHocr, skippedName, type IssueInfo, type IssueToDate, type PageWord } from '@squirrelcade/core';
 import Database from 'better-sqlite3';
 import { spawn } from 'node:child_process';
 import { existsSync, type Dirent } from 'node:fs';
@@ -701,7 +701,7 @@ export class MagazineService {
     const db = this.store();
     const linkAt = this.settings.get('magazines.linkAt');
     const askAt = this.settings.get('magazines.askAt');
-    const sig = JSON.stringify([linkAt, askAt, this.settings.get('magazines.spotYears'), this.settings.get('magazines.makers'), this.rulesVersion()]);
+    const sig = JSON.stringify([SPOT_VERSION, linkAt, askAt, this.settings.get('magazines.spotYears'), this.settings.get('magazines.makers'), this.rulesVersion()]);
     type Row = Parameters<MagazineService['view']>[0];
     const issues = (db.prepare(`${this.issueQuery} WHERE i.text_state IN ('hocr', 'ocr') AND COALESCE(i.owner_year, i.year) IS NOT NULL`).all() as Row[]).filter(
       (i) => this.stateOf(`spotted:${i.id}`) !== `${sig}|${i.file_mtime}`,
