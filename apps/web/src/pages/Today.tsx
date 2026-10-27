@@ -1,4 +1,4 @@
-import { ActionIcon, Alert, Anchor, Button, Group, Loader, Select, Stack, Text } from '@mantine/core';
+import { ActionIcon, Alert, Anchor, Button, Group, Loader, SegmentedControl, Select, Stack, Text } from '@mantine/core';
 import { normalizeTitle } from '@squirrelcade/core';
 import { IconChevronLeft, IconChevronRight, IconExternalLink } from '@tabler/icons-react';
 import { useQuery } from '@tanstack/react-query';
@@ -8,6 +8,7 @@ import { api } from '../api';
 import { HelpLink } from '../components';
 import { count, date, money, timeAgo, wholeMoney } from '../format';
 import { useCanEdit, useSession, useSetting } from '../hooks';
+import { ConsoleMark, useOwnedMarks } from '../ConsoleMark';
 import { GameTitle, useOpenGame } from '../GameDrawer';
 import { GoalProgress } from '../Goal';
 import { FAMILY_COLOR, FAMILY_NAME, platformColor, platformFamily } from '../look';
@@ -252,14 +253,28 @@ export function TodayPage() {
 
 /** This week in game history: the best known games out this week in earlier years, today's first. */
 function GameHistory({ today, games }: { today: string; games: HistoryGame[] }) {
+  // This week's, or this month's in every year (D194: Today's This month in history).
+  const [span, setSpan] = useState<'week' | 'month'>('week');
   return (
     <aside className="sc-card sc-pad sc-narrow" aria-labelledby="history-h">
-      <h2 id="history-h" className="sc-h2">
-        This week in game history
-      </h2>
+      <Group justify="space-between" gap="xs" wrap="nowrap">
+        <h2 id="history-h" className="sc-h2">
+          This {span} in game history
+        </h2>
+        <SegmentedControl
+          size="xs"
+          value={span}
+          onChange={(v: string) => setSpan(v as 'week' | 'month')}
+          data={[
+            { value: 'week', label: 'Week' },
+            { value: 'month', label: 'Month' },
+          ]}
+        />
+      </Group>
       <Text size="sm" className="sc-muted" mb={8}>
-        Out this week, years ago
+        Out this {span}, years ago
       </Text>
+      {span === 'month' ? <MonthInHistory /> : (
       <div className="sc-rows">
         {games.map((h) => (
           <div key={`${h.platformKey}|${h.title}`} style={{ display: 'flex', gap: 14, alignItems: 'flex-start', padding: '10px 0' }}>
@@ -302,7 +317,38 @@ function GameHistory({ today, games }: { today: string; games: HistoryGame[] }) 
           </div>
         ))}
       </div>
+      )}
     </aside>
+  );
+}
+
+/** This month in game history (D194): the most important games out this month, in every year Squirrelcade knows. */
+function MonthInHistory() {
+  const data = useQuery({ queryKey: ['history', 'this-month'], queryFn: () => api<{ games: { title: string; day: string; year: number; consoles: { key: string; name: string }[] }[] }>('/history/on-this-day?month=1') });
+  const owned = useOwnedMarks();
+  if (!data.data) return <Loader size="sm" />;
+  if (data.data.games.length === 0) return <Text size="sm" className="sc-muted">Nothing known this month.</Text>;
+  return (
+    <div className="sc-rows">
+      {data.data.games.map((g) => (
+        <div key={`${g.year}|${g.title}`} style={{ display: 'flex', gap: 14, alignItems: 'center', padding: '8px 0' }}>
+          <div className="sc-pixel" style={{ flex: '0 0 48px', textAlign: 'center', fontSize: 15 }}>
+            {g.year}
+          </div>
+          <div style={{ flex: '1 1 auto', minWidth: 0 }}>
+            <GameTitle platformKey={g.consoles[0]!.key} title={g.title} fw={700} size="sm" />
+            <Group gap={4} mt={2}>
+              {g.consoles.map((c) => (
+                <ConsoleMark key={c.key} platformKey={c.key} name={c.name} owned={owned(g.title).includes(c.key)} size={12} />
+              ))}
+            </Group>
+          </div>
+        </div>
+      ))}
+      <Anchor component={Link} to="/roots?view=now-in" size="xs">
+        Now in: today, a decade at a time
+      </Anchor>
+    </div>
   );
 }
 

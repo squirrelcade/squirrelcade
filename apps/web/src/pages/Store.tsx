@@ -10,7 +10,7 @@ import { RegionBadge } from '../Region';
 import type { RommLink } from '../Romm';
 import { count, date, money, timeAgo } from '../format';
 import { overGoalNote } from '../Goal';
-import { notifyError, notifySuccess, useCanEdit, useSetting, useSettings } from '../hooks';
+import { notifyError, notifySuccess, useCanEdit, useFeature, useSetting, useSettings } from '../hooks';
 import {
   BARCODE_WAIT_MS,
   clearCopy,
@@ -160,6 +160,8 @@ const NOT_SQUIRRELCADE = "Something other than Squirrelcade answered (a Wi-Fi ne
 
 /** Store Mode: scan or type, get an instant owned / needed answer. Built for one hand on a phone. */
 export function StorePage() {
+  // A game's line of its time comes with Roots (D194).
+  const historyOn = useFeature('history');
   const [text, setText] = useState('');
   const [typed] = useDebouncedValue(text.trim(), 300);
   // Go (or Enter) searches at once, without waiting for the pause after typing (the owner, 2026-10-25).
@@ -647,6 +649,7 @@ export function StorePage() {
                 </Text>
                 {r.ownedReleases?.map((x) => <RegionBadge key={`${x.region}|${x.consoleLabel}`} region={x.region} consoleLabel={x.consoleLabel} />)}
               </Group>
+              {historyOn && <EraLine platformKey={r.platformKey} title={r.title} />}
               {r.note && (
                 <Text size="sm" style={{ whiteSpace: 'pre-wrap' }}>
                   <Text span size="sm" fw={600}>
@@ -828,5 +831,34 @@ export function StorePage() {
         }}
       />
     </Stack>
+  );
+}
+
+/**
+ * A game's line of its time in Store Mode (D194): when it came out, a review of its day (from its Wikipedia reading, as
+ * already read), and its review in your magazines, opening at its page.
+ */
+function EraLine({ platformKey, title }: { platformKey: string; title: string }) {
+  const data = useQuery({
+    queryKey: ['game', 'era', platformKey, title],
+    queryFn: () => api<{ released: string | null; review: { outlet: string; score: string } | null; magazine: { issueId: number; issue: string; page: number; score: string | null } | null }>(`/game/era?platform=${encodeURIComponent(platformKey)}&title=${encodeURIComponent(title)}`),
+    staleTime: 10 * 60_000,
+  });
+  const e = data.data;
+  if (!e || (!e.released && !e.review && !e.magazine)) return null;
+  const year = e.released ? new Date(`${e.released}T12:00:00`).toLocaleDateString(undefined, { month: 'short', year: 'numeric' }) : null;
+  return (
+    <Text size="xs" c="dimmed">
+      {[year ? `Out ${year}` : null, e.review ? `${e.review.outlet}: ${e.review.score}` : null].filter(Boolean).join(' · ')}
+      {e.magazine && (
+        <>
+          {year || e.review ? ' · ' : ''}
+          <Anchor component={Link} to={`/leaves/issue/${e.magazine.issueId}?page=${e.magazine.page}`} size="xs">
+            {e.magazine.issue}
+            {e.magazine.score ? `: ${e.magazine.score}` : ''}
+          </Anchor>
+        </>
+      )}
+    </Text>
   );
 }

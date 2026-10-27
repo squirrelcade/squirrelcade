@@ -155,6 +155,39 @@ export function WindowView({ w, heading }: { w: MediaWindow; heading?: string })
   );
 }
 
+/** On this day (D194): the games that came out on today's date, any year. */
+function OnThisDay() {
+  const data = useQuery({ queryKey: ['history', 'on-this-day'], queryFn: () => api<{ today: string; games: (WindowGame & { year: number })[] }>('/history/on-this-day') });
+  const owned = useOwnedMarks();
+  const open = useOpenGame();
+  const games = data.data?.games ?? [];
+  if (games.length === 0) return null;
+  return (
+    <Card withBorder padding="sm">
+      <Title order={3} size="h4" mb={6}>
+        On this day
+      </Title>
+      <Stack gap={4}>
+        {games.map((g) => (
+          <Group key={`${g.year}|${g.title}`} gap="sm" wrap="nowrap">
+            <Text size="sm" fw={700} w={44}>
+              {g.year}
+            </Text>
+            <Anchor component="button" type="button" size="sm" onClick={() => open(g.consoles[0]!.key, g.title)} style={{ minWidth: 0 }}>
+              {g.title}
+            </Anchor>
+            <Group gap={4} wrap="nowrap">
+              {g.consoles.map((c) => (
+                <ConsoleMark key={c.key} platformKey={c.key} name={c.name} owned={owned(g.title).includes(c.key)} size={12} />
+              ))}
+            </Group>
+          </Group>
+        ))}
+      </Stack>
+    </Card>
+  );
+}
+
 /** Now in (D190): today's day and month, a decade back at a time. */
 export function NowInPanel() {
   const data = useQuery({ queryKey: ['history', 'now-in'], queryFn: () => api<{ today: string; windows: MediaWindow[] }>('/history/now-in') });
@@ -169,6 +202,7 @@ export function NowInPanel() {
         </Anchor>
         .
       </Text>
+      <OnThisDay />
       {data.data.windows.map((w) => (
         <WindowView key={w.date} w={w} />
       ))}

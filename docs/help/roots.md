@@ -42,6 +42,8 @@ A console Roots knows that you don't collect (the Vectrex, the Game Boy, the Sat
 
 **Roots > Time machine** is the same for any day: pick it, or step a day, a week or a month at a time.
 
+**On this day**, at the top of Now in, lists the games that came out on today's date in any year; Today's **This week in game history** has a **Month** side too: this month's most important games, every year. A game's timeline strip (on its page) shows its other releases from IGDB beside Wikipedia's: on later consoles, and its remakes and remasters. In Store Mode, a game's card has a line of its time: when it came out, a review of its day, and its review in your magazines.
+
 The games come from IGDB's lists of your consoles and the ones you follow (Settings > Sources > IGDB), so a console Squirrelcade doesn't know has none. Settings > Roots > Now in and the Time machine: **Days either side of a date** (14), **A decade's own window** ("1970s: 60"), **Decades Now in goes back** (5) and **Games shown in a window** (20). Settings > Magazines: **How far a cover's date ran ahead** (a month) and **A magazine's own** ("Nintendo Power: 2").
 
 ## Videos

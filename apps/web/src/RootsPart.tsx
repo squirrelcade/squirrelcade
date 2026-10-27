@@ -431,7 +431,13 @@ function MentionLine({ m }: { m: RootsMention }) {
 }
 
 /** The dated points of the game's time and since: its releases, the reviews of its time, re-releases and later notes. */
-function Strip({ v }: { v: RootsView }) {
+function Strip({ v, platformKey, title }: { v: RootsView; platformKey: string; title: string }) {
+  // Its other releases from IGDB (D194): on other consoles, and its remakes and remasters.
+  const more = useQuery({
+    queryKey: ['game', 'releases', platformKey, title],
+    queryFn: () => api<{ releases: { day: string; platform: string; title: string; kind: 'release' | 'remake' | 'remaster' }[] }>(`/game/releases?platform=${encodeURIComponent(platformKey)}&title=${encodeURIComponent(title)}`),
+    staleTime: Infinity,
+  });
   const points: { date: string; label: string; later: boolean }[] = [];
   const seen = new Set<string>();
   for (const r of v.releases) {
@@ -441,11 +447,16 @@ function Strip({ v }: { v: RootsView }) {
     seen.add(key);
     points.push({ date: r.date, label, later: v.firstRelease !== null && r.date.slice(0, 4) > String(Number(v.firstRelease.slice(0, 4)) + 1) });
   }
+  for (const r of more.data?.releases ?? []) {
+    if (points.some((p) => p.date === r.day || (p.date.slice(0, 7) === r.day.slice(0, 7) && p.label.includes(r.platform)))) continue;
+    const label = r.kind === 'release' ? r.platform : `${r.kind === 'remake' ? 'Remake' : 'Remaster'}: ${r.platform}`;
+    points.push({ date: r.day, label, later: v.firstRelease !== null && r.day.slice(0, 4) > String(Number(v.firstRelease.slice(0, 4)) + 1) });
+  }
   const months = new Map<string, string[]>();
   for (const r of v.time.reviews) if (r.date) months.set(r.date.slice(0, 7), [...(months.get(r.date.slice(0, 7)) ?? []), r.outlet]);
   for (const [m, outlets] of [...months].slice(0, 4)) points.push({ date: m, label: outlets.slice(0, 2).join(', ') + (outlets.length > 2 ? ` +${outlets.length - 2}` : ''), later: false });
   for (const r of v.later.reviews.filter((x) => x.date).slice(0, 2)) points.push({ date: r.date!, label: r.outlet, later: true });
-  const shown = points.sort((a, b) => a.date.localeCompare(b.date)).slice(0, 9);
+  const shown = points.sort((a, b) => a.date.localeCompare(b.date)).slice(0, 12);
   if (shown.length < 2) return null;
   return (
     <Box style={{ overflowX: 'auto' }}>
@@ -583,7 +594,7 @@ export function RootsPart({ platformKey, title, history }: { platformKey: string
       )}
       {v?.status === 'ready' && (
         <>
-          <Strip v={v} />
+          <Strip v={v} platformKey={platformKey} title={title} />
           {v.aggregates.length > 0 && (
             <Text size="sm">
               {v.aggregates.map((a, i) => (

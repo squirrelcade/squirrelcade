@@ -621,7 +621,7 @@ export async function buildApp(options: BuildOptions = {}): Promise<Squirrelcade
   app.addHook('onClose', async () => magazines.close());
   // A purchases spreadsheet (D178): read on a schedule, its audit shown before anything is written.
   // Now in and the Time machine (D190): the games out and the magazines on sale around a date.
-  const timeMachine = new TimeMachineService({ db, settings, igdb, history, magazines, log });
+  const timeMachine = new TimeMachineService({ db, settings, igdb, history, magazines, roots, log });
   registerTimeMachineRoutes(app, timeMachine, () => dayIn(settings.get('general.timeZone')));
   // The games in the magazines (D191, D192): Wikipedia's review citations found in the owner's issues, then the games
   // the pages' text names, within each issue's consoles and the years around its cover date.
