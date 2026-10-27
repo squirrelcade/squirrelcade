@@ -1,7 +1,7 @@
 import cookie from '@fastify/cookie';
 import multipart from '@fastify/multipart';
 import fastifyStatic from '@fastify/static';
-import { dayIn, FEATURE_SETTINGS, normalizeTitle, settingDefinitions, type FeatureKey, type SettingDefinition } from '@squirrelcade/core';
+import { CONSOLE_MARKS, dayIn, FEATURE_SETTINGS, normalizeTitle, regionalConsole, settingDefinitions, type FeatureKey, type SettingDefinition } from '@squirrelcade/core';
 import { eq } from 'drizzle-orm';
 import Fastify, { LogController, type FastifyBaseLogger, type FastifyInstance } from 'fastify';
 import { existsSync, mkdirSync } from 'node:fs';
@@ -610,12 +610,46 @@ export async function buildApp(options: BuildOptions = {}): Promise<Squirrelcade
   registerVideoRoutes(app, videos);
   // Leaves (D177): the magazine scans, their text and the reader.
   const magazines = new MagazineService(settings, env, log, options.magazineReader);
-  registerMagazineRoutes(app, magazines, tasks);
+  // A review's citation opens the owner's scan of it (D191).
+  roots.setScans((c) => magazines.findScan(c));
+  // A game on a magazine's page answers as Store Mode does: have it (and its RomM), on another console, on the wishlist.
+  registerMagazineRoutes(app, magazines, tasks, (m) => {
+    if (!m.platformKey) return {};
+    const r = lookup.search(m.title, { platformKey: m.platformKey, exact: true, limit: 1, followed: false })[0];
+    return r ? { answer: r.answer, ownedOn: r.ownedOn, wishlist: r.wishlist, romm: 'romm' in r ? (r as { romm?: unknown }).romm ?? null : null } : { answer: null };
+  });
   app.addHook('onClose', async () => magazines.close());
   // A purchases spreadsheet (D178): read on a schedule, its audit shown before anything is written.
   // Now in and the Time machine (D190): the games out and the magazines on sale around a date.
   const timeMachine = new TimeMachineService({ db, settings, igdb, history, magazines, log });
   registerTimeMachineRoutes(app, timeMachine, () => dayIn(settings.get('general.timeZone')));
+  // The games in the magazines (D191, D192): Wikipedia's review citations found in the owner's issues, then the games
+  // the pages' text names, within each issue's consoles and the years around its cover date.
+  tasks.register({
+    name: 'magazines-games',
+    title: 'Find the games in the magazines',
+    description: "Links the reviews Wikipedia cites to your issues, and finds the games named on the pages with text (Settings > Magazines > The games on the page).",
+    interval: () => (magazines.enabled() ? 24 * 3_600_000 : null),
+    firstRunDelayMs: 20 * 60_000,
+    run: async (_log, progress) => {
+      const cited = magazines.seedCitations(roots.printedReviews());
+      const [before, after] = settings
+        .get('magazines.spotYears')
+        .split(/[,\s]+/)
+        .map(Number)
+        .map((n) => (Number.isFinite(n) ? n : 1)) as [number, number];
+      const makers = settings.get('magazines.makers');
+      const spotted = await magazines.spotGames(({ magazine, year, month }) => {
+        const maker = makers.map((l) => l.split(':')).find(([name]) => name!.trim().toLowerCase() === magazine.toLowerCase())?.[1]?.trim().toLowerCase();
+        const keep = (key: string) => !maker || (CONSOLE_MARKS[key] ?? CONSOLE_MARKS[regionalConsole(key)?.base ?? ''])?.company === maker;
+        const from = `${year - (before ?? 2)}-${String(month ?? 1).padStart(2, '0')}-01`;
+        const to = `${year + (after ?? 1)}-${String(month ?? 12).padStart(2, '0')}-28`;
+        return timeMachine.releasesBetween(from, to, keep);
+      }, progress);
+      return `${cited} reviews cited from Wikipedia found in your issues; ${spotted}`;
+    },
+    quiet: (m) => Boolean(m?.endsWith('Nothing new to look through') && m.startsWith('0 ')),
+  });
   // Its release index made a minute after start, so the first visit doesn't wait for it.
   setTimeout(() => {
     try {

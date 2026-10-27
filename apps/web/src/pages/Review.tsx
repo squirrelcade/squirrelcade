@@ -138,6 +138,11 @@ export function ReviewPage() {
             <Anchor component={Link} to="/help/matching" size="sm">
               How Squirrelcade decides what you own
             </Anchor>
+            {' · '}
+            {/* The games the magazines' text may name (D192). */}
+            <Anchor component={Link} to="/leaves/review" size="sm">
+              Review › Magazines
+            </Anchor>
           </>
         }
       />

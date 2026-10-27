@@ -13,7 +13,7 @@ import {
   type WikiMention,
   type WikiRelease,
 } from '@squirrelcade/core';
-import { eq, isNull } from 'drizzle-orm';
+import { eq, isNull, sql } from 'drizzle-orm';
 import type { FastifyInstance } from 'fastify';
 import type { Logger } from 'pino';
 import type { CatalogService } from './catalogs.js';
@@ -57,6 +57,8 @@ export interface RootsReview {
   archiveUrl: string | null;
   /** In print (a magazine, a newspaper), or on the web. */
   print: boolean;
+  /** The owner's scan of it in Leaves, opened at its page (D191). */
+  scan: { issueId: number; page: number; label: string; offsetKnown: boolean } | null;
 }
 
 /** A source cited in the article, as its Roots lists it. */
@@ -156,6 +158,12 @@ const sourceOf = (c: WikiCitation): RootsSource => ({
  */
 export class RootsService {
   private formats: Map<string, string> | null = null;
+  /** A citation's scan in the owner's magazines (Leaves, D191), set by the app when Leaves is there. */
+  private scanOf: (c: { work: string | null; date: string | null; issue: string | null; page: string | null }) => RootsReview['scan'] = () => null;
+
+  setScans(find: RootsService['scanOf']): void {
+    this.scanOf = find;
+  }
 
   constructor(
     private readonly db: Db,
@@ -329,6 +337,38 @@ export class RootsService {
     return this.read(article, [title]);
   }
 
+  /**
+   * Every printed review in the stored readings, with the game it's of (D191): the games the catalogs link to an
+   * article, and the ones found before. What seeds In the magazines from Wikipedia's citations.
+   */
+  printedReviews(): { platformKey: string; title: string; outlet: string; score: string; work: string | null; date: string | null; issue: string | null; page: string | null }[] {
+    const games = this.db.all<{ key: string; title: string; article: string }>(sql`
+      SELECT p.key AS key, e.title AS title, e.wiki_article AS article FROM catalog_entries e JOIN platforms p ON p.id = e.platform_id
+        WHERE e.wiki_article IS NOT NULL AND EXISTS (SELECT 1 FROM game_articles a WHERE a.article = e.wiki_article AND a.data IS NOT NULL)
+      UNION
+      SELECT l.platform_key AS key, l.article AS title, l.article AS article FROM game_article_links l
+        WHERE l.article IS NOT NULL AND EXISTS (SELECT 1 FROM game_articles a WHERE a.article = l.article AND a.data IS NOT NULL)`);
+    const readings = new Map<string, RootsReading | null>();
+    const out: ReturnType<RootsService['printedReviews']> = [];
+    const seen = new Set<string>();
+    for (const g of games) {
+      if (!readings.has(g.article)) {
+        const row = this.db.select({ data: gameArticles.data }).from(gameArticles).where(eq(gameArticles.article, g.article)).get();
+        readings.set(g.article, row?.data ? (JSON.parse(row.data) as RootsReading) : null);
+      }
+      const r = readings.get(g.article);
+      for (const row of r?.reviews ?? []) {
+        const c = row.citation;
+        if (!c || row.aggregate || (kindOf(c) !== 'magazine' && kindOf(c) !== 'news')) continue;
+        const k = `${g.key}|${matchKey(g.title)}|${row.outlet}|${c.date}|${c.page}`;
+        if (seen.has(k)) continue;
+        seen.add(k);
+        out.push({ platformKey: g.key, title: g.title, outlet: row.outlet, score: row.scores.map((x) => (x.platform ? `${x.platform} ${x.score}` : x.score)).join(' · '), work: c.work ?? row.outlet, date: c.date, issue: c.issue, page: c.page });
+      }
+    }
+    return out;
+  }
+
   /** The stored reading of a game's article, without asking Wikipedia. */
   readingOf(platformKey: string, title: string): Stored | null {
     const article = this.articleOf(platformKey, title);
@@ -418,6 +458,7 @@ export class RootsService {
         url: c?.url ?? null,
         archiveUrl: c?.archiveUrl ?? null,
         print: c ? kindOf(c) === 'magazine' || kindOf(c) === 'news' : false,
+        scan: c && (kindOf(c) === 'magazine' || kindOf(c) === 'news') ? this.scanOf({ work: c.work ?? row.outlet, date: c.date, issue: c.issue, page: c.page }) : null,
       };
       if (c?.url) used.add(c.url);
       reviews[era === 'later' ? 'later' : 'time'].push(review);

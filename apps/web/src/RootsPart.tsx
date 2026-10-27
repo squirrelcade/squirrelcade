@@ -9,7 +9,8 @@ import { RootsMark, StashMark } from './Acorn';
 import { api } from './api';
 import { count } from './format';
 import { useOpenGame } from './GameDrawer';
-import { notifyError, useCanEdit, useSetting } from './hooks';
+import { notifyError, useCanEdit, useFeature, useSetting } from './hooks';
+import { InTheMagazines } from './pages/LeavesGames';
 import { DrawerHistory, type HistoryText } from './pages/History';
 
 /** A review of the game (GET /api/v1/game/roots). */
@@ -22,6 +23,8 @@ interface RootsReview {
   url: string | null;
   archiveUrl: string | null;
   print: boolean;
+  /** The owner's scan of it in Leaves (D191). */
+  scan: { issueId: number; page: number; label: string; offsetKnown: boolean } | null;
 }
 
 /** A source the article cites. */
@@ -139,12 +142,20 @@ function ReviewLine({ r }: { r: RootsReview }) {
           {r.score}
         </Text>
       </Group>
-      {(details || linkOf(r)) && (
+      {(details || linkOf(r) || r.scan) && (
         <Group gap={8} wrap="nowrap" justify="space-between">
           <Text size="xs" c="dimmed">
             {details}
           </Text>
-          <Out link={linkOf(r)} />
+          <Group gap={8} wrap="nowrap">
+            {/* The review in the owner's own scan, at its page (D191). */}
+            {r.scan && (
+              <Anchor component={Link} to={`/leaves/issue/${r.scan.issueId}?page=${r.scan.page}`} size="xs" fw={600}>
+                Open your scan
+              </Anchor>
+            )}
+            <Out link={linkOf(r)} />
+          </Group>
         </Group>
       )}
     </Stack>
@@ -463,6 +474,7 @@ function Strip({ v }: { v: RootsView }) {
  * reviews and writing, its awards, the reference sites). Its Top 100 place and why it matters come first, as before.
  */
 export function RootsPart({ platformKey, title, history }: { platformKey: string; title: string; history: { why: HistoryText | null; top100: { rank: number; of: number } | null } | null }) {
+  const leavesOn = useFeature('magazines');
   const queryClient = useQueryClient();
   const roots = useQuery({
     queryKey: ['game', 'roots', platformKey, title],
@@ -535,6 +547,8 @@ export function RootsPart({ platformKey, title, history }: { platformKey: string
         </Anchor>
       </Group>
       <DrawerHistory platformKey={platformKey} title={title} history={history} />
+      {/* Its reviews and mentions in the owner's own scans (D191, D192), when Leaves is there. */}
+      {leavesOn && <InTheMagazines title={title} />}
       <VideoPlayer video={playing} onClose={() => setPlaying(null)} />
       {roots.isLoading && (
         <Group gap="xs">

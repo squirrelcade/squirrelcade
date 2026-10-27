@@ -123,7 +123,7 @@ r = await call('POST', '/shares', { kind: 'wishlist', name: 'Smoke' });
 const shared = await fetch(`${base}${r.data.path}`);
 check('a share link opens without signing in', shared.status === 200 && (await shared.json()).kind === 'wishlist', String(shared.status));
 r = await call('GET', '/tasks');
-check('tasks listed', r.data.map((t) => t.name).sort().join(',') === 'backup,catalog-build,export-reminder,game-of-the-day,gamefly-prices,health-check,housekeeping,igdb-sync,import-folder,loan-reminders,magazines-read,magazines-scan,mail-import,orders-watch,pc-discover,pc-prices,pc-read,psn-sync,purchase-sheet,ra-sync,release-reminders,romm-sync,roots-read,steam-sync,videos-read,xbox-sync', r.data.map((t) => t.name).join(','));
+check('tasks listed', r.data.map((t) => t.name).sort().join(',') === 'backup,catalog-build,export-reminder,game-of-the-day,gamefly-prices,health-check,housekeeping,igdb-sync,import-folder,loan-reminders,magazines-games,magazines-read,magazines-scan,mail-import,orders-watch,pc-discover,pc-prices,pc-read,psn-sync,purchase-sheet,ra-sync,release-reminders,romm-sync,roots-read,steam-sync,videos-read,xbox-sync', r.data.map((t) => t.name).join(','));
 // The connector's one tool that writes (D179), for a key made to: a made-up order onto On the way, once, then dismissed.
 r = await call('PUT', '/settings', { changes: { 'ai.enabled': true } });
 r = await call('POST', '/ai/keys', { name: 'Smoke writer', canWrite: true });

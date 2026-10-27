@@ -71,6 +71,7 @@ const MagazinePage = page(() => import('./pages/Leaves').then((m) => m.MagazineP
 const IssueReaderPage = page(() => import('./pages/Leaves').then((m) => m.IssueReaderPage));
 const MagazineSearchPage = page(() => import('./pages/Leaves').then((m) => m.MagazineSearchPage));
 const UndatedIssuesPage = page(() => import('./pages/Leaves').then((m) => m.UndatedIssuesPage));
+const MagazineReviewPage = page(() => import('./pages/LeavesGames').then((m) => m.MagazineReviewPage));
 const PcLibraryPage = page(() => import('./pages/PcLibrary').then((m) => m.PcLibraryPage));
 const PcWishlistPage = page(() => import('./pages/PcWishlist').then((m) => m.PcWishlistPage));
 const ComingSoonPage = page(() => import('./pages/ComingSoon').then((m) => m.ComingSoonPage));
@@ -338,6 +339,7 @@ function Shell({ noConnection = false }: { noConnection?: boolean }) {
             <Route path="/leaves" element={<LeavesPage />} />
             <Route path="/leaves/search" element={<MagazineSearchPage />} />
             <Route path="/leaves/undated" element={<OwnerOnly><UndatedIssuesPage /></OwnerOnly>} />
+            <Route path="/leaves/review" element={<OwnerOnly><MagazineReviewPage /></OwnerOnly>} />
             <Route path="/leaves/issue/:id" element={<IssueReaderPage />} />
             <Route path="/leaves/:id" element={<MagazinePage />} />
             <Route path="/platforms" element={<PlatformsPage />} />

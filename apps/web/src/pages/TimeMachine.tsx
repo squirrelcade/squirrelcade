@@ -20,6 +20,8 @@ interface WindowGame {
   ratingCount: number;
   coverId: string | null;
   top100: boolean;
+  /** Its reviews in your magazines (D192). */
+  reviews?: { issueId: number; issue: string; page: number; score: string | null }[];
 }
 
 /** A magazine issue on sale then (Leaves). */
@@ -70,6 +72,12 @@ function GameLine({ g, onTrailer, loading }: { g: WindowGame; onTrailer: (g: Win
             {g.rating !== null ? ` · rated ${Math.round(g.rating)} (${g.ratingCount})` : ''}
           </Text>
         </Group>
+        {(g.reviews ?? []).map((r) => (
+          <Anchor key={`${r.issueId}-${r.page}`} component={Link} to={`/leaves/issue/${r.issueId}?page=${r.page}`} size="xs">
+            {r.issue}, p. {r.page}
+            {r.score ? `: ${r.score}` : ''}
+          </Anchor>
+        ))}
       </Stack>
       <Tooltip label="Its trailer" openDelay={300}>
         <ActionIcon variant="light" onClick={() => onTrailer(g)} loading={loading} aria-label={`The trailer of ${g.title}`}>

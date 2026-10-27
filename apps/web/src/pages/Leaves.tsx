@@ -1,4 +1,4 @@
-import { ActionIcon, Alert, Anchor, AspectRatio, Badge, Box, Button, Card, Group, Image, Loader, NumberInput, Select, SimpleGrid, Stack, Text, TextInput, Title } from '@mantine/core';
+import { ActionIcon, Alert, Anchor, AspectRatio, Badge, Box, Button, Card, Group, Image, Loader, NumberInput, Select, SimpleGrid, Stack, Text, TextInput, Title, Tooltip } from '@mantine/core';
 import { useDebouncedValue, useHotkeys, useMediaQuery } from '@mantine/hooks';
 import { IconArrowLeft, IconChevronLeft, IconChevronRight, IconRefresh, IconSearch, IconZoomIn, IconZoomOut } from '@tabler/icons-react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
@@ -8,6 +8,7 @@ import { LeavesMark } from '../Acorn';
 import { api } from '../api';
 import { PageHeader } from '../components';
 import { count } from '../format';
+import { IssueGames, PageGames } from './LeavesGames';
 import { notifyError, notifySuccess, useCanEdit, useSetting } from '../hooks';
 
 /** A magazine (GET /api/v1/magazines). */
@@ -37,6 +38,8 @@ interface Issue {
   needsDate: boolean;
   /** A date nobody gave (D181): from the magazine index, or worked out from its number. */
   dateFrom: 'index' | 'numbering' | null;
+  /** The file's page of printed page 1 less one, when set (D191). */
+  pageOffset: number | null;
   text: 'none' | 'hocr' | 'ocr' | 'failed';
   version: number;
 }
@@ -267,6 +270,9 @@ function Marks({ issueId, page, words, img }: { issueId: number; page: number; w
  */
 export function IssueReaderPage() {
   const id = Number(useParams().id);
+  const editable = useCanEdit();
+  const [outlines, setOutlines] = useState(true);
+  const [marking, setMarking] = useState(false);
   const [params, setParams] = useSearchParams();
   const issue = useQuery({ queryKey: ['magazines', 'issue', id], queryFn: () => api<Issue>(`/magazines/issues/${id}`) });
   const wide = useMediaQuery('(min-width: 62em)') ?? false;
@@ -337,6 +343,16 @@ export function IssueReaderPage() {
           <ActionIcon variant="default" onClick={() => go(left + step)} disabled={left + step > pages} aria-label="Next page">
             <IconChevronRight size={16} />
           </ActionIcon>
+          {editable && <PrintedPage issueId={i.id} filePage={left} offset={i.pageOffset} />}
+          {/* The games on the page (D192): their outlines on or off; marking one the text can't read. */}
+          <Button size="compact-xs" variant={outlines ? 'light' : 'default'} onClick={() => setOutlines((x) => !x)}>
+            Games
+          </Button>
+          {editable && (
+            <Button size="compact-xs" variant={marking ? 'filled' : 'default'} onClick={() => setMarking((x) => !x)}>
+              {marking ? 'Draw a box' : 'Mark a game'}
+            </Button>
+          )}
         </Group>
       </Group>
       <Box
@@ -366,10 +382,12 @@ export function IssueReaderPage() {
                 onLoad={() => setLoaded((x) => x + 1)}
               />
               <Marks issueId={i.id} page={n} words={words} img={imgs.current[k] ?? null} />
+              <PageGames issueId={i.id} page={n} marking={marking} shown={outlines} />
             </Box>
           ))}
         </Group>
       </Box>
+      <IssueGames issueId={i.id} />
       {/* The next pages, fetched ahead so a turn is at once. */}
       <div style={{ display: 'none' }} aria-hidden="true">
         {[left + step, left + step + 1].filter((n) => n <= pages).map((n) => (
@@ -507,5 +525,34 @@ function UndatedRow({ issue, onSave }: { issue: Issue; onSave: (year: number, mo
         {issue.text !== 'none' && <Badge size="xs" variant="light" color="gray">{issue.text === 'failed' ? "text couldn't be read" : 'text read'}</Badge>}
       </Group>
     </Card>
+  );
+}
+
+/**
+ * The number printed on this page (D191): set once ("this is page 28"), it lines up the issue's printed page numbers
+ * with its file's, so a review cited at page 28 opens there.
+ */
+function PrintedPage({ issueId, filePage, offset }: { issueId: number; filePage: number; offset: number | null }) {
+  const queryClient = useQueryClient();
+  const save = useMutation({
+    mutationFn: (printed: number) => api(`/magazines/issues/${issueId}/page-offset`, { method: 'PUT', json: { filePage, printed } }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['magazines'] }),
+    onError: (err) => notifyError(err),
+  });
+  const shown = offset === null ? null : filePage - offset;
+  return (
+    <Tooltip label="The number printed on this page: set once, the issue's page numbers line up with the reviews that cite them" openDelay={400}>
+      <NumberInput
+        size="xs"
+        w={92}
+        placeholder="Printed #"
+        aria-label="The number printed on this page"
+        value={shown ?? ''}
+        onChange={(v) => typeof v === 'number' && save.mutate(v)}
+        min={-20}
+        max={2000}
+        leftSection={<Text size="xs">p.</Text>}
+      />
+    </Tooltip>
   );
 }

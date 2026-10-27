@@ -1,4 +1,4 @@
-import { matchKey, nowInDates, windowDaysFor } from '@squirrelcade/core';
+import { baseTitle, matchKey, nowInDates, windowDaysFor } from '@squirrelcade/core';
 import { sql } from 'drizzle-orm';
 import type { FastifyInstance } from 'fastify';
 import type { Logger } from 'pino';
@@ -28,6 +28,8 @@ export interface WindowGame {
   ratingCount: number;
   coverId: string | null;
   top100: boolean;
+  /** Its reviews in the owner's magazines (D192). */
+  reviews: { issueId: number; issue: string; page: number; score: string | null }[];
 }
 
 /** A window of days around a date: the games out then and the magazines on sale. */
@@ -110,7 +112,7 @@ export class TimeMachineService {
       const score = ((r.rating ?? 50) / 100) * Math.log10(r.count + 1) + (inTop ? 2 : 0);
       const g = games.get(k);
       if (!g) {
-        games.set(k, { title: r.title, day: r.day, consoles: [{ key: r.platformKey, name: r.platform }], rating: r.rating, ratingCount: r.count, coverId: r.coverId, top100: inTop, score });
+        games.set(k, { title: r.title, day: r.day, consoles: [{ key: r.platformKey, name: r.platform }], rating: r.rating, ratingCount: r.count, coverId: r.coverId, top100: inTop, reviews: [], score });
         continue;
       }
       if (!g.consoles.some((c) => c.key === r.platformKey)) g.consoles.push({ key: r.platformKey, name: r.platform });
@@ -123,7 +125,25 @@ export class TimeMachineService {
       .sort((a, b) => b.score - a.score || a.day.localeCompare(b.day))
       .slice(0, shown)
       .map(({ score: _score, ...g }) => g);
+    // What the owner's magazines said of them (D192).
+    const reviews = this.d.magazines.reviewsOf(list.map((g) => g.title));
+    for (const g of list) g.reviews = reviews.get(matchKey(baseTitle(g.title))) ?? [];
     return { date, label, from, to, games: list, magazines: this.d.magazines.onSale(from, to) };
+  }
+
+  /** The games out between two days on the consoles chosen (D192: the games a magazine's issue could be about). */
+  releasesBetween(from: string, to: string, keep: (platformKey: string) => boolean = () => true): { platformKey: string; title: string; day: string }[] {
+    const { rows } = this.releases();
+    let lo = 0;
+    let hi = rows.length;
+    while (lo < hi) {
+      const mid = (lo + hi) >> 1;
+      if (rows[mid]!.day < from) lo = mid + 1;
+      else hi = mid;
+    }
+    const out: { platformKey: string; title: string; day: string }[] = [];
+    for (let i = lo; i < rows.length && rows[i]!.day <= to; i++) if (keep(rows[i]!.platformKey)) out.push({ platformKey: rows[i]!.platformKey, title: rows[i]!.title, day: rows[i]!.day });
+    return out;
   }
 
   /** The index built ahead of the first visit (it reads every IGDB list once). */

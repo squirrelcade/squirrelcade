@@ -310,6 +310,7 @@ export function Layout({ children }: { children: ReactNode }) {
             <NavLink label="Leaves" description={SECTION_RULE.leaves} leftSection={<LeavesMark size={18} />} opened={path.startsWith('/leaves')} onClick={() => navigate('/leaves')} childrenOffset={28}>
               <NavLink component={Link} to="/leaves" label="Magazines" active={path === '/leaves' || /^\/leaves\/(\d+|issue)/.test(path)} onClick={close} />
               <NavLink component={Link} to="/leaves/search" label="Search" active={path === '/leaves/search'} onClick={close} />
+              {owner && <NavLink component={Link} to="/leaves/review" label="Review" active={path === '/leaves/review'} onClick={close} />}
             </NavLink>
           )}
           {/* Friends (0.56.0, D131): all of them, then each by name (their page has Compare and Trades), and adding one. */}

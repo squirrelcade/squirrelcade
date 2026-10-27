@@ -1,4 +1,4 @@
-import { coverLeadFor, guessDates, issueFromFileName, issueLabel, pageNames, parseComicInfo, parseHocr, skippedName, type IssueInfo, type IssueToDate, type PageWord } from '@squirrelcade/core';
+import { baseTitle, citationMonth, citedIssueNumber, matchKey, scoresOn, spotTitles, spotWord, type SpotCandidate, coverLeadFor, guessDates, magazineOf, printedPage, issueFromFileName, issueLabel, pageNames, parseComicInfo, parseHocr, skippedName, type IssueInfo, type IssueToDate, type PageWord } from '@squirrelcade/core';
 import Database from 'better-sqlite3';
 import { spawn } from 'node:child_process';
 import { existsSync, type Dirent } from 'node:fs';
@@ -125,7 +125,55 @@ CREATE INDEX IF NOT EXISTS issues_magazine ON issues(magazine_id);
 CREATE TABLE IF NOT EXISTS pages (issue_id INTEGER NOT NULL, n INTEGER NOT NULL, text TEXT NOT NULL, words TEXT NOT NULL, width INTEGER, height INTEGER, source TEXT NOT NULL, PRIMARY KEY (issue_id, n));
 CREATE VIRTUAL TABLE IF NOT EXISTS pages_fts USING fts5(text, issue_id UNINDEXED, n UNINDEXED, tokenize = 'unicode61 remove_diacritics 2');
 CREATE TABLE IF NOT EXISTS state (key TEXT PRIMARY KEY, value TEXT NOT NULL);
+CREATE TABLE IF NOT EXISTS mentions (
+  id INTEGER PRIMARY KEY, issue_id INTEGER NOT NULL, page INTEGER NOT NULL, platform_key TEXT, title TEXT NOT NULL, title_key TEXT NOT NULL,
+  printed TEXT, kind TEXT, score TEXT, source TEXT NOT NULL, confidence REAL, state TEXT NOT NULL, box TEXT, created_at TEXT NOT NULL);
+CREATE UNIQUE INDEX IF NOT EXISTS mentions_one ON mentions(issue_id, page, title_key, source);
+CREATE INDEX IF NOT EXISTS mentions_title ON mentions(title_key);
+CREATE TABLE IF NOT EXISTS mention_rules (printed_key TEXT NOT NULL, magazine TEXT NOT NULL, answer TEXT NOT NULL, PRIMARY KEY (printed_key, magazine));
 `;
+
+/** A game on a magazine's page (D191): from a review's citation, the page's text, or the owner's own mark. */
+export interface MentionView {
+  id: number;
+  issueId: number;
+  issue: string;
+  magazine: string;
+  page: number;
+  version: number;
+  platformKey: string | null;
+  title: string;
+  /** The words on the page (or the citation's outlet) it was found by. */
+  printed: string | null;
+  /** review, preview, feature... when known. */
+  kind: string | null;
+  score: string | null;
+  source: 'citation' | 'ocr' | 'owner';
+  /** linked (it's this game), or suggested (to answer on Review > Magazines). */
+  state: 'linked' | 'suggested';
+  confidence: number | null;
+  /** Where it is on the page, in the scan's pixels (from the text's word boxes, or the owner's box). */
+  box: [number, number, number, number] | null;
+}
+
+interface MentionRow {
+  id: number;
+  issue_id: number;
+  page: number;
+  platform_key: string | null;
+  title: string;
+  title_key: string;
+  printed: string | null;
+  kind: string | null;
+  score: string | null;
+  source: string;
+  confidence: number | null;
+  state: string;
+  box: string | null;
+  issue_pages: number;
+  version: number;
+  magazine: string;
+}
 
 /** A magazine, as Leaves lists it. */
 export interface MagazineView {
@@ -156,6 +204,8 @@ export interface IssueView {
   needsDate: boolean;
   /** A date nobody gave (D181): from the magazine index, or worked out from its number; null otherwise. */
   dateFrom: 'index' | 'numbering' | null;
+  /** The file's page of printed page 1 less one, when the owner set it (D191). */
+  pageOffset: number | null;
   text: 'none' | 'hocr' | 'ocr' | 'failed';
   problem: string | null;
   version: number;
@@ -218,6 +268,8 @@ export class MagazineService {
       // D181: where a date nobody gave came from (the magazine index, or the issue's number); null for a file's own.
       const columns = (this.db.prepare('PRAGMA table_info(issues)').all() as { name: string }[]).map((c) => c.name);
       if (!columns.includes('date_from')) this.db.exec('ALTER TABLE issues ADD COLUMN date_from TEXT');
+      // D191: the file's page of printed page 1 less one (covers, inserts), set once by the owner ("this is page 28").
+      if (!columns.includes('page_offset')) this.db.exec('ALTER TABLE issues ADD COLUMN page_offset INTEGER');
     }
     return this.db;
   }
@@ -476,6 +528,7 @@ export class MagazineService {
       pages: r.pages,
       needsDate: year === null,
       dateFrom: r.owner_year !== null ? null : (r.date_from as IssueView['dateFrom']),
+      pageOffset: (r as { page_offset?: number | null }).page_offset ?? null,
       text: r.text_state as IssueView['text'],
       problem: r.problem,
       version: r.file_mtime,
@@ -522,6 +575,262 @@ export class MagazineService {
       if (first <= to && last >= from) out.push(this.view(r));
     }
     return out.sort((a, b) => a.magazine.localeCompare(b.magazine) || (a.year ?? 0) - (b.year ?? 0) || (a.month ?? 0) - (b.month ?? 0));
+  }
+
+  /**
+   * A review's citation found in the owner's magazines (D191): the magazine its work names, the issue its number or
+   * month gives, and the file's page for the printed page it cites (the issue's offset, once the owner set it, else
+   * the printed page itself). Null when the owner hasn't that issue.
+   */
+  findScan(c: { work: string | null; date: string | null; issue: string | null; page: string | null }): { issueId: number; page: number; label: string; offsetKnown: boolean } | null {
+    if (!this.enabled() || !c.work) return null;
+    const db = this.store();
+    const names = (db.prepare('SELECT name FROM magazines').all() as { name: string }[]).map((r) => r.name);
+    const name = magazineOf(c.work, names);
+    if (!name) return null;
+    type Row = Parameters<MagazineService['view']>[0] & { page_offset: number | null };
+    const issues = db.prepare(`${this.issueQuery} WHERE m.name = ?`).all(name) as Row[];
+    const n = citedIssueNumber(c.issue);
+    const when = citationMonth(c.date);
+    const byNumber = n !== null ? issues.filter((i) => Number(i.number) === n) : [];
+    const byMonth = when?.month ? issues.filter((i) => (i.owner_year ?? i.year) === when.year && (i.owner_year !== null ? i.owner_month : i.month) === when.month) : [];
+    // An issue number and the month agreeing is surest; a number alone is ambiguous across volumes (GameFan's).
+    const issue = byNumber.find((i) => byMonth.includes(i)) ?? (byNumber.length === 1 ? byNumber[0] : undefined) ?? (byMonth.length === 1 ? byMonth[0] : undefined);
+    if (!issue) return null;
+    const printed = printedPage(c.page);
+    const page = Math.min(Math.max(1, (printed ?? 1) + (issue.page_offset ?? 0)), Math.max(1, issue.pages));
+    return { issueId: issue.id, page, label: this.view(issue).label, offsetKnown: issue.page_offset !== null };
+  }
+
+  /**
+   * In the magazines, seeded from Wikipedia's citations (D191): each printed review of a game Roots has read, found in
+   * the owner's issues, kept as a mention of the game on its page (linked: the citation says so). Made again each time
+   * (an offset set since moves its page); the owner's own marks and answers are never touched.
+   */
+  seedCitations(reviews: readonly { platformKey: string; title: string; outlet: string; score: string; work: string | null; date: string | null; issue: string | null; page: string | null }[]): number {
+    if (!this.enabled()) return 0;
+    const db = this.store();
+    const now = new Date().toISOString();
+    return db.transaction(() => {
+      db.prepare("DELETE FROM mentions WHERE source = 'citation'").run();
+      const add = db.prepare(
+        "INSERT OR IGNORE INTO mentions (issue_id, page, platform_key, title, title_key, printed, kind, score, source, confidence, state, created_at) VALUES (?, ?, ?, ?, ?, ?, 'review', ?, 'citation', 1, 'linked', ?)",
+      );
+      let n = 0;
+      for (const r of reviews) {
+        const scan = this.findScan(r);
+        if (!scan) continue;
+        n += add.run(scan.issueId, scan.page, r.platformKey, r.title, matchKey(baseTitle(r.title)), r.outlet, r.score || null, now).changes;
+      }
+      return n;
+    })();
+  }
+
+  /** A game's mentions in the owner's magazines (D191): linked ones, then the maybes; newest issue last. */
+  mentionsOf(title: string): MentionView[] {
+    if (!this.enabled()) return [];
+    const rows = this.store()
+      .prepare(
+        `SELECT mn.*, i.pages AS issue_pages, i.file_mtime AS version, mg.name AS magazine FROM mentions mn JOIN issues i ON i.id = mn.issue_id JOIN magazines mg ON mg.id = i.magazine_id
+         WHERE mn.title_key = ? AND mn.state IN ('linked', 'suggested') ORDER BY COALESCE(i.owner_year, i.year, 9999), COALESCE(i.owner_month, i.month, 0), mn.page`,
+      )
+      .all(matchKey(baseTitle(title))) as MentionRow[];
+    return this.mentionViews(rows);
+  }
+
+  /** Games' reviews in the owner's magazines, by title key (D192: Now in and the Time machine show them), at most three each. */
+  reviewsOf(titles: readonly string[]): Map<string, { issueId: number; issue: string; page: number; score: string | null }[]> {
+    const out = new Map<string, { issueId: number; issue: string; page: number; score: string | null }[]>();
+    if (!this.enabled() || titles.length === 0) return out;
+    const keys = [...new Set(titles.map((t) => matchKey(baseTitle(t))))];
+    const rows = this.store()
+      .prepare(`SELECT title_key, issue_id, page, score FROM mentions WHERE state = 'linked' AND (kind = 'review' OR source = 'citation') AND title_key IN (${keys.map(() => '?').join(',')}) ORDER BY issue_id, page`)
+      .all(...keys) as { title_key: string; issue_id: number; page: number; score: string | null }[];
+    for (const r of rows) {
+      const list = out.get(r.title_key) ?? [];
+      if (list.length >= 3) continue;
+      list.push({ issueId: r.issue_id, issue: this.issue(r.issue_id)?.label ?? '', page: r.page, score: r.score });
+      out.set(r.title_key, list);
+    }
+    return out;
+  }
+
+  /** The games an issue mentions, by page (D191). */
+  gamesOn(issueId: number): MentionView[] {
+    if (!this.enabled()) return [];
+    const rows = this.store()
+      .prepare(
+        `SELECT mn.*, i.pages AS issue_pages, i.file_mtime AS version, mg.name AS magazine FROM mentions mn JOIN issues i ON i.id = mn.issue_id JOIN magazines mg ON mg.id = i.magazine_id
+         WHERE mn.issue_id = ? AND mn.state IN ('linked', 'suggested') ORDER BY mn.page, mn.title`,
+      )
+      .all(issueId) as MentionRow[];
+    return this.mentionViews(rows);
+  }
+
+  private mentionViews(rows: MentionRow[]): MentionView[] {
+    const labels = new Map<number, string>();
+    return rows.map((r) => {
+      if (!labels.has(r.issue_id)) labels.set(r.issue_id, this.issue(r.issue_id)?.label ?? r.magazine);
+      return {
+        id: r.id,
+        issueId: r.issue_id,
+        issue: labels.get(r.issue_id)!,
+        magazine: r.magazine,
+        page: r.page,
+        version: r.version,
+        platformKey: r.platform_key,
+        title: r.title,
+        printed: r.printed,
+        kind: r.kind,
+        score: r.score,
+        source: r.source as MentionView['source'],
+        state: r.state as MentionView['state'],
+        confidence: r.confidence,
+        box: r.box ? (JSON.parse(r.box) as [number, number, number, number]) : null,
+      };
+    });
+  }
+
+  /**
+   * The games on the pages with text (D192): each page's words checked for the titles its issue could be about, the
+   * owner's rules applied, a game linked at Link games found at, asked about from Ask me about games found at, a
+   * review's scores read by the magazine's layout. An issue is spotted again when its text or these settings change.
+   */
+  async spotGames(candidatesFor: (issue: { magazine: string; year: number; month: number | null }) => SpotCandidate[], progress: (line: string) => void = () => undefined): Promise<string> {
+    if (!this.enabled()) return 'Leaves is off';
+    const db = this.store();
+    const linkAt = this.settings.get('magazines.linkAt');
+    const askAt = this.settings.get('magazines.askAt');
+    const sig = JSON.stringify([linkAt, askAt, this.settings.get('magazines.spotYears'), this.settings.get('magazines.makers'), this.rulesVersion()]);
+    type Row = Parameters<MagazineService['view']>[0];
+    const issues = (db.prepare(`${this.issueQuery} WHERE i.text_state IN ('hocr', 'ocr') AND COALESCE(i.owner_year, i.year) IS NOT NULL`).all() as Row[]).filter(
+      (i) => this.stateOf(`spotted:${i.id}`) !== `${sig}|${i.file_mtime}`,
+    );
+    const rules = this.rules();
+    const add = db.prepare(
+      "INSERT OR REPLACE INTO mentions (issue_id, page, platform_key, title, title_key, printed, kind, score, source, confidence, state, box, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'ocr', ?, ?, ?, ?)",
+    );
+    let linked = 0;
+    let asked = 0;
+    for (const [k, i] of issues.entries()) {
+      progress(`${this.view(i).label} (${k + 1} of ${issues.length})`);
+      const year = i.owner_year ?? i.year!;
+      const month = (i.owner_year !== null ? i.owner_month : i.month) ?? 6;
+      const candidates = candidatesFor({ magazine: i.magazine, year, month });
+      const coverDay = `${year}-${String(month).padStart(2, '0')}-01`;
+      const pages = db.prepare('SELECT n, text, words FROM pages WHERE issue_id = ?').all(i.id) as { n: number; text: string; words: string }[];
+      const now = new Date().toISOString();
+      db.transaction(() => {
+        db.prepare("DELETE FROM mentions WHERE issue_id = ? AND source = 'ocr'").run(i.id);
+        for (const p of pages) {
+          const found = spotTitles(JSON.parse(p.words) as PageWord[], candidates, coverDay);
+          const kept: { s: (typeof found)[number]; state: 'linked' | 'suggested' }[] = [];
+          for (const f of found) {
+            const printedKey = spotWord(f.printed.replace(/\s+/g, ''));
+            const rule = rules.get(`${printedKey}|${i.magazine}`) ?? rules.get(`${printedKey}|*`);
+            if (rule === 'not' || rule === `notgame:${f.platformKey}|${f.title}`) continue;
+            if (rule?.startsWith('game:')) {
+              const [pk, ...t] = rule.slice(5).split('|');
+              kept.push({ s: { ...f, platformKey: pk!, title: t.join('|'), confidence: 1 }, state: 'linked' });
+              continue;
+            }
+            if (f.confidence >= linkAt) kept.push({ s: f, state: 'linked' });
+            else if (f.confidence >= askAt) kept.push({ s: f, state: 'suggested' });
+          }
+          // A review's scores go to the game it's about: the one linked game, or the one in the biggest type.
+          const score = scoresOn(p.text, i.magazine);
+          const linkedHere = kept.filter((x) => x.state === 'linked');
+          const reviewed = score && linkedHere.length > 0 ? linkedHere.reduce((a, b) => (b.s.box[3] - b.s.box[1] > a.s.box[3] - a.s.box[1] ? b : a)) : null;
+          for (const x of kept) {
+            add.run(i.id, p.n, x.s.platformKey, x.s.title, matchKey(baseTitle(x.s.title)), x.s.printed, x === reviewed ? 'review' : null, x === reviewed ? score : null, x.s.confidence, x.state, JSON.stringify(x.s.box), now);
+            if (x.state === 'linked') linked++;
+            else asked++;
+          }
+        }
+        this.setState(`spotted:${i.id}`, `${sig}|${i.file_mtime}`);
+      })();
+      await new Promise((resolve) => setImmediate(resolve));
+    }
+    return issues.length === 0 ? 'Nothing new to look through' : `${issues.length} issues looked through: ${linked} games linked, ${asked} to answer on Review > Magazines`;
+  }
+
+  private stateOf(key: string): string | null {
+    return (this.store().prepare('SELECT value FROM state WHERE key = ?').get(key) as { value: string } | undefined)?.value ?? null;
+  }
+
+  private setState(key: string, value: string): void {
+    this.store().prepare('INSERT INTO state (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value').run(key, value);
+  }
+
+  private rules(): Map<string, string> {
+    return new Map((this.store().prepare('SELECT printed_key, magazine, answer FROM mention_rules').all() as { printed_key: string; magazine: string; answer: string }[]).map((r) => [`${r.printed_key}|${r.magazine}`, r.answer]));
+  }
+
+  private rulesVersion(): string {
+    return this.stateOf('rules') ?? '0';
+  }
+
+  /**
+   * The owner's answer about a game found on a page (D192): this is it, not this game, another game, or not a game.
+   * Each becomes a rule for those printed words (in this magazine, or everywhere), applied to every issue at the next
+   * look through; the mention itself is answered at once.
+   */
+  answer(id: number, a: { answer: 'yes' | 'no' | 'game' | 'not-a-game'; platformKey?: string; title?: string; everywhere?: boolean }): boolean {
+    const db = this.store();
+    const m = db.prepare('SELECT mn.*, mg.name AS magazine FROM mentions mn JOIN issues i ON i.id = mn.issue_id JOIN magazines mg ON mg.id = i.magazine_id WHERE mn.id = ?').get(id) as
+      | (MentionRow & { magazine: string })
+      | undefined;
+    if (!m) return false;
+    const printedKey = spotWord((m.printed ?? m.title).replace(/\s+/g, ''));
+    const where = a.everywhere ? '*' : m.magazine;
+    const rule = (answer: string) => db.prepare('INSERT INTO mention_rules (printed_key, magazine, answer) VALUES (?, ?, ?) ON CONFLICT(printed_key, magazine) DO UPDATE SET answer = excluded.answer').run(printedKey, where, answer);
+    if (a.answer === 'yes') {
+      rule(`game:${m.platform_key}|${m.title}`);
+      db.prepare("UPDATE mentions SET state = 'linked', confidence = 1 WHERE id = ?").run(id);
+    } else if (a.answer === 'game' && a.platformKey && a.title) {
+      rule(`game:${a.platformKey}|${a.title}`);
+      db.prepare("UPDATE mentions SET state = 'linked', confidence = 1, platform_key = ?, title = ?, title_key = ? WHERE id = ?").run(a.platformKey, a.title, matchKey(baseTitle(a.title)), id);
+    } else {
+      rule(a.answer === 'no' ? `notgame:${m.platform_key}|${m.title}` : 'not');
+      db.prepare('DELETE FROM mentions WHERE id = ?').run(id);
+    }
+    this.setState('rules', String(Number(this.rulesVersion()) + 1));
+    return true;
+  }
+
+  /** A game the owner marked on a page by hand (D192: a logo the text doesn't name), with its box. */
+  markGame(issueId: number, page: number, g: { platformKey: string; title: string; box: [number, number, number, number] }): MentionView | null {
+    const db = this.store();
+    if (!db.prepare('SELECT 1 FROM issues WHERE id = ?').get(issueId)) return null;
+    const r = db
+      .prepare(
+        "INSERT OR REPLACE INTO mentions (issue_id, page, platform_key, title, title_key, printed, kind, score, source, confidence, state, box, created_at) VALUES (?, ?, ?, ?, ?, NULL, NULL, NULL, 'owner', 1, 'linked', ?, ?)",
+      )
+      .run(issueId, page, g.platformKey, g.title, matchKey(baseTitle(g.title)), JSON.stringify(g.box.map((n) => Math.round(n))), new Date().toISOString());
+    return this.gamesOn(issueId).find((m) => m.id === Number(r.lastInsertRowid)) ?? null;
+  }
+
+  /** A mention taken off a page (one the owner marked by mistake, or a wrong one). */
+  forgetMention(id: number): boolean {
+    return this.store().prepare('DELETE FROM mentions WHERE id = ?').run(id).changes > 0;
+  }
+
+  /** Review > Magazines (D192): the games found that are maybes, to answer; the surest first. */
+  toReview(limit = 200): MentionView[] {
+    if (!this.enabled()) return [];
+    const rows = this.store()
+      .prepare(
+        `SELECT mn.*, i.pages AS issue_pages, i.file_mtime AS version, mg.name AS magazine FROM mentions mn JOIN issues i ON i.id = mn.issue_id JOIN magazines mg ON mg.id = i.magazine_id
+         WHERE mn.state = 'suggested' ORDER BY mn.confidence DESC, mn.id LIMIT ?`,
+      )
+      .all(limit) as MentionRow[];
+    return this.mentionViews(rows);
+  }
+
+  /** The owner says a file page is a printed page ("this is page 28"): the issue's offset (D191). */
+  setPageOffset(id: number, filePage: number, printed: number): IssueView | null {
+    this.store().prepare('UPDATE issues SET page_offset = ? WHERE id = ?').run(filePage - printed, id);
+    return this.issue(id);
   }
 
   /** The dates Squirrelcade worked out (D181), to check on Name these. */
@@ -660,7 +969,12 @@ export class MagazineService {
   }
 }
 
-export function registerMagazineRoutes(app: FastifyInstance, magazines: MagazineService, tasks: { enqueue: (name: string) => boolean }): void {
+export function registerMagazineRoutes(
+  app: FastifyInstance,
+  magazines: MagazineService,
+  tasks: { enqueue: (name: string) => boolean },
+  answerOf: (m: { platformKey: string | null; title: string }) => Record<string, unknown> = () => ({}),
+): void {
   const off = (reply: { code: (n: number) => { send: (b: unknown) => unknown } }) => reply.code(404).send({ error: 'off', message: 'Leaves is off (Settings > Features).' });
   app.get('/api/v1/magazines', async (_request, reply) => (magazines.enabled() ? { magazines: magazines.magazines(), status: magazines.status() } : off(reply)));
   app.get('/api/v1/magazines/undated', async (_request, reply) => (magazines.enabled() ? { issues: magazines.undated(), guessed: magazines.guessed() } : off(reply)));
@@ -678,6 +992,47 @@ export function registerMagazineRoutes(app: FastifyInstance, magazines: Magazine
     const year = typeof b.year === 'number' && b.year >= 1950 && b.year <= 2100 ? Math.round(b.year) : null;
     const month = typeof b.month === 'number' && b.month >= 1 && b.month <= 12 ? Math.round(b.month) : null;
     return magazines.setDate(Number((request.params as { id: string }).id), year, month) ?? reply.code(404).send({ error: 'not-found', message: 'No such issue.' });
+  });
+  // In the magazines (D191): a game's mentions, and an issue's games.
+  app.get('/api/v1/game/magazines', async (request, reply) => {
+    const { title } = request.query as { title?: string };
+    if (!title?.trim()) return reply.code(400).send({ error: 'invalid', message: 'Give a title.' });
+    return { mentions: magazines.mentionsOf(title.trim()) };
+  });
+  app.get('/api/v1/magazines/issues/:id/games', async (request) => ({ games: magazines.gamesOn(Number((request.params as { id: string }).id)).map((m) => ({ ...m, ...answerOf(m) })) }));
+  // A page's games (D192), with the scan's size their boxes are in, and each one's answer (have it, wishlist...).
+  app.get('/api/v1/magazines/issues/:id/pages/:n/games', async (request) => {
+    const { id, n } = request.params as { id: string; n: string };
+    const games = magazines.gamesOn(Number(id)).filter((m) => m.page === Number(n));
+    // The scan's size, which the boxes are in (and a box drawn by hand is turned into).
+    const size = await magazines.pageSize(Number(id), Number(n));
+    return { width: size?.width ?? null, height: size?.height ?? null, games: games.map((m) => ({ ...m, ...answerOf(m) })) };
+  });
+  app.post('/api/v1/magazines/issues/:id/pages/:n/mentions', async (request, reply) => {
+    const { id, n } = request.params as { id: string; n: string };
+    const b = (request.body ?? {}) as { platformKey?: unknown; title?: unknown; box?: unknown };
+    const box = Array.isArray(b.box) && b.box.length === 4 && b.box.every((x) => typeof x === 'number' && x >= 0) ? (b.box as [number, number, number, number]) : null;
+    if (typeof b.platformKey !== 'string' || typeof b.title !== 'string' || !b.title.trim() || !box) return reply.code(400).send({ error: 'invalid', message: 'Give the game (its console and title) and its box on the page.' });
+    return magazines.markGame(Number(id), Number(n), { platformKey: b.platformKey, title: b.title.trim(), box }) ?? reply.code(404).send({ error: 'not-found', message: 'No such issue.' });
+  });
+  app.post('/api/v1/magazines/mentions/:id/answer', async (request, reply) => {
+    const b = (request.body ?? {}) as { answer?: unknown; platformKey?: unknown; title?: unknown; everywhere?: unknown };
+    if (!['yes', 'no', 'game', 'not-a-game'].includes(String(b.answer))) return reply.code(400).send({ error: 'invalid', message: 'Answer yes, no, game or not-a-game.' });
+    const done = magazines.answer(Number((request.params as { id: string }).id), {
+      answer: b.answer as 'yes',
+      platformKey: typeof b.platformKey === 'string' ? b.platformKey : undefined,
+      title: typeof b.title === 'string' ? b.title : undefined,
+      everywhere: b.everywhere === true,
+    });
+    return done ? { ok: true } : reply.code(404).send({ error: 'not-found', message: 'No such game on a page.' });
+  });
+  app.delete('/api/v1/magazines/mentions/:id', async (request) => ({ removed: magazines.forgetMention(Number((request.params as { id: string }).id)) }));
+  app.get('/api/v1/magazines/review', async () => ({ mentions: magazines.toReview().map((m) => ({ ...m, ...answerOf(m) })) }));
+  // "This is page 28" (D191): the issue's printed page numbers from here on.
+  app.put('/api/v1/magazines/issues/:id/page-offset', async (request, reply) => {
+    const b = (request.body ?? {}) as { filePage?: unknown; printed?: unknown };
+    if (typeof b.filePage !== 'number' || typeof b.printed !== 'number' || b.filePage < 1 || b.printed < -20 || b.printed > 2000) return reply.code(400).send({ error: 'invalid', message: 'Give the page in the file and the number printed on it.' });
+    return magazines.setPageOffset(Number((request.params as { id: string }).id), Math.round(b.filePage), Math.round(b.printed)) ?? reply.code(404).send({ error: 'not-found', message: 'No such issue.' });
   });
   // A page's picture: the same bytes as long as its file stays the same, so the browser keeps it.
   app.get('/api/v1/magazines/issues/:id/pages/:n', async (request, reply) => {

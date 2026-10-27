@@ -124,6 +124,78 @@ describe('Leaves: the magazine scans (D177)', () => {
     expect((await g.app.inject({ url: `/api/v1/magazines/issues/${one.id}/pages/1/words`, cookies })).json()).toMatchObject({ width: 2000, height: 2600 });
   });
 
+  it("finds a review's citation in the owner's issues, at its printed page once the offset is set (D191)", async () => {
+    dir = mkdtempSync(join(tmpdir(), 'squirrelcade-magazines-'));
+    mkdirSync(join(dir, 'Electronic Gaming Monthly'));
+    cbz(join(dir, 'Electronic Gaming Monthly', 'Electronic Gaming Monthly #059 (1994-06).cbz'), 120, { Series: 'Electronic Gaming Monthly', Number: 59, Year: 1994, Month: 6 });
+    cbz(join(dir, 'Electronic Gaming Monthly', 'Electronic Gaming Monthly #060 (1994-07).cbz'), 120, { Series: 'Electronic Gaming Monthly', Number: 60, Year: 1994, Month: 7 });
+    g = await testApp();
+    const cookies = await setUp(g);
+    g.settings.update({ 'features.magazines': true, 'magazines.folder': dir });
+    await g.magazines.scan();
+    // Super Metroid's EGM review: cited by date and page.
+    const cited = { work: 'EGM', date: 'June 1994', issue: null, page: '28' };
+    const found = g.magazines.findScan(cited)!;
+    expect(found).toMatchObject({ page: 28, label: 'Electronic Gaming Monthly #59 · June 1994', offsetKnown: false });
+    // By its number, too; and not at all for a magazine or month the owner hasn't.
+    expect(g.magazines.findScan({ work: 'Electronic Gaming Monthly', date: null, issue: '60', page: null })).toMatchObject({ label: 'Electronic Gaming Monthly #60 · July 1994', page: 1 });
+    expect(g.magazines.findScan({ ...cited, work: 'Famitsu' })).toBeNull();
+    expect(g.magazines.findScan({ ...cited, date: 'May 1994' })).toBeNull();
+    // The owner says file page 32 is printed page 28: the review opens at 32.
+    const set = await g.app.inject({ method: 'PUT', url: `/api/v1/magazines/issues/${found.issueId}/page-offset`, cookies, payload: { filePage: 32, printed: 28 } });
+    expect(set.json()).toMatchObject({ pageOffset: 4 });
+    expect(g.magazines.findScan(cited)).toMatchObject({ page: 32, offsetKnown: true });
+  });
+
+  it('finds the games in an issue: its cited reviews, the titles on its pages, the owner\'s answers and marks (D191, D192)', async () => {
+    dir = mkdtempSync(join(tmpdir(), 'squirrelcade-magazines-'));
+    mkdirSync(join(dir, 'Electronic Gaming Monthly'));
+    cbz(join(dir, 'Electronic Gaming Monthly', 'Electronic Gaming Monthly #059 (1994-06).cbz'), 3, { Series: 'Electronic Gaming Monthly', Number: 59, Year: 1994, Month: 6 });
+    // Page 2's text: Super Metroid's review with the Review Crew's scores, and a passing word that is also a game.
+    const hocrLines = (lines: string[][]) =>
+      `<div class='ocr_page'>${lines.map((ws, y) => `<span class='ocr_line'>${ws.map((w, x) => `<span class='ocrx_word' title='bbox ${x * 100} ${y * 40} ${x * 100 + 90} ${y * 40 + (y === 0 ? 60 : 20)}; x_wconf 95'>${w}</span>`).join(' ')}</span>`).join('')}</div>`;
+    const pages: Record<number, string> = {
+      1: hocrLines([['Contents']]),
+      2: hocrLines([['SUPER', 'METROID'], ['Samus', 'returns', 'in', 'Super', 'Metroid', 'the', 'best', 'yet'], ['9.0', '9.0', '9.5', '9.0'], ['Mega', 'Man', 'X', 'sneaks', 'in']]),
+      3: hocrLines([['Next', 'month']]),
+    };
+    g = await testApp({ magazineReader: async () => pages[Object.keys(pages).length === 0 ? 1 : (read++ % 3) + 1]! });
+    let read = 0;
+    const cookies = await setUp(g);
+    g.settings.update({ 'features.magazines': true, 'magazines.folder': dir, 'magazines.ocr': true });
+    await g.magazines.scan();
+    await g.magazines.readText(() => undefined, true);
+    const issueId = (await g.app.inject({ url: '/api/v1/magazines/undated', cookies })).json() && g.magazines.findScan({ work: 'EGM', date: 'June 1994', issue: null, page: '2' })!.issueId;
+    // A citation seeds it: Donkey Kong Country's EGM review, cited at page 3.
+    expect(g.magazines.seedCitations([{ platformKey: 'super-nintendo', title: 'Donkey Kong Country', outlet: 'EGM', score: '9/10', work: 'EGM', date: 'June 1994', issue: null, page: '3' }])).toBe(1);
+    // The titles on the pages: from the games out around June 1994.
+    const result = await g.magazines.spotGames(() => [
+      { platformKey: 'super-nintendo', title: 'Super Metroid', day: '1994-04-18' },
+      { platformKey: 'super-nintendo', title: 'Mega Man X', day: '1994-01-01' },
+      { platformKey: 'super-nintendo', title: 'Donkey Kong Country', day: '1994-11-21' },
+    ]);
+    expect(result).toBe('1 issues looked through: 1 games linked, 1 to answer on Review > Magazines');
+    const mentions = (await g.app.inject({ url: '/api/v1/game/magazines?title=Super%20Metroid', cookies })).json().mentions;
+    expect(mentions).toEqual([expect.objectContaining({ issueId, page: 2, title: 'Super Metroid', source: 'ocr', state: 'linked', kind: 'review', score: '9.0 / 9.0 / 9.5 / 9.0' })]);
+    expect((await g.app.inject({ url: '/api/v1/game/magazines?title=Donkey%20Kong%20Country', cookies })).json().mentions).toEqual([
+      expect.objectContaining({ page: 3, source: 'citation', score: '9/10', printed: 'EGM' }),
+    ]);
+    // Mega Man X is a maybe (three short words in small type): on Review > Magazines.
+    const review = (await g.app.inject({ url: '/api/v1/magazines/review', cookies })).json().mentions;
+    expect(review.map((m: { title: string; state: string }) => [m.title, m.state])).toEqual([['Mega Man X', 'suggested']]);
+    // The owner says yes: linked, and a rule for those words from now on.
+    expect((await g.app.inject({ method: 'POST', url: `/api/v1/magazines/mentions/${review[0].id}/answer`, cookies, payload: { answer: 'yes' } })).json()).toEqual({ ok: true });
+    expect((await g.app.inject({ url: '/api/v1/magazines/review', cookies })).json().mentions).toEqual([]);
+    await g.magazines.spotGames(() => [{ platformKey: 'super-nintendo', title: 'Mega Man X', day: '1994-01-01' }, { platformKey: 'super-nintendo', title: 'Super Metroid', day: '1994-04-18' }]);
+    expect((await g.app.inject({ url: '/api/v1/game/magazines?title=Mega%20Man%20X', cookies })).json().mentions).toEqual([expect.objectContaining({ state: 'linked', confidence: 1 })]);
+    // A game marked by hand (its logo), and a page's games with the scan's size.
+    const marked = await g.app.inject({ method: 'POST', url: `/api/v1/magazines/issues/${issueId}/pages/1/mentions`, cookies, payload: { platformKey: 'super-nintendo', title: 'Stunt Race FX', box: [10, 10, 200, 80] } });
+    expect(marked.json()).toMatchObject({ title: 'Stunt Race FX', source: 'owner', state: 'linked', box: [10, 10, 200, 80] });
+    const page2 = (await g.app.inject({ url: `/api/v1/magazines/issues/${issueId}/pages/2/games`, cookies })).json();
+    expect(page2.games.map((m: { title: string }) => m.title).sort()).toEqual(['Mega Man X', 'Super Metroid']);
+    expect(page2.games[0]).toHaveProperty('answer');
+  });
+
   it('answers the library and its search within the budget on a big library (It stays snappy)', async () => {
     dir = mkdtempSync(join(tmpdir(), 'squirrelcade-magazines-'));
     for (const m of ['Alpha Gaming', 'Beta Monthly', 'Gamma Power']) {
