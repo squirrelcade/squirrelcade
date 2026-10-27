@@ -16,6 +16,7 @@ import {
   parseAnyCollection,
   consoleFor,
   parseConsoleLabel,
+  regionalConsoleLabel,
   matchTitles,
   SAME_GAME_AT,
   removalPercent,
@@ -653,7 +654,10 @@ export class CollectionService {
     if (best) return { consoleLabel: best.consoleLabel, region: best.region };
     const known = this.db.select().from(platformLabels).where(eq(platformLabels.platformId, platform.id)).all();
     const label = known.find((l) => l.region === home) ?? known[0];
-    return label ? { consoleLabel: label.label, region: label.region } : { consoleLabel: platform.name, region: home };
+    if (label) return { consoleLabel: label.label, region: label.region };
+    // Another region's console nothing came from yet (D188): PriceCharting's name for it, so it can go there by title.
+    const regional = regionalConsoleLabel(platform.key);
+    return regional ? { consoleLabel: regional.label, region: regional.region } : { consoleLabel: platform.name, region: home };
   }
 
   private checked(input: { costCents?: unknown; estimatedCents?: unknown; datePurchased?: unknown; notes?: unknown; completeness?: unknown; gradingCompany?: unknown; gradingCertId?: unknown }) {

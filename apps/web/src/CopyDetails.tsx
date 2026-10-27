@@ -1,5 +1,5 @@
 import { Anchor, Autocomplete, Badge, Button, CloseButton, Divider, FileButton, Group, Image, Loader, Modal, NumberInput, SegmentedControl, Select, SimpleGrid, Stack, TagsInput, Text, TextInput, Tooltip } from '@mantine/core';
-import { COMPLETENESS_LABELS, GRADERS, MEDIA_NAMES, mediaOf, RIP_RESULTS, TEST_RESULTS, type Completeness, type TestKind, type TestResult } from '@squirrelcade/core';
+import { COMPLETENESS_LABELS, GRADERS, MEDIA_NAMES, mediaOf, RIP_RESULTS, TEST_RESULTS, walkThroughPhotos, type Completeness, type TestKind, type TestResult } from '@squirrelcade/core';
 import { SellHelper } from './SellHelper';
 import { IconCamera, IconCheck, IconDeviceMobile, IconDeviceMobileRotated, IconMapPin, IconUserShare, IconVideoFilled } from '@tabler/icons-react';
 import { useMediaQuery } from '@mantine/hooks';
@@ -615,15 +615,25 @@ export function CopyDetailsModal({
   // A copy just added (D172): a short walk-through, the chosen questions first, then its standard photos one at a time,
   // each skippable, and Save and close at the end (Settings › Collection › Adding copies). Its whole window is a tap away.
   const walkThrough = useSetting('collection.addWizard', true);
-  const askFirst = useSetting('collection.addWizardFields', ['Condition', 'Price paid', 'Bought on']);
+  const askFirst = useSetting('collection.addWizardFields', ['Condition', 'Price paid', 'Bought on', 'Notes']);
   const photoStepsOn = useSetting('collection.addWizardPhotos', true);
+  // The photo steps follow the condition chosen on the first page (D189): sealed, the box; loose, the game itself.
+  const photoSettings = {
+    sealed: useSetting('collection.addWizardPhotosSealed', ['Box front', 'Box back']),
+    loose: useSetting('collection.addWizardPhotosLoose', ['{game} front', '{game} back']),
+    box: useSetting('collection.photoSlotsBox', ['Box front', 'Box back']),
+    inside: useSetting('collection.photoSlotsInside', ['Inside']),
+    game: useSetting('collection.photoSlotsGame', ['{game} front', '{game} back']),
+    manual: useSetting('collection.photoSlotsManual', [] as string[]),
+  };
   const [step, setStep] = useState(0);
   const [wholeForm, setWholeForm] = useState(false);
   useEffect(() => {
     setStep(0);
     setWholeForm(false);
   }, [key]);
-  const photoSteps = photoStepsOn ? slots : [];
+  const chosen = completeness && completeness !== 'unknown' ? completeness : null;
+  const photoSteps = !photoStepsOn ? [] : chosen && own?.platformKey ? walkThroughPhotos(chosen, mediaOf(own.platformKey), photoSettings) : slots;
   const steps = 1 + photoSteps.length;
   const walking = added && walkThrough && !wholeForm && own !== undefined;
   const stepSlot = step > 0 ? photoSteps[step - 1] : undefined;

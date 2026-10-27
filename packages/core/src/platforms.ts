@@ -175,6 +175,22 @@ const REGIONAL_CONSOLES: { key: string; name: string; base: string; region: Regi
   { key: 'mega-drive-pal', name: 'Mega Drive (PAL)', base: 'sega-genesis', region: 'europe' },
 ];
 
+/**
+ * The console name PriceCharting gives another region's console (D188: a copy added on one, such as a Super Rare
+ * Games release scanned as the PAL Switch's): its own name when it has one ("Super Famicom"), else the region's
+ * prefix before the base console's ("PAL Nintendo Switch"). Null for a console that isn't another region's.
+ */
+export function regionalConsoleLabel(key: string): { label: string; region: Region } | null {
+  const r = regionalConsole(key);
+  if (!r) return null;
+  const base = KNOWN_PLATFORMS.find((p) => p.key === r.base);
+  if (!base) return null;
+  const own = base.regionalLabels?.find((l) => l.region === r.region);
+  if (own) return { label: own.label, region: r.region };
+  const prefix = { europe: 'PAL ', japan: 'JP ', asia: 'Asian English ', 'north-america': '', other: '' }[r.region];
+  return { label: `${prefix}${base.labels[0] ?? base.name}`, region: r.region };
+}
+
 /** How a region shows in a regional console's key and name ("nintendo-64-japan", "Nintendo 64 (Japan)"). */
 const REGION_CONSOLE: Record<Region, { slug: string; name: string }> = {
   'north-america': { slug: 'north-america', name: 'North America' },

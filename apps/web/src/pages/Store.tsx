@@ -336,10 +336,15 @@ export function StorePage() {
       try {
         // A game on the way arrives (D156): its price and the day of its order come with it.
         if (r.onTheWay) return { how: 'sent', answer: await api(`/coming/${r.onTheWay.id}/arrived`, { method: 'POST' }) };
+        // A console you don't collect has no catalog to buy from (D188): the copy goes on it as Add a game adds one.
+        if (r.entryId === undefined) {
+          const made = await api<{ copy: { id: number; key: string } }>('/collection/copies', { method: 'POST', json: { platformKey: r.platformKey, title: r.title, completeness: boughtCondition } });
+          return { how: 'sent', answer: made.copy };
+        }
         return { how: 'sent', answer: await api('/purchases', { method: 'POST', json: { entryId: r.entryId } }) };
       } catch (err) {
         // A game on the way arrives with its email's price, so it waits for a connection rather than being kept here.
-        if (!offlineOn || !unreachable(err) || r.onTheWay) throw err;
+        if (!offlineOn || !unreachable(err) || r.onTheWay || r.entryId === undefined) throw err;
         await queuePurchase({ entryId: r.entryId!, title: r.title, platform: r.platform });
         return { how: 'kept' };
       }
@@ -436,7 +441,7 @@ export function StorePage() {
       case 'not-a-target':
         return { text: "Not a release you collect, or you said it isn't a target.", said: null };
       case 'not-tracked':
-        return { text: "Squirrelcade doesn't collect this console.", said: null };
+        return { text: canEdit ? "Squirrelcade doesn't collect this console: Add it puts the copy on it anyway." : "Squirrelcade doesn't collect this console.", said: null };
     }
   };
   // A viewer gets the answers, not the buttons that change the collection. Adding a game is the big Add it beside the
@@ -456,7 +461,9 @@ export function StorePage() {
       )}
     </>
   );
-  const addable = (r: Result) => canEdit && r.entryId !== undefined && !queuedIds.has(r.entryId) && ADDABLE.includes(r.answer);
+  // A console you don't collect gets the same Add it (D188): the copy goes on the console the scan matched.
+  const addable = (r: Result) =>
+    canEdit && ((r.entryId !== undefined && !queuedIds.has(r.entryId) && ADDABLE.includes(r.answer)) || (r.answer === 'not-tracked' && !offlineAt));
 
   return (
     <Stack maw={640} mx="auto" gap="sm">
@@ -606,7 +613,7 @@ export function StorePage() {
             <Verdict answer={r.answer} reason={reason.text} />
             {addable(r) && (
               <button type="button" className="sc-verdict-add" onClick={() => addIt(r)} disabled={buy.isPending}>
-                {buy.isPending && buy.variables?.entryId === r.entryId ? <Loader size={22} color="currentColor" /> : <IconPlus size={24} stroke={3} aria-hidden="true" />}
+                {buy.isPending && buy.variables?.platformKey === r.platformKey && buy.variables?.title === r.title ? <Loader size={22} color="currentColor" /> : <IconPlus size={24} stroke={3} aria-hidden="true" />}
                 <span>Add it</span>
               </button>
             )}

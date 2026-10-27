@@ -107,6 +107,20 @@ export function photoSlotsFor(copy: { completeness: Completeness | string; hasBo
 }
 
 /**
+ * The walk-through's photo steps for the condition chosen in it (D189, the owner: "Sealed: the box's front and back...
+ * Loose: the game itself"): a sealed copy's and a loose one's are settings of their own (Settings > Collection > Adding
+ * copies), every other condition's are its standard photos (Complete: all of them). "{game}" by the console's media.
+ */
+export function walkThroughPhotos(completeness: Completeness | string, media: GameMedia, slots: PhotoSlotSettings & { sealed: readonly string[]; loose: readonly string[] }): string[] {
+  const fill = (list: readonly string[]) => [...new Set(list.map((s) => s.replace(/\{game\}/gi, MEDIA_NAMES[media]).trim()).filter(Boolean))];
+  if (completeness === 'sealed') return fill(slots.sealed);
+  if (completeness === 'loose') return fill(slots.loose);
+  const hasBox = ['complete', 'item-box', 'box-only'].includes(completeness);
+  const hasManual = ['complete', 'item-manual', 'manual-only'].includes(completeness);
+  return photoSlotsFor({ completeness, hasBox, hasManual, sealed: false }, media, slots);
+}
+
+/**
  * What a new game usually cost on each console (US prices, the standard edition, in dollars): the default of Settings >
  * Collection > Suggested estimates, which an owner in another currency changes to theirs.
  */

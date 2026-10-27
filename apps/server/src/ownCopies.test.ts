@@ -171,6 +171,19 @@ describe('copies of Squirrelcade\'s own', () => {
     expect((await send()).text).toContain('Puppeteer');
   });
 
+  it("adds a copy on a console you don't collect with PriceCharting's name for it, so it can go there (D188)", async () => {
+    update(...BASE);
+    // A Super Rare Games release scanned as the PAL Switch's: no catalog, no copies on it yet.
+    const made = await add({ platformKey: 'nintendo-switch-pal', title: 'Cosmic Star Heroine', completeness: 'complete' });
+    expect(made.statusCode).toBe(201);
+    expect(items('Cosmic Star Heroine')).toMatchObject([{ platformKey: 'nintendo-switch-pal', consoleLabel: 'PAL Nintendo Switch', region: 'europe' }]);
+    // To PriceCharting by title, under its name there.
+    expect((await send()).text).toContain('Cosmic Star Heroine PAL Nintendo Switch CIB');
+    // A named one keeps its own name there.
+    await add({ platformKey: 'super-famicom', title: 'Rudra no Hihou', completeness: 'loose' });
+    expect(items('Rudra no Hihou')).toMatchObject([{ consoleLabel: 'Super Famicom', region: 'japan' }]);
+  });
+
   it('gives each copy to send the barcode Squirrelcade knows for its game on its console (D154)', async () => {
     update(...BASE);
     const saveBarcode = (code: string, platformKey: string, title: string) => g.app.inject({ method: 'POST', url: '/api/v1/barcodes', cookies, payload: { code, platformKey, title } });

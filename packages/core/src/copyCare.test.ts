@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { DISC_CONSOLES, estimateCost, mediaOf, missingParts, NEW_GAME_PRICES, parseNewGamePrices, partsSearch, photoSlotsFor, RIPPABLE_CONSOLES } from './copyCare.js';
+import { DISC_CONSOLES, estimateCost, mediaOf, missingParts, NEW_GAME_PRICES, parseNewGamePrices, partsSearch, photoSlotsFor, RIPPABLE_CONSOLES, walkThroughPhotos } from './copyCare.js';
 import { KNOWN_PLATFORMS } from './platforms.js';
 import { settingDefinitions } from './settings.js';
 
@@ -81,5 +81,20 @@ describe("a copy's missing parts (D160)", () => {
   it('searches for one part alone, or the parts together', () => {
     expect(partsSearch('Armored Core: Verdict Day', ['manual'])).toBe('Armored Core: Verdict Day manual only');
     expect(partsSearch('Super Mario 64', ['cartridge', 'manual'])).toBe('Super Mario 64 cartridge manual');
+  });
+});
+
+describe("the walk-through's photos follow the condition (D189)", () => {
+  const slots = { sealed: ['Box front', 'Box back'], loose: ['{game} front', '{game} back'], box: ['Box front', 'Box back'], inside: ['Inside'], game: ['{game} front', '{game} back'], manual: ['Manual front'] };
+  it("takes a sealed copy's box, a loose copy's game, and every photo of a complete one", () => {
+    expect(walkThroughPhotos('sealed', 'disc', slots)).toEqual(['Box front', 'Box back']);
+    expect(walkThroughPhotos('loose', 'disc', slots)).toEqual(['Disc front', 'Disc back']);
+    expect(walkThroughPhotos('loose', 'cartridge', slots)).toEqual(['Cartridge front', 'Cartridge back']);
+    expect(walkThroughPhotos('complete', 'card', slots)).toEqual(['Box front', 'Box back', 'Inside', 'Card front', 'Card back', 'Manual front']);
+    expect(walkThroughPhotos('item-box', 'disc', slots)).toEqual(['Box front', 'Box back', 'Inside', 'Disc front', 'Disc back']);
+  });
+  it("uses the owner's own lists for sealed and loose", () => {
+    expect(walkThroughPhotos('sealed', 'disc', { ...slots, sealed: ['Box front', 'Box back', 'Spine'] })).toEqual(['Box front', 'Box back', 'Spine']);
+    expect(walkThroughPhotos('loose', 'cartridge', { ...slots, loose: ['{game} front', '{game} back', '{game} label'] })).toEqual(['Cartridge front', 'Cartridge back', 'Cartridge label']);
   });
 });
