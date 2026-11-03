@@ -46,3 +46,8 @@ The version a server runs shows at the bottom of the menu, small and grey ("Squi
 ## Hard rule
 
 - Never handle passwords: the person types them.
+
+## Ticky (to-dos)
+
+- At the start of a session, check Ticky for open tasks tagged `claude-code` in this project (the Zebintosh hub's `tickintosh_list_tasks`, view "open", label "claude-code", project "Squirrelcade") and bring them up with Mark before other work.
+- To-dos go to Tickintosh (Ticky) through the `tickintosh_*` hub tools, never Todoist; tag `ai` for checks Claude should do itself when due.
