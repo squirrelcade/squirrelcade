@@ -523,7 +523,8 @@ export function RootsPart({
   });
   const queryClient = useQueryClient();
   const roots = useQuery({
-    queryKey: ['game', 'roots', platformKey, title],
+    // Not under 'game': a copy's change refreshes the game's answers, never its Roots (read from Wikipedia and Wikidata).
+    queryKey: ['roots', 'game', platformKey, title],
     queryFn: () => api<RootsView>(`/game/roots?platform=${encodeURIComponent(platformKey)}&title=${encodeURIComponent(title)}`),
     staleTime: 10 * 60_000,
     retry: false,

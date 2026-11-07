@@ -456,9 +456,11 @@ export function CopyDetailsModal({
   const refresh = () => Promise.all(TOUCHED.map((k) => queryClient.invalidateQueries({ queryKey: [k] })));
   const change = useMutation({
     mutationFn: (c: { path: string; method: 'PUT' | 'POST' | 'DELETE'; json?: unknown; done?: string }) => api(c.path, { method: c.method, json: c.json }),
-    onSuccess: async (_r, c) => {
+    onSuccess: (_r, c) => {
       if (c.done) notifySuccess(c.done);
-      await refresh();
+      // The page catches up behind; the window's buttons don't wait for every answer on it to come back (a game's Roots
+      // read can take half a minute while Wikidata is slow).
+      void refresh();
     },
     onError: (err) => notifyError(err),
   });

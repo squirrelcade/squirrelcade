@@ -727,11 +727,10 @@ button.sc-star {
   border-style: dotted;
   border-color: var(--sc-line-strong);
   color: var(--sc-soft);
-  opacity: 0.5;
 }
 .sc-square[data-own='digital'] .sc-square-art {
   filter: grayscale(1);
-  opacity: 0.4;
+  opacity: 0.3;
 }
 .sc-square-where {
   position: absolute;
@@ -745,12 +744,14 @@ button.sc-star {
 }
 .sc-square-digital {
   position: absolute;
-  left: 0;
-  right: 0;
+  left: 2px;
+  right: 2px;
   bottom: 3px;
   font-size: 9px;
   text-align: center;
-  color: var(--sc-soft);
+  border-radius: 3px;
+  background: var(--sc-raised);
+  color: var(--sc-text);
 }
 .sc-square[data-own='unsure'] {
   background: var(--sc-raised);
