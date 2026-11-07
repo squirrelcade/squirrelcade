@@ -727,9 +727,11 @@ export async function buildApp(options: BuildOptions = {}): Promise<Squirrelcade
   tasks.register({
     name: 'magazines-read',
     title: "Read the magazines' text",
-    description: 'Reads the pages without text yet with Tesseract, in the reading hours, at the lowest priority (Settings > Magazines).',
-    interval: () => (magazines.enabled() && settings.get('magazines.ocr') ? 3_600_000 : null),
+    description: 'Reads the pages without text yet with Tesseract, in the reading hours, at the lowest priority (Settings > Magazines). It runs beside the other tasks, so they never wait for it.',
+    // T-176: it looks every 5 minutes, so a night starts when the reading hours open (a look outside them leaves no row).
+    interval: () => (magazines.enabled() && settings.get('magazines.ocr') ? 5 * 60_000 : null),
     firstRunDelayMs: 10 * 60_000,
+    ownLane: true,
     run: async (_log, progress) => magazines.readText(progress),
     quiet: (m) => m === 'Outside the reading hours' || m === 'Nothing left to read',
   });

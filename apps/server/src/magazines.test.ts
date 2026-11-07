@@ -89,6 +89,37 @@ describe('Leaves: the magazine scans (D177)', () => {
     expect((await get('/api/v1/magazines/search?q=tecmo')).hits).toEqual([]);
   });
 
+  it('says a locked folder plainly, counts files it could not open apart, and puts them back in line once they open (D196)', async () => {
+    dir = mkdtempSync(join(tmpdir(), 'squirrelcade-magazines-'));
+    mkdirSync(join(dir, 'Nintendo Power'));
+    cbz(join(dir, 'Nintendo Power', 'Nintendo Power #001 (1988-07).cbz'), 2, null);
+    cbz(join(dir, 'Nintendo Power', 'Nintendo Power #002 (1988-09).cbz'), 2, null);
+    let locked = true;
+    const lockedError = Object.assign(new Error("EACCES: permission denied, open '/magazines/x.cbz'"), { code: 'EACCES' });
+    // Several pages at once: the reader is asked for more than one before the first answers.
+    let inFlight = 0;
+    let most = 0;
+    g = await testApp({
+      magazineReader: async () => {
+        if (locked) throw lockedError;
+        inFlight++;
+        most = Math.max(most, inFlight);
+        await new Promise((r) => setTimeout(r, 5));
+        inFlight--;
+        return hocr(['Zelda']);
+      },
+    });
+    g.settings.update({ 'features.magazines': true, 'magazines.folder': dir, 'magazines.ocr': true, 'magazines.ocrHours': '0-24', 'magazines.ocrPages': 2 });
+    await g.magazines.scan();
+    // Nothing read, both couldn't be opened: the run fails, with both counts apart.
+    await expect(g.magazines.readText(() => undefined)).rejects.toThrow(/0 issues read \(0 pages\), 2 couldn't be opened \(their permissions\).*Help > Magazines/);
+    expect(g.magazines.status()).toMatchObject({ failed: 2 });
+    locked = false;
+    expect(await g.magazines.scan()).toBe('2 issues; 2 back in line for their text');
+    expect(await g.magazines.readText(() => undefined)).toBe('2 issues read (4 pages)');
+    expect(most).toBe(2);
+  });
+
   it("sends a page as wide as the screen needs, made once and kept, and its words' boxes in the scan's pixels (D182)", async () => {
     dir = mkdtempSync(join(tmpdir(), 'squirrelcade-magazines-'));
     mkdirSync(join(dir, 'Nintendo Power'));

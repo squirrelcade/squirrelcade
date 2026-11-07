@@ -58,7 +58,8 @@ export function ActivityIndicator() {
         seen.current.add(t.name);
       } else if (seen.current.delete(t.name)) {
         const failed = t.lastRun?.status === 'failed';
-        if (!routine(t)) notifications.show({ color: failed ? 'red' : 'green', title: `${t.title}: ${failed ? 'failed' : 'done'}`, message: (t.lastRun?.message ?? '').slice(0, 160) });
+        const warning = t.lastRun?.status === 'warning';
+        if (!routine(t)) notifications.show({ color: failed ? 'red' : warning ? 'yellow' : 'green', title: `${t.title}: ${failed ? 'failed' : warning ? 'done, with problems' : 'done'}`, message: (t.lastRun?.message ?? '').slice(0, 160) });
         void queryClient.invalidateQueries();
       }
     }

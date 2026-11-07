@@ -14,14 +14,25 @@ export interface TaskDefinition {
   interval: () => number | null;
   /** Delay before the first run when the task has never run. */
   firstRunDelayMs?: number;
-  /** Returns a short result message. Throwing marks the run as failed. `progress` says what it's doing now. */
-  run: (log: Logger, progress: (text: string) => void) => Promise<string | void>;
+  /**
+   * Returns a short result message, or { message, warning: true } for a run that worked with something worth a look
+   * (some items failed): its status is then "warning". Throwing marks the run as failed. `progress` says what it's doing now.
+   */
+  run: (log: Logger, progress: (text: string) => void) => Promise<TaskResult>;
+  /**
+   * Runs beside the queue instead of in it (T-176: the magazines' night reading takes hours): the other tasks don't
+   * wait for it. Only for a task whose work doesn't share the main database's writes with the others.
+   */
+  ownLane?: boolean;
   /**
    * A frequent check (the watched folder, the mailbox, reminders): true for a result that found nothing to do. Such a
    * run leaves no row in the history, so it shows only what happened; the Tasks page still says when it last looked.
    */
   quiet?: (message: string | null) => boolean;
 }
+
+/** What a task's run gives back: a message, or a message with a warning (status "warning"). */
+export type TaskResult = string | void | null | { message: string; warning: true };
 
 /** A task as the Tasks page and the activity indicator show it. */
 export interface TaskInfo {
@@ -63,8 +74,10 @@ export class TaskRunner {
   /** Runs asked for with soon() that haven't started yet; they outlast a reschedule. */
   private readonly wanted = new Map<string, number>();
   private readonly queue: { name: string; trigger: string }[] = [];
+  /** The queue's task running now; the own-lane tasks run beside it. */
   private running: string | null = null;
-  private current: { startedAt: string; progress: string | null } | null = null;
+  private readonly lanes = new Map<string, Promise<void>>();
+  private readonly current = new Map<string, { startedAt: string; progress: string | null }>();
   private timer: NodeJS.Timeout | null = null;
   private idle: Promise<void> = Promise.resolve();
   private stopped = false;
@@ -123,7 +136,7 @@ export class TaskRunner {
     if (this.timer) clearInterval(this.timer);
     this.queue.length = 0;
     let timeout: NodeJS.Timeout | undefined;
-    this.stopping = Promise.race([this.idle, new Promise<void>((resolve) => (timeout = setTimeout(resolve, waitMs)))]).then(() => clearTimeout(timeout));
+    this.stopping = Promise.race([this.whenIdle(), new Promise<void>((resolve) => (timeout = setTimeout(resolve, waitMs)))]).then(() => clearTimeout(timeout));
     return this.stopping;
   }
 
@@ -174,22 +187,31 @@ export class TaskRunner {
    * Returns false for unknown tasks.
    */
   enqueue(name: string, trigger = 'manual'): boolean {
-    if (!this.tasks.has(name) || this.stopped) return false;
+    const def = this.tasks.get(name);
+    if (!def || this.stopped) return false;
+    if (def.ownLane) {
+      // Its own lane: one run of it at a time, beside the queue.
+      if (this.lanes.has(name)) return true;
+      const lane = this.runOne(def, trigger).finally(() => this.lanes.delete(name));
+      this.lanes.set(name, lane);
+      return true;
+    }
     if (this.queue.some((q) => q.name === name) || (this.running === name && trigger === 'schedule')) return true;
     this.queue.push({ name, trigger });
     if (!this.running) this.idle = this.drain();
     return true;
   }
 
-  /** Waits until the queue is empty (tests use it after starting tasks through the API). */
+  /** Waits until the queue is empty and the own-lane tasks are done (tests use it after starting tasks through the API). */
   async whenIdle(): Promise<void> {
     await this.idle;
+    await Promise.all([...this.lanes.values()]);
   }
 
   /** Runs a task now and waits for it (used by tests and "run now" buttons that want the result). */
   async runNow(name: string, trigger = 'manual'): Promise<TaskRun | null> {
     if (!this.enqueue(name, trigger)) return null;
-    await this.idle;
+    await this.whenIdle();
     const looked = this.looked.get(name);
     const last = this.lastRun(name);
     if (looked && (!last || looked.startedAt > last.startedAt)) {
@@ -204,44 +226,55 @@ export class TaskRunner {
       const def = this.tasks.get(name);
       if (!def) continue;
       this.running = name;
-      this.wanted.delete(name);
-      const startedAt = new Date().toISOString();
-      const run = this.db.insert(taskRuns).values({ task: name, trigger, status: 'running', startedAt }).returning().get();
-      const log = this.log.child({ context: `task:${name}` });
-      const t0 = Date.now();
-      const current = { startedAt, progress: null as string | null };
-      this.current = current;
-      let failedInARow = 0;
       try {
-        const message = (await def.run(log, (text) => (current.progress = text.slice(0, 200)))) ?? null;
-        const finishedAt = new Date().toISOString();
-        if (def.quiet?.(message)) {
-          // Nothing to do this time: no row in the history, only the time of the look.
-          this.db.delete(taskRuns).where(eq(taskRuns.id, run.id)).run();
-          this.looked.set(name, { startedAt, finishedAt, message });
-        } else {
-          this.db.update(taskRuns).set({ status: 'success', finishedAt, message }).where(eq(taskRuns.id, run.id)).run();
-          this.looked.delete(name);
-        }
-        log.info(`${def.title}: done in ${Date.now() - t0} ms${message ? ` (${message})` : ''}`);
-        this.failures.set(name, 0);
-        this.events.emit('succeeded', { name: def.name, title: def.title });
-      } catch (err) {
-        const message = err instanceof Error ? err.message : String(err);
-        this.db.update(taskRuns).set({ status: 'failed', finishedAt: new Date().toISOString(), message }).where(eq(taskRuns.id, run.id)).run();
-        const inARow = (this.failures.get(name) ?? this.failedInARow(name, run.id)) + 1;
-        this.failures.set(name, inARow);
-        failedInARow = inARow;
-        log.error({ err }, `${def.title} failed${inARow > 1 ? ` (${inARow} times in a row)` : ''}`);
-        this.events.emit('failed', { name: def.name, title: def.title }, message, inARow);
+        await this.runOne(def, trigger);
       } finally {
         this.running = null;
-        this.current = null;
-        this.reschedule(name);
-        // A failure tries again soon, while the retries say so; then the task waits for its next regular run.
-        const retry = failedInARow > 0 ? this.retryAfter(failedInARow) : null;
-        if (retry !== null && retry > 0) this.soon(name, retry);
       }
+    }
+  }
+
+  /** One run of a task: recorded in task_runs, its result or failure told, its next run worked out. */
+  private async runOne(def: TaskDefinition, trigger: string): Promise<void> {
+    const name = def.name;
+    this.wanted.delete(name);
+    const startedAt = new Date().toISOString();
+    const run = this.db.insert(taskRuns).values({ task: name, trigger, status: 'running', startedAt }).returning().get();
+    const log = this.log.child({ context: `task:${name}` });
+    const t0 = Date.now();
+    const current = { startedAt, progress: null as string | null };
+    this.current.set(name, current);
+    let failedInARow = 0;
+    try {
+      const result = (await def.run(log, (text) => (current.progress = text.slice(0, 200)))) ?? null;
+      const message = typeof result === 'object' && result !== null ? result.message : result;
+      const status = typeof result === 'object' && result !== null && result.warning ? 'warning' : 'success';
+      const finishedAt = new Date().toISOString();
+      if (status === 'success' && def.quiet?.(message)) {
+        // Nothing to do this time: no row in the history, only the time of the look.
+        this.db.delete(taskRuns).where(eq(taskRuns.id, run.id)).run();
+        this.looked.set(name, { startedAt, finishedAt, message });
+      } else {
+        this.db.update(taskRuns).set({ status, finishedAt, message }).where(eq(taskRuns.id, run.id)).run();
+        this.looked.delete(name);
+      }
+      log.info(`${def.title}: done in ${Date.now() - t0} ms${message ? ` (${message})` : ''}`);
+      this.failures.set(name, 0);
+      this.events.emit('succeeded', { name: def.name, title: def.title });
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      this.db.update(taskRuns).set({ status: 'failed', finishedAt: new Date().toISOString(), message }).where(eq(taskRuns.id, run.id)).run();
+      const inARow = (this.failures.get(name) ?? this.failedInARow(name, run.id)) + 1;
+      this.failures.set(name, inARow);
+      failedInARow = inARow;
+      log.error({ err }, `${def.title} failed${inARow > 1 ? ` (${inARow} times in a row)` : ''}`);
+      this.events.emit('failed', { name: def.name, title: def.title }, message, inARow);
+    } finally {
+      this.current.delete(name);
+      this.reschedule(name);
+      // A failure tries again soon, while the retries say so; then the task waits for its next regular run.
+      const retry = failedInARow > 0 ? this.retryAfter(failedInARow) : null;
+      if (retry !== null && retry > 0) this.soon(name, retry);
     }
   }
 
@@ -258,9 +291,9 @@ export class TaskRunner {
         title: def.title,
         description: def.description,
         intervalMs: def.interval(),
-        state: this.running === def.name ? 'running' : this.queue.some((q) => q.name === def.name) ? 'queued' : 'idle',
-        runningSince: this.running === def.name ? (this.current?.startedAt ?? null) : null,
-        progress: this.running === def.name ? (this.current?.progress ?? null) : null,
+        state: this.current.has(def.name) ? 'running' : this.queue.some((q) => q.name === def.name) ? 'queued' : 'idle',
+        runningSince: this.current.get(def.name)?.startedAt ?? null,
+        progress: this.current.get(def.name)?.progress ?? null,
         nextRunAt: next ? new Date(next).toISOString() : null,
         lastRun: last ? { status: last.status, startedAt: last.startedAt, finishedAt: last.finishedAt, message: last.message } : null,
         lastLook: (() => {

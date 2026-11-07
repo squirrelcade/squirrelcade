@@ -1,7 +1,7 @@
 import { baseTitle, citationMonth, citedIssueNumber, matchKey, scoresOn, SPOT_VERSION, spotTitles, spotWord, type SpotCandidate, coverLeadFor, guessDates, magazineOf, printedPage, issueFromFileName, issueLabel, pageNames, parseComicInfo, parseHocr, skippedName, type IssueInfo, type IssueToDate, type PageWord } from '@squirrelcade/core';
 import Database from 'better-sqlite3';
 import { spawn } from 'node:child_process';
-import { existsSync, type Dirent } from 'node:fs';
+import { accessSync, constants, existsSync, type Dirent } from 'node:fs';
 import { mkdir, open, readdir, readFile, rm, stat, utimes, writeFile } from 'node:fs/promises';
 import { basename, join, relative } from 'node:path';
 import { inflateRawSync } from 'node:zlib';
@@ -18,6 +18,30 @@ import type { SettingsService } from './settings.js';
  * backups. Reading the library opens a CBZ only for its table of contents and its small ComicInfo.xml, and only when
  * the file changed; a page is read from its CBZ when it's shown.
  */
+
+/** A file or folder the magazines folder's permissions keep Squirrelcade out of (D196). */
+export function isLocked(err: unknown): boolean {
+  const code = (err as { code?: string } | null)?.code;
+  return code === 'EACCES' || code === 'EPERM' || /EACCES|EPERM|permission denied/i.test(err instanceof Error ? err.message : String(err));
+}
+
+const lockedHelp = "Squirrelcade's account needs permission to read the magazines folder and its files: Help > Magazines says how.";
+
+/** What a scan says when the magazines folder itself can't be opened (D196). */
+function lockedMessage(root: string, err: unknown): string {
+  return isLocked(err)
+    ? `Squirrelcade can't open the magazines folder (${root}): its permissions keep Squirrelcade out. ${lockedHelp}`
+    : `The magazines folder (${root}) couldn't be read: ${err instanceof Error ? err.message : String(err)}`;
+}
+
+/** The night's reading in a line (D196): what was read, and apart from it what failed and what couldn't be opened. */
+export function nightMessage(read: number, pages: number, failed: number, unopened: number, stoppedLocked = false): string {
+  const n = (x: number) => x.toLocaleString('en-US');
+  const parts = [`${n(read)} ${read === 1 ? 'issue' : 'issues'} read (${n(pages)} pages)`];
+  if (failed > 0) parts.push(`${n(failed)} couldn't be read`);
+  if (unopened > 0) parts.push(`${n(unopened)} couldn't be opened (their permissions)`);
+  return `${parts.join(', ')}${stoppedLocked ? '; stopped: the magazines folder looks locked' : ''}`;
+}
 
 /** One file in a zip, as its table of contents gives it. */
 interface ZipItem {
@@ -283,7 +307,7 @@ export class MagazineService {
    * The task: the magazines folder read (a folder for each magazine, an issue a CBZ), each changed file's table of
    * contents and ComicInfo.xml read, gone files forgotten, then the text that came with the scans brought in.
    */
-  async scan(progress: (line: string) => void = () => undefined): Promise<string> {
+  async scan(progress: (line: string) => void = () => undefined): Promise<string | { message: string; warning: true }> {
     if (!this.enabled()) return 'Leaves is off';
     const root = this.folder();
     if (!root || !existsSync(root)) return `The magazines folder${root ? ` (${root})` : ''} can't be found: name it on Settings > Magazines, or mount it at /magazines.`;
@@ -293,8 +317,17 @@ export class MagazineService {
     let added = 0;
     let changed = 0;
     let failed = 0;
+    let locked = 0;
     const known = new Map((db.prepare('SELECT path, file_size AS size, file_mtime AS mtime FROM issues').all() as { path: string; size: number; mtime: number }[]).map((r) => [r.path, r]));
-    for (const dir of (await readdir(root, { withFileTypes: true })).filter((d) => d.isDirectory() && !skippedName(d.name, skip))) {
+    // D196: a folder Squirrelcade can't enter is said plainly (the task fails, so System > Status shows it), and
+    // what was read of it before is kept.
+    let entries: Dirent[];
+    try {
+      entries = await readdir(root, { withFileTypes: true });
+    } catch (err) {
+      throw new Error(lockedMessage(root, err));
+    }
+    for (const dir of entries.filter((d) => d.isDirectory() && !skippedName(d.name, skip))) {
       progress(dir.name);
       // A folder or file that can't be read (its permissions) is said in the log and passed over: the rest is read,
       // and what was read of it before is kept.
@@ -302,7 +335,8 @@ export class MagazineService {
       try {
         files = await readdir(join(root, dir.name), { withFileTypes: true });
       } catch (err) {
-        failed++;
+        if (isLocked(err)) locked++;
+        else failed++;
         this.log.warn({ context: 'magazines' }, `${dir.name} couldn't be read: ${err instanceof Error ? err.message : String(err)}`);
         for (const p of known.keys()) if (p.startsWith(`${dir.name}/`)) seen.add(p);
         continue;
@@ -324,7 +358,8 @@ export class MagazineService {
           if (was) changed++;
           else added++;
         } catch (err) {
-          failed++;
+          if (isLocked(err)) locked++;
+          else failed++;
           this.log.warn({ context: 'magazines' }, `${rel} couldn't be read: ${err instanceof Error ? err.message : String(err)}`);
         }
       }
@@ -333,9 +368,34 @@ export class MagazineService {
     const gone = [...known.keys()].filter((p) => !seen.has(p));
     for (const p of gone) this.forget(p);
     const dated = this.fillDates();
+    const requeued = this.requeueUnlocked();
     const text = await this.importText(progress);
     const issues = (db.prepare('SELECT COUNT(*) AS n FROM issues').get() as { n: number }).n;
-    return `${issues} issues${added > 0 ? `, ${added} new` : ''}${changed > 0 ? `, ${changed} changed` : ''}${gone.length > 0 ? `, ${gone.length} gone` : ''}${failed > 0 ? `, ${failed} couldn't be read` : ''}${dated > 0 ? `; ${dated} dated by the magazine index` : ''}${text > 0 ? `; text brought in for ${text}` : ''}`;
+    const message = `${issues} issues${added > 0 ? `, ${added} new` : ''}${changed > 0 ? `, ${changed} changed` : ''}${gone.length > 0 ? `, ${gone.length} gone` : ''}${failed > 0 ? `, ${failed} couldn't be read` : ''}${locked > 0 ? `, ${locked} couldn't be opened (their permissions: Help > Magazines)` : ''}${requeued > 0 ? `; ${requeued} back in line for their text` : ''}${dated > 0 ? `; ${dated} dated by the magazine index` : ''}${text > 0 ? `; text brought in for ${text}` : ''}`;
+    return locked > 0 || failed > 0 ? { message, warning: true } : message;
+  }
+
+  /**
+   * D196: the issues the night's reading marked failed because their file couldn't be opened (the folder locked by
+   * its permissions) go back in line once it can be read. How many did.
+   */
+  requeueUnlocked(): number {
+    const root = this.folder();
+    if (!root) return 0;
+    const db = this.store();
+    const rows = db.prepare("SELECT id, path FROM issues WHERE text_state = 'failed' AND (problem LIKE 'EACCES%' OR problem LIKE 'EPERM%' OR problem LIKE '%permission denied%')").all() as { id: number; path: string }[];
+    let n = 0;
+    const back = db.prepare("UPDATE issues SET text_state = 'none', problem = NULL WHERE id = ?");
+    for (const r of rows) {
+      try {
+        accessSync(join(root, r.path), constants.R_OK);
+        back.run(r.id);
+        n++;
+      } catch {
+        // Still locked: it waits for the next look.
+      }
+    }
+    return n;
   }
 
   private saveIssue(path: string, folder: string, info: IssueInfo, pages: number, size: number, mtime: number, namedBy: string): void {
@@ -428,7 +488,7 @@ export class MagazineService {
   private inReadingHours(now = new Date()): boolean {
     const m = /^(\d{1,2})\s*-\s*(\d{1,2})$/.exec(this.settings.get('magazines.ocrHours').trim());
     if (!m) return false;
-    const hour = Number(new Intl.DateTimeFormat('en-US', { hour: 'numeric', hourCycle: 'h23', timeZone: this.settings.get('general.timeZone') }).format(now));
+    const hour = Number(new Intl.DateTimeFormat('en-US', { hour: 'numeric', hourCycle: 'h23', timeZone: this.settings.get('general.timeZone') || undefined }).format(now));
     const [from, to] = [Number(m[1]), Number(m[2])];
     return from <= to ? hour >= from && hour < to : hour >= from || hour < to;
   }
@@ -437,15 +497,22 @@ export class MagazineService {
    * The night's reading: the issues without text, newest added first, page by page with Tesseract at the lowest priority, until the
    * reading hours end. After its first issue it says how long the rest will take.
    */
-  async readText(progress: (line: string) => void = () => undefined, force = false): Promise<string> {
+  async readText(progress: (line: string) => void = () => undefined, force = false): Promise<string | { message: string; warning: true }> {
     if (!this.enabled() || !this.settings.get('magazines.ocr')) return 'Reading the magazines is off';
     if (!force && !this.inReadingHours()) return 'Outside the reading hours';
     const root = this.folder();
     if (!root || !existsSync(root)) return "The magazines folder can't be found";
     const db = this.store();
     const threads = this.settings.get('magazines.ocrThreads');
-    let issues = 0;
+    // T-176: several pages at once, each by its own Tesseract (one rarely uses more than two cores).
+    const atOnce = Math.max(1, this.settings.get('magazines.ocrPages'));
+    this.requeueUnlocked();
+    let read = 0;
+    let failed = 0;
+    let unopened = 0;
+    let lockedInARow = 0;
     let pagesRead = 0;
+    let stoppedLocked = false;
     const started = Date.now();
     for (;;) {
       if (!force && !this.inReadingHours()) break;
@@ -454,25 +521,56 @@ export class MagazineService {
       const path = join(root, issue.path);
       try {
         const names = await this.pageItems(path);
-        const pages: { n: number; text: string; words: PageWord[] }[] = [];
-        for (const [i, item] of names.entries()) {
-          progress(`${basename(issue.path)}: page ${i + 1} of ${names.length}`);
-          pages.push({ n: i + 1, ...parseHocr(await this.readPage(await zipRead(path, item), threads)) });
-          pagesRead++;
-        }
+        const pages: { n: number; text: string; words: PageWord[] }[] = new Array(names.length);
+        let next = 0;
+        let done = 0;
+        let broken: unknown = null;
+        const worker = async () => {
+          // A page that fails stops the others taking new pages; they finish the one they're on.
+          for (let i = next++; i < names.length && broken === null; i = next++) {
+            try {
+              const hocr = await this.readPage(await zipRead(path, names[i]!), threads);
+              pages[i] = { n: i + 1, ...parseHocr(hocr) };
+              done++;
+              pagesRead++;
+              progress(`${basename(issue.path)}: page ${done} of ${names.length}`);
+            } catch (err) {
+              broken ??= err;
+            }
+          }
+        };
+        await Promise.all(Array.from({ length: Math.min(atOnce, Math.max(1, names.length)) }, worker));
+        if (broken !== null) throw broken;
         this.savePages(issue.id, pages, 'ocr');
+        read++;
+        lockedInARow = 0;
       } catch (err) {
         db.prepare("UPDATE issues SET text_state = 'failed', problem = ? WHERE id = ?").run(err instanceof Error ? err.message.slice(0, 300) : String(err), issue.id);
+        // D196: a file the folder's permissions keep out isn't a bad scan: it's counted apart, goes back in line once
+        // it can be opened, and a run of them stops the night (the whole folder is locked).
+        if (isLocked(err)) {
+          unopened++;
+          if (++lockedInARow >= 10) {
+            stoppedLocked = true;
+            break;
+          }
+        } else {
+          failed++;
+          lockedInARow = 0;
+        }
       }
-      issues++;
-      if (issues === 1) {
+      if (read + failed === 1 && unopened === 0) {
         const left = (db.prepare("SELECT COUNT(*) AS n FROM issues WHERE text_state = 'none'").get() as { n: number }).n;
         const hours = ((Date.now() - started) / 3_600_000) * left;
         this.writeState('ocrEstimate', JSON.stringify({ at: new Date().toISOString(), perIssueSeconds: Math.round((Date.now() - started) / 1000), issuesLeft: left, hoursLeft: Math.round(hours) }));
       }
       if (force) break;
     }
-    return issues === 0 ? 'Nothing left to read' : `${issues} ${issues === 1 ? 'issue' : 'issues'} read (${pagesRead} pages)`;
+    if (read + failed + unopened === 0) return 'Nothing left to read';
+    const message = nightMessage(read, pagesRead, failed, unopened, stoppedLocked);
+    // Nothing read and files that couldn't be opened: the run failed, so System > Status shows it in red.
+    if (read === 0 && unopened > 0) throw new Error(`${message} ${lockedHelp}`);
+    return failed > 0 || unopened > 0 ? { message, warning: true } : message;
   }
 
   private writeState(key: string, value: string): void {

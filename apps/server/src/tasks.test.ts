@@ -127,6 +127,34 @@ describe('tasks', () => {
     expect(g.tasks.list().find((t) => t.name === 'steps')).toMatchObject({ state: 'idle', progress: null, runningSince: null });
   });
 
+  it('runs an own-lane task beside the queue, so the others never wait for it, and records a warning (T-176, D196)', async () => {
+    let release = () => {};
+    const order: string[] = [];
+    g.tasks.register({
+      name: 'long-read',
+      title: 'Long read',
+      description: 'Reads all night.',
+      interval: () => null,
+      ownLane: true,
+      run: async () => {
+        await new Promise<void>((r) => (release = r));
+        order.push('long-read');
+        return { message: '3 issues read (90 pages), 2 couldn\'t be opened (their permissions)', warning: true };
+      },
+    });
+    g.tasks.register({ name: 'quick', title: 'Quick', description: 'A short check.', interval: () => null, run: async () => (order.push('quick'), 'done') });
+    g.tasks.enqueue('long-read');
+    g.tasks.enqueue('quick');
+    await new Promise((r) => setTimeout(r, 20));
+    // The quick one ran while the long one is still reading.
+    expect(order).toEqual(['quick']);
+    expect(g.tasks.list().find((t) => t.name === 'long-read')).toMatchObject({ state: 'running' });
+    release();
+    await g.tasks.whenIdle();
+    expect(order).toEqual(['quick', 'long-read']);
+    expect(g.tasks.lastRun('long-read')).toMatchObject({ status: 'warning', message: expect.stringContaining("couldn't be opened") });
+  });
+
   it('keeps a quiet check that found nothing out of the history, and still knows when it looked', async () => {
     let found = false;
     g.tasks.register({
