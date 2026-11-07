@@ -530,7 +530,10 @@ export async function buildApp(options: BuildOptions = {}): Promise<Squirrelcade
   const gamefly = new GameFlyService(db, settings, () => wishlist.compute().master, log, options.gameflyFetch, options.gameflyFetch ? 0 : undefined);
   registerGameFlyRoutes(app, gamefly);
   // The consoles each game is yours on, for its marks on covers and beside titles (D175).
-  registerMarkRoutes(app, new MarksService(db, collection, catalogs, pc));
+  const marks = new MarksService(db, collection, catalogs, pc, igdb);
+  registerMarkRoutes(app, marks);
+  // The consoles games came out on (covers' grey marks): built a minute after start, so the first page doesn't wait.
+  setTimeout(() => void marks.released([]).catch(() => undefined), 60_000).unref();
   const mail = new MailImportService(db, settings, collection, log, notifications, options.mailbox, options.exportDownload);
   registerMailRoutes(app, mail, tasks);
   // Settings > Email's one test: sending from your account, and reading its mailbox.

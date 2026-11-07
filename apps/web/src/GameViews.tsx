@@ -209,8 +209,8 @@ export function CoverTile({
             </Center>
           )}
         </AspectRatio>
-        {/* The consoles you have it on, in the corner (D175). */}
-        {platformKey && <CoverMarks title={title} coverWidth={110} />}
+        {/* Yours or not, and its consoles, in the corner (D175, D197). */}
+        <CoverMarks title={title} coverWidth={110} platformKey={platformKey} />
       </Box>
       <Text size="xs" lineClamp={2} component="div">
         {platformKey ? <GameTitle platformKey={platformKey} title={title} size="xs" /> : title}

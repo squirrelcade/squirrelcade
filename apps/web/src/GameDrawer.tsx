@@ -379,7 +379,7 @@ export function GameCover({ platformKey, title, id, width, placeholder }: { plat
         open(platformKey, title);
       }}
     >
-      <Cover id={id} width={width} placeholder={placeholder} title={title} />
+      <Cover id={id} width={width} placeholder={placeholder} title={title} platformKey={platformKey} />
     </Box>
   );
 }

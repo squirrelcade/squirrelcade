@@ -183,10 +183,10 @@ export function markInk(color: string): string {
  * most; two of one company only when that's all there is (the Switch and the Switch 2). PC isn't one of them: it
  * has its own place at the right end.
  */
-export function coverMarks(platformKeys: readonly string[], most = 2): string[] {
+export function coverMarks(platformKeys: readonly string[], most = 2, taken: readonly string[] = []): string[] {
   const consoles = [...new Set(platformKeys)].filter((k) => k !== 'pc').sort((a, b) => consoleMark(b).year - consoleMark(a).year || a.localeCompare(b));
   const picked: string[] = [];
-  const companies = new Set<string>();
+  const companies = new Set<string>(taken.map((k) => consoleMark(k).company));
   for (const k of consoles) {
     if (picked.length >= most) break;
     const c = consoleMark(k).company;
@@ -200,4 +200,25 @@ export function coverMarks(platformKeys: readonly string[], most = 2): string[] 
     if (!picked.includes(k)) picked.push(k);
   }
   return picked;
+}
+
+/** One console on a cover's banner: its key, and whether you have the game on it (in color) or not (grey). */
+export interface BannerMark {
+  key: string;
+  owned: boolean;
+}
+
+/**
+ * A cover's two console places (the owner's rules, 2026-11-06): the newest consoles you have the game on, in color, one
+ * per company; the places left go to the newest other consoles it came out on, grey, a company not shown yet first. A
+ * game you don't have shows the two newest consoles it came out on, both grey. PC isn't one of them (its own place).
+ */
+export function bannerMarks(owned: readonly string[], released: readonly string[], most = 2): BannerMark[] {
+  const mine = coverMarks(owned, most);
+  const others = coverMarks(
+    released.filter((k) => !owned.includes(k)),
+    most - mine.length,
+    mine,
+  );
+  return [...mine.map((key) => ({ key, owned: true })), ...others.map((key) => ({ key, owned: false }))];
 }

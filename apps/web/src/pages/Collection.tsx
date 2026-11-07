@@ -173,7 +173,7 @@ function CoverTile({ item, jump }: { item: Item; jump: number }) {
             // Its consoles' banner in the corner, as on every cover (D175, D185).
             <Box pos="relative">
               <Image src={igdbCoverUrl(item.coverId!, 'cover_big')} radius="sm" alt="" loading="lazy" fit="cover" w="100%" h="100%" />
-              <CoverMarks title={item.title} coverWidth={130} />
+              <CoverMarks title={item.title} coverWidth={130} platformKey={item.platformKey} />
             </Box>
           ) : (
             <Center p={6} style={{ borderRadius: 'var(--mantine-radius-sm)', border: '1px solid var(--mantine-color-default-border)' }}>

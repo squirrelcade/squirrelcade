@@ -1,7 +1,8 @@
-import { baseTitle, consoleMark, coverMarks, KNOWN_PLATFORMS, MARK_DRAWINGS, markInk, markPixels, matchKey, regionalConsole, type MarkDrawing } from '@squirrelcade/core';
+import { bannerMarks, baseTitle, consoleMark, KNOWN_PLATFORMS, MARK_DRAWINGS, markInk, markPixels, matchKey, regionalConsole, type MarkDrawing } from '@squirrelcade/core';
 import { Box, Group, Tooltip } from '@mantine/core';
 import { useQuery } from '@tanstack/react-query';
 import { useId, type CSSProperties, type MouseEvent, type ReactElement } from 'react';
+import { StashMark } from './Acorn';
 import { api } from './api';
 import { useSetting } from './hooks';
 
@@ -115,19 +116,53 @@ export function useOwnedMarks(): (title: string) => string[] {
   return (title) => marks.data?.owned[matchKey(baseTitle(title))] ?? [];
 }
 
+/** Title keys waiting to be asked about, and who waits for each: asked together a moment later (one request a page). */
+const releasedWaiting = new Map<string, ((consoles: string[]) => void)[]>();
+let releasedTimer: number | null = null;
+
+async function askReleased(): Promise<void> {
+  releasedTimer = null;
+  const batch = new Map(releasedWaiting);
+  releasedWaiting.clear();
+  const keys = [...batch.keys()];
+  for (let i = 0; i < keys.length; i += 500) {
+    const slice = keys.slice(i, i + 500);
+    const answer = await api<{ released: Record<string, string[]> }>('/marks/released', { method: 'POST', json: { keys: slice } }).catch(() => ({ released: {} as Record<string, string[]> }));
+    for (const k of slice) for (const done of batch.get(k) ?? []) done(answer.released[k] ?? []);
+  }
+}
+
+function releasedOn(key: string): Promise<string[]> {
+  return new Promise((resolve) => {
+    releasedWaiting.set(key, [...(releasedWaiting.get(key) ?? []), resolve]);
+    releasedTimer ??= window.setTimeout(() => void askReleased(), 30);
+  });
+}
+
+/** The consoles a game came out on (IGDB's lists and the catalogs, POST /api/v1/marks/released), asked for with the page's other covers and kept. */
+export function useReleasedOn(title: string, enabled = true): string[] {
+  const key = matchKey(baseTitle(title));
+  const q = useQuery({ queryKey: ['released', key], queryFn: () => releasedOn(key), enabled: enabled && Boolean(key), staleTime: 60 * 60_000 });
+  return q.data ?? [];
+}
+
 /**
- * The banner in a cover's top right corner (D175, the owner's design; D185, light): the two newest consoles you have
- * the game on, one per company, and PC at the right end (faded when you don't have it on PC, or none: Settings > Interface).
- * Nothing when you don't have the game, or the setting is off.
+ * The banner in a cover's top right corner (D175, the owner's design; D185, light; D197, every cover): the Stash's chest
+ * (filled when you have the game on any console or PC, grey when you don't), the two newest consoles you have it on,
+ * one per company, the places left going to the newest other consoles it came out on, grey, and PC at the right end
+ * (grey when you don't have it on PC, or none: Settings > Interface). A game you don't have shows it all in grey.
+ * `platformKey` is the console the cover stands for, when it's known to have come out there.
  */
-export function CoverMarks({ title, coverWidth }: { title: string; coverWidth: number }) {
+export function CoverMarks({ title, coverWidth, platformKey }: { title: string; coverWidth: number; platformKey?: string | null }) {
   const on = useSetting('interface.coverMarks', true);
   const pcStyle = useSetting('interface.coverMarksPc', 'dotted');
   const owned = useOwnedMarks()(title);
-  if (!on || owned.length === 0) return null;
-  const consoles = coverMarks(owned);
+  const out = useReleasedOn(title, on);
+  if (!on) return null;
+  const released = platformKey && platformKey !== 'pc' && !out.includes(platformKey) ? [platformKey, ...out] : out;
+  const consoles = bannerMarks(owned, released);
   const onPc = owned.includes('pc');
-  if (consoles.length === 0 && !onPc) return null;
+  const yours = owned.length > 0;
   // Big enough to read at a glance on the smallest tiles, small enough to leave the art be.
   const size = coverWidth >= 120 ? 12 : coverWidth >= 64 ? 10 : 8;
   const small = coverWidth < 120;
@@ -136,11 +171,12 @@ export function CoverMarks({ title, coverWidth }: { title: string; coverWidth: n
       className="sc-cover-marks"
       gap={small ? 4 : 6}
       wrap="nowrap"
-      aria-label="The consoles you have it on"
+      aria-label={yours ? 'Yours, and the consoles you have it on' : "You don't have it"}
       style={{ position: 'absolute', top: 5, right: 5, padding: small ? '3px 4px' : '4px 6px', borderRadius: 6, background: 'rgba(255, 255, 255, 0.93)', boxShadow: '0 1px 3px rgba(0, 0, 0, 0.3)', pointerEvents: 'auto' }}
     >
-      {consoles.map((k) => (
-        <ConsoleMark key={k} platformKey={k} name={consoleName(k)} size={size} />
+      <StashMark size={size} owned={yours} label={yours ? 'You have it' : "You don't have it"} />
+      {consoles.map((m) => (
+        <ConsoleMark key={m.key} platformKey={m.key} name={consoleName(m.key)} owned={m.owned} size={size} />
       ))}
       {(onPc || pcStyle === 'dotted') && <ConsoleMark platformKey="pc" name="PC" owned={onPc} size={size} />}
     </Group>

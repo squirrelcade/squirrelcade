@@ -11,7 +11,7 @@ import { count } from '../format';
 import { GameTitle, useOpenGame } from '../GameDrawer';
 import { jumpMark, LetterBar, useListView, ViewSwitch } from '../GameViews';
 import { usePageTitle, useSetting, useSettings } from '../hooks';
-import { ConsoleMark } from '../ConsoleMark';
+import { ConsoleMark, CoverMarks } from '../ConsoleMark';
 
 /** A series counted by game (GET /api/v1/series?by=game). */
 interface SeriesByGame {
@@ -50,8 +50,17 @@ const GAME_ORDERS = {
 };
 
 /** Box art, or the name on a plain tile when there's none (or covers are off); grey for a game you don't have. */
-function Art({ coverId, name, dim = false }: { coverId: string | null; name: string; dim?: boolean }) {
+function Art({ coverId, name, dim = false, game = false }: { coverId: string | null; name: string; dim?: boolean; game?: boolean }) {
   const covers = useSetting('interface.showCoverArt', true);
+  // A game's cover has its banner (D197): yours or not, and its consoles.
+  if (game) {
+    return (
+      <Box pos="relative">
+        <Art coverId={coverId} name={name} dim={dim} />
+        {covers && coverId && <CoverMarks title={name} coverWidth={110} />}
+      </Box>
+    );
+  }
   return (
     <AspectRatio ratio={3 / 4}>
       {covers && coverId ? (
@@ -174,7 +183,7 @@ function SeriesGames({ name }: { name: string }) {
           return (
             <Stack key={g.key} gap={4} {...jumpMark(i)}>
               <Box aria-hidden="true" style={{ cursor: 'pointer' }} onClick={() => open(at.platformKey, g.title)}>
-                <Art coverId={g.coverId} name={g.title} dim={!g.had} />
+                <Art coverId={g.coverId} name={g.title} dim={!g.had} game />
               </Box>
               <Group gap={4} wrap="nowrap" align="flex-start">
                 {g.had && (

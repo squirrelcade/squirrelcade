@@ -125,7 +125,7 @@ export function StatusBadge({ status }: { status: string }) {
  * Box art from IGDB, when it's downloaded and "Show cover art" is on. In a list
  * where some games have covers, pass `placeholder` so the others keep the space.
  */
-export function Cover({ id, width = 30, placeholder = false, title }: { id?: string | null; width?: number; placeholder?: boolean; title?: string }) {
+export function Cover({ id, width = 30, placeholder = false, title, platformKey }: { id?: string | null; width?: number; placeholder?: boolean; title?: string; platformKey?: string | null }) {
   const show = useSetting('interface.showCoverArt', true);
   if (!show || (!id && !placeholder)) return null;
   const height = Math.round((width * 4) / 3);
@@ -136,7 +136,7 @@ export function Cover({ id, width = 30, placeholder = false, title }: { id?: str
   return (
     <Box pos="relative" style={{ flex: 'none', display: 'inline-block', lineHeight: 0 }}>
       {image}
-      <CoverMarks title={title} coverWidth={width} />
+      <CoverMarks title={title} coverWidth={width} platformKey={platformKey} />
     </Box>
   );
 }

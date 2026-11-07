@@ -1,6 +1,32 @@
 import { describe, expect, it } from 'vitest';
-import { consoleMark, coverMarks, CONSOLE_MARKS, markInk, markPixels } from './marks.js';
+import { bannerMarks, consoleMark, coverMarks, CONSOLE_MARKS, markInk, markPixels } from './marks.js';
 import { KNOWN_PLATFORMS } from './platforms.js';
+
+describe("a cover's banner (the owner's rules, 2026-11-06)", () => {
+  it('fills the places left with the newest other consoles it came out on, grey, and shows a game you lack on two greys', () => {
+    // Not yours anywhere: the two newest it came out on, one per company, both grey.
+    expect(bannerMarks([], ['nintendo-gamecube', 'playstation-2', 'xbox'])).toEqual([
+      { key: 'nintendo-gamecube', owned: false },
+      { key: 'xbox', owned: false },
+    ]);
+    // Yours on one: it in color, then the newest other console of another company, grey.
+    expect(bannerMarks(['nintendo-gamecube'], ['nintendo-gamecube', 'playstation-2', 'wii'])).toEqual([
+      { key: 'nintendo-gamecube', owned: true },
+      { key: 'playstation-2', owned: false },
+    ]);
+    // Yours on three: the two newest you have it on, in color, nothing grey.
+    expect(bannerMarks(['playstation-4', 'xbox-one', 'nintendo-switch', 'pc'], ['playstation-5'])).toEqual([
+      { key: 'nintendo-switch', owned: true },
+      { key: 'playstation-4', owned: true },
+    ]);
+    // Only one company to show: its next newest, grey.
+    expect(bannerMarks(['nintendo-switch'], ['nintendo-switch', 'nintendo-switch-2'])).toEqual([
+      { key: 'nintendo-switch', owned: true },
+      { key: 'nintendo-switch-2', owned: false },
+    ]);
+    expect(bannerMarks([], [])).toEqual([]);
+  });
+});
 
 describe('console marks (D175)', () => {
   it('has a mark of its own for every console Squirrelcade knows, and one for a console it has none for', () => {

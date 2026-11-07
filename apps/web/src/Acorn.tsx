@@ -26,24 +26,32 @@ export function Acorn({ size = 14 }: { size?: number }) {
 /**
  * The Stash's mark (D142): a pixel treasure chest for what you have, as the acorn is for what you want. It stands for
  * the Stash in the menu and on its page, and before whatever says you have a game ("Have it", "You own it", "Owned").
- * Decorative: the words beside it say what it means.
+ * Decorative: the words beside it say what it means. `owned={false}` draws it grey and empty (D197: "you don't have
+ * it"), as the console marks' faded ones are; `label` names it for a screen reader where no words stand beside it.
  */
-export function StashMark({ size = 14 }: { size?: number }) {
+export function StashMark({ size = 14, owned = true, label }: { size?: number; owned?: boolean; label?: string }) {
   return (
     <svg
       viewBox="0 0 7 6"
       width={Math.round((size * 7) / 6)}
       height={size}
       shapeRendering="crispEdges"
-      aria-hidden="true"
+      className={owned ? 'sc-chest sc-chest-on' : 'sc-chest sc-chest-off'}
+      {...(label ? { role: 'img', 'aria-label': label } : { 'aria-hidden': true })}
       focusable="false"
       style={{ display: 'inline-block', flex: 'none', verticalAlign: '-0.12em' }}
     >
-      <path d="M1 0h5v1H1zM0 1h1v5H0zM6 1h1v5H6zM1 2h2v1H1zM4 2h2v1H4zM1 5h5v1H1z" fill="#6b3a10" />
-      <path d="M1 1h5v1H1zM1 3h2v2H1zM4 3h2v2H4zM3 4h1v1H3z" fill="#c27a3f" />
-      <path d="M3 2h1v2H3z" fill="#e9b44c" />
+      {label && <title>{label}</title>}
+      <path d="M1 0h5v1H1zM0 1h1v5H0zM6 1h1v5H6zM1 2h2v1H1zM4 2h2v1H4zM1 5h5v1H1z" fill={owned ? '#6b3a10' : 'var(--sc-mark-off)'} />
+      {owned && <path d="M1 1h5v1H1zM1 3h2v2H1zM4 3h2v2H4zM3 4h1v1H3z" fill="#c27a3f" />}
+      <path d="M3 2h1v2H3z" fill={owned ? '#e9b44c' : 'var(--sc-mark-off)'} />
     </svg>
   );
+}
+
+/** The chest for whether you have it: filled with "You have it", grey with "You don't have it" (D197). */
+export function Chest({ owned, size = 14, label }: { owned: boolean; size?: number; label?: string }) {
+  return <StashMark size={size} owned={owned} label={label ?? (owned ? 'You have it' : "You don't have it")} />;
 }
 
 /**

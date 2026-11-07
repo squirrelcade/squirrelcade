@@ -39,7 +39,7 @@ import { PreferencePicker } from '../Preference';
 import { RommLinks, type RommLink } from '../Romm';
 import { PlayBadge, type Play } from '../Playing';
 import { sortRows, useSort } from '../sort';
-import { ConsoleMark } from '../ConsoleMark';
+import { ConsoleMark, CoverMarks } from '../ConsoleMark';
 
 /** A history text as the API sends it (see apps/server/src/history.ts). */
 export interface HistoryText {
@@ -558,6 +558,7 @@ function Top100Board({ d, platformKey, show, onlyRomm }: { d: Top100View; platfo
             >
               <span className="sc-square-rank">{r.rank}</span>
               {showArt && r.coverId && <img className="sc-square-art" src={igdbCoverUrl(r.coverId, 'cover_big')} alt="" loading="lazy" decoding="async" />}
+              {showArt && r.coverId && <CoverMarks title={r.catalogTitle ?? r.title} coverWidth={70} platformKey={platformKey} />}
               {r.romm && <span className="sc-romm-dot" aria-hidden="true" />}
             </button>
           );
