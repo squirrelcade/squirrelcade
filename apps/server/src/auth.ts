@@ -371,6 +371,9 @@ export function registerAuth(app: FastifyInstance, auth: AuthService, settings: 
   app.addHook('onRequest', async (request, reply) => {
     const path = request.url.split('?')[0] ?? '';
     if (!path.startsWith('/api/')) return;
+    // The health check answers before anything else: no session, key or database look-up, so only a server too busy
+    // to answer anything (see the task runner's watch) can make it fail.
+    if (request.method === 'GET' && path === '/api/v1/health') return;
     const token = request.cookies[SESSION_COOKIE];
     if (token) {
       const session = auth.findSession(token);

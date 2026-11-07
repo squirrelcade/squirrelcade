@@ -37,6 +37,24 @@ const STEAM = 1;
 const STEAM_PER_RUN = 300;
 const STEAM_MAX_AGE_MS = 30 * 86_400_000;
 /**
+ * When Steam won't give its review data (it answers with a web page or a redirect, or says too many requests), the
+ * reading stops for that run and pauses: a day after a web page (6 hours after "too many requests"), doubling with each
+ * failed try up to two weeks, cleared by the next good answer. Kept in app_state: {until, failures, reason}.
+ */
+const STEAM_PAUSE = 'pc.steamReviews.pause';
+const STEAM_PAUSE_MAX_MS = 14 * 86_400_000;
+/** This many failed answers in a row (Steam down, say) also end the run, with the shorter pause. */
+const STEAM_FAILS_IN_A_ROW = 5;
+
+/** Why Steam's answer can't be used: none when it's the review data. */
+export function steamAnswerProblem(res: Response): string | null {
+  if (res.status === 429) return 'too-many';
+  if (res.status >= 300 && res.status < 400) return 'web-page';
+  const type = res.headers.get('content-type') ?? '';
+  if (res.ok && !/json/i.test(type)) return 'web-page';
+  return res.ok ? null : 'failed';
+}
+/**
  * Sealed console games looked up on IGDB per search, at most: those never looked up first, then the oldest
  * answers. Each title's answer (its PC game, or none) is kept for a month, so later searches are quick.
  */
@@ -215,9 +233,9 @@ export class PcWishlistService {
       }
     });
     this.settingState('pc.wishlist.searchedAt', at);
-    const reviews = s['pc.steamReviews'] ? await this.readSteamReviews(progress) : 0;
+    const steam = s['pc.steamReviews'] ? await this.readSteamReviews(progress) : { read: 0, note: null };
     this.invalidate();
-    const message = `${found.size} PC games found (${genres.length} genres, ${series.length} series, ${sealed.length} sealed console games, ${due.length} of them looked up)${reviews ? `; ${reviews} Steam review summaries read` : ''}`;
+    const message = `${found.size} PC games found (${genres.length} genres, ${series.length} series, ${sealed.length} sealed console games, ${due.length} of them looked up)${steam.read ? `; ${steam.read} Steam review summaries read` : ''}${steam.note ? `; ${steam.note}` : ''}`;
     this.log.info({ context: 'pc' }, `PC wishlist search: ${message}`);
     return message;
   }
@@ -226,7 +244,11 @@ export class PcWishlistService {
    * Reads Steam's review summary for found games that have none or a month-old one, politely and at most
    * a few hundred at a time: the games ranked highest first, so the top of the list has Steam's reviews.
    */
-  private async readSteamReviews(progress?: (text: string) => void): Promise<number> {
+  private async readSteamReviews(progress?: (text: string) => void): Promise<{ read: number; note: string | null }> {
+    const pause = this.steamPause();
+    if (pause && Date.parse(pause.until) > Date.now()) {
+      return { read: 0, note: `Steam's reviews paused until ${pause.until.slice(0, 16).replace('T', ' ')} UTC (${pause.reason})` };
+    }
     const order = new Map(this.ranked().map((id, i) => [id, i]));
     const due = this.db
       .select({ id: pcCandidates.igdbId, appId: pcCandidates.steamAppId, steamAt: pcCandidates.steamAt })
@@ -236,13 +258,36 @@ export class PcWishlistService {
       .sort((a, b) => (order.get(a.id) ?? Infinity) - (order.get(b.id) ?? Infinity))
       .slice(0, STEAM_PER_RUN);
     let read = 0;
+    let failed = 0;
+    let inARow = 0;
+    let firstFailure: string | null = null;
+    let note: string | null = null;
     for (const [i, r] of due.entries()) {
       if (i % 25 === 0) progress?.(`Steam reviews ${i + 1} of ${due.length}`);
+      const url = `https://store.steampowered.com/appreviews/${r.appId}?json=1&language=all&purchase_type=all&num_per_page=0&filter=summary`;
+      let problem: string | null = null;
       try {
-        const res = await this.steamFetch(`https://store.steampowered.com/appreviews/${r.appId}?json=1&language=all&purchase_type=all&num_per_page=0&filter=summary`, {
+        // A redirect is Steam's answer, not a step to follow: followed, it lands on the store's front page (HTML).
+        const res = await this.steamFetch(url, {
           headers: { 'User-Agent': `Squirrelcade/${APP_VERSION} (+https://github.com/squirrelcade/squirrelcade; self-hosted)` },
+          redirect: 'manual',
         });
-        if (res.ok) {
+        const kind = steamAnswerProblem(res);
+        if (kind === 'web-page' || kind === 'too-many') {
+          // Steam won't give the data now: said once, with what it sent, and the reading pauses (no request per game).
+          const body = (await res.text().catch(() => '')).replace(/\s+/g, ' ').trim().slice(0, 200);
+          const reason = kind === 'too-many' ? 'Steam said too many requests' : 'Steam answered with a web page instead of the review data';
+          const until = this.pauseSteam(kind, reason);
+          this.log.warn(
+            { context: 'pc', url, status: res.status, contentType: res.headers.get('content-type'), location: res.headers.get('location'), body },
+            `${reason}; Steam's reviews are paused until ${until} (the PC wishlist works without them)`,
+          );
+          note = `Steam's reviews paused until ${until.slice(0, 16).replace('T', ' ')} UTC (${reason})`;
+          break;
+        }
+        if (kind === 'failed') {
+          problem = `status ${res.status}`;
+        } else {
           const body = (await res.json()) as { success?: number; query_summary?: { total_positive?: number; total_reviews?: number; review_score_desc?: string } };
           const q = body.query_summary;
           if (body.success === 1 && q && typeof q.total_reviews === 'number') {
@@ -250,13 +295,47 @@ export class PcWishlistService {
             this.db.update(pcCandidates).set({ steam: JSON.stringify(steam), steamAt: new Date().toISOString() }).where(eq(pcCandidates.igdbId, r.id)).run();
             read++;
           }
+          inARow = 0;
         }
       } catch (err) {
-        this.log.warn({ context: 'pc', err }, `Steam's reviews couldn't be read for app ${r.appId}`);
+        problem = err instanceof Error ? err.message : String(err);
+      }
+      if (problem) {
+        failed++;
+        inARow++;
+        firstFailure ??= `app ${r.appId}: ${problem}`;
+        if (inARow >= STEAM_FAILS_IN_A_ROW) {
+          const until = this.pauseSteam('too-many', `${inARow} answers in a row failed`);
+          note = `Steam's reviews paused until ${until.slice(0, 16).replace('T', ' ')} UTC (${inARow} answers in a row failed)`;
+          break;
+        }
       }
       if (this.steamIntervalMs > 0) await new Promise((done) => setTimeout(done, this.steamIntervalMs));
     }
-    return read;
+    if (read > 0) this.settingState(STEAM_PAUSE, '');
+    // One line for the run's failed answers, not one per game.
+    if (failed > 0) this.log.warn({ context: 'pc' }, `${failed} of ${due.length} Steam review summaries couldn't be read (the first: ${firstFailure})`);
+    return { read, note };
+  }
+
+  /** The pause on Steam's reviews, if one was set (an empty value is none). */
+  private steamPause(): { until: string; failures: number; reason: string } | null {
+    const text = this.settingState(STEAM_PAUSE, null);
+    if (!text) return null;
+    try {
+      return JSON.parse(text) as { until: string; failures: number; reason: string };
+    } catch {
+      return null;
+    }
+  }
+
+  /** Pauses Steam's reviews after a refusal: a day (6 hours for too many requests), doubling per failed try, two weeks at most. Returns until when. */
+  private pauseSteam(kind: 'web-page' | 'too-many', reason: string): string {
+    const failures = (this.steamPause()?.failures ?? 0) + 1;
+    const base = kind === 'too-many' ? 6 * 3_600_000 : 86_400_000;
+    const until = new Date(Date.now() + Math.min(base * 2 ** (failures - 1), STEAM_PAUSE_MAX_MS)).toISOString();
+    this.settingState(STEAM_PAUSE, JSON.stringify({ until, failures, reason }));
+    return until;
   }
 
   /** Each sealed title's PC game on IGDB as last looked up (see SEALED_MEMO). */

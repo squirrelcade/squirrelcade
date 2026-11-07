@@ -57,6 +57,24 @@ export type TaskRun = typeof taskRuns.$inferSelect;
 const INTERRUPTED_RERUN_MS = 2 * 60_000;
 
 /**
+ * How the runner keeps an eye on itself (2026-11-07: the server stopped answering for an hour and the log didn't say
+ * why). A long run says it's still going; and a stretch where the server couldn't answer anything (its one thread busy
+ * with work that never gave way) is logged with the tasks running at the time.
+ */
+export interface RunnerWatch {
+  /** How often a run that's still going says so in the log. */
+  heartbeatMs: number;
+  /** How often the server checks it can still answer. */
+  checkMs: number;
+  /** A stretch without an answer at least this long is logged. */
+  busyMs: number;
+  /** At most one such log line this often (the longest stretch, and how many there were). */
+  reportMs: number;
+}
+
+const WATCH: RunnerWatch = { heartbeatMs: 10 * 60_000, checkMs: 500, busyMs: 1_000, reportMs: 60_000 };
+
+/**
  * Runs background jobs one at a time, so jobs never compete for the database.
  * Every run is recorded in task_runs.
  */
@@ -79,14 +97,54 @@ export class TaskRunner {
   private readonly lanes = new Map<string, Promise<void>>();
   private readonly current = new Map<string, { startedAt: string; progress: string | null }>();
   private timer: NodeJS.Timeout | null = null;
+  private watchTimer: NodeJS.Timeout | null = null;
+  /** The stretches without an answer since the last log line about them. */
+  private busy = { times: 0, longestMs: 0, tasks: new Set<string>(), reportedAt: 0 };
   private idle: Promise<void> = Promise.resolve();
   private stopped = false;
   private stopping: Promise<void> | null = null;
+  private readonly watch: RunnerWatch;
 
   constructor(
     private readonly db: Db,
     private readonly log: Logger,
-  ) {}
+    watch: Partial<RunnerWatch> = {},
+  ) {
+    this.watch = { ...WATCH, ...watch };
+  }
+
+  /**
+   * Checks every `checkMs` that the server could answer in time: a check that comes late means the one thread was busy
+   * the whole while (no request, health check included, could be answered). Such stretches are logged at most once per
+   * `reportMs`, naming the tasks that were running, so the log says what held the server.
+   */
+  watchBusy(): void {
+    if (this.watchTimer) return;
+    let expected = Date.now() + this.watch.checkMs;
+    this.watchTimer = setInterval(() => {
+      const now = Date.now();
+      const late = now - expected;
+      expected = now + this.watch.checkMs;
+      if (late >= this.watch.busyMs) {
+        this.busy.times++;
+        this.busy.longestMs = Math.max(this.busy.longestMs, late);
+        for (const name of this.current.keys()) this.busy.tasks.add(name);
+      }
+      if (this.busy.times > 0 && now - this.busy.reportedAt >= this.watch.reportMs) this.reportBusy(now);
+    }, this.watch.checkMs);
+    this.watchTimer.unref();
+  }
+
+  private reportBusy(now: number): void {
+    const { times, longestMs, tasks } = this.busy;
+    const names = [...tasks];
+    const what = names.length > 0 ? `busy with ${names.map((n) => this.tasks.get(n)?.title ?? n).join(', ')} (${names.join(', ')})` : 'no background task running (a request or start-up)';
+    this.log.warn(
+      { context: 'tasks', busyMs: longestMs, times, tasks: names },
+      `The server couldn't answer anything for ${(longestMs / 1000).toFixed(1)} s${times > 1 ? ` (the longest of ${times} such stretches)` : ''}: ${what}`,
+    );
+    this.busy = { times: 0, longestMs: 0, tasks: new Set(), reportedAt: now };
+  }
 
   register(def: TaskDefinition): void {
     this.tasks.set(def.name, def);
@@ -127,6 +185,7 @@ export class TaskRunner {
     for (const name of new Set(interrupted.map((r) => r.task))) this.soon(name, INTERRUPTED_RERUN_MS);
     this.timer = setInterval(() => this.tick(), tickMs);
     this.timer.unref();
+    this.watchBusy();
   }
 
   /** Stops scheduling and waits for the running task, but not longer than `waitMs`. Later calls return the same wait. */
@@ -134,6 +193,8 @@ export class TaskRunner {
     if (this.stopping) return this.stopping;
     this.stopped = true;
     if (this.timer) clearInterval(this.timer);
+    if (this.watchTimer) clearInterval(this.watchTimer);
+    this.watchTimer = null;
     this.queue.length = 0;
     let timeout: NodeJS.Timeout | undefined;
     this.stopping = Promise.race([this.whenIdle(), new Promise<void>((resolve) => (timeout = setTimeout(resolve, waitMs)))]).then(() => clearTimeout(timeout));
@@ -244,6 +305,13 @@ export class TaskRunner {
     const t0 = Date.now();
     const current = { startedAt, progress: null as string | null };
     this.current.set(name, current);
+    // Its start and, while it lasts, a line every heartbeat: the log always says what's running.
+    log.info(`${def.title}: started (${trigger})`);
+    const heartbeat = setInterval(() => {
+      const minutes = Math.round((Date.now() - t0) / 60_000);
+      log.info(`${def.title}: still running after ${minutes} min${current.progress ? ` (${current.progress})` : ''}`);
+    }, this.watch.heartbeatMs);
+    heartbeat.unref();
     let failedInARow = 0;
     try {
       const result = (await def.run(log, (text) => (current.progress = text.slice(0, 200)))) ?? null;
@@ -270,6 +338,7 @@ export class TaskRunner {
       log.error({ err }, `${def.title} failed${inARow > 1 ? ` (${inARow} times in a row)` : ''}`);
       this.events.emit('failed', { name: def.name, title: def.title }, message, inARow);
     } finally {
+      clearInterval(heartbeat);
       this.current.delete(name);
       this.reschedule(name);
       // A failure tries again soon, while the retries say so; then the task waits for its next regular run.
