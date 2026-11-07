@@ -21,6 +21,7 @@ import { PreferencePicker } from './Preference';
 import { RegionBadge } from './Region';
 import { type RommLink } from './Romm';
 import { Acorn, Acorns, Reviews, StashMark } from './Acorn';
+import { HardwareToggle } from './Hardware';
 import { gameFlyLabel, useGameFly } from './GameFly';
 import { ConsoleMark } from './ConsoleMark';
 import { GameHeader, ReviewsRing, RommChip, ScoreRing, type GameStar, type HeaderReviews } from './GameHeader';
@@ -825,6 +826,7 @@ export function GameDrawer() {
                       <Anchor component="button" type="button" size="xs" onClick={() => setSelling({ id: x.id, title: x.title })}>
                         ready to sell
                       </Anchor>
+                      <HardwareToggle productId={x.productId} platformKey={g.platformKey} />
                     </Group>
                   )}
                   {/* A copy that isn't complete: its missing parts looked for on your used marketplaces (D160). */}

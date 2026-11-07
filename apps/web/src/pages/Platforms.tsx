@@ -1,5 +1,5 @@
 import { REGION_LABELS, type Region } from '@squirrelcade/core';
-import { Anchor, Badge, Group, Progress, SegmentedControl, Table, Text, Tooltip } from '@mantine/core';
+import { Anchor, Badge, Box, Group, Progress, SegmentedControl, Table, Text, Tooltip } from '@mantine/core';
 import { useMediaQuery } from '@mantine/hooks';
 import { useQuery } from '@tanstack/react-query';
 import { Link, useSearchParams } from 'react-router';
@@ -8,6 +8,7 @@ import { PageHeader, SortableTh, type SortDirection } from '../components';
 import { count, date, wholeMoney } from '../format';
 import { useFeature, useSetting } from '../hooks';
 import { StashMark } from '../Acorn';
+import { YourHardware } from '../Hardware';
 import { TimelinePanel } from './History';
 import { ConsoleMark } from '../ConsoleMark';
 
@@ -242,6 +243,10 @@ export function PlatformsPage() {
           </Table.Tbody>
         </Table>
       </Table.ScrollContainer>
+      {/* Consoles, controllers and accessories you have (T-217): apart from the games. */}
+      <Box mt="md">
+        <YourHardware />
+      </Box>
       {data && rows.length === 0 && (
         <Text c="dimmed" ta="center" mt="md">
           Consoles appear here once your first games are in: from an export (Stash updates), or added by hand (Add a game).

@@ -1,4 +1,4 @@
-import { Anchor, Badge, Button, Card, Group, Loader, Pagination, SimpleGrid, Stack, Table, Tabs, Text, TextInput, Tooltip } from '@mantine/core';
+import { Anchor, Box, Badge, Button, Card, Group, Loader, Pagination, SimpleGrid, Stack, Table, Tabs, Text, TextInput, Tooltip } from '@mantine/core';
 import { useDebouncedValue, useMediaQuery } from '@mantine/hooks';
 import { IconCheck, IconEyeOff, IconLink, IconPlus, IconSearch, IconX } from '@tabler/icons-react';
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
@@ -19,6 +19,7 @@ import { COVER_COLS, CoverTile, jumpMark, LetterBar, useListView, ViewSwitch } f
 import { MATCH_METHODS, REJECTABLE, type MatchMethod } from '../choices';
 import { PreferencePicker } from '../Preference';
 import { Acorns, Reviews, StashMark, type ReviewsOf } from '../Acorn';
+import { YourHardware } from '../Hardware';
 
 type Status = 'missing' | 'review' | 'owned' | 'excluded' | 'unconfirmed' | 'upcoming' | 'extra';
 
@@ -155,6 +156,10 @@ export function PlatformDetailPage() {
   return (
     <>
       <ConsoleHead d={d} tab={tab} tiles={!listTab} canEdit={canEdit} onAdd={() => setAdding('')} />
+      {/* The console itself and its controllers, when you have them (T-217). */}
+      <Box mb="sm">
+        <YourHardware platformKey={key} />
+      </Box>
       <AddGameModal platformKey={key} initialTitle={adding ?? ''} opened={adding !== null} onClose={() => setAdding(null)} />
       <LinkModal platformKey={key} product={linking} onClose={() => setLinking(null)} />
       {/* The catalog's own cards stay off the Top 100 and History tabs, so a phone reaches the list sooner. */}

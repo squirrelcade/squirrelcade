@@ -47,6 +47,7 @@ import { catalogTarget, registerGameRoutes } from './games.js';
 import { ItadClient, PcPriceService, registerPcPriceRoutes, type PcPrice } from './itad.js';
 import { GameFlyService, registerGameFlyRoutes } from './gamefly.js';
 import { MarksService, registerMarkRoutes } from './marks.js';
+import { HardwareService, registerHardwareRoutes } from './hardware.js';
 import { integrationLines, registerIntegrationRoutes, type Deps as IntegrationDeps } from './integrations.js';
 import { MagazineService, registerMagazineRoutes, type PageReader } from './magazines.js';
 import { PurchaseSheetService, registerPurchaseSheetRoutes } from './purchaseSheet.js';
@@ -534,6 +535,15 @@ export async function buildApp(options: BuildOptions = {}): Promise<Squirrelcade
   const gamefly = new GameFlyService(db, settings, () => wishlist.compute().master, log, options.gameflyFetch, options.gameflyFetch ? 0 : undefined);
   registerGameFlyRoutes(app, gamefly);
   // The consoles each game is yours on, for its marks on covers and beside titles (D175).
+  // Hardware from PriceCharting (T-217): out of the catalogs' matching and the game counts, shown as Your hardware.
+  const hardware = new HardwareService(db);
+  catalogs.isHardware = hardware.isHardware;
+  collection.isHardware = hardware.isHardware;
+  hardware.onChange = () => {
+    catalogs.invalidate();
+    titles.invalidate();
+  };
+  registerHardwareRoutes(app, hardware);
   const marks = new MarksService(db, collection, catalogs, pc, igdb);
   registerMarkRoutes(app, marks);
   // The consoles games came out on (covers' grey marks): built a minute after start, so the first page doesn't wait.

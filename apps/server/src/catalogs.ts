@@ -143,6 +143,9 @@ export class CatalogService {
    * Forgets computed results: of one platform after an answer or edit there, or
    * of all of them (catalog rebuilds, settings changes, imports).
    */
+  /** Whether an owned product is hardware (T-217): set once the hardware service is made. */
+  isHardware: (productId: string, title: string) => boolean = () => false;
+
   invalidate(platformId?: number): void {
     this.revision++;
     if (platformId === undefined) {
@@ -438,6 +441,8 @@ export class CatalogService {
     const owned = new Map<string, { productId: string; title: string; copies: number }>();
     for (const r of ownedRows) {
       if (!otherRegions && r.region !== ownRegion) continue;
+      // Hardware (a console, a controller) isn't one of its games (T-217): never matched, never "not in the catalog".
+      if (this.isHardware(r.productId, r.title)) continue;
       const o = owned.get(r.productId);
       if (o) o.copies += r.quantity;
       else owned.set(r.productId, { productId: r.productId, title: r.title, copies: r.quantity });

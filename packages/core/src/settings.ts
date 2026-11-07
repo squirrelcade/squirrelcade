@@ -1186,6 +1186,14 @@ export const settingDefinitions = {
       { value: 'loose', label: 'Loose' },
     ],
   }),
+  'collection.hardwareInTotals': bool({
+    page: 'collection',
+    section: 'Hardware',
+    label: "Hardware's worth in the collection's value",
+    description:
+      "Consoles, controllers and accessories in your PriceCharting export (\"Nintendo 64 Console\") are hardware, not games: they're never in a console's game count, its catalog or Review, and they show as Your hardware on Nutshell > Consoles and each console's page. On, what they're worth is in the collection's value (shown apart beside it); off, the value is the games' only.",
+    default: true,
+  }),
   'collection.addWizard': bool({
     page: 'collection',
     section: 'Adding copies',

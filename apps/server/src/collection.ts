@@ -1588,9 +1588,21 @@ export class CollectionService {
     return this.settings.get('collection.backlogIncludesUnmarked');
   }
 
+  /** Whether a copy is hardware (T-217): set once the hardware service is made. */
+  isHardware: (productId: string, title: string) => boolean = () => false;
+
   summary() {
     const current = this.currentImportId();
     const minUnique = this.settings.get('platforms.minUniqueGames');
+    const hardwareInTotals = this.settings.get('collection.hardwareInTotals');
+    const hardware = new Map<number, { products: Set<string>; valueCents: number }>();
+    for (const r of this.db.select({ platformId: copies.platformId, productId: copies.productId, title: copies.title, quantity: copies.quantity, valueCents: copies.valueCents }).from(copies).where(isNull(copies.goneAt)).all()) {
+      if (r.platformId === null || !this.isHardware(r.productId, r.title)) continue;
+      const h = hardware.get(r.platformId) ?? { products: new Set<string>(), valueCents: 0 };
+      h.products.add(r.productId);
+      h.valueCents += (r.valueCents ?? 0) * r.quantity;
+      hardware.set(r.platformId, h);
+    }
     const perPlatform = this.db
       .select({
         platformId: platforms.id,
@@ -1608,7 +1620,14 @@ export class CollectionService {
       .groupBy(platforms.id)
       .orderBy(desc(sql`count(distinct ${copies.productId})`))
       .all()
-      .map((p) => ({ ...p, eligible: p.games >= minUnique }));
+      .map((p) => {
+        // Hardware (T-217) isn't a game: out of the console's game count (and whether it's tracked); its worth is
+        // in the value unless Settings > Collection says otherwise.
+        const h = hardware.get(p.platformId);
+        const games = p.games - (h?.products.size ?? 0);
+        const hardwareCents = h?.valueCents ?? 0;
+        return { ...p, games, valueCents: hardwareInTotals ? p.valueCents : p.valueCents - hardwareCents, hardware: h?.products.size ?? 0, hardwareCents, eligible: games >= minUnique };
+      });
     const totals = perPlatform.reduce(
       (t, p) => ({ games: t.games + p.games, copies: t.copies + p.copies, valueCents: t.valueCents + p.valueCents, costCents: t.costCents + p.costCents, sealed: t.sealed + p.sealed }),
       { games: 0, copies: 0, valueCents: 0, costCents: 0, sealed: 0 },
@@ -1861,6 +1880,9 @@ export class CollectionService {
         games: s?.games ?? 0,
         copies: s?.copies ?? 0,
         valueCents: s?.valueCents ?? 0,
+        // Its hardware (T-217): how many pieces and what they're worth.
+        hardware: s?.hardware ?? 0,
+        hardwareCents: s?.hardwareCents ?? 0,
         // Its value at the previous update (0 when it had no copies then), and that update's date; null without one.
         valueBeforeCents: before ? (before.values.get(p.id) ?? 0) : null,
         valueSince: before?.date ?? null,
