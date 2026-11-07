@@ -2,9 +2,7 @@
 
 What changed in each version of Squirrelcade (called Gamefolio before 0.35.0). The decisions behind these (D01, D02...) are in [docs/DECISIONS.md](docs/DECISIONS.md), each with a tag to roll it back.
 
-## 1.3.0 (not yet released): the game page, games in their time, the magazines, and what you buy
-
-On edge as 1.3.0-rc.1, then rc.2 with the owner's hand-test changes (2026-11-06) below.
+## 1.3.0 (2026-11-07): the game page, games in their time, the magazines, and what you buy
 
 ### Added
 
@@ -75,6 +73,7 @@ On edge as 1.3.0-rc.1, then rc.2 with the owner's hand-test changes (2026-11-06)
 - **A locked magazines folder** (D196): a magazines folder Squirrelcade can't enter is said plainly (the scan fails, so System > Status shows it red) instead of failing the whole read or each issue in turn; the night's reading counts the issues it couldn't open apart from ones it couldn't read, marks its run failed or with a warning (it logged "1361 issues read" as a success), stops after ten in a row, and the issues go back in line once the folder opens. A run with something worth a look now shows "Needs a look" on System > Tasks.
 - **The magazines' game-finding held the whole server** (D196): on a big library its check for series' names compared every title with every other on every page; the server didn't answer for more than half an hour after the owner's answers changed. The candidates are now made ready once per issue, and the work gives way between pages.
 - **The reading hours with no time zone set** stopped the night's reading with an error.
+- **System > Status > Integrations:** a part without a task of its own (notifications, the barcode lookup, the address) showed yellow instead of its own light.
 - **What holds the server, in its log** (D208, from the owner's logs): each task's start, a "still running after N min" line every 10 minutes with its progress, and its finish; any stretch of a second or more the server couldn't answer is logged (once a minute at most) with the tasks running then. The health check answers before sign-in looks anything up.
 - **Steam's reviews** (D208): Steam now answers its reviews address with a redirect to its store page, which filled the log with 229 warnings a week; a web page or a busy answer now pauses that reading (a day, 6 hours when busy, doubling up to two weeks) with one warning, and a good answer clears it.
 

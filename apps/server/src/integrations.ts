@@ -169,6 +169,8 @@ export function integrationLines(d: Deps): IntegrationLine[] {
     const on = extra?.on ?? scheduled.length > 0;
     const base = { key: def.key, name: def.name, settings: def.settings, help: `integrations#${def.key}`, check: scheduled[0]?.name ?? null };
     if (!on) return { ...base, light: 'grey', says: extra?.says ?? 'Off, or not set up', lastOk: null, lastRun: null, check: null };
+    // A part without a task of its own (notifications, the barcode lookup, the address) is what its own check says.
+    if (scheduled.length === 0) return { ...base, light: extra?.light ?? 'green', says: extra?.says ?? 'On', lastOk: null, lastRun: null, check: null };
     // The newest run of its tasks (a quiet check's look counts), and the newest that worked.
     const runs = scheduled.flatMap((t) => [
       ...(t.lastRun ? [{ task: t, at: t.lastRun.startedAt, finished: t.lastRun.finishedAt, status: t.lastRun.status, message: t.lastRun.message }] : []),

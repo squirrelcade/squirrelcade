@@ -30,8 +30,11 @@ describe("the integrations' lights (T-202)", () => {
     const status = (await g.app.inject({ url: '/api/v1/system/status', cookies })).json();
     expect(status.health[0]).toEqual({ level: 'error', message: '1 integration needs you: see Integrations below.' });
 
-    // A plain-http address works, with a yellow note about Store Mode offline.
+    // A part without a task of its own is its own check: an https address green, a plain-http one yellow.
+    g.settings.update({ 'general.publicUrl': 'https://games.example.com' });
+    expect((await lines()).find((l) => l.key === 'https')).toMatchObject({ light: 'green', check: null });
     g.settings.update({ 'general.publicUrl': 'http://games.example.com' });
     expect((await lines()).find((l) => l.key === 'https')).toMatchObject({ light: 'yellow' });
+    expect((await lines()).find((l) => l.key === 'barcodes')).toMatchObject({ light: 'green' });
   });
 });
