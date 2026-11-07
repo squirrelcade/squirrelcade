@@ -1,4 +1,4 @@
-import { baseTitle, citationMonth, citedIssueNumber, matchKey, scoresOn, SPOT_VERSION, spotTitles, spotWord, type SpotCandidate, coverLeadFor, guessDates, magazineOf, printedPage, issueFromFileName, issueLabel, pageNames, parseComicInfo, parseHocr, skippedName, type IssueInfo, type IssueToDate, type PageWord } from '@squirrelcade/core';
+import { baseTitle, citationMonth, citedIssueNumber, matchKey, scoresOn, SPOT_VERSION, spotIndex, spotTitles, spotWord, type SpotCandidate, coverLeadFor, guessDates, magazineOf, printedPage, issueFromFileName, issueLabel, pageNames, parseComicInfo, parseHocr, skippedName, type IssueInfo, type IssueToDate, type PageWord } from '@squirrelcade/core';
 import Database from 'better-sqlite3';
 import { spawn } from 'node:child_process';
 import { accessSync, constants, existsSync, type Dirent } from 'node:fs';
@@ -810,18 +810,39 @@ export class MagazineService {
     );
     let linked = 0;
     let asked = 0;
+    // The server keeps answering while it looks (It stays snappy): it gives way between pages, at most ~50 ms at a time.
+    let since = Date.now();
+    const breathe = async () => {
+      if (Date.now() - since < 50) return;
+      await new Promise((resolve) => setImmediate(resolve));
+      since = Date.now();
+    };
+    // Issues of the same magazine and month share their candidates, made ready once.
+    const indexes = new Map<string, ReturnType<typeof spotIndex>>();
     for (const [k, i] of issues.entries()) {
       progress(`${this.view(i).label} (${k + 1} of ${issues.length})`);
       const year = i.owner_year ?? i.year!;
       const month = (i.owner_year !== null ? i.owner_month : i.month) ?? 6;
-      const candidates = candidatesFor({ magazine: i.magazine, year, month });
       const coverDay = `${year}-${String(month).padStart(2, '0')}-01`;
+      const windowKey = `${i.magazine}|${coverDay}`;
+      let index = indexes.get(windowKey);
+      if (!index) {
+        if (indexes.size > 24) indexes.clear();
+        index = spotIndex(candidatesFor({ magazine: i.magazine, year, month }), coverDay);
+        indexes.set(windowKey, index);
+        await breathe();
+      }
       const pages = db.prepare('SELECT n, text, words FROM pages WHERE issue_id = ?').all(i.id) as { n: number; text: string; words: string }[];
+      const spotted = new Map<number, ReturnType<typeof spotTitles>>();
+      for (const p of pages) {
+        spotted.set(p.n, spotTitles(JSON.parse(p.words) as PageWord[], index, coverDay));
+        await breathe();
+      }
       const now = new Date().toISOString();
       db.transaction(() => {
         db.prepare("DELETE FROM mentions WHERE issue_id = ? AND source = 'ocr'").run(i.id);
         for (const p of pages) {
-          const found = spotTitles(JSON.parse(p.words) as PageWord[], candidates, coverDay);
+          const found = spotted.get(p.n) ?? [];
           const kept: { s: (typeof found)[number]; state: 'linked' | 'suggested' }[] = [];
           for (const f of found) {
             const printedKey = spotWord(f.printed.replace(/\s+/g, ''));

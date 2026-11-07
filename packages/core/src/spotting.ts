@@ -62,12 +62,16 @@ function variants(title: string): { words: string[]; penalty: number }[] {
  * one word counts only in big type (a heading), as "Rampage" or "Heat" are words too; a heading and a title named more
  * than once count more; the same title on several consoles is the console whose release is nearest the cover's day.
  */
-export function spotTitles(words: readonly PageWord[], candidates: readonly SpotCandidate[], coverDay: string): Spotted[] {
-  const page = words.map((w) => spotWord(w.text));
-  if (page.length === 0) return [];
-  const heights = words.map((w) => w.box[3] - w.box[1]).sort((a, b) => a - b);
-  const median = heights[Math.floor(heights.length / 2)] || 1;
-  // The candidates by their first word, each title once (its console chosen by the nearest release).
+export interface SpotIndex {
+  first: Map<string, { c: SpotCandidate; words: string[]; penalty: number }[]>;
+  startsOthers: Set<string>;
+}
+
+/**
+ * The candidates made ready for an issue's pages, once (not per page): by their first word, each title once (its
+ * console chosen by the nearest release), and the titles that begin others' (series' names).
+ */
+export function spotIndex(candidates: readonly SpotCandidate[], coverDay: string): SpotIndex {
   const near = (c: SpotCandidate) => (c.day ? Math.abs(Date.parse(c.day) - Date.parse(coverDay)) : Number.MAX_SAFE_INTEGER);
   const byTitle = new Map<string, SpotCandidate>();
   for (const c of candidates) {
@@ -84,9 +88,19 @@ export function spotTitles(words: readonly PageWord[], candidates: readonly Spot
       first.set(v.words[0]!, list);
     }
   }
-  // A title that begins other candidates' titles is a series' name as often as a game ("Final Fantasy").
-  const titleWords = [...byTitle.keys()];
-  const startsOthers = new Set(titleWords.filter((t) => titleWords.some((o) => o !== t && o.startsWith(`${t} `))));
+  // A title that begins other candidates' titles is a series' name as often as a game ("Final Fantasy"). Sorted, a
+  // title's longer titles come right after it (no word has a character before the space), so one look each.
+  const titleWords = [...byTitle.keys()].sort();
+  const startsOthers = new Set(titleWords.filter((t, i) => titleWords[i + 1]?.startsWith(`${t} `)));
+  return { first, startsOthers };
+}
+
+export function spotTitles(words: readonly PageWord[], candidates: readonly SpotCandidate[] | SpotIndex, coverDay: string): Spotted[] {
+  const page = words.map((w) => spotWord(w.text));
+  if (page.length === 0) return [];
+  const heights = words.map((w) => w.box[3] - w.box[1]).sort((a, b) => a - b);
+  const median = heights[Math.floor(heights.length / 2)] || 1;
+  const { first, startsOthers } = Array.isArray(candidates) ? spotIndex(candidates, coverDay) : (candidates as SpotIndex);
   const found = new Map<string, Spotted & { times: number }>();
   let i = 0;
   while (i < page.length) {

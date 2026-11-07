@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { PageWord } from './magazines.js';
-import { scoresOn, spotTitles } from './spotting.js';
+import { scoresOn, spotIndex, spotTitles } from './spotting.js';
 
 /** Words in a row, each 10 pixels tall unless given ("Super:30" is 30 tall). */
 function line(text: string, y = 100): PageWord[] {
@@ -36,6 +36,21 @@ describe('the games on a magazine page (D192)', () => {
     expect(found[0]!.confidence).toBeCloseTo(0.78);
     expect(found[1]!.confidence).toBeCloseTo(0.63);
     expect(found[0]!.box).toEqual([84, 100, 186, 110]);
+  });
+  it("makes a big magazine's 20,000 candidates ready once, and a page then takes milliseconds (It stays snappy)", () => {
+    const many = Array.from({ length: 20_000 }, (_, i) => ({ platformKey: 'playstation-2', title: `Game ${Math.floor(i / 4)}${i % 4 ? ` Part ${i % 4}` : ''}`, day: '2004-01-01' }));
+    const t0 = performance.now();
+    const index = spotIndex([...many, ...candidates], '1994-06-01');
+    const page = Array.from({ length: 60 }, (_, k) => line('Super Metroid blasts onto the scene with Game 12 Part 2 and more', 100 + k * 20)).flat();
+    const t1 = performance.now();
+    for (let p = 0; p < 20; p++) spotTitles(page, index, '1994-06-01');
+    const t2 = performance.now();
+    expect(t1 - t0).toBeLessThan(1500);
+    expect((t2 - t1) / 20).toBeLessThan(25);
+    // "Game 12" begins "Game 12 Part 1": a series' name, found surer as the longer title.
+    expect(spotTitles(page, index, '1994-06-01').find((f) => f.title === 'Game 12 Part 2')).toBeTruthy();
+    expect(index.startsOthers.has('game 12')).toBe(true);
+    expect(index.startsOthers.has('game 12 part 2')).toBe(false);
   });
   it('counts a heading, and a title named again', () => {
     const words = [...line('Super:30 Metroid:30'), ...line('In Super Metroid you play Samus', 140), ...line('RAMPAGE:30', 200)];
