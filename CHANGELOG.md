@@ -2,6 +2,12 @@
 
 What changed in each version of Squirrelcade (called Gamefolio before 0.35.0). The decisions behind these (D01, D02...) are in [docs/DECISIONS.md](docs/DECISIONS.md), each with a tag to roll it back.
 
+## 1.3.2 (2026-11-07): a YouTube search without a key
+
+### Added
+
+- **Search YouTube for it** (D213, a tester: "I shouldn't need an api key and all that set up just to get a link to a youtube video"): every game's Videos tab ends with a plain YouTube search for the game and its console, opened in your browser, with no YouTube key or setup. The trailers IGDB knows play as before without one; the video channels and Find its videos still use a key.
+
 ## 1.3.1 (2026-11-07): the integrations' lights tell the truth, and the PC mark for editions
 
 ### Fixed

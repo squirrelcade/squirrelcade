@@ -59,6 +59,7 @@ Where they come from:
 - **Pasted by you:** under either list, paste a YouTube video's address, choose **Of its time**, **Since** or **By its date**, and **Add**. The × beside a video takes it off the game.
 - **IGDB's trailers** for the game (with IGDB set up).
 - **The videos its Wikipedia article cites**, playable when they're YouTube's.
+- **Search YouTube for it**, at the bottom of every game's Videos tab: a plain YouTube search for the game and its console, opened in your browser. No key or setup, and nothing goes through your server.
 - **Video channels** (Settings › Roots): IGN, GameSpot and Gaming Historian to start, others listed off (Game Informer, Nintendo Life, Push Square, Pure Xbox, Digital Foundry, Classic Game Room, Game Sack, Metal Jesus Rocks, LGR, My Life in Gaming, DidYouKnowGaming, GameTrailers). Each line is a name, the channel's @handle or address, and on or off; add "| archive" for a channel of old commercials or TV shows, whose videos count as their games' own time. **Read video channels** (System › Tasks) reads them at night and keeps each video whose title says what it is (a review, a trailer, a preview, a history, gameplay) and names one of your consoles' games. **It needs a YouTube key**: YouTube's public channel feeds, which need none, weren't answering in October 2026 (Squirrelcade tries them anyway).
 
 ### A YouTube key

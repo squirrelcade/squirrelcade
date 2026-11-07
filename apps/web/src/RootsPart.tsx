@@ -1,4 +1,5 @@
 import { Anchor, AspectRatio, Box, Button, Center, Group, Image, Loader, Modal, SimpleGrid, Spoiler, Stack, Tabs, Text, TextInput, Tooltip, UnstyledButton } from '@mantine/core';
+import { consoleName } from './ConsoleMark';
 import { useMediaQuery } from '@mantine/hooks';
 import { igdbCoverUrl, matchKey, youtubeVideoId } from '@squirrelcade/core';
 import { IconExternalLink, IconPlayerPlayFilled, IconX } from '@tabler/icons-react';
@@ -575,7 +576,7 @@ export function RootsPart({
   const videoCount = timeVideos.length + laterVideos.length + citedLinks.length;
   const magazineCount = (mentions.data?.mentions.filter((m) => m.state === 'linked').length ?? 0) + (ready?.time.magazines.length ?? 0);
   // Why a tab is empty, said on it (faded): no YouTube key, no magazines with it.
-  const videosWhy = !videosOn ? 'Videos are off: Settings › Roots › Videos turns them on.' : videoCount === 0 ? (videosQuery.data?.keyed ? 'No video of it yet: the video channels are read at night.' : 'No video of it yet. With a YouTube key (Settings › Sources), the video channels are matched to your games.') : null;
+  const videosWhy = !videosOn ? 'Videos are off: Settings › Roots › Videos turns them on.' : videoCount === 0 ? (videosQuery.data?.keyed ? 'No video of it yet: the video channels are read at night.' : 'No video of it yet: Search YouTube for it below. With a YouTube key (Settings › Sources), the video channels are matched to your games too.') : null;
   const magazinesWhy = magazineCount > 0 ? null : leavesOn ? 'None of your magazines mentions it yet (their text is read at night).' : 'Leaves, your magazine scans, is off (Settings › Features).';
   const released = [...new Map((ready?.releases ?? []).filter((r) => r.platform).map((r) => [r.platform!, r.date])).entries()];
   return (
@@ -743,6 +744,15 @@ export function RootsPart({
             )}
             {canEdit && videosOn && videosQuery.data?.keyed && <FindVideos platformKey={platformKey} title={title} />}
             {canEdit && videosOn && <AddVideo platformKey={platformKey} title={title} />}
+            {/* A plain YouTube search, with no key or setup (a tester, 2026-11-07: "I shouldn't need an api key... just to get a link to a youtube video"). */}
+            <Text size="sm">
+              <Anchor href={`https://www.youtube.com/results?search_query=${encodeURIComponent(`${title} ${consoleName(platformKey)}`)}`} target="_blank" rel="noopener noreferrer">
+                Search YouTube for it
+              </Anchor>{' '}
+              <Text span size="xs" c="dimmed">
+                (opens YouTube; no key needed)
+              </Text>
+            </Text>
           </Stack>
         </Tabs.Panel>
 
