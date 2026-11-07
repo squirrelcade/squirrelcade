@@ -1615,6 +1615,14 @@ export const settingDefinitions = {
       'Editions count as the game both ways: an owned "Title: Collector\'s Edition", "Title: Gold Edition" or "Title [Greatest Hits]" counts as owning "Title" and every other edition of it in the catalog, and owning "Title" covers a catalog\'s "Title: Gold Edition". Off means only the exact game counts: a collector\'s edition is then a game of its own.',
     default: true,
   }),
+  'catalogs.setsPhysical': bool({
+    page: 'catalogs',
+    section: 'Ownership',
+    label: 'Sets count only games you can have',
+    description:
+      "A publisher's list often has games it only ever sold as downloads (Devolver Digital's especially). On, a set's games that their console's catalog calls downloads (not confirmed physical) stay in its list but are left out of its count and percentage, as the Top 100's digital-only games are. Off, every game of the list counts.",
+    default: true,
+  }),
   'catalogs.crossGen': bool({
     page: 'catalogs',
     section: 'Ownership',

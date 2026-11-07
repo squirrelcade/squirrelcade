@@ -72,7 +72,23 @@ describe('wikiSetGames', () => {
         { title: 'Some Switch 2 Game', platforms: ['nintendo-switch-2'], numbers: { 'nintendo-switch-2': 1 } },
       ],
       skipped: 0,
+      unplaced: [],
     });
+  });
+
+  it('takes a console from any heading above that names one, or the one the owner says, and returns the games it could not place (D201)', () => {
+    const hits = `
+<h2 id="Games">Games</h2>
+<h3 id="x360">Xbox 360 Platinum Hits</h3>
+<table class="wikitable"><tbody><tr><th>Title</th><th>Publisher</th></tr><tr><td><i>Halo 3</i></td><td>Microsoft</td></tr></tbody></table>
+<h2 id="Other">Other</h2>
+<table class="wikitable"><tbody><tr><th>Title</th><th>Year</th></tr><tr><td><i>Bloodborne</i></td><td>2015</td></tr></tbody></table>`;
+    expect(wikiSetGames(hits)).toEqual({ games: [{ title: 'Halo 3', platforms: ['xbox-360'] }], skipped: 1, unplaced: [{ title: 'Bloodborne', altTitles: [] }] });
+    // The owner says which console a list is for: the rows naming none take it.
+    expect(wikiSetGames(hits, ['playstation-4']).games).toEqual([
+      { title: 'Halo 3', platforms: ['xbox-360'] },
+      { title: 'Bloodborne', platforms: ['playstation-4'] },
+    ]);
   });
 });
 

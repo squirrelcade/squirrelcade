@@ -89,12 +89,19 @@ function addGame(games: Map<string, SetGame>, game: SetGame): void {
  * without a console Squirrelcade knows are counted in `skipped` (PC releases, for example: the PC library keeps those).
  * A release number column ("Release No.", Limited Run's "Limited run #") gives each game its number on its consoles.
  */
-export function wikiSetGames(html: string): { games: SetGame[]; skipped: number } {
+export function wikiSetGames(html: string, fallback: readonly string[] = []): { games: SetGame[]; skipped: number; unplaced: { title: string; altTitles: string[] }[] } {
   const games = new Map<string, SetGame>();
+  const unplaced: { title: string; altTitles: string[] }[] = [];
   let skipped = 0;
   for (const { section, rows } of wikiTables(html)) {
-    // The console of the heading the table is under ("Releases > Nintendo Switch"), for rows that name none.
-    const headingPlatform = setPlatform(section.split(' > ').at(-1) ?? '');
+    // The console of the nearest heading the table is under that names one ("Releases > Nintendo Switch", Platinum
+    // Hits' "Xbox 360"), for rows that name none (D201).
+    const headingPlatform =
+      section
+        .split(' > ')
+        .reverse()
+        .map((h) => setPlatform(h) ?? platformsIn(h)[0] ?? null)
+        .find(Boolean) ?? null;
     let headerRows = 0;
     while (headerRows < rows.length && rows[headerRows]!.every((c) => c.header)) headerRows++;
     if (headerRows === 0 || headerRows === rows.length) continue;
@@ -123,16 +130,18 @@ export function wikiSetGames(html: string): { games: SetGame[]; skipped: number 
                 row.flatMap((c, i) => (i === titleCol ? [] : [...c.text.matchAll(/\(([^)]{1,40})\)/g)].flatMap((m) => platformsIn(m[1]!)))),
               ),
             ];
-      const platforms = named.length === 0 && headingPlatform ? [headingPlatform] : named;
+      const platforms = named.length === 0 ? (headingPlatform ? [headingPlatform] : [...fallback]) : named;
       if (platforms.length === 0) {
+        // No console anywhere ("List of video games listed among the best"): the caller may place it by IGDB's consoles.
         skipped++;
+        unplaced.push({ title, altTitles: alt });
         continue;
       }
       const numbers = numberCol >= 0 ? numbersIn(row[numberCol]?.text ?? '', platforms) : undefined;
       addGame(games, { title, platforms, ...(alt.length > 0 ? { altTitles: alt } : {}), ...(numbers ? { numbers } : {}) });
     }
   }
-  return { games: [...games.values()], skipped };
+  return { games: [...games.values()], skipped, unplaced };
 }
 
 /**

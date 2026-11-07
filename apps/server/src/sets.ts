@@ -1,4 +1,5 @@
 import {
+  baseTitle,
   KNOWN_PLATFORMS,
   matchKey,
   normalizeTitle,
@@ -67,6 +68,8 @@ export interface SetSummary {
   message: string | null;
   games: number;
   owned: number;
+  /** Games of the list its consoles' catalogs call downloads, left out of games and the percentage (D201). */
+  digital: number;
   review: number;
   percent: number;
   /** Games the owner added by hand, and games of the list they took out. */
@@ -101,6 +104,9 @@ function chosenConsoles(row: typeof gameSets.$inferSelect): string[] | null {
 /** Why a set couldn't be made or read. */
 export class SetError extends Error {}
 
+/** What a list that names no console says (D201): the page then asks which console it's for. */
+const NEEDS_CONSOLE = "This list doesn't say each game's console, and Squirrelcade couldn't place them by IGDB's: say which console it's for.";
+
 /** A set's missing game outside its console's catalog, for Store Mode (which otherwise only knows catalogs and the collection). */
 export interface SetGameForStore {
   platformKey: string;
@@ -133,6 +139,12 @@ export class SetsService {
     private readonly titles: TitleIndex,
     private readonly wikipedia: WikipediaClient,
     private readonly log: Logger,
+    private readonly options: {
+      /** Settings > Catalogs > Sets count only games you can have: a game its console's catalog calls a download is left out of the count (D201). */
+      physicalOnly?: () => boolean;
+      /** The consoles games came out on (IGDB's lists and the catalogs), by title key: places a list's games that name no console. */
+      releasedOn?: (keys: string[]) => Promise<Record<string, string[]>>;
+    } = {},
   ) {}
 
   /** Forgets what Store Mode and the wishlist were told (after a set or the collection changes). */
@@ -283,7 +295,10 @@ export class SetsService {
     return out;
   }
 
-  private summary(row: typeof gameSets.$inferSelect, games: SetGameResult[]): SetSummary {
+  private summary(row: typeof gameSets.$inferSelect, all: SetGameResult[]): SetSummary {
+    // A game its console's catalog calls a download (not confirmed physical) isn't one you can have on a shelf (D201).
+    const physicalOnly = this.options.physicalOnly?.() ?? true;
+    const games = physicalOnly ? all.filter((g) => g.status === 'owned' || g.catalogStatus !== 'unconfirmed') : all;
     const owned = games.filter((g) => g.status === 'owned').length;
     const edits = this.db.select({ action: setEdits.action }).from(setEdits).where(eq(setEdits.setId, row.id)).all();
     const byPlatform = new Map<string, SetSummary['platforms'][number]>();
@@ -312,6 +327,7 @@ export class SetsService {
       message: row.message,
       games: games.length,
       owned,
+      digital: all.length - games.length,
       review: games.filter((g) => g.status === 'review').length,
       percent: games.length === 0 ? 0 : Math.round((owned / games.length) * 1000) / 10,
       addedByHand: edits.filter((e) => e.action === 'add').length,
@@ -342,14 +358,14 @@ export class SetsService {
   }
 
   /** Makes a set; one from a Wikipedia list is read right away, one from a CSV waits for its file (setList). */
-  async create(input: { name: string; page?: string | null; collectedOnly?: boolean }): Promise<{ set: SetSummary; message: string }> {
+  async create(input: { name: string; page?: string | null; collectedOnly?: boolean; consoles?: string[] }): Promise<{ set: SetSummary; message: string }> {
     const name = input.name.trim();
     if (!name) throw new SetError('Give the set a name.');
     if (name.length > 100 || (input.page ?? '').length > 300) throw new SetError('The name (100 characters at most) or the Wikipedia page (300) is too long.');
     let key = setKey(name);
     for (let i = 2; this.db.select({ id: gameSets.id }).from(gameSets).where(eq(gameSets.key, key)).get(); i++) key = `${setKey(name)}-${i}`;
     const page = input.page?.trim() ? wikiPageTitle(input.page) : null;
-    const read = page ? await this.readWikipedia(page) : null;
+    const read = page ? await this.readWikipedia(page, input.consoles ?? []) : null;
     const row = this.db
       .insert(gameSets)
       .values({ key, name, source: page ? 'wikipedia' : 'csv', page, collectedOnly: input.collectedOnly ?? true, createdAt: new Date().toISOString() })
@@ -361,12 +377,32 @@ export class SetsService {
     return { set: this.detail(key)!.set, message };
   }
 
-  private async readWikipedia(page: string): Promise<{ games: SetGame[]; message: string }> {
+  private async readWikipedia(page: string, consoles: string[] = []): Promise<{ games: SetGame[]; message: string }> {
     const found = await this.wikipedia.pageHtml(page);
     if (!found) throw new SetError(`Wikipedia has no page named "${page}".`);
-    const { games, skipped } = wikiSetGames(found.html);
+    const read = wikiSetGames(found.html, consoles);
+    const games = [...read.games];
+    let skipped = read.skipped;
+    let placed = 0;
+    // D201: a list that names no console for its games ("List of video games listed among the best") is placed by the
+    // consoles IGDB and the catalogs say each game came out on; the rest stay out.
+    if (read.unplaced.length > 0 && this.options.releasedOn) {
+      const keyOf = (t: string) => matchKey(baseTitle(t));
+      const on = await this.options.releasedOn([...new Set(read.unplaced.flatMap((u) => [u.title, ...u.altTitles].map(keyOf)).filter(Boolean))]);
+      for (const u of read.unplaced) {
+        const platforms = [...new Set([u.title, ...u.altTitles].flatMap((t) => on[keyOf(t)] ?? []))].filter((k) => k !== 'pc');
+        if (platforms.length === 0) continue;
+        games.push({ title: u.title, platforms, ...(u.altTitles.length > 0 ? { altTitles: u.altTitles } : {}) });
+        placed++;
+        skipped--;
+      }
+    }
+    if (games.length === 0 && read.unplaced.length > 0) throw new SetError(NEEDS_CONSOLE);
     if (games.length === 0) throw new SetError(`"${found.title}" has no table of games with their consoles that Squirrelcade can read.`);
-    return { games, message: `${games.length} games from Wikipedia's "${found.title}"${skipped > 0 ? `; ${skipped} without a console Squirrelcade knows (PC games, or no console in the list) left out` : ''}.` };
+    return {
+      games,
+      message: `${games.length} games from Wikipedia's "${found.title}"${placed > 0 ? ` (${placed} placed on the consoles IGDB says they came out on)` : ''}${skipped > 0 ? `; ${skipped} without a console Squirrelcade knows (PC games, or no console in the list) left out` : ''}.`,
+    };
   }
 
   /** Replaces a set's games (a game on several consoles becomes one row per console). */
@@ -484,7 +520,7 @@ export class SetsService {
 /** Sets: list, make (from a Wikipedia list, or then a CSV), read, change, read again, remove, download. */
 export function registerSetRoutes(app: FastifyInstance, sets: SetsService, coverOf: (platformKey: string, title: string) => string | null = () => null): void {
   const failed = (reply: { code: (n: number) => { send: (b: unknown) => unknown } }, err: unknown) => {
-    if (err instanceof SetError) return reply.code(400).send({ error: 'invalid-set', message: err.message });
+    if (err instanceof SetError) return reply.code(400).send({ error: err.message === NEEDS_CONSOLE ? 'needs-console' : 'invalid-set', message: err.message });
     throw err;
   };
 
@@ -492,9 +528,10 @@ export function registerSetRoutes(app: FastifyInstance, sets: SetsService, cover
 
   /** { name, page?: a Wikipedia list's title or address, collectedOnly?: true }. Without a page, upload the list next (PUT .../list). */
   app.post('/api/v1/sets', async (request, reply) => {
-    const body = (request.body ?? {}) as { name?: unknown; page?: unknown; collectedOnly?: unknown };
+    const body = (request.body ?? {}) as { name?: unknown; page?: unknown; collectedOnly?: unknown; consoles?: unknown };
     try {
-      const made = await sets.create({ name: String(body.name ?? ''), page: typeof body.page === 'string' ? body.page : null, collectedOnly: body.collectedOnly !== false });
+      const consoles = Array.isArray(body.consoles) ? body.consoles.filter((k): k is string => typeof k === 'string').slice(0, 20) : [];
+      const made = await sets.create({ name: String(body.name ?? ''), page: typeof body.page === 'string' ? body.page : null, collectedOnly: body.collectedOnly !== false, consoles });
       return reply.code(201).send(made);
     } catch (err) {
       return failed(reply, err);

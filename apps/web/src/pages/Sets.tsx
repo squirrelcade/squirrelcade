@@ -3,10 +3,10 @@ import { ActionIcon, Anchor, Badge, Button, Card, Checkbox, FileButton, FileInpu
 import { useDisclosure } from '@mantine/hooks';
 import { IconDeviceGamepad2, IconDots, IconDownload, IconPlus, IconRefresh, IconSearch, IconUpload, IconX } from '@tabler/icons-react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router';
 import { StashMark } from '../Acorn';
-import { api } from '../api';
+import { api, ApiError } from '../api';
 import { PageHeader, type SortDirection } from '../components';
 import { count, dateTime, money } from '../format';
 import { notifyError, notifySuccess, useCanEdit, usePageTitle, useSetting, useSettings } from '../hooks';
@@ -27,6 +27,8 @@ interface SetSummary {
   message: string | null;
   games: number;
   owned: number;
+  /** Games its consoles' catalogs call downloads, left out of the count (D201). */
+  digital: number;
   review: number;
   percent: number;
   /** Games you added by hand, and games of the list you took out. */
@@ -81,7 +83,10 @@ const CATALOG_STATUS: Record<string, string> = {
 };
 
 /** The sets table's columns and which way each sorts first (D144): names A to Z, completion and consoles most first. */
-const SET_SORTS = { name: 'asc', complete: 'desc', consoles: 'desc' } as const satisfies Record<string, SortDirection>;
+const SET_SORTS = { owned: 'desc', name: 'asc', complete: 'desc', consoles: 'desc' } as const satisfies Record<string, SortDirection>;
+
+/** Where the sets table's last order is kept on this device (D201: most owned first until you choose another). */
+const SETS_ORDER = 'squirrelcade-sets-order';
 
 /**
  * A set's games table's columns and which way each sorts first (D144): words and release numbers in order, what you
@@ -136,9 +141,13 @@ function NewSet({ opened, onClose, have }: { opened: boolean; onClose: () => voi
   const [page, setPage] = useState('');
   const [file, setFile] = useState<File | null>(null);
   const [collectedOnly, setCollectedOnly] = useState(true);
+  // D201: a list that names no console for its games asks which console it's for.
+  const [askConsole, setAskConsole] = useState(false);
+  const [console_, setConsole] = useState<string | null>(null);
+  const known = useQuery({ queryKey: ['platforms'], queryFn: () => api<{ key: string; name: string }[]>('/platforms'), enabled: askConsole });
   const create = useMutation({
     mutationFn: async () => {
-      const made = await api<{ set: SetSummary; message: string }>('/sets', { method: 'POST', json: { name, page: from === 'wikipedia' ? page : null, collectedOnly } });
+      const made = await api<{ set: SetSummary; message: string }>('/sets', { method: 'POST', json: { name, page: from === 'wikipedia' ? page : null, collectedOnly, consoles: askConsole && console_ ? [console_] : [] } });
       if (from === 'csv' && file) {
         const form = new FormData();
         form.append('file', file);
@@ -153,9 +162,12 @@ function NewSet({ opened, onClose, have }: { opened: boolean; onClose: () => voi
       onClose();
       navigate(`/sets/${r.key}`);
     },
-    onError: (err) => notifyError(err),
+    onError: (err) => {
+      if (err instanceof ApiError && err.code === 'needs-console') setAskConsole(true);
+      else notifyError(err);
+    },
   });
-  const ready = name.trim() && (from === 'wikipedia' ? page.trim() : file);
+  const ready = name.trim() && (from === 'wikipedia' ? page.trim() : file) && (!askConsole || console_);
   // The ready-made sets you don't have yet: a click fills in the name and the Wikipedia page.
   const readyMade = READY_SETS.filter((r) => !have.includes(setKey(r.name)));
 
@@ -187,6 +199,16 @@ function NewSet({ opened, onClose, have }: { opened: boolean; onClose: () => voi
           </Stack>
         )}
         <TextInput label="Name" placeholder="Limited Run Games" value={name} onChange={(e) => setName(e.currentTarget.value)} data-autofocus />
+        {askConsole && (
+          <Select
+            label="Which console is this list for?"
+            description="The list doesn't say each game's console (PlayStation Hits is the PlayStation 4's, for example), and IGDB couldn't place them."
+            data={(known.data ?? []).map((p) => ({ value: p.key, label: p.name }))}
+            value={console_}
+            onChange={setConsole}
+            searchable
+          />
+        )}
         <SegmentedControl
           value={from}
           onChange={(v) => setFrom(v as 'wikipedia' | 'csv')}
@@ -271,9 +293,32 @@ export function SetsPage() {
   const [params, setParams] = useSearchParams();
   const tab = params.get('tab') === 'series' ? 'series' : 'sets';
   const list = useQuery({ queryKey: ['sets'], queryFn: () => api<SetSummary[]>('/sets') });
-  // A heading sorts the sets by its column (D144).
-  const sorting = useSort(SET_SORTS, 'name');
-  const sets = sortRows(list.data ?? [], (s) => (sorting.by === 'complete' ? s.percent : sorting.by === 'consoles' ? s.platforms.length : s.name), sorting.dir);
+  // A heading sorts the sets by its column (D144); most owned first to start (D201), the last choice kept on this device.
+  const saved = (() => {
+    try {
+      return JSON.parse(localStorage.getItem(SETS_ORDER) ?? 'null') as { by: keyof typeof SET_SORTS; dir: SortDirection } | null;
+    } catch {
+      return null;
+    }
+  })();
+  const sorting = useSort(SET_SORTS, saved && saved.by in SET_SORTS ? saved.by : 'owned');
+  useEffect(() => {
+    if (!params.get('sort')) {
+      if (saved && saved.dir !== SET_SORTS[saved.by]) sorting.set(saved.by, saved.dir);
+      return;
+    }
+    try {
+      localStorage.setItem(SETS_ORDER, JSON.stringify({ by: sorting.by, dir: sorting.dir }));
+    } catch {
+      // Private windows: the order isn't kept.
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [sorting.by, sorting.dir]);
+  const sets = sortRows(
+    list.data ?? [],
+    (s) => (sorting.by === 'owned' ? s.owned * 1000 + s.percent : sorting.by === 'complete' ? s.percent : sorting.by === 'consoles' ? s.platforms.length : s.name),
+    sorting.dir,
+  );
   return (
     <>
       <PageHeader help="sets"
@@ -311,6 +356,7 @@ export function SetsPage() {
             <Table.Thead>
               <Table.Tr>
                 {sorting.th('name', 'Set')}
+                {sorting.th('owned', 'Have', { ta: 'right' })}
                 {sorting.th('complete', 'Complete')}
                 {sorting.th('consoles', 'Consoles', { visibleFrom: 'sm' })}
               </Table.Tr>
@@ -326,10 +372,22 @@ export function SetsPage() {
                       {s.source === 'wikipedia' ? `Wikipedia: ${s.page}` : 'Your list'}
                     </Text>
                   </Table.Td>
+                  <Table.Td ta="right">
+                    {/* The chest: what you have of it (D197). */}
+                    <Group gap={6} justify="flex-end" wrap="nowrap">
+                      <StashMark size={12} />
+                      <Text size="sm">{count(s.owned)}</Text>
+                    </Group>
+                  </Table.Td>
                   <Table.Td miw={180}>
                     <Text size="sm">
                       {count(s.owned)} of {count(s.games)} ({s.percent}%)
                     </Text>
+                    {s.digital > 0 && (
+                      <Text size="xs" c="dimmed">
+                        {count(s.digital)} digital only, not counted
+                      </Text>
+                    )}
                     <Progress aria-label={`${s.name} complete`} value={s.percent} size="sm" mt={4} />
                   </Table.Td>
                   <Table.Td visibleFrom="sm">

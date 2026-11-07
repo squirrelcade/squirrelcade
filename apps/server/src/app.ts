@@ -260,7 +260,7 @@ export async function buildApp(options: BuildOptions = {}): Promise<Squirrelcade
   const catalogBuilder = new CatalogBuilder(db, settings, catalogs, collection, wikipedia, log, igdb, nintendoLife, addedSources);
   // Lists of games that aren't catalogs (sets, the Top 100 lists) find their games in the catalogs and the collection through this.
   const titles = new TitleIndex(db, catalogs, collection);
-  const sets = new SetsService(db, titles, wikipedia, log);
+  const sets = new SetsService(db, titles, wikipedia, log, { physicalOnly: () => settings.get('catalogs.setsPhysical'), releasedOn: (keys) => marks.released(keys) });
   catalogs.setScorer((platformKey, title) => wishlist.compute().index.get(`${platformKey}|${normalizeTitle(title)}`));
   catalogs.setPreferences(() => wishlist.preferences());
   sets.setPreferences(() => wishlist.preferences());
