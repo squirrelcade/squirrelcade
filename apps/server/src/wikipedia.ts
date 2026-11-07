@@ -648,7 +648,7 @@ export class CatalogBuilder {
     return this.trackedKeys().filter((k) => !built.has(k));
   }
 
-  /** Platforms the collection tracks (enough different games, Settings > Platforms). */
+  /** Platforms the collection tracks (enough different games, Settings > Consoles). */
   trackedKeys(): string[] {
     return this.collection
       .platformsWithLabels()

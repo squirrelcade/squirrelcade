@@ -1,11 +1,11 @@
 import { type HistoryText } from './pages/History';
 import { RootsPart } from './RootsPart';
 import { COMPLETENESS_LABELS, missingParts, partsSearch, priceChartingUrl, shopLinksFor, shopUrl, type Completeness, type SettingsValues, type ShopLink, SHOPS_IN_LISTS } from '@squirrelcade/core';
-import { Anchor, Badge, Box, Button, Divider, Drawer, Group, Loader, Menu, Modal, SimpleGrid, Spoiler, Stack, Text, Textarea, Tooltip, VisuallyHidden } from '@mantine/core';
+import { Anchor, Badge, Box, Button, Divider, Drawer, Group, Loader, Menu, Modal, SimpleGrid, Stack, Text, Textarea, Tooltip, VisuallyHidden } from '@mantine/core';
 import { useMediaQuery } from '@mantine/hooks';
 import { IconCheck, IconClock, IconEyeOff, IconNotes, IconPencil, IconPlus, IconRestore, IconShoppingCart, IconX } from '@tabler/icons-react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Fragment, useEffect, useState, type ReactNode } from 'react';
+import { Fragment, useEffect, useRef, useState, type ReactNode } from 'react';
 import { Link, useSearchParams } from 'react-router';
 import { api } from './api';
 import { MATCH_METHODS, monthsFromNow, REJECTABLE, SNOOZES, type MatchMethod } from './choices';
@@ -32,7 +32,7 @@ export interface GameView {
   platform: string;
   title: string;
   coverId: string | null;
-  igdb: { name: string; genres: string[]; franchise: string | null; released: string | null; rating: number | null; ratingCount: number | null; gameType: string | null } | null;
+  igdb: { name: string; genres: string[]; franchise: string | null; released: string | null; rating: number | null; ratingCount: number | null; gameType: string | null; developers?: string[]; publishers?: string[] } | null;
   catalog: {
     entryId: number;
     title: string;
@@ -500,6 +500,21 @@ export function GameDrawer() {
   };
   const g = view.data;
   const c = g?.catalog ?? null;
+  // A game opened afresh on a console you don't have, that you have on another: it opens on yours (your best copy's
+  // console, with its value; item 14 of the owner's 1.3 list). Picking another console's mark keeps that console.
+  const shownTitle = useRef<string | null>(null);
+  useEffect(() => {
+    if (!g || !title) return;
+    const fresh = shownTitle.current !== title;
+    shownTitle.current = title;
+    if (!fresh || g.platformKey === 'pc' || g.copies.length > 0) return;
+    const worth = (r: ConsoleRow) => r.copies.reduce((n, x) => n + (x.valueCents ?? 0) * x.quantity, 0);
+    const best = g.consoles.filter((r) => !r.current && r.copies.length > 0).sort((a, b) => worth(b) - worth(a))[0];
+    if (!best) return;
+    const next = new URLSearchParams(params);
+    next.set(PARAM, `${best.platformKey}|${g.title}`);
+    setParams(next, { replace: true });
+  }, [g, title]);
   // Each game shown is remembered for the header's search.
   useEffect(() => {
     if (g) remember({ platformKey: g.platformKey, platform: g.platform, title: g.title });
@@ -675,7 +690,19 @@ export function GameDrawer() {
             }
             rings={
               <>
-                {owned === 0 && g.wishlist ? (
+                {owned === 0 && g.platformKey !== 'pc' ? (
+                  // A console you don't have (item 14): its acorns, as the game of the day's, its wishlist place under it.
+                  g.wishlist ? (
+                    <Stack gap={2} align="center">
+                      <ScoreRing kind="acorns" fill={g.wishlist.score} text={String(g.wishlist.score)} size={92} label={`${g.wishlist.score} acorns`} />
+                      {g.wishlist.rank ? (
+                        <Text size="xs" c="dimmed">
+                          #{g.wishlist.rank} on your wishlist
+                        </Text>
+                      ) : null}
+                    </Stack>
+                  ) : null
+                ) : owned === 0 && g.wishlist ? (
                   <ScoreRing kind="acorns" fill={g.wishlist.score} text={String(g.wishlist.score)} size={92} label={`${g.wishlist.score} acorns`} />
                 ) : g.worth ? (
                   <ScoreRing
@@ -867,6 +894,7 @@ export function GameDrawer() {
               title={g.title}
               shops={shops ?? []}
               wishlist={g.wishlist}
+              addIt={canEdit && g.platformKey !== 'pc' ? () => setAdding({ platformKey: g.platformKey, platform: g.platform, title: g.title }) : undefined}
               actions={
                 <>
                   {c && canEdit && WANTED.has(c.status) && !c.purchase && (
@@ -877,11 +905,6 @@ export function GameDrawer() {
                       onClick={() => change.mutate({ path: '/purchases', method: 'POST', json: { entryId: c.entryId }, done: `${g.title} is in your collection. Its condition and price are under Your copy.` })}
                     >
                       I bought it
-                    </Button>
-                  )}
-                  {canEdit && (
-                    <Button size="compact-sm" variant="default" leftSection={<IconPlus size={14} />} onClick={() => setAdding({ platformKey: g.platformKey, platform: g.platform, title: g.title })}>
-                      Add a copy
                     </Button>
                   )}
                   {canEdit && g.wishlist && !g.snoozedUntil && (
@@ -939,6 +962,44 @@ export function GameDrawer() {
             />
           )}
 
+          {/* What you played of it: for games you own (a status for a game you don't have yet is a wish, not a play). */}
+          {seesPlay && (g.copies.length > 0 || g.play) && (canEdit || g.play) && (
+            <Section title="Played">
+              <PlayPicker platformKey={g.platformKey} title={g.title} play={g.play} canEdit={canEdit} dateFormat={dateFormat} />
+              {g.retroAchievements && <RaLine ra={g.retroAchievements} dateFormat={dateFormat} />}
+              {g.achievements.map((a) => (
+                <AchievementLine key={a.source} a={a} dateFormat={dateFormat} />
+              ))}
+            </Section>
+          )}
+          {(g.retroAchievements || g.achievements.length > 0) && !(seesPlay && (g.copies.length > 0 || g.play) && (canEdit || g.play)) && (
+            <Section title="Played">
+              {g.retroAchievements && <RaLine ra={g.retroAchievements} dateFormat={dateFormat} />}
+              {g.achievements.map((a) => (
+                <AchievementLine key={a.source} a={a} dateFormat={dateFormat} />
+              ))}
+            </Section>
+          )}
+
+          {canEdit ? (
+            <NoteSection
+              key={`${g.platformKey}|${g.title}`}
+              note={g.note}
+              busy={busy}
+              dateFormat={dateFormat}
+              save={(note) => change.mutate({ path: '/game/note', method: 'PUT', json: { platformKey: g.platformKey, title: g.title, note }, done: note ? 'Note saved.' : 'Note removed.' })}
+            />
+          ) : (
+            // A viewer sees the owner's note when the owner shares notes (Settings > Security > Viewers).
+            g.note && (
+              <Section title="Their note">
+                <Text size="sm" style={{ whiteSpace: 'pre-wrap' }}>
+                  {g.note.text}
+                </Text>
+              </Section>
+            )
+          )}
+
           {c && canEdit && (c.status === 'unconfirmed' || (c.status === 'review' && c.targetStatus === 'review' && c.suggestions.length === 0)) && (
             <Group gap="xs">
               {c.status === 'unconfirmed' && (
@@ -977,35 +1038,17 @@ export function GameDrawer() {
             </Section>
           )}
 
-          {summary.data?.summary && (
-            <Spoiler maxHeight={66} showLabel="More" hideLabel="Less" styles={{ control: { fontSize: 'var(--mantine-font-size-sm)' } }}>
-              <Text size="sm">{summary.data.summary}</Text>
-            </Spoiler>
-          )}
-
           {/* Roots (D165): the game in its own time and since, its Top 100 place and why it matters first. */}
-          <RootsPart platformKey={g.platformKey} title={g.title} history={g.platformKey === 'pc' ? null : g.history} />
-
-          {/* What you played of it: for games you own (a status for a game you don't have yet is a wish, not a play). */}
-          {seesPlay && (g.copies.length > 0 || g.play) && (canEdit || g.play) && (
-            <Section title="Played">
-              <PlayPicker platformKey={g.platformKey} title={g.title} play={g.play} canEdit={canEdit} dateFormat={dateFormat} />
-              {g.retroAchievements && <RaLine ra={g.retroAchievements} dateFormat={dateFormat} />}
-              {g.achievements.map((a) => (
-                <AchievementLine key={a.source} a={a} dateFormat={dateFormat} />
-              ))}
-            </Section>
-          )}
-          {(g.retroAchievements || g.achievements.length > 0) && !(seesPlay && (g.copies.length > 0 || g.play) && (canEdit || g.play)) && (
-            <Section title="Played">
-              {g.retroAchievements && <RaLine ra={g.retroAchievements} dateFormat={dateFormat} />}
-              {g.achievements.map((a) => (
-                <AchievementLine key={a.source} a={a} dateFormat={dateFormat} />
-              ))}
-            </Section>
-          )}
+          <RootsPart
+            platformKey={g.platformKey}
+            title={g.title}
+            history={g.platformKey === 'pc' ? null : g.history}
+            summary={summary.data?.summary ?? null}
+            facts={g.igdb ? { genres: g.igdb.genres, developers: g.igdb.developers ?? [], publishers: g.igdb.publishers ?? [] } : null}
+          />
 
           {g.sets.length > 0 && (
+
             <Section title="In your sets">
               <Text size="sm">
                 {g.sets.map((st, i) => (
@@ -1110,24 +1153,6 @@ export function GameDrawer() {
             </Section>
           )}
 
-          {canEdit ? (
-            <NoteSection
-              key={`${g.platformKey}|${g.title}`}
-              note={g.note}
-              busy={busy}
-              dateFormat={dateFormat}
-              save={(note) => change.mutate({ path: '/game/note', method: 'PUT', json: { platformKey: g.platformKey, title: g.title, note }, done: note ? 'Note saved.' : 'Note removed.' })}
-            />
-          ) : (
-            // A viewer sees the owner's note when the owner shares notes (Settings > Security > Viewers).
-            g.note && (
-              <Section title="Their note">
-                <Text size="sm" style={{ whiteSpace: 'pre-wrap' }}>
-                  {g.note.text}
-                </Text>
-              </Section>
-            )
-          )}
 
           <Divider />
           <Group gap="md">

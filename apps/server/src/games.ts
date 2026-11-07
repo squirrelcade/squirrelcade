@@ -63,7 +63,7 @@ export interface GameView {
   title: string;
   coverId: string | null;
   /** IGDB's details, when its data for the console is in. */
-  igdb: { name: string; genres: string[]; franchise: string | null; released: string | null; rating: number | null; ratingCount: number | null; gameType: string | null } | null;
+  igdb: { name: string; genres: string[]; franchise: string | null; released: string | null; rating: number | null; ratingCount: number | null; gameType: string | null; developers: string[]; publishers: string[] } | null;
   /** The console catalog's game, when the catalog has it: its status and the owned copies that count. */
   catalog: {
     entryId: number;
@@ -239,7 +239,7 @@ export function registerGameRoutes(
       platform: p.name,
       title: name,
       coverId: deps.igdb.coverOf(key, name),
-      igdb: g ? { name: g.name, genres: g.genres, franchise: g.franchise, released: g.released, rating: g.rating ?? null, ratingCount: g.ratingCount ?? null, gameType: g.gameType } : null,
+      igdb: g ? { name: g.name, genres: g.genres, franchise: g.franchise, released: g.released, rating: g.rating ?? null, ratingCount: g.ratingCount ?? null, gameType: g.gameType, developers: g.developers ?? [], publishers: g.publishers ?? [] } : null,
       catalog:
         target && entry
           ? {

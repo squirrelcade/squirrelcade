@@ -1,4 +1,4 @@
-import { Anchor, AspectRatio, Box, Button, Center, Group, Image, Loader, Modal, SegmentedControl, SimpleGrid, Stack, Tabs, Text, TextInput, Tooltip, UnstyledButton } from '@mantine/core';
+import { Anchor, AspectRatio, Box, Button, Center, Group, Image, Loader, Modal, SimpleGrid, Spoiler, Stack, Tabs, Text, TextInput, Tooltip, UnstyledButton } from '@mantine/core';
 import { useMediaQuery } from '@mantine/hooks';
 import { igdbCoverUrl, matchKey, youtubeVideoId } from '@squirrelcade/core';
 import { IconExternalLink, IconPlayerPlayFilled, IconX } from '@tabler/icons-react';
@@ -276,12 +276,12 @@ function VideoList({ videos, onPlay, onRemove, shownAtFirst }: { videos: GameVid
 }
 
 /** A video pasted onto the game (the owner): its address, and whether it's from the game's time. */
-function AddVideo({ platformKey, title, era }: { platformKey: string; title: string; era: 'time' | 'later' }) {
+/** Add a YouTube video: its date puts it under Of its time or Looking back (item 13: no switch to choose). */
+function AddVideo({ platformKey, title }: { platformKey: string; title: string }) {
   const queryClient = useQueryClient();
   const [url, setUrl] = useState('');
-  const [when, setWhen] = useState<'time' | 'later' | 'date'>(era);
   const add = useMutation({
-    mutationFn: () => api('/game/videos', { method: 'POST', json: { platform: platformKey, title, url, era: when === 'date' ? null : when } }),
+    mutationFn: () => api('/game/videos', { method: 'POST', json: { platform: platformKey, title, url, era: null } }),
     onSuccess: async () => {
       setUrl('');
       await queryClient.invalidateQueries({ queryKey: ['game', 'videos', platformKey, title] });
@@ -296,17 +296,6 @@ function AddVideo({ platformKey, title, era }: { platformKey: string; title: str
           Add
         </Button>
       </Group>
-      <SegmentedControl
-        size="xs"
-        value={when}
-        onChange={(v) => setWhen(v as 'time' | 'later' | 'date')}
-        aria-label="Where the video goes"
-        data={[
-          { value: 'time', label: 'Of its time' },
-          { value: 'later', label: 'Since' },
-          { value: 'date', label: 'By its date' },
-        ]}
-      />
     </Stack>
   );
 }
@@ -484,8 +473,54 @@ function Strip({ v, platformKey, title }: { v: RootsView; platformKey: string; t
  * of its era), Where it came from (the games it drew on and led to, from your catalogs), and Looking back (later
  * reviews and writing, its awards, the reference sites). Its Top 100 place and why it matters come first, as before.
  */
-export function RootsPart({ platformKey, title, history }: { platformKey: string; title: string; history: { why: HistoryText | null; top100: { rank: number; of: number } | null } | null }) {
+/** A game page's tabs (item 13 of the owner's 1.3 list), the last one opened kept on this device. */
+type GameTab = 'about' | 'videos' | 'magazines';
+const GAME_TAB = 'squirrelcade-game-tab';
+
+/**
+ * A game's tabs, under its head and your collection (item 13 of the owner's 1.3 list): About (a short summary, its facts,
+ * why it matters, its reviews of the time, its series, its Top 100 place and its timeline), Videos (of its time first,
+ * then looking back) and Magazines (every issue that mentions it, and the reviews its article cites). Each label has
+ * its count; a tab with nothing in it is faded and says why. The same in the drawer and on the full page.
+ */
+export function RootsPart({
+  platformKey,
+  title,
+  history,
+  summary = null,
+  facts = null,
+}: {
+  platformKey: string;
+  title: string;
+  history: { why: HistoryText | null; top100: { rank: number; of: number } | null } | null;
+  summary?: string | null;
+  facts?: { genres: string[]; developers: string[]; publishers: string[] } | null;
+}) {
   const leavesOn = useFeature('magazines');
+  const narrow = useMediaQuery('(max-width: 48em)');
+  const [tab, setTabState] = useState<GameTab>(() => {
+    try {
+      const kept = localStorage.getItem(GAME_TAB);
+      return kept === 'videos' || kept === 'magazines' ? kept : 'about';
+    } catch {
+      return 'about';
+    }
+  });
+  const setTab = (t: GameTab) => {
+    setTabState(t);
+    try {
+      localStorage.setItem(GAME_TAB, t);
+    } catch {
+      // Private windows: the tab isn't kept.
+    }
+  };
+  // Its mentions in your magazines, for the tab's count (the same answer In your magazines shows).
+  const mentions = useQuery({
+    queryKey: ['magazines', 'mentions', title],
+    queryFn: () => api<{ mentions: { state: string }[] }>(`/game/magazines?title=${encodeURIComponent(title)}`),
+    enabled: leavesOn,
+    retry: false,
+  });
   const queryClient = useQueryClient();
   const roots = useQuery({
     queryKey: ['game', 'roots', platformKey, title],
@@ -534,166 +569,124 @@ export function RootsPart({ platformKey, title, history }: { platformKey: string
       void queryClient.invalidateQueries({ queryKey: ['game', platformKey, title], exact: true });
     }
   }, [v?.readAt]);
-  if (!history && (!v || v.status === 'off')) {
-    // Roots off: its series still shows.
-    return inSeries.length > 0 ? (
-      <Stack gap="xs">
-        <Text fw={700}>Its series</Text>
-        <GameSeries list={inSeries} platformKey={platformKey} title={title} />
-      </Stack>
-    ) : null;
-  }
   const year = v?.firstRelease ? Number(v.firstRelease.slice(0, 4)) : null;
+  const ready = v?.status === 'ready' ? v : null;
+  const videoCount = timeVideos.length + laterVideos.length + citedLinks.length;
+  const magazineCount = (mentions.data?.mentions.filter((m) => m.state === 'linked').length ?? 0) + (ready?.time.magazines.length ?? 0);
+  // Why a tab is empty, said on it (faded): no YouTube key, no magazines with it.
+  const videosWhy = !videosOn ? 'Videos are off: Settings › Roots › Videos turns them on.' : videoCount === 0 ? (videosQuery.data?.keyed ? 'No video of it yet: the video channels are read at night.' : 'No video of it yet. With a YouTube key (Settings › Sources), the video channels are matched to your games.') : null;
+  const magazinesWhy = magazineCount > 0 ? null : leavesOn ? 'None of your magazines mentions it yet (their text is read at night).' : 'Leaves, your magazine scans, is off (Settings › Features).';
+  const released = [...new Map((ready?.releases ?? []).filter((r) => r.platform).map((r) => [r.platform!, r.date])).entries()];
   return (
     <Stack gap="sm">
-      <Group justify="space-between" gap="xs">
-        <Group gap={8}>
-          <RootsMark size={18} />
-          <Text fw={700} ff="Fredoka, var(--mantine-font-family)" fz={18}>
-            Roots
-          </Text>
-        </Group>
-        <Anchor component={Link} to="/settings/roots" size="xs" c="dimmed">
-          Settings › Roots
-        </Anchor>
-      </Group>
-      <DrawerHistory platformKey={platformKey} title={title} history={history} />
-      {/* Its reviews and mentions in the owner's own scans (D191, D192), when Leaves is there. */}
-      {leavesOn && <InTheMagazines title={title} />}
       <VideoPlayer video={playing} onClose={() => setPlaying(null)} />
-      {roots.isLoading && (
-        <Group gap="xs">
-          <Loader size="xs" />
-          <Text size="sm" c="dimmed">
-            Reading its Wikipedia article…
-          </Text>
-        </Group>
-      )}
-      {v?.status === 'none' && (
-        <Text size="sm" c="dimmed">
-          Squirrelcade didn't find this game's Wikipedia article, so its reviews of the time aren't here.
-        </Text>
-      )}
-      {/* No article read: its videos still show. */}
-      {v?.status !== 'ready' && videosOn && (timeVideos.length > 0 || laterVideos.length > 0 || canEdit) && (
-        <>
-          <Text size="sm" fw={700}>
-            Its videos
-          </Text>
-          {timeVideos.length + laterVideos.length > 0 && <VideoList videos={[...timeVideos, ...laterVideos]} onPlay={setPlaying} onRemove={canEdit ? removeVideo : undefined} shownAtFirst={shownAtFirst} />}
-          {canEdit && <AddVideo platformKey={platformKey} title={title} era="time" />}
-        </>
-      )}
-      {v?.status !== 'ready' && inSeries.length > 0 && (
-        <>
-          <Text size="sm" fw={700}>
-            Its series
-          </Text>
-          <GameSeries list={inSeries} platformKey={platformKey} title={title} />
-        </>
-      )}
-      {v?.status === 'ready' && (
-        <>
-          <Strip v={v} platformKey={platformKey} title={title} />
-          {v.aggregates.length > 0 && (
-            <Text size="sm">
-              {v.aggregates.map((a, i) => (
-                <span key={a.outlet}>
-                  {i > 0 && ' · '}
-                  {a.outlet} <b>{a.score}</b>
-                </span>
-              ))}
-            </Text>
-          )}
-          <Tabs defaultValue="time" keepMounted={false}>
-            <Tabs.List>
-              <Tabs.Tab value="time">At the time</Tabs.Tab>
-              <Tabs.Tab value="from">Where it came from</Tabs.Tab>
-              <Tabs.Tab value="later">Looking back</Tabs.Tab>
-              {inSeries.length > 0 && <Tabs.Tab value="series">Its series</Tabs.Tab>}
-            </Tabs.List>
-            {inSeries.length > 0 && (
-              <Tabs.Panel value="series" pt="sm">
-                <GameSeries list={inSeries} platformKey={platformKey} title={title} />
-              </Tabs.Panel>
+      <Tabs value={tab} onChange={(t) => t && setTab(t as GameTab)} keepMounted={false}>
+        {/* The bar stays at the top while the page scrolls on a phone (item 13 of the owner's 1.3 list). */}
+        <Tabs.List style={narrow ? { position: 'sticky', top: 0, zIndex: 3, background: 'var(--mantine-color-body)' } : undefined}>
+          <Tabs.Tab value="about" leftSection={<RootsMark size={14} />}>
+            About
+          </Tabs.Tab>
+          <Tabs.Tab value="videos" style={videosWhy ? { opacity: 0.55 } : undefined}>
+            Videos{videoCount > 0 ? ` · ${videoCount}` : ''}
+          </Tabs.Tab>
+          <Tabs.Tab value="magazines" style={magazinesWhy ? { opacity: 0.55 } : undefined}>
+            Magazines{magazineCount > 0 ? ` · ${magazineCount}` : ''}
+          </Tabs.Tab>
+        </Tabs.List>
+
+        <Tabs.Panel value="about" pt="sm">
+          <Stack gap="sm">
+            {summary && (
+              <Box>
+                <Spoiler maxHeight={88} showLabel="More" hideLabel="Less" styles={{ control: { fontSize: 'var(--mantine-font-size-sm)' } }}>
+                  <Text size="sm">{summary}</Text>
+                </Spoiler>
+                {ready?.article && (
+                  <Anchor href={ready.article.url} target="_blank" rel="noreferrer" size="xs">
+                    Read on Wikipedia
+                  </Anchor>
+                )}
+              </Box>
             )}
-            <Tabs.Panel value="time" pt="sm">
-              <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="sm">
-                <Card title="In the magazines" aside={v.time.magazines.length > 0 ? `${v.time.magazines.length}` : undefined}>
-                  {v.time.magazines.length === 0 ? (
-                    <Empty>{year && year >= 2010 ? 'Reviews of its day were mostly online: see Reviews from the time.' : 'No magazine of its day is cited in its article.'}</Empty>
-                  ) : (
-                    v.time.magazines.slice(0, 12).map((s, i) => <SourceLine key={`${s.work}|${s.title}|${i}`} s={s} />)
-                  )}
-                </Card>
-                <Stack gap="sm">
-                  <Card title="Reviews from the time" aside={v.time.reviews.length > 0 ? `${v.time.reviews.length} outlets` : undefined}>
-                    {v.time.reviews.length === 0 ? <Empty>Its article's review table has none from its time.</Empty> : v.time.reviews.map((r, i) => <ReviewLine key={`${r.outlet}|${i}`} r={r} />)}
+            {(facts || released.length > 0) && (
+              <SimpleGrid cols={{ base: 1, xs: 2 }} spacing={6} verticalSpacing={4}>
+                {released.length > 0 && <Fact label="Released">{released.map(([p, d]) => `${p} ${when(d)}`).join(' · ')}</Fact>}
+                {facts && facts.developers.length > 0 && <Fact label="Developer">{facts.developers.join(', ')}</Fact>}
+                {facts && facts.publishers.length > 0 && <Fact label="Publisher">{facts.publishers.join(', ')}</Fact>}
+                {facts && facts.genres.length > 0 && <Fact label="Genres">{facts.genres.join(', ')}</Fact>}
+              </SimpleGrid>
+            )}
+            <DrawerHistory platformKey={platformKey} title={title} history={history} />
+            {roots.isLoading && (
+              <Group gap="xs">
+                <Loader size="xs" />
+                <Text size="sm" c="dimmed">
+                  Reading its Wikipedia article…
+                </Text>
+              </Group>
+            )}
+            {v?.status === 'none' && (
+              <Text size="sm" c="dimmed">
+                Squirrelcade didn't find this game's Wikipedia article, so its reviews of the time aren't here.
+              </Text>
+            )}
+            {inSeries.length > 0 && (
+              <Stack gap={4}>
+                <Text size="sm" fw={700}>
+                  Its series
+                </Text>
+                <GameSeries list={inSeries} platformKey={platformKey} title={title} />
+              </Stack>
+            )}
+            {ready && (
+              <>
+                <Strip v={ready} platformKey={platformKey} title={title} />
+                {ready.aggregates.length > 0 && (
+                  <Text size="sm">
+                    {ready.aggregates.map((a, i) => (
+                      <span key={a.outlet}>
+                        {i > 0 && ' · '}
+                        {a.outlet} <b>{a.score}</b>
+                      </span>
+                    ))}
+                  </Text>
+                )}
+                <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="sm">
+                  <Card title="Reviews from the time" aside={ready.time.reviews.length > 0 ? `${ready.time.reviews.length} outlets` : undefined}>
+                    {ready.time.reviews.length === 0 ? <Empty>Its article's review table has none from its time.</Empty> : ready.time.reviews.map((r, i) => <ReviewLine key={`${r.outlet}|${i}`} r={r} />)}
                   </Card>
                   <Card title="On the web, then">
                     {year !== null && year < 1995 ? (
                       <Empty>Game websites began in 1995 and 1996. Reviews written online later are under Looking back.</Empty>
-                    ) : v.time.web.length === 0 ? (
+                    ) : ready.time.web.length === 0 ? (
                       <Empty>No web page of its time is cited in its article.</Empty>
                     ) : (
-                      v.time.web.slice(0, 10).map((s, i) => <SourceLine key={`${s.url}|${i}`} s={s} />)
+                      ready.time.web.slice(0, 10).map((s, i) => <SourceLine key={`${s.url}|${i}`} s={s} />)
                     )}
                   </Card>
-                  <Card title="Videos of the day" aside={timeVideos.length > 0 ? `${timeVideos.length}` : undefined}>
-                    {timeVideos.length > 0 && <VideoList videos={timeVideos} onPlay={setPlaying} onRemove={canEdit ? removeVideo : undefined} shownAtFirst={shownAtFirst} />}
-                    {citedLinks.map((s, i) => (
-                      <SourceLine key={`${s.url}|${i}`} s={s} />
-                    ))}
-                    {timeVideos.length === 0 && citedLinks.length === 0 && (
-                      <Empty>
-                        {!videosOn
-                          ? 'Videos are off: Settings › Roots › Videos turns them on.'
-                          : year !== null && year < 2005
-                            ? `${year} is before YouTube: paste a commercial or a TV segment of its day, or turn on a channel of old ones (Settings › Roots).`
-                            : videosQuery.data?.keyed
-                              ? "No video of its day yet: the video channels are read at night."
-                              : 'No video of its day yet. With a YouTube key (Settings › Sources), the video channels are matched to your games.'}
-                      </Empty>
-                    )}
-                    {canEdit && videosOn && <AddVideo platformKey={platformKey} title={title} era="time" />}
-                    {canEdit && videosOn && videosQuery.data?.keyed && <FindVideos platformKey={platformKey} title={title} />}
+                  <Card title="What it came from">
+                    {ready.cameFrom.length === 0 ? <Empty>Its article names no game it drew on that your catalogs have.</Empty> : ready.cameFrom.map((m) => <MentionLine key={`${m.platformKey}|${m.catalogTitle}`} m={m} />)}
                   </Card>
-                </Stack>
-              </SimpleGrid>
-            </Tabs.Panel>
-            <Tabs.Panel value="from" pt="sm">
-              <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="sm">
-                <Card title="What it came from">
-                  {v.cameFrom.length === 0 ? <Empty>Its article names no game it drew on that your catalogs have.</Empty> : v.cameFrom.map((m) => <MentionLine key={`${m.platformKey}|${m.catalogTitle}`} m={m} />)}
-                </Card>
-                <Card title="What it led to">
-                  {v.ledTo.length === 0 ? <Empty>Its article names no game it led to that your catalogs have.</Empty> : v.ledTo.map((m) => <MentionLine key={`${m.platformKey}|${m.catalogTitle}`} m={m} />)}
-                </Card>
-              </SimpleGrid>
-            </Tabs.Panel>
-            <Tabs.Panel value="later" pt="sm">
-              <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="sm">
-                <Stack gap="sm">
-                  <Card title="Reviews since">
-                    {v.later.reviews.length === 0 ? <Empty>No later review in its article's table.</Empty> : v.later.reviews.map((r, i) => <ReviewLine key={`${r.outlet}|${i}`} r={r} />)}
+                  <Card title="What it led to">
+                    {ready.ledTo.length === 0 ? <Empty>Its article names no game it led to that your catalogs have.</Empty> : ready.ledTo.map((m) => <MentionLine key={`${m.platformKey}|${m.catalogTitle}`} m={m} />)}
                   </Card>
-                  {videosOn && (laterVideos.length > 0 || canEdit) && (
-                    <Card title="Videos since" aside={laterVideos.length > 0 ? `${laterVideos.length}` : undefined}>
-                      {laterVideos.length > 0 ? <VideoList videos={laterVideos} onPlay={setPlaying} onRemove={canEdit ? removeVideo : undefined} shownAtFirst={shownAtFirst} /> : <Empty>No later video yet.</Empty>}
-                      {canEdit && <AddVideo platformKey={platformKey} title={title} era="later" />}
-                    </Card>
-                  )}
-                  {(v.awards.length > 0 || v.bestSelling) && (
+                  <Card title="Looking back: reviews since">
+                    {ready.later.reviews.length === 0 ? <Empty>No later review in its article's table.</Empty> : ready.later.reviews.map((r, i) => <ReviewLine key={`${r.outlet}|${i}`} r={r} />)}
+                  </Card>
+                  <Card title="Written since">
+                    {ready.later.sources.length === 0 ? <Empty>Nothing later is cited in its article.</Empty> : ready.later.sources.slice(0, 15).map((s, i) => <SourceLine key={`${s.url}|${i}`} s={s} />)}
+                  </Card>
+                  {(ready.awards.length > 0 || ready.bestSelling) && (
                     <Card title="Honors">
-                      {v.bestSelling && (
+                      {ready.bestSelling && (
                         <Text size="sm">
-                          #{v.bestSelling.rank} on{' '}
-                          <Anchor href={v.bestSelling.url} target="_blank" rel="noreferrer" size="sm">
-                            Wikipedia's {v.bestSelling.list.replace(/^List of /, '')}
+                          #{ready.bestSelling.rank} on{' '}
+                          <Anchor href={ready.bestSelling.url} target="_blank" rel="noreferrer" size="sm">
+                            Wikipedia's {ready.bestSelling.list.replace(/^List of /, '')}
                           </Anchor>
                         </Text>
                       )}
-                      {v.awards.map((a, i) => (
+                      {ready.awards.map((a, i) => (
                         <Text key={`${a.name}|${i}`} size="sm">
                           ★ {a.name}
                           {a.year ? ` (${a.year})` : ''}
@@ -701,35 +694,84 @@ export function RootsPart({ platformKey, title, history }: { platformKey: string
                       ))}
                     </Card>
                   )}
-                </Stack>
-                <Card title="Written since">
-                  {v.later.sources.length === 0 ? <Empty>Nothing later is cited in its article.</Empty> : v.later.sources.slice(0, 15).map((s, i) => <SourceLine key={`${s.url}|${i}`} s={s} />)}
-                </Card>
-              </SimpleGrid>
-              <Text size="xs" c="dimmed" fw={600} mt="sm" mb={4}>
-                Learn more
-              </Text>
-              <Group gap={6}>
-                {v.sites.map((s) => (
-                  <Anchor key={s.name} href={s.url} target="_blank" rel="noreferrer" className="sc-chip" style={{ fontSize: 13 }}>
-                    {s.name}
+                </SimpleGrid>
+                {ready.sites.length > 0 && (
+                  <Group gap={6}>
+                    <Text size="xs" c="dimmed" fw={600}>
+                      Learn more
+                    </Text>
+                    {ready.sites.map((s) => (
+                      <Anchor key={s.name} href={s.url} target="_blank" rel="noreferrer" className="sc-chip" style={{ fontSize: 13 }}>
+                        {s.name}
+                      </Anchor>
+                    ))}
+                  </Group>
+                )}
+                <Text size="xs" c="dimmed">
+                  From{' '}
+                  <Tooltip label={`Read ${ready.readAt ? new Date(ready.readAt).toLocaleDateString() : ''}`}>
+                    <Anchor href={ready.article!.url} target="_blank" rel="noreferrer" size="xs" inherit>
+                      its Wikipedia article
+                    </Anchor>
+                  </Tooltip>{' '}
+                  (CC BY-SA) and Wikidata. Its time is its first {ready.months} months.{' '}
+                  <Anchor component={Link} to="/settings/roots" size="xs" inherit>
+                    Settings › Roots
                   </Anchor>
+                </Text>
+              </>
+            )}
+          </Stack>
+        </Tabs.Panel>
+
+        <Tabs.Panel value="videos" pt="sm">
+          <Stack gap="sm">
+            {videosWhy && <Empty>{videosWhy}</Empty>}
+            {(timeVideos.length > 0 || citedLinks.length > 0) && (
+              <Card title="Of its time" aside={`${timeVideos.length + citedLinks.length}`}>
+                {timeVideos.length > 0 && <VideoList videos={timeVideos} onPlay={setPlaying} onRemove={canEdit ? removeVideo : undefined} shownAtFirst={shownAtFirst} />}
+                {citedLinks.map((s, i) => (
+                  <SourceLine key={`${s.url}|${i}`} s={s} />
                 ))}
-              </Group>
-            </Tabs.Panel>
-          </Tabs>
-          <Text size="xs" c="dimmed">
-            From{' '}
-            <Tooltip label={`Read ${v.readAt ? new Date(v.readAt).toLocaleDateString() : ''}`}>
-              <Anchor href={v.article!.url} target="_blank" rel="noreferrer" size="xs" inherit>
-                its Wikipedia article
-              </Anchor>
-            </Tooltip>{' '}
-            (CC BY-SA) and Wikidata. At the time is its first {v.months} months.
-          </Text>
-        </>
-      )}
+              </Card>
+            )}
+            {laterVideos.length > 0 && (
+              <Card title="Looking back" aside={`${laterVideos.length}`}>
+                <VideoList videos={laterVideos} onPlay={setPlaying} onRemove={canEdit ? removeVideo : undefined} shownAtFirst={shownAtFirst} />
+              </Card>
+            )}
+            {canEdit && videosOn && videosQuery.data?.keyed && <FindVideos platformKey={platformKey} title={title} />}
+            {canEdit && videosOn && <AddVideo platformKey={platformKey} title={title} />}
+          </Stack>
+        </Tabs.Panel>
+
+        <Tabs.Panel value="magazines" pt="sm">
+          <Stack gap="sm">
+            {magazinesWhy && <Empty>{magazinesWhy}</Empty>}
+            {leavesOn && <InTheMagazines title={title} />}
+            {ready && ready.time.magazines.length > 0 && (
+              <Card title="Cited in its article" aside={`${ready.time.magazines.length}`}>
+                {ready.time.magazines.slice(0, 20).map((s, i) => (
+                  <SourceLine key={`${s.work}|${s.title}|${i}`} s={s} />
+                ))}
+              </Card>
+            )}
+          </Stack>
+        </Tabs.Panel>
+      </Tabs>
     </Stack>
+  );
+}
+
+/** A fact of a game, as a small label over its words (About). */
+function Fact({ label, children }: { label: string; children: ReactNode }) {
+  return (
+    <Box>
+      <Text size="xs" c="dimmed" fw={600}>
+        {label}
+      </Text>
+      <Text size="sm">{children}</Text>
+    </Box>
   );
 }
 

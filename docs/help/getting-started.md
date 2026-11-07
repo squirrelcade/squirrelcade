@@ -26,7 +26,7 @@ Values come from a PriceCharting export, or from a Value column in a spreadsheet
 1. **Create your account.** The first page asks for a username and password. This account is the collection's owner. From outside your home network, it also asks for a **setup code**, which Squirrelcade writes in its log when it starts (on the line that begins "No account yet"), so nobody else can claim a new install.
 2. **The welcome guide** takes you through five steps:
    - **Your collection:** drop in the export (the `collection.zip` PriceCharting sends works as it is), or **Add games one at a time** (then **Back to the welcome guide** at the top of Add a game).
-   - **Consoles:** a console gets a catalog once you own a few different games for it (6 by default; Settings > Platforms).
+   - **Consoles:** a console gets a catalog once you own a few different games for it (6 by default; Settings > Consoles).
    - **Catalogs:** each of those consoles gets a catalog, built from Wikipedia's list of its games. If you keep your own list of a console's games, you can use it instead.
    - **Covers (optional):** free IGDB keys give covers, genres and series. See [Optional parts](features.md).
    - **Wishlist (optional):** put the consoles and genres you like in your own order.

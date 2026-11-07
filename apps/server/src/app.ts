@@ -347,7 +347,7 @@ export async function buildApp(options: BuildOptions = {}): Promise<Squirrelcade
     }
     notifications.imported(outcome);
   });
-  // Copies moved to another console (Settings > Platforms > Region-locked consoles): everything
+  // Copies moved to another console (Settings > Consoles > Region-locked consoles): everything
   // worked out per console starts over, and consoles of their own get their catalogs soon.
   collection.events.on('remapped', () => {
     catalogs.invalidate();

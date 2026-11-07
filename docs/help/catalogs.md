@@ -4,7 +4,7 @@ A console's **catalog** is the list of games there are to collect for it. Squirr
 
 ## Which consoles get a catalog
 
-A console is **tracked** once you own a few different games for it (6 by default; Settings > Platforms > "Unique games to track a console"). Tracked consoles get a catalog and count for the wishlist. The other consoles Roots knows are **followed** instead (box art, RomM, their games' pages, never a checklist): see [Roots](roots.md).
+A console is **tracked** once you own a few different games for it (6 by default; Settings > Consoles > "Unique games to track a console"). Tracked consoles get a catalog and count for the wishlist. The other consoles Roots knows are **followed** instead (box art, RomM, their games' pages, never a checklist): see [Roots](roots.md).
 
 ## Where catalogs come from
 
@@ -13,7 +13,7 @@ Settings > Sources > Catalog sources lists the sources, most trusted first:
 - **Your own list** of a console's games, a CSV with a Title column (and, if you like, release dates, regions and formats). On a console's page: **Use your own list**. It comes first; Wikipedia then only adds games released after it (a setting), and an older game it lists when you own a copy of it, so the copy counts (Settings > Catalogs and matching > **Games you own that your list lacks come in**).
 - **Wikipedia's list of the console's games**, for your region (Settings > General > Home region).
 - **Nintendo Life's** lists of Nintendo Switch 2 Game-Key Cards and full-card games: off unless you turn it on (its terms allow personal use).
-- **IGDB (other regions)**: other regions' physical releases (PAL, Japanese, Asian) of a console that isn't region-locked (Settings > Platforms). They join its catalog on an **Other regions** tab and count once you own one; until then they're neither missing nor recommended. Needs IGDB.
+- **IGDB (other regions)**: other regions' physical releases (PAL, Japanese, Asian) of a console that isn't region-locked (Settings > Consoles). They join its catalog on an **Other regions** tab and count once you own one; until then they're neither missing nor recommended. Needs IGDB.
 - **Sources you add**: **Add a source**, under the list, takes an online list (a CSV file's address, a Google sheet shared with anyone who has the link, or a web page with a table of games) or a CSV file. First it shows what it found: games by console, regions and years. Then it joins the order at the bottom; move it up to trust it more. A list with a **Platform** (or Console) column covers several consoles; one without is for the console you choose. Its games count toward completion, or only once you own one, as other regions' releases do (**Details** changes that). An online list is read again whenever catalogs are refreshed (**Read it again** does it now); when it can't be read, its games stay as they were. Only add lists their owners let you use. Wikipedia's pages of [Super Rare Games](https://en.wikipedia.org/wiki/Super_Rare_Games) and [Limited Run Games](https://en.wikipedia.org/wiki/List_of_Limited_Run_Games_releases) releases work as online lists (free to reuse, CC BY-SA); with their games counting once owned, your copies of those limited prints find their games.
 
 When sources disagree about a game's release date or format, the most trusted one wins, and the console's page shows the difference. Catalogs are rebuilt monthly, soon after a new console becomes tracked, and when you change the settings they're built from; **Rebuild now** on a console's page does it at once.
@@ -38,4 +38,4 @@ Titles are compared after writing differences are taken out ("Pokemon" and "PokÃ
 ## Settings worth knowing
 
 - **Settings > Catalogs and matching:** whether editions count, whether upcoming games count as missing, whether Nintendo Switch 2 Game-Key Cards count, download-only games, unlicensed games.
-- **Settings > Platforms:** when a console is tracked, region-locked consoles, and console names to leave out (PC games, say).
+- **Settings > Consoles:** when a console is tracked, region-locked consoles, and console names to leave out (PC games, say).

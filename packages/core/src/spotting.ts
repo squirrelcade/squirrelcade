@@ -28,7 +28,7 @@ export interface Spotted {
 const STOP = new Set(['the', 'a', 'an', 'of', 'and', 'to', 'in', 'on', 'for', 'vs']);
 
 /** The spotter's rules' version: an issue is looked through again when they change (D192). */
-export const SPOT_VERSION = 2;
+export const SPOT_VERSION = 3;
 
 /** A sequel's number or a year in a title makes it surer ("Suikoden IV", "NCAA Football 2005"). */
 const NUMBERED = /^(?:\d+|[ivx]+)$/;

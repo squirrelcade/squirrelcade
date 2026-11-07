@@ -71,7 +71,7 @@ export const CATALOG_SOURCES: readonly CatalogSourceInfo[] = [
     id: 'igdb-regions',
     name: 'IGDB (other regions)',
     description:
-      "IGDB's physical releases of a console's games that the sources above don't list, such as PAL, Japanese and Asian releases. On a console that isn't region-locked (Settings > Platforms > Region-locked consoles) they join its catalog and count once you own one; until then they're neither missing nor recommended. A region-locked console leaves them to its regional console (the Super Famicom beside the Super Nintendo). Needs IGDB.",
+      "IGDB's physical releases of a console's games that the sources above don't list, such as PAL, Japanese and Asian releases. On a console that isn't region-locked (Settings > Consoles > Region-locked consoles) they join its catalog and count once you own one; until then they're neither missing nor recommended. A region-locked console leaves them to its regional console (the Super Famicom beside the Super Nintendo). Needs IGDB.",
     provides: ['games', 'names', 'dates', 'physical'],
     terms: "IGDB's data, read with your own Twitch application (Settings > Sources > IGDB).",
     url: 'https://www.igdb.com',

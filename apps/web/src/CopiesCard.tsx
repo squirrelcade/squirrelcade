@@ -1,6 +1,6 @@
 import { COMPLETENESS_LABELS, priceChartingUrl, shopLinksFor, shopUrl, SHOPS_IN_LISTS, type Completeness, type SettingsValues } from '@squirrelcade/core';
 import { Anchor, Box, Button, Group, Image, Modal, Stack, Table, Text, Tooltip, UnstyledButton } from '@mantine/core';
-import { IconExternalLink, IconPencil } from '@tabler/icons-react';
+import { IconExternalLink, IconPencil, IconPlus } from '@tabler/icons-react';
 import { useState, type ReactNode } from 'react';
 import { photoUrl, type PhotoInfo } from './CopyDetails';
 import { count, date, money } from './format';
@@ -506,6 +506,7 @@ export function GetItCard({
   priority,
   actions,
   versions,
+  addIt,
 }: {
   platformKey: string;
   platform: string;
@@ -515,6 +516,8 @@ export function GetItCard({
   priority?: string;
   actions: ReactNode;
   versions: ReactNode;
+  /** The big green Add it (Store Mode's), for a console you don't have it on: its walk-through starts (item 14). */
+  addIt?: () => void;
 }) {
   const [more, setMore] = useState(false);
   // GameFly's price, when it sells the game (D174): first, with its price, as a place to buy.
@@ -561,6 +564,12 @@ export function GetItCard({
             </Button>
           </Group>
         </Stack>
+        {addIt && (
+          <button type="button" className="sc-verdict-add" onClick={addIt} style={{ marginLeft: 'auto', minHeight: 64 }}>
+            <IconPlus size={24} stroke={3} aria-hidden="true" />
+            <span>Add it</span>
+          </button>
+        )}
       </Group>
       {wishlist && reasons.length > 0 && (
         <Group gap={6} wrap="wrap">

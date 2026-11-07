@@ -327,7 +327,7 @@ export interface CollectionStats {
   /** Copies, counting quantities. */
   items: number;
   platforms: number;
-  /** Platforms with enough different games to be tracked (Settings > Platforms). */
+  /** Platforms with enough different games to be tracked (Settings > Consoles). */
   trackedPlatforms: number;
   value: number;
   cost: number;
@@ -1189,7 +1189,7 @@ export class CollectionService {
     return { platformId: platform.id, region: parsed.region };
   }
 
-  /** The console a copy with this console name counts toward (Settings > Platforms > Region-locked consoles). */
+  /** The console a copy with this console name counts toward (Settings > Consoles > Region-locked consoles). */
   private consoleOf(parsed: ParsedConsoleLabel): { key: string; name: string } {
     return consoleFor({ key: parsed.platformKey, name: parsed.platformName }, parsed.region, this.settings.get('general.homeRegion'), this.settings.get('platforms.regionLocked'));
   }
@@ -1433,7 +1433,7 @@ export class CollectionService {
 
   /**
    * Platforms an import made tracked: they now have at least the minimum number
-   * of different games (Settings > Platforms) and the collection before it didn't.
+   * of different games (Settings > Consoles) and the collection before it didn't.
    */
   newlyTracked(importId: number): { name: string; games: number }[] {
     const min = this.settings.get('platforms.minUniqueGames');

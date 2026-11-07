@@ -227,7 +227,7 @@ GET /api/v1/export/workbook              everything as an Excel workbook (.xlsx)
 
 Each item has its `region` (`north-america`, `japan`, `europe`, `asia` or `other`) and `consoleLabel`, PriceCharting's console name ("Super Famicom", "PAL Playstation 3"); `region=` filters by it.
 
-On region-locked consoles (Settings > Platforms), copies from another region than the home region belong to a platform of their own: `super-famicom`, `famicom`, `pc-engine`, `mega-drive-japan` and `mega-drive-pal` by name, the others as the console's key plus `-japan`, `-pal`, `-asia` or `-north-america` (`nintendo-64-japan`, "Nintendo 64 (Japan)"). Changing that setting or the home region moves copies between platforms.
+On region-locked consoles (Settings > Consoles), copies from another region than the home region belong to a platform of their own: `super-famicom`, `famicom`, `pc-engine`, `mega-drive-japan` and `mega-drive-pal` by name, the others as the console's key plus `-japan`, `-pal`, `-asia` or `-north-america` (`nintendo-64-japan`, "Nintendo 64 (Japan)"). Changing that setting or the home region moves copies between platforms.
 
 ## PC library
 
@@ -553,7 +553,7 @@ For widgets such as Homepage's `customapi`, which map top-level fields. Numbers 
 | `pcGames`, `pcOwned`, `pcHours` | The PC library (read from Playnite): games across storefronts, those owned for good (not only through a subscription), and hours played; 0 without a PC library |
 | `backlog`, `lent`, `forSale` | Games not played yet (as Stash > Backlog counts them), games lent out now, and copies marked for sale or trade |
 
-PriceCharting's PC games are left out of the collection's totals, as everywhere in Squirrelcade (Settings > Platforms); the PC library has its own fields. For example:
+PriceCharting's PC games are left out of the collection's totals, as everywhere in Squirrelcade (Settings > Consoles); the PC library has its own fields. For example:
 
 ```
 curl -H "X-Api-Key: <your key>" http://<server>:7575/api/v1/stats

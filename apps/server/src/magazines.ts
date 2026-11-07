@@ -1,4 +1,4 @@
-import { baseTitle, citationMonth, citedIssueNumber, matchKey, scoresOn, SPOT_VERSION, spotIndex, spotTitles, spotWord, type SpotCandidate, coverLeadFor, guessDates, magazineOf, printedPage, issueFromFileName, issueLabel, pageNames, parseComicInfo, parseHocr, skippedName, type IssueInfo, type IssueToDate, type PageWord } from '@squirrelcade/core';
+import { baseTitle, citationMonth, citedIssueNumber, matchKey, platformsIn, scoresOn, SPOT_VERSION, spotIndex, spotTitles, spotWord, type SpotCandidate, coverLeadFor, guessDates, magazineOf, printedPage, issueFromFileName, issueLabel, pageNames, parseComicInfo, parseHocr, skippedName, type IssueInfo, type IssueToDate, type PageWord } from '@squirrelcade/core';
 import Database from 'better-sqlite3';
 import { spawn } from 'node:child_process';
 import { accessSync, constants, existsSync, type Dirent } from 'node:fs';
@@ -178,6 +178,11 @@ export interface MentionView {
   confidence: number | null;
   /** Where it is on the page, in the scan's pixels (from the text's word boxes, or the owner's box). */
   box: [number, number, number, number] | null;
+  /**
+   * The consoles the page names ("PS2", "Nintendo 64"), worked out once when its games are found (item 11 of the owner's
+   * 1.3 list): the chest fills when you have the game on one of them it came out on, else on the mention's console.
+   */
+  consoles: string[];
 }
 
 interface MentionRow {
@@ -194,6 +199,7 @@ interface MentionRow {
   confidence: number | null;
   state: string;
   box: string | null;
+  consoles?: string | null;
   issue_pages: number;
   version: number;
   magazine: string;
@@ -294,6 +300,8 @@ export class MagazineService {
       if (!columns.includes('date_from')) this.db.exec('ALTER TABLE issues ADD COLUMN date_from TEXT');
       // D191: the file's page of printed page 1 less one (covers, inserts), set once by the owner ("this is page 28").
       if (!columns.includes('page_offset')) this.db.exec('ALTER TABLE issues ADD COLUMN page_offset INTEGER');
+      // The consoles a mention's page names (item 11 of the owner's 1.3 list), for the chest on its game.
+      if (!(this.db.prepare('PRAGMA table_info(mentions)').all() as { name: string }[]).some((c) => c.name === 'consoles')) this.db.exec('ALTER TABLE mentions ADD COLUMN consoles TEXT');
     }
     return this.db;
   }
@@ -785,6 +793,7 @@ export class MagazineService {
         state: r.state as MentionView['state'],
         confidence: r.confidence,
         box: r.box ? (JSON.parse(r.box) as [number, number, number, number]) : null,
+        consoles: r.consoles ? (JSON.parse(r.consoles) as string[]) : [],
       };
     });
   }
@@ -806,7 +815,7 @@ export class MagazineService {
     );
     const rules = this.rules();
     const add = db.prepare(
-      "INSERT OR REPLACE INTO mentions (issue_id, page, platform_key, title, title_key, printed, kind, score, source, confidence, state, box, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'ocr', ?, ?, ?, ?)",
+      "INSERT OR REPLACE INTO mentions (issue_id, page, platform_key, title, title_key, printed, kind, score, source, confidence, state, box, created_at, consoles) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'ocr', ?, ?, ?, ?, ?)",
     );
     let linked = 0;
     let asked = 0;
@@ -856,12 +865,14 @@ export class MagazineService {
             if (f.confidence >= linkAt) kept.push({ s: f, state: 'linked' });
             else if (f.confidence >= askAt) kept.push({ s: f, state: 'suggested' });
           }
+          // The consoles the page names, for the chest on its games (item 11): once a page.
+          const named = kept.length > 0 ? JSON.stringify(platformsIn(p.text.replace(/\n+/g, ', '))) : null;
           // A review's scores go to the game it's about: the one linked game, or the one in the biggest type.
           const score = scoresOn(p.text, i.magazine);
           const linkedHere = kept.filter((x) => x.state === 'linked');
           const reviewed = score && linkedHere.length > 0 ? linkedHere.reduce((a, b) => (b.s.box[3] - b.s.box[1] > a.s.box[3] - a.s.box[1] ? b : a)) : null;
           for (const x of kept) {
-            add.run(i.id, p.n, x.s.platformKey, x.s.title, matchKey(baseTitle(x.s.title)), x.s.printed, x === reviewed ? 'review' : null, x === reviewed ? score : null, x.s.confidence, x.state, JSON.stringify(x.s.box), now);
+            add.run(i.id, p.n, x.s.platformKey, x.s.title, matchKey(baseTitle(x.s.title)), x.s.printed, x === reviewed ? 'review' : null, x === reviewed ? score : null, x.s.confidence, x.state, JSON.stringify(x.s.box), now, named);
             if (x.state === 'linked') linked++;
             else asked++;
           }

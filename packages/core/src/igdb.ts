@@ -77,7 +77,7 @@ export const IGDB_PLATFORM_IDS: Record<string, number> = {
 export const IGDB_EXTRA_PLATFORM_IDS: Record<string, number> = {
   'nintendo-entertainment-system': 99,
   'super-nintendo': 58,
-  // As consoles of their own (region-locked, Settings > Platforms), games released in both regions are under the other platform.
+  // As consoles of their own (region-locked, Settings > Consoles), games released in both regions are under the other platform.
   famicom: 18,
   'super-famicom': 19,
 };

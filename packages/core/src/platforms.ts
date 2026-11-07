@@ -143,7 +143,7 @@ export function parseConsoleLabel(label: string): ParsedConsoleLabel {
 
 /**
  * Consoles that play only their own region's games (cartridge shapes, lockout chips, region codes):
- * the defaults of Settings > Platforms > Region-locked consoles.
+ * the defaults of Settings > Consoles > Region-locked consoles.
  */
 export const REGION_LOCKED_DEFAULT: readonly string[] = [
   'nintendo-entertainment-system',

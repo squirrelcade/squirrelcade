@@ -4,7 +4,8 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useRef, useState } from 'react';
 import { Link } from 'react-router';
 import { api } from '../api';
-import { ConsoleMark, consoleName, useOwnedMarks } from '../ConsoleMark';
+import { StashMark } from '../Acorn';
+import { ConsoleMark, consoleName, useOwnedMarks, useReleasedOn } from '../ConsoleMark';
 import { useOpenGame } from '../GameDrawer';
 import { notifyError, notifySuccess, useCanEdit } from '../hooks';
 import { PageHeader } from '../components';
@@ -31,6 +32,26 @@ export interface Mention {
   ownedOn?: string[];
   wishlist?: { score: number; priority: string; rank: number | null } | null;
   romm?: { url: string; playUrl?: string | null } | null;
+  /** The consoles its page names (item 11 of the owner's 1.3 list). */
+  consoles?: string[];
+}
+
+/**
+ * Whether a magazine's game is yours for what the article is about (item 11): you have it on a console the page names
+ * that it came out on, else (the page names none of those) on the mention's own console.
+ */
+export function mentionMine(m: Mention, owned: readonly string[], released: readonly string[]): boolean {
+  const named = (m.consoles ?? []).filter((k) => released.includes(k) || k === m.platformKey);
+  const consoles = named.length > 0 ? named : m.platformKey ? [m.platformKey] : [];
+  return consoles.some((k) => owned.includes(k));
+}
+
+/** The Stash's chest on a magazine's game (item 11): filled when it's yours for what the article is about, grey otherwise. */
+export function MentionChest({ m, size = 12 }: { m: Mention; size?: number }) {
+  const owned = useOwnedMarks()(m.title);
+  const released = useReleasedOn(m.title);
+  const mine = mentionMine(m, owned, released);
+  return <StashMark size={size} owned={mine} label={mine ? 'You have it for this' : "You don't have it for this"} />;
 }
 
 /** A page made small on the server (D182). */
@@ -85,6 +106,7 @@ function GameCard({ m: given, onDone }: { m: Mention; onDone: () => void }) {
   return (
     <Stack gap={6} maw={300}>
       <Group gap={6} wrap="nowrap">
+        <MentionChest m={m} size={14} />
         {m.platformKey && <ConsoleMark platformKey={m.platformKey} name={consoleName(m.platformKey)} owned={m.answer === 'own' || m.answer === 'own-not-in-catalog'} size={16} />}
         <Text fw={700} size="sm">
           {m.title}
@@ -220,7 +242,12 @@ export function PageGames({ issueId, page, marking, shown }: { issueId: number; 
                       pointerEvents: 'auto',
                       padding: 0,
                     }}
-                  />
+                  >
+                    {/* The chest at the box's top-right corner, outside the words (item 11). */}
+                    <span style={{ position: 'absolute', top: 0, right: 0, transform: 'translate(55%, -60%)', lineHeight: 0, padding: 2, borderRadius: 4, background: 'rgba(255, 255, 255, 0.93)', boxShadow: '0 1px 2px rgba(0, 0, 0, 0.3)' }}>
+                      <MentionChest m={m} size={11} />
+                    </span>
+                  </Box>
                 </Popover.Target>
                 <Popover.Dropdown>
                   <GameCard m={m} onDone={() => setOpenId(null)} />
@@ -286,7 +313,7 @@ export function IssueGames({ issueId }: { issueId: number }) {
       <Group gap="xs" wrap="wrap">
         {games.map((m) => (
           <Anchor key={m.id} component={Link} to={`?page=${m.page}`} underline="never">
-            <Badge variant="light" color={m.answer === 'own' || m.answer === 'own-not-in-catalog' ? 'green' : m.answer === 'own-elsewhere' ? 'blue' : m.wishlist ? 'yellow' : 'gray'} style={{ textTransform: 'none', cursor: 'pointer' }}>
+            <Badge variant="light" color={m.answer === 'own' || m.answer === 'own-not-in-catalog' ? 'green' : m.answer === 'own-elsewhere' ? 'blue' : m.wishlist ? 'yellow' : 'gray'} style={{ textTransform: 'none', cursor: 'pointer' }} leftSection={<MentionChest m={m} size={10} />}>
               p. {m.page} · {m.title}
               {m.score ? ` · ${m.score}` : ''}
               {m.state === 'suggested' ? ' ?' : ''}
@@ -314,9 +341,12 @@ export function InTheMagazines({ title }: { title: string }) {
           <Group gap="sm" wrap="nowrap">
             <Image src={thumb(m.issueId, m.page, m.version)} w={45} h={60} radius="sm" fit="cover" alt="" loading="lazy" />
             <Stack gap={0} style={{ minWidth: 0 }}>
-              <Text size="sm" fw={600} lineClamp={1}>
-                {m.issue}
-              </Text>
+              <Group gap={6} wrap="nowrap">
+                <MentionChest m={m} />
+                <Text size="sm" fw={600} lineClamp={1}>
+                  {m.issue}
+                </Text>
+              </Group>
               <Text size="xs" c="dimmed">
                 p. {m.page}
                 {m.kind ? ` · ${m.kind}` : ''}

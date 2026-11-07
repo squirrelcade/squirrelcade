@@ -38,7 +38,7 @@ Owned copies that match nothing are listed on the console's "Not in catalog" tab
 
 ## Regions
 
-On region-locked consoles (Settings > Platforms > Region-locked consoles), copies from another region are a console of their own: Japanese Super Nintendo games are the Super Famicom, with its own catalog of Japanese releases. On region-free consoles, such as the Switch, every region's copy counts for the same game, and the catalog takes in other regions' physical releases too: IGDB's PAL, Japanese and Asian discs and cartridges that the other sources don't list come in at the bottom of the source order (Settings > Sources > Catalog sources, "IGDB (other regions)"). Each counts once you own a copy; until then it waits on the console's "Other regions" tab, neither missing nor recommended, so the percentages don't drop. Which consoles are region-locked is yours to change, console by console.
+On region-locked consoles (Settings > Consoles > Region-locked consoles), copies from another region are a console of their own: Japanese Super Nintendo games are the Super Famicom, with its own catalog of Japanese releases. On region-free consoles, such as the Switch, every region's copy counts for the same game, and the catalog takes in other regions' physical releases too: IGDB's PAL, Japanese and Asian discs and cartridges that the other sources don't list come in at the bottom of the source order (Settings > Sources > Catalog sources, "IGDB (other regions)"). Each counts once you own a copy; until then it waits on the console's "Other regions" tab, neither missing nor recommended, so the percentages don't drop. Which consoles are region-locked is yours to change, console by console.
 
 ## When it's wrong
 

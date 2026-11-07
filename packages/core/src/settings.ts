@@ -574,7 +574,7 @@ export const settingDefinitions = {
     section: 'Top 100 lists',
     label: 'A Top 100 game you have on another console',
     description:
-      'The same game on its other generation (Switch and Switch 2, PlayStation 4 and 5) always counts as yours, as Settings > Catalogs and matching > Cross-generation games says. This is for one you have on any other console or on PC (Hades on the Switch, in the PlayStation 4 list): left out of that list\'s count ("88 of 95, 5 you have elsewhere"), counted as yours, or still one to get. A remake with the same name isn\'t the same game.',
+      'The same game on its other generation (Switch and Switch 2, PlayStation 4 and 5) counts as yours while Settings > Catalogs and matching > Cross-generation games count for both consoles is on. This is for one you have on any other console or on PC (Hades on the Switch, in the PlayStation 4 list): left out of that list\'s count ("88 of 95, 5 you have elsewhere"), counted as yours, or still one to get. A remake with the same name isn\'t the same game.',
     options: [
       { value: 'leftOut', label: 'Left out of the count' },
       { value: 'counts', label: 'Counts as yours' },
@@ -1661,7 +1661,7 @@ export const settingDefinitions = {
     section: 'Ownership',
     label: 'Other-region copies count toward completion',
     description:
-      'Copies from other regions (JP, PAL...) count as owning a home-region catalog game. Off means only home-region copies count. Region-locked consoles (Settings > Platforms) keep other regions apart either way: there, those copies make a console of their own.',
+      'Copies from other regions (JP, PAL...) count as owning a home-region catalog game. Off means only home-region copies count. Region-locked consoles (Settings > Consoles) keep other regions apart either way: there, those copies make a console of their own.',
     default: true,
   }),
   'catalogs.suggestMatches': bool({

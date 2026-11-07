@@ -28,7 +28,7 @@ An export shows what Squirrelcade found in it: how many games on which consoles,
 
 ## Consoles and catalogs
 
-- **Consoles:** a console gets a **catalog** (the list of its games, to see what you're missing) once you own a few different games for it: 6 by default (Settings > Platforms). Typing your games in by hand? Until a console has its catalog, Add a game suggests only the games you've added to it. Set that number to 1 for a catalog after the first game.
+- **Consoles:** a console gets a **catalog** (the list of its games, to see what you're missing) once you own a few different games for it: 6 by default (Settings > Consoles). Typing your games in by hand? Until a console has its catalog, Add a game suggests only the games you've added to it. Set that number to 1 for a catalog after the first game.
 - **Catalogs:** Squirrelcade builds each one from Wikipedia's list of the console's games, physical releases first. It takes a few minutes the first time (Wikipedia is asked politely, one page at a time); the **activity** icon at the top shows the work going on. If you keep your own list of a console's games, you can use it instead (a console's page > "Where this catalog comes from").
 
 ![The Consoles step: each console's number of games, and whether it's tracked](img/welcome-consoles.jpg)
