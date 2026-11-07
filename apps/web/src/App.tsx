@@ -12,6 +12,12 @@ import { LoginPage } from './pages/Login';
 
 const RELOADED = 'squirrelcade:reloaded-for-update';
 
+/** /platforms and /platforms/<key>, from before Nutshell > Consoles was named so (D200): the same page, its tab and search kept. */
+function ToConsoles() {
+  const { pathname, search, hash } = useLocation();
+  return <Navigate replace to={`${pathname.replace(/^\/platforms/, '/consoles')}${search}${hash}`} />;
+}
+
 /**
  * A page loaded the first time it's opened, so a first visit (Store Mode on a phone, say) downloads only
  * what it shows. After Squirrelcade is updated, a tab opened before still asks for the old version's files,
@@ -342,8 +348,11 @@ function Shell({ noConnection = false }: { noConnection?: boolean }) {
             <Route path="/leaves/review" element={<OwnerOnly><MagazineReviewPage /></OwnerOnly>} />
             <Route path="/leaves/issue/:id" element={<IssueReaderPage />} />
             <Route path="/leaves/:id" element={<MagazinePage />} />
-            <Route path="/platforms" element={<PlatformsPage />} />
-            <Route path="/platforms/:key" element={<PlatformDetailPage />} />
+            <Route path="/consoles" element={<PlatformsPage />} />
+            <Route path="/consoles/:key" element={<PlatformDetailPage />} />
+            {/* D200: Nutshell > Platforms became Consoles; old bookmarks still arrive. */}
+            <Route path="/platforms" element={<ToConsoles />} />
+            <Route path="/platforms/:key" element={<ToConsoles />} />
             <Route path="/sets" element={<SetsPage />} />
             <Route path="/series" element={<SeriesShelfPage />} />
             <Route path="/sets/:key" element={<SetDetailPage />} />

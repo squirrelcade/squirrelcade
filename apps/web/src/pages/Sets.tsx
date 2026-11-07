@@ -722,7 +722,7 @@ export function SetDetailPage() {
                 </Table.Td>
                 <Table.Td visibleFrom="sm">
                   {g.inCatalog ? (
-                    <Anchor component={Link} to={`/platforms/${g.platformKey}?tab=${g.catalogStatus ?? g.status}&q=${encodeURIComponent(g.title)}`} size="sm">
+                    <Anchor component={Link} to={`/consoles/${g.platformKey}?tab=${g.catalogStatus ?? g.status}&q=${encodeURIComponent(g.title)}`} size="sm">
                       {g.platform}
                     </Anchor>
                   ) : (

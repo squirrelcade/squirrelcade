@@ -156,7 +156,7 @@ export function PlatformValueHistory({ currency, dateFormat }: { currency: strin
             return (
               <Table.Tr key={r.key}>
                 <Table.Td>
-                  <Anchor component={Link} to={`/platforms/${r.key}`} size="sm">
+                  <Anchor component={Link} to={`/consoles/${r.key}`} size="sm">
                     {r.name}
                   </Anchor>
                 </Table.Td>

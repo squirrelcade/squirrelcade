@@ -496,7 +496,7 @@ function DoneStep() {
     <StepCard title="You're set up">
       <List size="sm" spacing={4}>
         <List.Item>
-          <Anchor component={Link} to="/platforms" size="sm">
+          <Anchor component={Link} to="/consoles" size="sm">
             Platforms
           </Anchor>
           : completion per console, and each console's missing games.
@@ -537,7 +537,7 @@ function DoneStep() {
         </List.Item>
       </List>
       <Group justify="flex-end">
-        <Button onClick={() => navigate('/platforms')}>Go to Platforms</Button>
+        <Button onClick={() => navigate('/consoles')}>Go to Consoles</Button>
       </Group>
     </StepCard>
   );

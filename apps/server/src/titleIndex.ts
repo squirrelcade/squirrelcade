@@ -50,6 +50,11 @@ export class TitleIndex {
     private readonly collection: CollectionService,
   ) {}
 
+  /** Changes whenever the copies or the catalogs' matching change (for answers worked out from them and kept). */
+  stamp(): string {
+    return `${this.collection.revision()}|${this.catalogs.stamp()}`;
+  }
+
   /** Forgets the collection's copies (after an update, or copies moved to another console). */
   invalidate(): void {
     this.owned = null;

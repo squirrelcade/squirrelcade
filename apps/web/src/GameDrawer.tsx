@@ -1136,7 +1136,7 @@ export function GameDrawer() {
                 In the PC library
               </Anchor>
             ) : (
-              <Anchor component={Link} to={`/platforms/${g.platformKey}?${c ? `tab=${c.status}&` : ''}q=${encodeURIComponent(g.title)}`} size="sm" onClick={close}>
+              <Anchor component={Link} to={`/consoles/${g.platformKey}?${c ? `tab=${c.status}&` : ''}q=${encodeURIComponent(g.title)}`} size="sm" onClick={close}>
                 On its console's page
               </Anchor>
             )}

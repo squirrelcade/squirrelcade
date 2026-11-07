@@ -16,7 +16,7 @@ import { consoleOf, dealConsoles, dealOrder, isNewListing, offPercent, type Deal
 import { GameOfTheDayCard } from './GameOfTheDay';
 import type { MissingCopy } from './Review';
 import { SetupChecklist } from './system/SetupChecklist';
-import { Acorns, Have, Reviews, type ReviewsOf } from '../Acorn';
+import { Acorns, Have, Reviews, StashMark, type ReviewsOf } from '../Acorn';
 
 interface Deal {
   /** IGDB's rating, beside its acorns (0.53.0). */
@@ -878,7 +878,7 @@ function Movers({ currency, dateFormat, className }: { currency: string; dateFor
 /** The catalogs, Top 100 lists and sets closest to done. */
 function Completion({ lines, done }: { lines: CompletionLine[]; done: number }) {
   if (lines.length === 0) return null;
-  const to = (l: CompletionLine) => (l.kind === 'set' ? `/sets/${l.key}` : l.kind === 'top100' ? `/roots/${l.key}?tab=top100` : `/platforms/${l.key}`);
+  const to = (l: CompletionLine) => (l.kind === 'set' ? `/sets/${l.key}` : l.kind === 'top100' ? `/roots/${l.key}?tab=top100` : `/consoles/${l.key}`);
   const name = (l: CompletionLine) => (l.kind === 'set' ? l.name : l.kind === 'top100' ? `${l.name} Top 100` : `${l.name} catalog`);
   return (
     <section className="sc-card sc-pad" aria-labelledby="completion-h" style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
@@ -886,15 +886,17 @@ function Completion({ lines, done }: { lines: CompletionLine[]; done: number }) 
         <h2 id="completion-h" className="sc-h2">
           Completion
         </h2>
-        <Anchor component={Link} to="/platforms" size="sm">
-          Platforms
+        <Anchor component={Link} to="/consoles" size="sm">
+          Consoles
         </Anchor>
       </Group>
       {lines.map((l) => (
         <Anchor key={`${l.kind}|${l.key}`} component={Link} to={to(l)} underline="never" c="inherit" style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
           <span style={{ display: 'flex', justifyContent: 'space-between', gap: 10 }}>
             <span style={{ fontWeight: 700, minWidth: 0 }}>{name(l)}</span>
-            <span className="sc-muted" style={{ fontSize: 14, whiteSpace: 'nowrap' }}>
+            <span className="sc-muted" style={{ fontSize: 14, whiteSpace: 'nowrap', display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+              {/* The chest: what you have of it (D197). */}
+              <StashMark size={12} />
               {count(l.owned)} of {count(l.total)} · {l.percent}%
             </span>
           </span>

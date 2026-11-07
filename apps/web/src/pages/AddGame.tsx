@@ -63,7 +63,7 @@ export function AddGamePage() {
     { group: mine.length > 0 ? 'Every other console' : 'Consoles', items: [...KNOWN_PLATFORMS].filter((p) => !mineKeys.has(p.key)).sort((a, b) => a.name.localeCompare(b.name)).map((p) => ({ value: p.key, label: p.name })) },
   ];
   const platformName = KNOWN_PLATFORMS.find((p) => p.key === platformKey)?.name ?? mine.find((p) => p.key === platformKey)?.name ?? platformKey;
-  // A console with too few games for a catalog (Settings > Platforms) suggests only the games added to it: say why.
+  // A console with too few games for a catalog (Settings > Consoles) suggests only the games added to it: say why.
   const noCatalog = platformKey !== '' && yours.isSuccess && !yours.data.find((p) => p.key === platformKey)?.eligible;
 
   const suggest = useQuery({
@@ -130,7 +130,7 @@ export function AddGamePage() {
               label="Title"
               description={
                 noCatalog
-                  ? `${platformName} has no catalog yet, so only the games you add to it are suggested: type the title as the box has it. It gets one when you have ${minUnique} different games on it (Settings › Platforms).`
+                  ? `${platformName} has no catalog yet, so only the games you add to it are suggested: type the title as the box has it. It gets one when you have ${minUnique} different games on it (Settings › Consoles).`
                   : undefined
               }
               placeholder={platformKey ? 'Start typing: the catalog and your games suggest titles' : 'Pick the console first'}
@@ -204,7 +204,7 @@ export function AddGamePage() {
         <Alert color="green" variant="light" icon={<IconCheck size={18} />} title="Added just now" mt="md" maw={640}>
           <Stack gap={2}>
             {added.map((a, i) => (
-              <Anchor key={`${a.platformKey}|${a.title}|${i}`} component={Link} to={`/platforms/${a.platformKey}?game=${encodeURIComponent(`${a.platformKey}|${a.title}`)}`} size="sm">
+              <Anchor key={`${a.platformKey}|${a.title}|${i}`} component={Link} to={`/consoles/${a.platformKey}?game=${encodeURIComponent(`${a.platformKey}|${a.title}`)}`} size="sm">
                 {a.title} · {a.platform}
               </Anchor>
             ))}

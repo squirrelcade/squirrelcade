@@ -26,7 +26,7 @@ import {
 } from '@mantine/core';
 import { IconCheck, IconDots, IconExternalLink, IconPencil, IconSearch } from '@tabler/icons-react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { useLocalStorage } from '@mantine/hooks';
+import { useLocalStorage, useMediaQuery } from '@mantine/hooks';
 import { Fragment, useMemo, useState, type ReactNode } from 'react';
 import { Link, useSearchParams } from 'react-router';
 import { StashMark } from '../Acorn';
@@ -78,6 +78,12 @@ interface Top100Row extends ListGame {
   developers: string[];
   publishers: string[];
   why: HistoryText | null;
+  /** D198: whether it came out on a disc or cartridge here, and who says so. */
+  physical: { is: boolean; from: 'yours' | 'list' | 'catalog' | 'copy' | 'unknown'; disc: string | null };
+  /** D199: the same game yours on another console or PC. */
+  elsewhere: { platformKey: string; platform: string; crossGen: boolean } | null;
+  standing: 'owned' | 'crossgen' | 'elsewhere' | 'digital' | 'review' | 'maybe' | 'missing';
+  counts: boolean | null;
 }
 
 interface Top100View {
@@ -86,8 +92,16 @@ interface Top100View {
   listName: string;
   version: string;
   rows: Top100Row[];
-  summary: { total: number; owned: number; review: number; maybe: number; inRomm: number | null; ownedInRomm: number | null; finished: number | null };
+  summary: { total: number; owned: number; review: number; maybe: number; inRomm: number | null; ownedInRomm: number | null; finished: number | null; have: number; of: number; digital: number; elsewhere: number; crossGen: number };
   rommUnowned: boolean;
+}
+
+/**
+ * A Top 100 count in words (D198, D199): "91 of 93 you can have (7 digital only)", "88 of 95, 5 you have elsewhere".
+ */
+export function top100Words(s: { have: number; of: number; digital: number; elsewhere: number }): string {
+  const extra = [s.digital > 0 ? `${s.digital} digital only` : null, s.elsewhere > 0 ? `${s.elsewhere} you have elsewhere` : null].filter(Boolean);
+  return `${s.have} of ${s.of}${s.digital > 0 ? ' you can have' : ''}${extra.length > 0 ? ` (${extra.join(', ')})` : ''}`;
 }
 
 export interface ConsoleHistoryView {
@@ -380,7 +394,7 @@ export function Top100Tab({ platformKey, narrow }: { platformKey: string; narrow
   const s = d.summary;
   const romm = s.inRomm !== null;
   const summary = [
-    `Own ${s.owned} of ${s.total}`,
+    `Have ${top100Words(s)}`,
     s.finished ? `${s.finished} finished` : null,
     romm ? (d.rommUnowned ? `${s.inRomm} in RomM` : `${s.ownedInRomm} of them in RomM`) : null,
     s.review > 0 ? `${s.review} to review` : null,
@@ -478,6 +492,7 @@ export function Top100Tab({ platformKey, narrow }: { platformKey: string; narrow
                         {/* RomM's purple button up by the title (the owner: "put the Play on RomM higher to the top"). */}
                         <RommLinks link={r.romm} />
                         <WhyText platformKey={on} title={name} why={r.why} />
+                        <FormatButtons platformKey={platformKey} r={r} />
                         {narrow && (
                           <Group gap="sm" mt={4} align="flex-start">
                             <OwnedCell game={r} platformKey={platformKey} />
@@ -517,8 +532,45 @@ export function Top100Tab({ platformKey, narrow }: { platformKey: string; narrow
   );
 }
 
-/** Whether a Top 100 game counts as owned, isn't, or waits for an answer (to review, maybe). */
-const ownership = (r: Top100Row) => (r.owned === 'owned' ? 'owned' : r.owned === 'missing' ? 'missing' : 'unsure');
+/**
+ * A Top 100 tile's look: green yours here; blue yours on its other generation or another console (D199); faded, digital
+ * only (D198); gold dotted, missing; grey, waiting for an answer (to review, maybe).
+ */
+const ownership = (r: Top100Row) =>
+  r.standing === 'owned' ? 'owned' : r.standing === 'crossgen' || r.standing === 'elsewhere' ? 'elsewhere' : r.standing === 'digital' ? 'digital' : r.owned === 'missing' ? 'missing' : 'unsure';
+
+/** It's physical / Digital only for a Top 100 game (D198): what decides whether it counts, the owner's word winning. */
+function FormatButtons({ platformKey, r }: { platformKey: string; r: Top100Row }) {
+  const canEdit = useCanEdit();
+  const queryClient = useQueryClient();
+  const set = useMutation({
+    mutationFn: (physical: boolean | null) => api<Top100View>(`/history/top100/${platformKey}/format`, { method: 'PUT', json: { title: r.title, physical } }),
+    onSuccess: (view) => {
+      queryClient.setQueryData(['history', 'top100', platformKey], view);
+      void queryClient.invalidateQueries({ queryKey: ['platforms', 'top100'] });
+    },
+  });
+  if (r.owned === 'owned') return null;
+  const from = r.physical.from === 'yours' ? 'you said' : r.physical.from === 'list' ? 'the list says' : r.physical.from === 'catalog' ? 'its catalog has it' : null;
+  return (
+    <Group gap={6} wrap="wrap">
+      <Text size="xs" c="dimmed">
+        {r.physical.is ? (r.physical.disc ? `On a disc or cartridge in ${r.physical.disc}` : 'On a disc or cartridge') : 'Digital only'}
+        {from ? ` (${from})` : ''}
+      </Text>
+      {canEdit && (
+      <>
+      <Button size="compact-xs" variant={r.physical.is && r.physical.from === 'yours' ? 'light' : 'subtle'} loading={set.isPending && set.variables === true} onClick={() => set.mutate(r.physical.is && r.physical.from === 'yours' ? null : true)}>
+        It&apos;s physical
+      </Button>
+      <Button size="compact-xs" variant={!r.physical.is && r.physical.from === 'yours' ? 'light' : 'subtle'} color="gray" loading={set.isPending && set.variables === false} onClick={() => set.mutate(!r.physical.is && r.physical.from === 'yours' ? null : false)}>
+        Digital only
+      </Button>
+      </>
+      )}
+    </Group>
+  );
+}
 
 /** A legend's sample square. */
 const sample = (own: string) => <span className="sc-square" data-own={own} style={{ width: 14, height: 14, display: 'inline-block' }} />;
@@ -531,11 +583,15 @@ function Top100Board({ d, platformKey, show, onlyRomm }: { d: Top100View; platfo
   const open = useOpenGame();
   // Each square shows its game's box (the owner's ask, 0.53.0), the rank in its corner; Settings > Interface can hide covers.
   const showArt = useSetting('interface.showCoverArt', true);
+  const narrowArt = useMediaQuery('(max-width: 40em)');
   const s = d.summary;
-  const unsure = s.review + s.maybe;
+  const unsure = d.rows.filter((r) => ownership(r) === 'unsure').length;
+  const other = s.crossGen + d.rows.filter((r) => r.standing === 'elsewhere').length;
   const legend: [string, ReactNode][] = [[`Owned · ${s.owned}`, sample('owned')]];
+  if (other > 0) legend.push([`On another console · ${other}`, sample('elsewhere')]);
   if (s.inRomm !== null) legend.push([`In RomM · ${s.inRomm}`, <span className="sc-dot" style={{ background: 'var(--sc-have)', width: 6, height: 6 }} />]);
-  legend.push([`Not owned · ${s.total - s.owned - unsure}`, sample('missing')]);
+  legend.push([`Not owned · ${d.rows.filter((r) => ownership(r) === 'missing').length}`, sample('missing')]);
+  if (s.digital > 0) legend.push([`Digital only · ${s.digital}`, sample('digital')]);
   if (unsure > 0) legend.push([`To answer · ${unsure}`, sample('unsure')]);
   return (
     <section className="sc-card sc-pad sc-wide" aria-label={`The ${d.listName} Top 100 as a board`} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
@@ -543,7 +599,7 @@ function Top100Board({ d, platformKey, show, onlyRomm }: { d: Top100View; platfo
         {d.rows.map((r) => {
           const own = ownership(r);
           const shown = (show === 'all' || (show === 'owned' ? r.owned === 'owned' : r.owned !== 'owned')) && (!onlyRomm || r.romm !== null);
-          const label = `#${r.rank} ${r.title}: ${own === 'owned' ? 'owned' : own === 'missing' ? 'not owned' : 'to answer on Review'}${r.romm ? ', in RomM' : ''}`;
+          const label = `#${r.rank} ${r.title}: ${own === 'owned' ? 'owned' : own === 'elsewhere' ? `you have it on ${r.elsewhere?.platform}${r.counts ? ' (counts)' : ''}` : own === 'digital' ? 'digital only (not counted)' : own === 'missing' ? 'not owned' : 'to answer on Review'}${r.romm ? ', in RomM' : ''}`;
           return (
             <button
               key={r.rank}
@@ -560,6 +616,17 @@ function Top100Board({ d, platformKey, show, onlyRomm }: { d: Top100View; platfo
               {showArt && r.coverId && <img className="sc-square-art" src={igdbCoverUrl(r.coverId, 'cover_big')} alt="" loading="lazy" decoding="async" />}
               {showArt && r.coverId && <CoverMarks title={r.catalogTitle ?? r.title} coverWidth={70} platformKey={platformKey} />}
               {r.romm && <span className="sc-romm-dot" aria-hidden="true" />}
+              {/* The console it's yours on, in the corner (D199). */}
+              {own === 'elsewhere' && r.elsewhere && (
+                <span className="sc-square-where" aria-hidden="true">
+                  <ConsoleMark platformKey={r.elsewhere.platformKey} name={r.elsewhere.platform} size={10} />
+                </span>
+              )}
+              {own === 'digital' && !narrowArt && (
+                <span className="sc-square-digital" aria-hidden="true">
+                  Digital
+                </span>
+              )}
             </button>
           );
         })}
@@ -583,10 +650,15 @@ const HUNT_SHOWN = 12;
 
 /** The Top 100 games you don't have, best first: where each one is (on PC, on another console, on the wishlist). */
 function HuntingList({ d, platformKey }: { d: Top100View; platformKey: string }) {
-  const hunt = d.rows.filter((r) => r.owned !== 'owned');
+  // The games counted as yours elsewhere (the other generation) aren't hunted; the left-out ones say where they are.
+  const hunt = d.rows.filter((r) => r.owned !== 'owned' && r.counts !== true);
   const onPc = hunt.filter((r) => r.onPc.length > 0).length;
   const note = (r: Top100Row) =>
-    r.owned === 'review'
+    r.standing === 'elsewhere'
+      ? `You have it on ${r.elsewhere?.platform}${r.counts === null ? ' (not counted)' : ''}`
+      : r.standing === 'digital'
+        ? 'Digital only (not counted)'
+        : r.owned === 'review'
       ? 'To answer on Review'
       : r.owned === 'maybe'
         ? `Maybe: ${r.maybe.join(', ')}`

@@ -113,7 +113,7 @@ export function StatisticsPage() {
           />
         )}
         <StatCard label="Sealed" value={count(s.totals.sealed)} />
-        <StatCard label="Platforms" value={count(s.totals.consoles)} />
+        <StatCard label="Consoles" value={count(s.totals.consoles)} />
       </SimpleGrid>
       <GoalProgress card mb="md" />
       <SimpleGrid cols={{ base: 1, md: 2 }} spacing="md">

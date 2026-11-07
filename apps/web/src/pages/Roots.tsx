@@ -1,9 +1,9 @@
-import { Anchor, Card, Group, Loader, SimpleGrid, Stack, Switch, Tabs, Text } from '@mantine/core';
+import { Anchor, Card, Group, Loader, Progress, SimpleGrid, Stack, Switch, Tabs, Text } from '@mantine/core';
 import { useMediaQuery } from '@mantine/hooks';
 import { IconArrowLeft } from '@tabler/icons-react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router';
-import { RootsMark } from '../Acorn';
+import { RootsMark, StashMark } from '../Acorn';
 import { api } from '../api';
 import { PageHeader } from '../components';
 import { notifyError, useCanEdit, useFeature, usePageTitle, useSetting, useSettings } from '../hooks';
@@ -30,7 +30,7 @@ interface Consoles {
   }[];
 }
 
-/** Follow or stop following a console you don't collect (Settings > Platforms > Consoles you follow, D169). */
+/** Follow or stop following a console you don't collect (Settings > Consoles > Consoles you follow, D169). */
 function useFollow() {
   const queryClient = useQueryClient();
   const unfollowed = useSetting('platforms.unfollowed', [] as string[]);
@@ -66,6 +66,38 @@ function FollowLine({ c, canEdit, followOn }: { c: Consoles['consoles'][number];
 }
 
 /**
+ * How much of a console you have, on its card (item 8 of the owner's 1.3 list): the chest, a bar and the percentage, as
+ * Nutshell > Consoles' Complete column has them, opening the console's page there. A console without a catalog says
+ * how many of its games you have, opening the Stash on it; none, no line. Read from the catalogs' stored results.
+ */
+function HaveLine({ platformKey, completion, games }: { platformKey: string; completion?: { percent: number; owned: number }; games?: number }) {
+  if (completion) {
+    return (
+      <Anchor component={Link} to={`/consoles/${platformKey}`} underline="never" mt={6} style={{ display: 'inline-flex' }} onClick={(e) => e.stopPropagation()} aria-label={`You have ${completion.percent}% of it`}>
+        <Group gap={6} wrap="nowrap">
+          <StashMark size={12} />
+          <Progress value={completion.percent} w={80} size="sm" color={completion.percent >= 90 ? 'green' : 'forest'} />
+          <Text size="xs" c="var(--mantine-color-text)">
+            {completion.percent}%
+          </Text>
+        </Group>
+      </Anchor>
+    );
+  }
+  if (!games) return null;
+  return (
+    <Anchor component={Link} to={`/collection?platform=${platformKey}`} underline="never" mt={6} size="xs" style={{ display: 'inline-flex' }} onClick={(e) => e.stopPropagation()}>
+      <Group gap={6} wrap="nowrap">
+        <StashMark size={12} />
+        <Text size="xs" c="var(--mantine-color-text)">
+          {games} {games === 1 ? 'game' : 'games'}
+        </Text>
+      </Group>
+    </Anchor>
+  );
+}
+
+/**
  * Roots (D165, "Games in their time, and since"): the games as they were seen when they came out, what they came from,
  * and how they're remembered. Here: each console's history and its Top 100 list, by generation, and the timeline of
  * consoles and landmark games; on every game's page, its own Roots part. (The Time machine and videos come later.)
@@ -86,6 +118,11 @@ export function RootsPage() {
   const collected = listed.filter((c) => c.tracked);
   const consoles = all || collected.length === 0 ? listed : collected;
   const generations = [...new Set(consoles.map((c) => c.generation ?? 0))].sort((a, b) => a - b);
+  // What you have of each console (the catalogs' stored results and the copies' counts): a viewer kept from them gets none.
+  const catalogs = useQuery({ queryKey: ['catalogs', 'summary'], queryFn: () => api<{ key: string; percent: number; owned: number }[]>('/catalogs'), enabled: on && view === 'consoles', retry: false });
+  const platformCounts = useQuery({ queryKey: ['platforms'], queryFn: () => api<{ key: string; games: number }[]>('/platforms'), enabled: on && view === 'consoles', retry: false });
+  const completion = new Map(catalogs.data?.map((c) => [c.key, c]));
+  const gameCounts = new Map(platformCounts.data?.map((p) => [p.key, p.games]));
   return (
     <>
       <PageHeader
@@ -166,6 +203,7 @@ export function RootsPage() {
                               </Anchor>
                             )}
                           </Group>
+                          <HaveLine platformKey={c.platformKey} completion={completion.get(c.platformKey)} games={gameCounts.get(c.platformKey)} />
                           <FollowLine c={c} canEdit={canEdit} followOn={followOn} />
                         </Card>
                       ))}
@@ -214,7 +252,7 @@ export function RootsConsolePage() {
             {c?.tracked && (
               <>
                 {' '}
-                <Anchor component={Link} to={`/platforms/${key}`} size="sm">
+                <Anchor component={Link} to={`/consoles/${key}`} size="sm">
                   Its checklist
                 </Anchor>{' '}
                 is in the Nutshell.

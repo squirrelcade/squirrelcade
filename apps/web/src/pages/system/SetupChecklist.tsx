@@ -49,8 +49,8 @@ export function SetupChecklist({ unfinishedOnly = false }: { unfinishedOnly?: bo
       detail:
         catalogGames > 0
           ? `${count(catalogGames)} catalog games on ${catalogs.data.length} consoles`
-          : 'Built from Wikipedia for each console you collect, a few minutes after it has enough games (Settings › Platforms)',
-      to: '/platforms',
+          : 'Built from Wikipedia for each console you collect, a few minutes after it has enough games (Settings › Consoles)',
+      to: '/consoles',
     },
     { done: Boolean(lastBackup), label: 'Backups', detail: lastBackup ? `Newest ${date(lastBackup.createdAt, dateFormat)}` : 'The first backup runs soon after start', to: '/system/backups' },
     {

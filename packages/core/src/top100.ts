@@ -59,6 +59,10 @@ export interface Top100Entry {
   /** Other and regional titles, which help find the game in the collection and in RomM. */
   altTitles: string[];
   year: number | null;
+  /** Only ever sold as a download on this console (D198): it stays in the list but isn't counted (a setting). */
+  digital: boolean;
+  /** Where its disc or cartridge came out when that wasn't everywhere ("Japan"): a physical game, said where. */
+  disc: string | null;
 }
 
 /** A console's Top 100 list, best first. */
@@ -81,7 +85,9 @@ const top100Schema = z.object({
     z.object({
       platform: z.string().min(1),
       name: z.string().min(1),
-      list: z.array(z.object({ rank: z.number().int().positive(), title: z.string().trim().min(1), alt: z.array(z.string()).optional(), year: z.number().int().nullable().optional() })),
+      list: z.array(
+        z.object({ rank: z.number().int().positive(), title: z.string().trim().min(1), alt: z.array(z.string()).optional(), year: z.number().int().nullable().optional(), digital: z.boolean().optional(), disc: z.string().optional() }),
+      ),
     }),
   ),
 });
@@ -96,7 +102,7 @@ export function parseTop100(raw: unknown): Top100Data {
       name: p.name,
       entries: [...p.list]
         .sort((a, b) => a.rank - b.rank)
-        .map((e) => ({ rank: e.rank, title: e.title, altTitles: (e.alt ?? []).map((a) => a.trim()).filter(Boolean), year: e.year ?? null })),
+        .map((e) => ({ rank: e.rank, title: e.title, altTitles: (e.alt ?? []).map((a) => a.trim()).filter(Boolean), year: e.year ?? null, digital: e.digital === true, disc: e.disc?.trim() || null })),
     })),
   };
 }

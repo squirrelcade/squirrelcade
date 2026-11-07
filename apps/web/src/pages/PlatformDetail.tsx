@@ -144,7 +144,7 @@ export function PlatformDetailPage() {
   }
 
   const d = detail.data;
-  usePageTitle(d?.platform.name ?? 'Platforms', appName);
+  usePageTitle(d?.platform.name ?? 'Consoles', appName);
   const hasTop100 = historyOn && Boolean(available.data?.top100.includes(key));
   // The owner can write a history for a console that has none.
   const hasHistory = historyOn && Boolean(available.data) && (available.data!.history.includes(key) || canEdit);
@@ -298,7 +298,7 @@ export function PlatformDetailPage() {
         <>
           {tab === 'extra' && (
             <Text size="sm" c="dimmed" mb="xs" maw={760}>
-              Other regions' physical releases (from IGDB) that this console plays, as it isn't region-locked (Settings &gt; Platforms &gt; Region-locked consoles). Each
+              Other regions' physical releases (from IGDB) that this console plays, as it isn't region-locked (Settings &gt; Consoles &gt; Region-locked consoles). Each
               counts once you own a copy; until then it's neither missing nor recommended, so your percentages don't drop.
             </Text>
           )}

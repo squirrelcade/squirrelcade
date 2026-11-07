@@ -66,7 +66,7 @@ const MAIN_PAGES: Record<string, string> = {
   '/collection/sale': 'For sale',
   '/collection/statistics': 'Statistics',
   '/collection/report': 'Collection report',
-  '/platforms': 'Platforms',
+  '/consoles': 'Consoles',
   '/sets': 'Sets',
   '/friends': 'Friends',
   '/pc': 'PC library',
@@ -90,7 +90,7 @@ const MAIN_PAGES: Record<string, string> = {
 
 /** The browser tab title for a page; null for a platform's, a set's or a friend's page, which shows its name. */
 function pageTitle(path: string): string | null {
-  if (path.startsWith('/platforms/') || path.startsWith('/sets/') || path.startsWith('/friends/') || path.startsWith('/help')) return null;
+  if (path.startsWith('/consoles/') || path.startsWith('/sets/') || path.startsWith('/friends/') || path.startsWith('/help')) return null;
   const settingsPage = SETTINGS_PAGES.find((p) => path === `/settings/${p.id}`);
   if (settingsPage) return `${settingsPage.title} · Settings`;
   return MAIN_PAGES[path] ?? SYSTEM_PAGES.find((p) => p.path === path)?.label ?? '';
@@ -155,7 +155,7 @@ export function Layout({ children }: { children: ReactNode }) {
   const coming = useQuery({ queryKey: ['coming'], queryFn: () => api<{ items: unknown[] }>('/coming'), enabled: !!session?.authenticated && comingOn, staleTime: 60_000 });
   const comingCount = coming.data?.items.length ?? 0;
   // Statistics and Report are the Nutshell's (the Almanac's from 2026-10-06), with the consoles and sets; their addresses stay.
-  const inNutshell = path.startsWith('/platforms') || path.startsWith('/series') || path.startsWith('/sets') || path === '/collection/statistics' || path === '/collection/report';
+  const inNutshell = path.startsWith('/consoles') || path.startsWith('/series') || path.startsWith('/sets') || path === '/collection/statistics' || path === '/collection/report';
   // The PC library is the Stash's, its wishlist and deals Acorns' (the owner's idea, 2026-10-23: D165), counted apart.
   const inCollection = (path.startsWith('/collection') || path === '/pc') && !inAcorns && !inNutshell;
   const reviewBadge =
@@ -288,8 +288,8 @@ export function Layout({ children }: { children: ReactNode }) {
           </NavLink>
           {/* The Nutshell (D163; Data until 2026-10-06, then the Almanac): your collection in a nutshell, the consoles with
               their catalogs, sets of your own, and the collection counted (Statistics) and listed to print (Report). */}
-          <NavLink label="Nutshell" description={SECTION_RULE.nutshell} leftSection={<NutshellMark size={18} />} opened={inNutshell} onClick={() => navigate('/platforms')} childrenOffset={28}>
-            {link('/platforms', 'Platforms')}
+          <NavLink label="Nutshell" description={SECTION_RULE.nutshell} leftSection={<NutshellMark size={18} />} opened={inNutshell} onClick={() => navigate('/consoles')} childrenOffset={28}>
+            {link('/consoles', 'Consoles')}
             {link('/series', 'Series')}
             {link('/sets', 'Sets')}
             {link('/collection/statistics', 'Statistics')}

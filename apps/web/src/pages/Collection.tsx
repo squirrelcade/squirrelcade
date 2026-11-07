@@ -375,7 +375,7 @@ export function CollectionPage() {
           />
           {seesPaid && <StatCard label="Paid" value={wholeMoney(totals.costCents, currency)} hint="Where recorded" />}
           <StatCard label="Sealed" value={count(totals.sealed)} />
-          <StatCard label="Platforms" value={count(totals.platforms)} hint={`${totals.eligiblePlatforms} tracked`} />
+          <StatCard label="Consoles" value={count(totals.platforms)} hint={`${totals.eligiblePlatforms} tracked`} />
         </SimpleGrid>
       )}
       <ValueHistory currency={currency} dateFormat={dateFormat} />

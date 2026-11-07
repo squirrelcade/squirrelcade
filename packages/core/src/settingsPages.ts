@@ -8,7 +8,7 @@ export const SETTINGS_PAGES = [
   { id: 'features', title: 'Features', description: "The optional parts of Squirrelcade, and the outside services they use: turn on what you want. Help's Services and tools lists every service and tool, with links." },
   { id: 'interface', title: 'Interface', description: 'Theme, cover art, tables and the start page.' },
   { id: 'collection', title: 'Collection', description: "Your collection: updates from PriceCharting's exports and your own files, copies you add, their photos, tests and estimates." },
-  { id: 'platforms', title: 'Platforms', description: 'Which consoles count and how they are recognized.' },
+  { id: 'platforms', title: 'Consoles', description: 'Which consoles count and how they are recognized.' },
   { id: 'catalogs', title: 'Catalogs and matching', description: 'Where catalogs come from and what counts as owning a catalog game.' },
   { id: 'pc', title: 'PC library', description: 'Your PC games from Playnite, and how each storefront counts.' },
   { id: 'magazines', title: 'Magazines', description: 'Leaves: your magazine scans, their text and the reader.' },

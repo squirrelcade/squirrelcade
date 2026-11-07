@@ -78,9 +78,10 @@ const HISTORY = {
 };
 
 /** PS3 and Super Nintendo copies (some Japanese, which count on the Super Famicom), with each console's catalog. */
-function seed(app: TestApp): void {
+function seed(app: TestApp, more: [string, string, string][] = []): void {
   seedCatalogs(app, {
     owned: [
+      ...more,
       ['1', 'The Last of Us', 'Playstation 3'],
       ['3', 'Journey Collectors Edition', 'Playstation 3'],
       ['4', "Demon's Souls", 'Playstation 3'],
@@ -151,6 +152,51 @@ describe('Top 100 lists', () => {
     expect(available).toMatchObject({ version: '2026-09-27', history: ['playstation-3'] });
     expect(available.top100).toEqual(expect.arrayContaining(['playstation-3', 'super-nintendo', 'super-famicom']));
     expect((await g.app.inject({ url: '/api/v1/history/top100/playstation-4', cookies })).statusCode).toBe(404);
+  });
+
+  it('counts the games you can have: digital-only ones and ones you have elsewhere left out, the other generation counted (D198, D199)', async () => {
+    const lists = structuredClone(TOP100);
+    // Super Metroid as if it were download-only (to test), and Live A Live with its cartridge only in Japan.
+    Object.assign(lists.platforms[1]!.list[2]!, { digital: true });
+    Object.assign(lists.platforms[1]!.list[1]!, { disc: 'Japan' });
+    // A PS3 game its catalog doesn't have, which the owner has on the PS4 (Hades II on the Switch 2, in the Switch's list).
+    lists.platforms[0]!.list.push({ rank: 7, title: 'Tokyo Jungle', alt: [], year: 2012 });
+    g = await testApp({ top100Data: lists, historyData: HISTORY });
+    const cookies = await setUp(g);
+    seed(g, [['10', 'Tokyo Jungle', 'Playstation 4']]);
+    const get = async (key: string) => (await g.app.inject({ url: `/api/v1/history/top100/${key}`, cookies })).json();
+    const row = (view: { rows: Row[] }, title: string) => view.rows.find((r) => r.title === title);
+    // Its next generation's copy counts as yours (D108's rule, on by default), also where the catalog lacks the game.
+    let ps3 = await get('playstation-3');
+    expect(row(ps3, 'Puppeteer')).toMatchObject({ owned: 'owned', standing: 'owned' });
+    expect(row(ps3, 'Tokyo Jungle')).toMatchObject({ owned: 'missing', standing: 'crossgen', counts: true, elsewhere: { platformKey: 'playstation-4', crossGen: true } });
+    expect(ps3.summary).toMatchObject({ total: 7, owned: 5, have: 6, of: 7, crossGen: 1, elsewhere: 0, digital: 0 });
+    // Without the rule, both are games you have elsewhere: left out of the count (the default), counted, or still to get.
+    g.settings.update({ 'catalogs.crossGen': false });
+    ps3 = await get('playstation-3');
+    expect(row(ps3, 'Tokyo Jungle')).toMatchObject({ standing: 'elsewhere', counts: null, elsewhere: { platformKey: 'playstation-4', crossGen: false } });
+    expect(ps3.summary).toMatchObject({ have: 4, of: 5, elsewhere: 2 });
+    g.settings.update({ 'roots.top100Elsewhere': 'counts' });
+    expect((await get('playstation-3')).summary).toMatchObject({ have: 6, of: 7 });
+    g.settings.update({ 'roots.top100Elsewhere': 'missing' });
+    expect((await get('playstation-3')).summary).toMatchObject({ have: 4, of: 7 });
+
+    // A digital-only game stays in the list but out of the count; a disc in one region is physical, said where.
+    let snes = await get('super-nintendo');
+    expect(snes.rows[2]).toMatchObject({ title: 'Super Metroid', standing: 'digital', counts: null, physical: { is: false, from: 'list' } });
+    expect(snes.rows[1]).toMatchObject({ title: 'Live A Live', standing: 'owned', physical: { is: true, disc: 'Japan' } });
+    expect(snes.summary).toMatchObject({ total: 3, have: 2, of: 2, digital: 1 });
+    // Today's Completion and the consoles' Top 100 column read the same count.
+    expect(g.history.top100Progress(['super-nintendo'])).toEqual([{ platformKey: 'super-nintendo', platform: 'Super Nintendo', owned: 2, total: 2, digital: 1, elsewhere: 0 }]);
+    // The owner says it's physical after all: it counts again; null goes back to the list's word.
+    const put = (physical: boolean | null) => g.app.inject({ method: 'PUT', url: '/api/v1/history/top100/super-nintendo/format', cookies, payload: { title: 'Super Metroid', physical } });
+    snes = (await put(true)).json();
+    expect(snes.rows[2]).toMatchObject({ standing: 'missing', counts: false, physical: { is: true, from: 'yours' } });
+    expect(g.history.top100Progress(['super-nintendo'])[0]).toMatchObject({ owned: 2, total: 3 });
+    expect((await put(null)).json().summary).toMatchObject({ of: 2, digital: 1 });
+    // Every game counted, with the setting.
+    g.settings.update({ 'roots.top100Counts': 'every' });
+    expect((await get('super-nintendo')).summary).toMatchObject({ have: 2, of: 3, digital: 0 });
   });
 
   it('says what the owner played of each game and how many they finished, unless it is kept from viewers', async () => {

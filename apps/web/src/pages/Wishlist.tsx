@@ -285,7 +285,7 @@ function EntryTable({ entries: all, ranked }: { entries: Entry[]; ranked?: boole
                           ) : null;
                         })()}
                         {narrow && (
-                          <Anchor size="xs" c="dimmed" component={Link} to={`/platforms/${e.platformKey}`} onClick={(ev) => ev.stopPropagation()}>
+                          <Anchor size="xs" c="dimmed" component={Link} to={`/consoles/${e.platformKey}`} onClick={(ev) => ev.stopPropagation()}>
                             {e.platform}
                           </Anchor>
                         )}
@@ -301,7 +301,7 @@ function EntryTable({ entries: all, ranked }: { entries: Entry[]; ranked?: boole
                   </Table.Td>
                   {!narrow && (
                     <Table.Td>
-                      <Anchor size="sm" component={Link} to={`/platforms/${e.platformKey}`} onClick={(ev) => ev.stopPropagation()}>
+                      <Anchor size="sm" component={Link} to={`/consoles/${e.platformKey}`} onClick={(ev) => ev.stopPropagation()}>
                         {e.platform}
                       </Anchor>
                     </Table.Td>

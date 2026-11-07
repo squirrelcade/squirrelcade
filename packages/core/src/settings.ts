@@ -411,7 +411,7 @@ export const settingDefinitions = {
     options: [
       { value: 'today', label: 'Today (the game of the day, deals, this week\'s releases, loans due)' },
       { value: 'collection', label: 'Stash' },
-      { value: 'platforms', label: 'Platforms' },
+      { value: 'platforms', label: 'Consoles' },
       { value: 'wishlist', label: 'Acorns wishlist' },
     ],
   }),
@@ -518,7 +518,7 @@ export const settingDefinitions = {
     page: 'interface',
     section: 'Top 100 and history',
     label: 'Landmark games per console on the timeline',
-    description: 'The timeline (Platforms > Timeline) shows the consoles by year and, for each, this many of the best games of its Top 100 list, plus its "Start here" games. 0 shows only the consoles.',
+    description: 'The timeline (Roots > Timeline) shows the consoles by year and, for each, this many of the best games of its Top 100 list, plus its "Start here" games. 0 shows only the consoles.',
     default: 5,
     min: 0,
     max: 25,
@@ -557,6 +557,31 @@ export const settingDefinitions = {
     default: FEATURE_DEFAULTS.history,
   }),
   // Roots (D165): each game's article read for its own time and since.
+  'roots.top100Counts': select({
+    page: 'roots',
+    section: 'Top 100 lists',
+    label: 'Top 100 percentages count',
+    description:
+      'Some Top 100 games were only ever sold as downloads on their console (Braid on the PlayStation 3). With "Games with a physical release", they stay in the list, faded and labeled Digital only, and the percentage counts only the games you can have on a disc or cartridge ("91 of 93 you can have"). Correct a game with It\'s physical or Digital only on its Top 100 tile.',
+    options: [
+      { value: 'physical', label: 'Games with a physical release' },
+      { value: 'every', label: 'Every game' },
+    ],
+    default: 'physical',
+  }),
+  'roots.top100Elsewhere': select({
+    page: 'roots',
+    section: 'Top 100 lists',
+    label: 'A Top 100 game you have on another console',
+    description:
+      'The same game on its other generation (Switch and Switch 2, PlayStation 4 and 5) always counts as yours, as Settings > Catalogs and matching > Cross-generation games says. This is for one you have on any other console or on PC (Hades on the Switch, in the PlayStation 4 list): left out of that list\'s count ("88 of 95, 5 you have elsewhere"), counted as yours, or still one to get. A remake with the same name isn\'t the same game.',
+    options: [
+      { value: 'leftOut', label: 'Left out of the count' },
+      { value: 'counts', label: 'Counts as yours' },
+      { value: 'missing', label: 'Still one to get' },
+    ],
+    default: 'leftOut',
+  }),
   'roots.read': bool({
     page: 'roots',
     section: 'Reading',

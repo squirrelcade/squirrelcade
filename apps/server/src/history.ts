@@ -1,5 +1,7 @@
 import {
   consoleProfileSchema,
+  crossGenNeighbors,
+  releaseYear,
   firstLaunchYear,
   KNOWN_PLATFORMS,
   lastYear,
@@ -82,6 +84,12 @@ export interface ListGame {
 /** What a requester may see on the lists: PC copies, RomM links and (optional) what the owner played. */
 type Access = { pc: boolean; romm: boolean; play?: boolean };
 
+/**
+ * Where a Top 100 game stands for the list's count (D198, D199): yours on this console; yours on its other generation
+ * (D108's rule, counted); yours on another console or PC; only ever a download here; or not yours yet.
+ */
+export type Top100Standing = 'owned' | 'crossgen' | 'elsewhere' | 'digital' | 'review' | 'maybe' | 'missing';
+
 /** One game of a console's Top 100 list. */
 export interface Top100Row extends ListGame {
   rank: number;
@@ -90,6 +98,13 @@ export interface Top100Row extends ListGame {
   developers: string[];
   publishers: string[];
   why: HistoryText | null;
+  /** Whether it came out on a disc or cartridge here (D198), and who says so: your answer, the list, the catalog, a copy you have. */
+  physical: { is: boolean; from: 'yours' | 'list' | 'catalog' | 'copy' | 'unknown'; disc: string | null };
+  /** The same game (not a remake with its name) yours on another console or PC (D199). */
+  elsewhere: { platformKey: string; platform: string; crossGen: boolean } | null;
+  standing: Top100Standing;
+  /** In the count as yours (true), as one to get (false), or left out of it (null). */
+  counts: boolean | null;
 }
 
 /** A console's Top 100 list with the collection's side of it (GET /api/v1/history/top100/:key). */
@@ -100,7 +115,11 @@ export interface Top100View {
   listName: string;
   version: string;
   rows: Top100Row[];
-  summary: { total: number; owned: number; review: number; maybe: number; inRomm: number | null; ownedInRomm: number | null; finished: number | null };
+  /**
+   * total: the list's games; owned: yours on this console. have of of: the count the pages show (D198, D199): the games
+   * you can have that are yours, digital-only ones and ones you have elsewhere left out as the settings say.
+   */
+  summary: { total: number; owned: number; review: number; maybe: number; inRomm: number | null; ownedInRomm: number | null; finished: number | null; have: number; of: number; digital: number; elsewhere: number; crossGen: number };
   /** RomM links for games you don't own are on (Settings > Sources > RomM). */
   rommUnowned: boolean;
 }
@@ -153,6 +172,16 @@ export interface TimelineView {
     /** Your wishlist preference for it, when a catalog has it. */
     preference: string | null;
   }[];
+}
+
+/** A console's Top 100 count (D198, D199): owned of total are the games you can have that are yours. */
+export interface Top100Progress {
+  platformKey: string;
+  platform: string;
+  owned: number;
+  total: number;
+  digital: number;
+  elsewhere: number;
 }
 
 /** What the game drawer shows of a game's history: why it matters, and its place in its console's Top 100. */
@@ -397,6 +426,62 @@ export class HistoryService {
     return { catalog: this.titles.catalog(family), owned: this.titles.ownedByConsole() };
   }
 
+  /** The owner's answers to whether a listed game came out physically on a console (D198), by the key of its title. */
+  private formatAnswers(platformKey: string): Map<string, boolean> {
+    return new Map(
+      this.db
+        .select({ titleKey: historyNotes.titleKey, data: historyNotes.data })
+        .from(historyNotes)
+        .where(and(eq(historyNotes.kind, 'format'), eq(historyNotes.platformKey, platformKey)))
+        .all()
+        .map((r) => [r.titleKey, (JSON.parse(r.data) as { physical: boolean }).physical]),
+    );
+  }
+
+  private formatVersion = 0;
+
+  /** It's physical / Digital only for a listed game (null: back to what the list and catalog say). */
+  saveFormat(platformKey: string, title: string, physical: boolean | null): void {
+    const list = this.listFor(platformKey);
+    const key = list?.platformKey ?? platformKey;
+    const titleKey = matchKey(title);
+    if (!titleKey) throw new HistoryError('Say which game.');
+    this.db.delete(historyNotes).where(and(eq(historyNotes.kind, 'format'), eq(historyNotes.platformKey, key), eq(historyNotes.titleKey, titleKey))).run();
+    if (physical !== null) this.db.insert(historyNotes).values({ kind: 'format', platformKey: key, titleKey, title, data: JSON.stringify({ physical }), sources: '[]', status: 'verified', updatedAt: new Date().toISOString() }).run();
+    this.formatVersion++;
+  }
+
+  /**
+   * The same game yours on another console or PC (D199): the console's other generation first (D108's neighbors),
+   * else any other. Not by title alone: when both have IGDB's game, it must be the same one (a remake has its own);
+   * otherwise their years must be within Settings > Catalogs > Cross-generation: released within.
+   */
+  private elsewhereOf(platformKey: string, family: readonly string[], names: readonly string[], year: number | null, owned: Map<string, OwnedOnConsole>, pc: boolean): Top100Row['elsewhere'] {
+    const keys = [...new Set(names.flatMap(keysOf))];
+    const here = names.map((n) => this.deps.igdb.findByKey(platformKey, n)).find(Boolean);
+    const hereYear = year ?? releaseYear(here?.released);
+    const years = this.settings.get('catalogs.crossGenYears');
+    const neighbors = new Set(crossGenNeighbors(regionalConsole(platformKey)?.base ?? platformKey));
+    const crossOn = this.settings.get('catalogs.crossGen');
+    let found: Top100Row['elsewhere'] = null;
+    for (const [key, on] of owned) {
+      if (family.includes(key)) continue;
+      const titles = [...new Set(keys.flatMap((k) => on.byKey.get(k) ?? []))];
+      const same = titles.some((t) => {
+        const there = this.deps.igdb.findByKey(key, t);
+        if (here && there) return here.id === there.id;
+        const thereYear = releaseYear(there?.released);
+        return years <= 0 || hereYear === null || thereYear === null || Math.abs(hereYear - thereYear) <= years;
+      });
+      if (!same) continue;
+      const crossGen = crossOn && neighbors.has(regionalConsole(key)?.base ?? key);
+      if (crossGen) return { platformKey: key, platform: this.platformName(key), crossGen: true };
+      found ??= { platformKey: key, platform: this.platformName(key), crossGen: false };
+    }
+    if (!found && pc && names.some((n) => this.deps.pc.ownedOnPc(n).length > 0)) found = { platformKey: 'pc', platform: 'PC', crossGen: false };
+    return found;
+  }
+
   /** The consoles with a Top 100 list and the ones with a history (another region's console takes its base console's), for the pages' tabs. */
   available(): { version: string; top100: string[]; history: string[] } {
     const keys = [...new Set([...this.platformNames().keys(), ...this.lists.keys(), ...this.shippedConsoles.keys()])];
@@ -413,17 +498,42 @@ export class HistoryService {
     if (!list) return null;
     const family = this.family(platformKey);
     const indexes = this.indexes(family);
+    const answers = this.formatAnswers(list.platformKey);
+    const countDigital = this.settings.get('roots.top100Counts') === 'every';
+    const elsewhereMode = this.settings.get('roots.top100Elsewhere');
     const rows: Top100Row[] = list.entries.map((e) => {
       const names = [e.title, ...e.altTitles];
       const game = names.map((n) => this.deps.igdb.findByKey(platformKey, n)).find(Boolean);
+      const g = this.listGame(platformKey, family, names, indexes, may);
+      const answer = answers.get(matchKey(e.title));
+      const physical: Top100Row['physical'] =
+        g.owned === 'owned'
+          ? { is: true, from: 'copy', disc: e.disc }
+          : answer !== undefined
+            ? { is: answer, from: 'yours', disc: e.disc }
+            : e.digital
+              ? { is: false, from: 'list', disc: null }
+              : { is: true, from: e.disc ? 'list' : g.catalogTitle && g.catalogStatus !== 'unconfirmed' ? 'catalog' : 'unknown', disc: e.disc };
+      const elsewhere = g.owned === 'owned' ? null : this.elsewhereOf(platformKey, family, names, e.year, indexes.owned, may.pc);
+      let standing: Top100Standing;
+      let counts: boolean | null;
+      if (g.owned === 'owned') [standing, counts] = ['owned', true];
+      else if (elsewhere?.crossGen) [standing, counts] = ['crossgen', true];
+      else if (elsewhere) [standing, counts] = ['elsewhere', elsewhereMode === 'counts' ? true : elsewhereMode === 'missing' ? false : null];
+      else if (!physical.is && !countDigital) [standing, counts] = ['digital', null];
+      else [standing, counts] = [g.owned, false];
       return {
-        ...this.listGame(platformKey, family, names, indexes, may),
+        ...g,
         rank: e.rank,
         altTitles: e.altTitles,
         year: e.year,
         developers: game?.developers ?? [],
         publishers: game?.publishers ?? [],
         why: this.why(platformKey, names),
+        physical,
+        elsewhere,
+        standing,
+        counts,
       };
     });
     const count = (f: (r: Top100Row) => boolean) => rows.filter(f).length;
@@ -442,17 +552,35 @@ export class HistoryService {
         inRomm: rommOn ? count((r) => r.romm !== null) : null,
         ownedInRomm: rommOn ? count((r) => r.owned === 'owned' && r.romm !== null) : null,
         finished: may.play && this.deps.play ? count((r) => r.play?.status === 'beaten' || r.play?.status === 'completed') : null,
+        have: count((r) => r.counts === true),
+        of: count((r) => r.counts !== null),
+        digital: count((r) => r.standing === 'digital'),
+        elsewhere: count((r) => r.standing === 'elsewhere' && r.counts === null),
+        crossGen: count((r) => r.standing === 'crossgen'),
       },
       rommUnowned: this.settings.get('sources.rommLinkUnowned'),
     };
   }
 
-  /** How much of each console's Top 100 the collection has, for the consoles given that have a list (Today's Completion). */
-  top100Progress(platformKeys: string[]): { platformKey: string; platform: string; owned: number; total: number }[] {
+  private progressCache: { stamp: string; at: number; byKey: Map<string, Top100Progress | null> } | null = null;
+
+  /**
+   * How much of each console's Top 100 the collection has, for the consoles given that have a list (Today's Completion,
+   * Nutshell > Consoles' Top 100 column): the count the pages show (D198, D199), worked out once per change of the
+   * collection, the catalogs or the settings it follows, and kept.
+   */
+  top100Progress(platformKeys: string[]): Top100Progress[] {
     if (!this.enabled()) return [];
+    const stamp = `${this.titles.stamp()}|${this.formatVersion}|${this.settings.get('roots.top100Counts')}|${this.settings.get('roots.top100Elsewhere')}|${this.settings.get('catalogs.crossGen')}|${this.settings.get('catalogs.crossGenYears')}`;
+    if (!this.progressCache || this.progressCache.stamp !== stamp || Date.now() - this.progressCache.at > 10 * 60_000) this.progressCache = { stamp, at: Date.now(), byKey: new Map() };
+    const cache = this.progressCache.byKey;
     return platformKeys.flatMap((key) => {
-      const view = this.top100View(key, { pc: false, romm: false });
-      return view ? [{ platformKey: key, platform: view.platform, owned: view.summary.owned, total: view.summary.total }] : [];
+      if (!cache.has(key)) {
+        const view = this.top100View(key, { pc: false, romm: false });
+        cache.set(key, view ? { platformKey: key, platform: view.platform, owned: view.summary.have, total: view.summary.of, digital: view.summary.digital, elsewhere: view.summary.elsewhere } : null);
+      }
+      const p = cache.get(key);
+      return p ? [p] : [];
     });
   }
 
@@ -672,6 +800,13 @@ export function registerHistoryRoutes(app: FastifyInstance, history: HistoryServ
     return view;
   });
 
+  // Each console's Top 100 count (D198, D199) for Nutshell > Consoles' Top 100 column: ?keys=a,b (the consoles shown).
+  app.get('/api/v1/history/progress', async (request, reply) => {
+    if (!history.enabled()) return reply.code(404).send(off);
+    const keys = String((request.query as { keys?: string }).keys ?? '').split(',').map((k) => k.trim()).filter(Boolean).slice(0, 200);
+    return history.top100Progress(keys.length > 0 ? keys : history.available().top100);
+  });
+
   app.get('/api/v1/history/consoles/:key', async (request, reply) => {
     if (!history.enabled()) return reply.code(404).send(off);
     const { key } = request.params as { key: string };
@@ -682,6 +817,22 @@ export function registerHistoryRoutes(app: FastifyInstance, history: HistoryServ
   app.get('/api/v1/history/timeline', async (_request, reply) => {
     if (!history.enabled()) return reply.code(404).send(off);
     return history.timeline();
+  });
+
+  // It's physical / Digital only for a Top 100 game (D198): physical true, false, or null (back to the list's word).
+  app.put('/api/v1/history/top100/:key/format', async (request, reply) => {
+    if (!history.enabled()) return reply.code(404).send(off);
+    const { key } = request.params as { key: string };
+    const b = request.body as { title?: unknown; physical?: unknown } | null;
+    if (typeof b?.title !== 'string' || !(b.physical === true || b.physical === false || b.physical === null)) return reply.code(400).send({ error: 'invalid', message: 'Send title and physical (true, false or null).' });
+    try {
+      history.saveFormat(key, b.title, b.physical);
+    } catch (err) {
+      if (err instanceof HistoryError) return reply.code(400).send({ error: 'invalid', message: err.message });
+      throw err;
+    }
+    const may = shown(request);
+    return history.top100View(key, { pc: may.pc, romm: may.romm, play: may.play });
   });
 
   // The owner's version of why a game matters: text (null: back to Squirrelcade's), sources, status.

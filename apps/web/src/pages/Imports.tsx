@@ -323,7 +323,7 @@ function ImportDrawer({ id, onClose }: { id: number | null; onClose: () => void 
           )}
           {d.report.excluded.length > 0 && (
             <Text size="sm" c="dimmed">
-              Skipped: {d.report.excluded.map((e) => `${e.rows} ${e.label} row${e.rows === 1 ? '' : 's'}`).join(', ')} (see Settings › Platforms).
+              Skipped: {d.report.excluded.map((e) => `${e.rows} ${e.label} row${e.rows === 1 ? '' : 's'}`).join(', ')} (see Settings › Consoles).
             </Text>
           )}
           {d.report.diff && (

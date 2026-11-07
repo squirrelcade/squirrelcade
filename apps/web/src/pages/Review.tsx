@@ -246,7 +246,7 @@ export function ReviewPage() {
                         <Table.Td>
                           <GameTitle platformKey={x.platformKey} title={x.title} fw={500} />
                           <br />
-                          <Anchor component={Link} to={`/platforms/${x.platformKey}?tab=review`} size="xs" c="dimmed">
+                          <Anchor component={Link} to={`/consoles/${x.platformKey}?tab=review`} size="xs" c="dimmed">
                             {x.platform}
                           </Anchor>
                         </Table.Td>
@@ -321,7 +321,7 @@ export function ReviewPage() {
                             <Table.Td>
                               <GameTitle platformKey={x.platformKey} title={x.title} fw={500} />
                               <br />
-                              <Anchor component={Link} to={`/platforms/${x.platformKey}?tab=review`} size="xs" c="dimmed">
+                              <Anchor component={Link} to={`/consoles/${x.platformKey}?tab=review`} size="xs" c="dimmed">
                                 {x.platform}
                               </Anchor>
                             </Table.Td>

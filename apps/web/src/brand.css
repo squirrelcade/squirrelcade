@@ -717,6 +717,41 @@ button.sc-star {
   border-color: var(--sc-gold);
   color: var(--sc-gold);
 }
+.sc-square[data-own='elsewhere'] {
+  background: var(--mantine-color-blue-light);
+  border-color: var(--mantine-color-blue-5);
+  color: var(--mantine-color-blue-7);
+}
+.sc-square[data-own='digital'] {
+  background: transparent;
+  border-style: dotted;
+  border-color: var(--sc-line-strong);
+  color: var(--sc-soft);
+  opacity: 0.5;
+}
+.sc-square[data-own='digital'] .sc-square-art {
+  filter: grayscale(1);
+  opacity: 0.4;
+}
+.sc-square-where {
+  position: absolute;
+  left: 3px;
+  bottom: 3px;
+  display: inline-flex;
+  padding: 2px 3px;
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.93);
+  line-height: 0;
+}
+.sc-square-digital {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 3px;
+  font-size: 9px;
+  text-align: center;
+  color: var(--sc-soft);
+}
 .sc-square[data-own='unsure'] {
   background: var(--sc-raised);
   border-color: var(--sc-line-strong);

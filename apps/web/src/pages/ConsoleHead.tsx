@@ -79,8 +79,8 @@ export function ConsoleHead({ d, tab, tiles, canEdit, onAdd }: { d: ConsoleCount
     <>
       <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'space-between', alignItems: 'center', gap: 12, marginBottom: 16 }}>
         <nav aria-label="Breadcrumb" className="sc-muted" style={{ fontSize: 14, minWidth: 0 }}>
-          <Anchor component={Link} to="/platforms" size="sm">
-            Platforms
+          <Anchor component={Link} to="/consoles" size="sm">
+            Consoles
           </Anchor>{' '}
           ›{' '}
           <Anchor component={Link} to={`/collection?platform=${key}`} size="sm">
