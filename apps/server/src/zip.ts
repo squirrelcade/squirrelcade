@@ -1,3 +1,4 @@
+import { open, type FileHandle } from 'node:fs/promises';
 import { deflateRawSync, inflateRawSync } from 'node:zlib';
 
 /** A zip file that can't be read, with a message to show the user. */
@@ -118,6 +119,118 @@ export function writeZip(files: { name: string; data: Buffer }[], at = new Date(
   end.writeUInt32LE(directory.length, 12);
   end.writeUInt32LE(offset, 16);
   return Buffer.concat([...locals, directory, end]);
+}
+
+/**
+ * A zip written a file at a time to disk (D209: a magazine library's text, tens of thousands of pages, too big to keep
+ * in memory): each file deflated as it's added, the table of contents written at the end, in zip64 form when there are
+ * more than 65,535 files or the archive passes 4 GB (Squirrelcade's own reader, and every common one, reads it).
+ */
+export class ZipFileWriter {
+  private offset = 0;
+  private readonly entries: { name: Buffer; crc: number; packed: number; size: number; offset: number }[] = [];
+  private readonly time: number;
+  private readonly date: number;
+
+  private constructor(private readonly fh: FileHandle, at: Date) {
+    this.time = (at.getHours() << 11) | (at.getMinutes() << 5) | Math.floor(at.getSeconds() / 2);
+    this.date = ((Math.max(at.getFullYear(), 1980) - 1980) << 9) | ((at.getMonth() + 1) << 5) | at.getDate();
+  }
+
+  static async create(path: string, at = new Date()): Promise<ZipFileWriter> {
+    return new ZipFileWriter(await open(path, 'w'), at);
+  }
+
+  get files(): number {
+    return this.entries.length;
+  }
+
+  async add(fileName: string, data: Buffer): Promise<void> {
+    const name = Buffer.from(fileName, 'utf8');
+    const packed = deflateRawSync(data);
+    const crc = crc32(data);
+    const local = Buffer.alloc(30);
+    local.writeUInt32LE(0x04034b50, 0);
+    local.writeUInt16LE(20, 4);
+    local.writeUInt16LE(0x0800, 6);
+    local.writeUInt16LE(8, 8);
+    local.writeUInt16LE(this.time, 10);
+    local.writeUInt16LE(this.date, 12);
+    local.writeUInt32LE(crc, 14);
+    local.writeUInt32LE(packed.length, 18);
+    local.writeUInt32LE(data.length, 22);
+    local.writeUInt16LE(name.length, 26);
+    await this.fh.write(Buffer.concat([local, name, packed]));
+    this.entries.push({ name, crc, packed: packed.length, size: data.length, offset: this.offset });
+    this.offset += 30 + name.length + packed.length;
+  }
+
+  /** Writes the table of contents and closes the file; its size in bytes. */
+  async close(): Promise<number> {
+    const central: Buffer[] = [];
+    for (const e of this.entries) {
+      const far = e.offset > 0xfffffffe;
+      const entry = Buffer.alloc(46);
+      entry.writeUInt32LE(0x02014b50, 0);
+      entry.writeUInt16LE(45, 4);
+      entry.writeUInt16LE(far ? 45 : 20, 6);
+      entry.writeUInt16LE(0x0800, 8);
+      entry.writeUInt16LE(8, 10);
+      entry.writeUInt16LE(this.time, 12);
+      entry.writeUInt16LE(this.date, 14);
+      entry.writeUInt32LE(e.crc, 16);
+      entry.writeUInt32LE(e.packed, 20);
+      entry.writeUInt32LE(e.size, 24);
+      entry.writeUInt16LE(e.name.length, 28);
+      entry.writeUInt16LE(far ? 12 : 0, 30);
+      entry.writeUInt32LE(far ? 0xffffffff : e.offset, 42);
+      central.push(entry, e.name);
+      if (far) {
+        const extra = Buffer.alloc(12);
+        extra.writeUInt16LE(0x0001, 0);
+        extra.writeUInt16LE(8, 2);
+        extra.writeBigUInt64LE(BigInt(e.offset), 4);
+        central.push(extra);
+      }
+    }
+    const directory = Buffer.concat(central);
+    const cdOffset = this.offset;
+    const count = this.entries.length;
+    const zip64 = count > 0xfffe || cdOffset > 0xfffffffe || directory.length > 0xfffffffe;
+    const tail: Buffer[] = [directory];
+    if (zip64) {
+      const rec = Buffer.alloc(56);
+      rec.writeUInt32LE(0x06064b50, 0);
+      rec.writeBigUInt64LE(44n, 4);
+      rec.writeUInt16LE(45, 12);
+      rec.writeUInt16LE(45, 14);
+      rec.writeBigUInt64LE(BigInt(count), 24);
+      rec.writeBigUInt64LE(BigInt(count), 32);
+      rec.writeBigUInt64LE(BigInt(directory.length), 40);
+      rec.writeBigUInt64LE(BigInt(cdOffset), 48);
+      const loc = Buffer.alloc(20);
+      loc.writeUInt32LE(0x07064b50, 0);
+      loc.writeBigUInt64LE(BigInt(cdOffset + directory.length), 8);
+      loc.writeUInt32LE(1, 16);
+      tail.push(rec, loc);
+    }
+    const end = Buffer.alloc(22);
+    end.writeUInt32LE(0x06054b50, 0);
+    end.writeUInt16LE(zip64 ? 0xffff : count, 8);
+    end.writeUInt16LE(zip64 ? 0xffff : count, 10);
+    end.writeUInt32LE(zip64 ? 0xffffffff : directory.length, 12);
+    end.writeUInt32LE(zip64 ? 0xffffffff : cdOffset, 16);
+    tail.push(end);
+    const rest = Buffer.concat(tail);
+    await this.fh.write(rest);
+    await this.fh.close();
+    return this.offset + rest.length;
+  }
+
+  /** Gives up: closes the file (the caller removes it). */
+  async abort(): Promise<void> {
+    await this.fh.close().catch(() => undefined);
+  }
 }
 
 /**

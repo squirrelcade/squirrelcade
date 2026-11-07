@@ -1,15 +1,19 @@
-import { baseTitle, citationMonth, citedIssueNumber, matchKey, platformsIn, scoresOn, SPOT_VERSION, spotIndex, spotTitles, spotWord, type SpotCandidate, coverLeadFor, guessDates, magazineOf, printedPage, issueFromFileName, issueLabel, pageNames, parseComicInfo, parseHocr, skippedName, type IssueInfo, type IssueToDate, type PageWord } from '@squirrelcade/core';
+import { baseTitle, citationMonth, citedIssueNumber, matchKey, platformsIn, scoresOn, SPOT_VERSION, spotIndex, spotTitles, spotWord, type SpotCandidate, coverLeadFor, guessDates, magazineOf, printedPage, issueFromFileName, issueLabel, pageNames, parseComicInfo, parseHocr, skippedName, writeHocr, type IssueInfo, type IssueToDate, type PageWord } from '@squirrelcade/core';
 import Database from 'better-sqlite3';
 import { spawn } from 'node:child_process';
-import { accessSync, constants, existsSync, type Dirent } from 'node:fs';
+import { accessSync, constants, existsSync, mkdirSync, readdirSync, renameSync, rmSync, statSync, type Dirent } from 'node:fs';
 import { mkdir, open, readdir, readFile, rm, stat, utimes, writeFile } from 'node:fs/promises';
 import { basename, join, relative } from 'node:path';
 import { inflateRawSync } from 'node:zlib';
-import type { FastifyInstance } from 'fastify';
+import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
+import { createReadStream, createWriteStream } from 'node:fs';
+import { pipeline } from 'node:stream/promises';
+import { isViewer } from './access.js';
 import type { Logger } from 'pino';
 import sharp from 'sharp';
 import type { Env } from './env.js';
 import type { SettingsService } from './settings.js';
+import { ZipFileWriter } from './zip.js';
 
 /**
  * Leaves (D177, docs/design/magazines-build.md): the owner's magazine scans, read from a folder (read only, never
@@ -41,6 +45,41 @@ export function nightMessage(read: number, pages: number, failed: number, unopen
   if (failed > 0) parts.push(`${n(failed)} couldn't be read`);
   if (unopened > 0) parts.push(`${n(unopened)} couldn't be opened (their permissions)`);
   return `${parts.join(', ')}${stoppedLocked ? '; stopped: the magazines folder looks locked' : ''}`;
+}
+
+/** A magazines' text export (D209): its manifest's format name. */
+const TEXT_FORMAT = 'squirrelcade-magazine-text';
+/** An export's file name in config/exports. */
+const TEXT_EXPORT = /^magazine-text-[\d-]+(?:-new)?\.zip$/;
+
+/** What an export or an import of the text did. */
+export interface TextJobResult {
+  file: string;
+  issues: number;
+  pages: number;
+  filled: number;
+  skipped: number;
+  unmatched: number;
+  rules: number;
+}
+
+/** The text's export or import running now, or the last one. */
+export interface TextJob {
+  kind: 'export' | 'import';
+  state: 'running' | 'done' | 'failed';
+  progress: string;
+  startedAt: string;
+  result: TextJobResult | null;
+  error: string | null;
+}
+
+/** An export's manifest: each issue's file, its magazine's folder and its numbering, for a friend's install to find it. */
+interface TextManifest {
+  format: string;
+  version: number;
+  exportedAt: string;
+  since: string | null;
+  issues: { path: string; size: number; folder: string; magazine: string; number: string | null; volume: string | null; year: number | null; month: number | null; pages: number; dir: string; read: number }[];
 }
 
 /** One file in a zip, as its table of contents gives it. */
@@ -300,6 +339,8 @@ export class MagazineService {
       if (!columns.includes('date_from')) this.db.exec('ALTER TABLE issues ADD COLUMN date_from TEXT');
       // D191: the file's page of printed page 1 less one (covers, inserts), set once by the owner ("this is page 28").
       if (!columns.includes('page_offset')) this.db.exec('ALTER TABLE issues ADD COLUMN page_offset INTEGER');
+      // D209: when an issue's text was read or brought in, for an export of only what's new since the last.
+      if (!columns.includes('text_at')) this.db.exec('ALTER TABLE issues ADD COLUMN text_at TEXT');
       // The consoles a mention's page names (item 11 of the owner's 1.3 list), for the chest on its game.
       if (!(this.db.prepare('PRAGMA table_info(mentions)').all() as { name: string }[]).some((c) => c.name === 'consoles')) this.db.exec('ALTER TABLE mentions ADD COLUMN consoles TEXT');
     }
@@ -378,8 +419,24 @@ export class MagazineService {
     const dated = this.fillDates();
     const requeued = this.requeueUnlocked();
     const text = await this.importText(progress);
+    // D209: a friend's text export left in the text folder is read once (by its name, size and date).
+    let shared = 0;
+    const base = this.textFolder();
+    if (base && existsSync(base)) {
+      for (const name of (await readdir(base)).filter((n) => /\.zip$/i.test(n))) {
+        const st = await stat(join(base, name));
+        const key = `textzip:${name}|${st.size}|${Math.round(st.mtimeMs)}`;
+        if (this.stateOf(key)) continue;
+        try {
+          shared += (await this.importTextZip(join(base, name), { rules: false }, progress)).filled;
+        } catch (err) {
+          this.log.warn({ context: 'magazines' }, `${name} in the text folder couldn't be read: ${err instanceof Error ? err.message : String(err)}`);
+        }
+        this.setState(key, new Date().toISOString());
+      }
+    }
     const issues = (db.prepare('SELECT COUNT(*) AS n FROM issues').get() as { n: number }).n;
-    const message = `${issues} issues${added > 0 ? `, ${added} new` : ''}${changed > 0 ? `, ${changed} changed` : ''}${gone.length > 0 ? `, ${gone.length} gone` : ''}${failed > 0 ? `, ${failed} couldn't be read` : ''}${locked > 0 ? `, ${locked} couldn't be opened (their permissions: Help > Magazines)` : ''}${requeued > 0 ? `; ${requeued} back in line for their text` : ''}${dated > 0 ? `; ${dated} dated by the magazine index` : ''}${text > 0 ? `; text brought in for ${text}` : ''}`;
+    const message = `${issues} issues${added > 0 ? `, ${added} new` : ''}${changed > 0 ? `, ${changed} changed` : ''}${gone.length > 0 ? `, ${gone.length} gone` : ''}${failed > 0 ? `, ${failed} couldn't be read` : ''}${locked > 0 ? `, ${locked} couldn't be opened (their permissions: Help > Magazines)` : ''}${requeued > 0 ? `; ${requeued} back in line for their text` : ''}${dated > 0 ? `; ${dated} dated by the magazine index` : ''}${text > 0 ? `; text brought in for ${text}` : ''}${shared > 0 ? `; a friend's text for ${shared}` : ''}`;
     return locked > 0 || failed > 0 ? { message, warning: true } : message;
   }
 
@@ -488,7 +545,7 @@ export class MagazineService {
         page.run(issueId, p.n, p.text, JSON.stringify(p.words), source);
         if (p.text.trim()) fts.run(p.text, issueId, p.n);
       }
-      db.prepare('UPDATE issues SET text_state = ? WHERE id = ?').run(source, issueId);
+      db.prepare('UPDATE issues SET text_state = ?, text_at = ? WHERE id = ?').run(source, new Date().toISOString(), issueId);
     })();
   }
 
@@ -600,6 +657,197 @@ export class MagazineService {
     if (this.contents.size > 200) this.contents.clear();
     this.contents.set(path, { mtime: st.mtimeMs, pages });
     return pages;
+  }
+
+
+  // ---------------------------------------------------------------------------------------------------------------
+  // Sharing the read text (D209): a friend with the same scans takes it instead of reading it again (an older NAS
+  // without AVX2 reads a page in minutes). Only the magazines' text goes: no collection, nothing of the owner's own.
+
+  private textJob: TextJob | null = null;
+
+  /** Where the text's exports are written (and a friend's upload waits while it's read): config/exports. */
+  exportsFolder(): string {
+    return join(this.env.configDir, 'exports');
+  }
+
+  /** The exports made, newest first, and what the share is doing now. */
+  textShare(): { job: TextJob | null; exports: { name: string; bytes: number; at: string }[]; lastExportAt: string | null } {
+    const dir = this.exportsFolder();
+    const exports = existsSync(dir)
+      ? readdirSync(dir)
+          .filter((n) => TEXT_EXPORT.test(n))
+          .map((name) => {
+            const st = statSync(join(dir, name));
+            return { name, bytes: st.size, at: st.mtime.toISOString() };
+          })
+          .sort((a, b) => b.at.localeCompare(a.at))
+      : [];
+    return { job: this.textJob, exports, lastExportAt: this.enabled() ? this.readState('textExportedAt') : null };
+  }
+
+  /** Starts an export (all the text, only what was read since the last export, or since a day): false while one runs. */
+  startTextExport(since: 'all' | 'last' | string): boolean {
+    if (this.textJob?.state === 'running') return false;
+    const job: TextJob = { kind: 'export', state: 'running', progress: 'Starting', startedAt: new Date().toISOString(), result: null, error: null };
+    this.textJob = job;
+    void this.exportText(since, (line) => (job.progress = line))
+      .then((result) => Object.assign(job, { state: 'done', progress: '', result }))
+      .catch((err: unknown) => Object.assign(job, { state: 'failed', error: err instanceof Error ? err.message : String(err) }));
+    return true;
+  }
+
+  /** Writes the text as Tesseract's hOCR, a file a page, in the layout the text folder is read in, with a manifest. */
+  async exportText(since: 'all' | 'last' | string, progress: (line: string) => void = () => undefined): Promise<TextJobResult> {
+    const db = this.store();
+    const started = new Date();
+    const last = since === 'last' ? this.readState('textExportedAt') : null;
+    const from = since === 'last' ? last : since === 'all' ? null : since;
+    type Row = { id: number; path: string; folder: string; magazine: string; number: string | null; volume: string | null; year: number | null; month: number | null; pages: number; file_size: number; text_at: string | null };
+    const rows = (
+      db
+        .prepare(
+          `SELECT i.id, i.path, m.folder, m.name AS magazine, i.number, i.volume, COALESCE(i.owner_year, i.year) AS year, CASE WHEN i.owner_year IS NOT NULL THEN i.owner_month ELSE i.month END AS month, i.pages, i.file_size, i.text_at
+           FROM issues i JOIN magazines m ON m.id = i.magazine_id WHERE i.text_state IN ('hocr', 'ocr') ORDER BY m.folder, i.path`,
+        )
+        .all() as Row[]
+    ).filter((r) => !from || (r.text_at !== null && (since === 'last' ? r.text_at > from : r.text_at >= from)));
+    mkdirSync(this.exportsFolder(), { recursive: true });
+    const stamp = started.toISOString().slice(0, 19).replace(/[-:]/g, '').replace('T', '-');
+    let name = `magazine-text-${stamp}${from ? '-new' : ''}.zip`;
+    // Two exports in the same second keep both.
+    for (let i = 2; existsSync(join(this.exportsFolder(), name)); i++) name = `magazine-text-${stamp}-${i}${from ? '-new' : ''}.zip`;
+    const part = join(this.exportsFolder(), `${name}.part`);
+    const zip = await ZipFileWriter.create(part, started);
+    const manifest: TextManifest = { format: TEXT_FORMAT, version: 1, exportedAt: started.toISOString(), since: from, issues: [] };
+    let pages = 0;
+    let since50 = Date.now();
+    try {
+      for (const [k, r] of rows.entries()) {
+        progress(`${r.magazine}: ${basename(r.path)} (${k + 1} of ${rows.length})`);
+        // The issue's folder ends with its number, as the text folder's own reading (importText) expects.
+        const num = r.number && /^\d+$/.test(r.number.trim()) ? ` - ${Number(r.number)}` : '';
+        const dir = `${basename(r.path).replace(/\.cbz$/i, '').replace(/[\\/:*?"<>|]+/g, '_').replace(/[\s.]+$/, '')}${num}`;
+        const issuePages = db.prepare('SELECT n, text, words FROM pages WHERE issue_id = ? ORDER BY n').all(r.id) as { n: number; text: string; words: string }[];
+        for (const p of issuePages) {
+          await zip.add(`${r.folder}/ocr/${dir}/${String(p.n).padStart(3, '0')}.hocr`, Buffer.from(writeHocr(JSON.parse(p.words) as PageWord[], p.text), 'utf8'));
+          pages++;
+          if (Date.now() - since50 > 50) {
+            await new Promise((resolve) => setImmediate(resolve));
+            since50 = Date.now();
+          }
+        }
+        manifest.issues.push({ path: r.path, size: r.file_size, folder: r.folder, magazine: r.magazine, number: r.number, volume: r.volume, year: r.year, month: r.month, pages: r.pages, dir, read: issuePages.length });
+      }
+      // The answers about which game a page's words mean, for a friend who wants them too (off when importing, to start).
+      const rules = db.prepare('SELECT printed_key, magazine, answer FROM mention_rules').all();
+      await zip.add('rules.json', Buffer.from(JSON.stringify(rules), 'utf8'));
+      await zip.add('manifest.json', Buffer.from(JSON.stringify(manifest, null, 1), 'utf8'));
+      await zip.close();
+      renameSync(part, join(this.exportsFolder(), name));
+    } catch (err) {
+      await zip.abort();
+      rmSync(part, { force: true });
+      throw err;
+    }
+    this.writeState('textExportedAt', started.toISOString());
+    // The three newest exports are kept (each can be hundreds of megabytes).
+    for (const old of this.textShare().exports.slice(3)) rmSync(join(this.exportsFolder(), old.name), { force: true });
+    this.log.info({ context: 'magazines' }, `The magazines' text exported: ${rows.length} issues, ${pages} pages (${name})`);
+    return { file: name, issues: rows.length, pages, filled: 0, skipped: 0, unmatched: 0, rules: 0 };
+  }
+
+  /** Starts reading a friend's text from a zip saved here (deleted afterwards when `removeAfter`): false while a job runs. */
+  startTextImport(path: string, opts: { rules: boolean; removeAfter: boolean }, done: () => void = () => undefined): boolean {
+    if (this.textJob?.state === 'running') return false;
+    const job: TextJob = { kind: 'import', state: 'running', progress: 'Starting', startedAt: new Date().toISOString(), result: null, error: null };
+    this.textJob = job;
+    void this.importTextZip(path, opts, (line) => (job.progress = line))
+      .then((result) => {
+        Object.assign(job, { state: 'done', progress: '', result });
+        done();
+      })
+      .catch((err: unknown) => Object.assign(job, { state: 'failed', error: err instanceof Error ? err.message : String(err) }))
+      .finally(() => {
+        if (opts.removeAfter) rmSync(path, { force: true });
+      });
+    return true;
+  }
+
+  /**
+   * A friend's text into the issues that have none (never over text already read): each issue found by its path, else
+   * by its magazine's folder and its number and volume, else (no number) its year and month, with the same number of
+   * pages. Their answers about the pages' games come too only with `rules`.
+   */
+  async importTextZip(path: string, opts: { rules: boolean }, progress: (line: string) => void = () => undefined): Promise<TextJobResult> {
+    const db = this.store();
+    const items = await zipContents(path);
+    const manifestItem = items.find((i) => i.name === 'manifest.json');
+    if (!manifestItem) throw new Error("This zip isn't a Squirrelcade magazines' text export (it has no manifest.json).");
+    const manifest = JSON.parse((await zipRead(path, manifestItem)).toString('utf8')) as TextManifest;
+    if (manifest.format !== TEXT_FORMAT) throw new Error("This zip isn't a Squirrelcade magazines' text export.");
+    const byDir = new Map<string, ZipItem[]>();
+    for (const item of items) {
+      const m = /^(.+)\/ocr\/([^/]+)\/(\d+)\.hocr$/i.exec(item.name);
+      if (!m) continue;
+      const key = `${m[1]}/${m[2]}`;
+      byDir.set(key, [...(byDir.get(key) ?? []), item]);
+    }
+    type Local = { id: number; path: string; folder: string; number: string | null; volume: string | null; year: number | null; month: number | null; pages: number; text_state: string };
+    const locals = db
+      .prepare(
+        `SELECT i.id, i.path, m.folder, i.number, i.volume, COALESCE(i.owner_year, i.year) AS year, CASE WHEN i.owner_year IS NOT NULL THEN i.owner_month ELSE i.month END AS month, i.pages, i.text_state
+         FROM issues i JOIN magazines m ON m.id = i.magazine_id`,
+      )
+      .all() as Local[];
+    const byPath = new Map(locals.map((l) => [l.path, l]));
+    const sameNum = (a: string | null, b: string | null) => (a ?? '').trim().replace(/^0+(?=\d)/, '').toLowerCase() === (b ?? '').trim().replace(/^0+(?=\d)/, '').toLowerCase();
+    let filled = 0;
+    let skipped = 0;
+    let unmatched = 0;
+    let since50 = Date.now();
+    for (const [k, m] of manifest.issues.entries()) {
+      progress(`${m.magazine}: ${basename(m.path)} (${k + 1} of ${manifest.issues.length})`);
+      let local = byPath.get(m.path);
+      if (!local) {
+        const sameMagazine = locals.filter((l) => l.folder === m.folder);
+        const found = m.number
+          ? sameMagazine.filter((l) => sameNum(l.number, m.number) && sameNum(l.volume, m.volume))
+          : sameMagazine.filter((l) => !l.number && l.year === m.year && l.month === m.month && m.year !== null && sameNum(l.volume, m.volume));
+        local = found.length === 1 ? found[0] : undefined;
+      }
+      const files = (byDir.get(`${m.folder}/${m.dir}`) ?? []).sort((a, b) => Number.parseInt(basename(a.name), 10) - Number.parseInt(basename(b.name), 10));
+      if (!local || local.pages !== m.pages || files.length === 0) {
+        unmatched++;
+        continue;
+      }
+      if (local.text_state !== 'none' && local.text_state !== 'failed') {
+        skipped++;
+        continue;
+      }
+      const pages: { n: number; text: string; words: PageWord[] }[] = [];
+      for (const f of files) {
+        pages.push({ n: Number.parseInt(basename(f.name), 10), ...parseHocr((await zipRead(path, f)).toString('utf8')) });
+        if (Date.now() - since50 > 50) {
+          await new Promise((resolve) => setImmediate(resolve));
+          since50 = Date.now();
+        }
+      }
+      this.savePages(local.id, pages, 'hocr');
+      local.text_state = 'hocr';
+      filled++;
+    }
+    let rules = 0;
+    const rulesItem = items.find((i) => i.name === 'rules.json');
+    if (opts.rules && rulesItem) {
+      const add = db.prepare('INSERT OR IGNORE INTO mention_rules (printed_key, magazine, answer) VALUES (?, ?, ?)');
+      for (const r of JSON.parse((await zipRead(path, rulesItem)).toString('utf8')) as { printed_key: string; magazine: string; answer: string }[]) {
+        if (typeof r.printed_key === 'string' && typeof r.magazine === 'string' && typeof r.answer === 'string') rules += add.run(r.printed_key, r.magazine, r.answer).changes;
+      }
+      if (rules > 0) this.setState('rules', String(Number(this.rulesVersion()) + 1));
+    }
+    this.log.info({ context: 'magazines' }, `A friend's text read: ${filled} issues filled, ${skipped} had text already, ${unmatched} not found here${rules > 0 ? `, ${rules} answers` : ''}`);
+    return { file: basename(path), issues: manifest.issues.length, pages: 0, filled, skipped, unmatched, rules };
   }
 
   // What the pages read.
@@ -1106,6 +1354,48 @@ export function registerMagazineRoutes(
   answerOf: (m: { platformKey: string | null; title: string }) => Record<string, unknown> = () => ({}),
 ): void {
   const off = (reply: { code: (n: number) => { send: (b: unknown) => unknown } }) => reply.code(404).send({ error: 'off', message: 'Leaves is off (Settings > Features).' });
+  // D209: the read text shared with a friend who has the same scans: the owner's only (never a viewer's).
+  const ownerOnly = (request: FastifyRequest, reply: FastifyReply) => (isViewer(request) ? reply.code(403).send({ error: 'forbidden', message: 'Only the owner shares the magazines\' text.' }) : null);
+  app.get('/api/v1/magazines/text', async (request, reply) => {
+    if (!magazines.enabled()) return off(reply);
+    return ownerOnly(request, reply) ?? magazines.textShare();
+  });
+  app.post('/api/v1/magazines/text/export', async (request, reply) => {
+    if (!magazines.enabled()) return off(reply);
+    if (ownerOnly(request, reply)) return reply;
+    const since = String((request.body as { since?: unknown } | null)?.since ?? 'all');
+    if (!(since === 'all' || since === 'last' || /^\d{4}-\d{2}-\d{2}$/.test(since))) return reply.code(400).send({ error: 'invalid', message: "since is 'all', 'last' or a day (YYYY-MM-DD)." });
+    if (!magazines.startTextExport(since)) return reply.code(409).send({ error: 'busy', message: 'An export or import of the text is running: wait for it to finish.' });
+    return reply.code(202).send(magazines.textShare());
+  });
+  app.get('/api/v1/magazines/text/exports/:name', async (request, reply) => {
+    if (!magazines.enabled()) return off(reply);
+    if (ownerOnly(request, reply)) return reply;
+    const { name } = request.params as { name: string };
+    const path = join(magazines.exportsFolder(), name);
+    if (!TEXT_EXPORT.test(name) || !existsSync(path)) return reply.code(404).send({ error: 'not-found', message: 'No such export.' });
+    return reply.header('content-type', 'application/zip').header('content-disposition', `attachment; filename="${name}"`).header('content-length', statSync(path).size).send(createReadStream(path));
+  });
+  // A friend's export, uploaded (it can be hundreds of megabytes): saved, read in the background, then deleted.
+  app.post('/api/v1/magazines/text/import', async (request, reply) => {
+    if (!magazines.enabled()) return off(reply);
+    if (ownerOnly(request, reply)) return reply;
+    const file = await request.file({ limits: { fileSize: 16 * 1024 ** 3 } });
+    if (!file) return reply.code(400).send({ error: 'invalid', message: 'Send the export (a zip).' });
+    const rules = (file.fields.rules as { value?: unknown } | undefined)?.value === 'true';
+    mkdirSync(magazines.exportsFolder(), { recursive: true });
+    const path = join(magazines.exportsFolder(), `incoming-${Date.now()}.zip`);
+    await pipeline(file.file, createWriteStream(path));
+    if (file.file.truncated) {
+      rmSync(path, { force: true });
+      return reply.code(413).send({ error: 'too-large', message: 'That file is too big.' });
+    }
+    if (!magazines.startTextImport(path, { rules, removeAfter: true }, () => tasks.enqueue('magazines-games'))) {
+      rmSync(path, { force: true });
+      return reply.code(409).send({ error: 'busy', message: 'An export or import of the text is running: wait for it to finish.' });
+    }
+    return reply.code(202).send(magazines.textShare());
+  });
   app.get('/api/v1/magazines', async (_request, reply) => (magazines.enabled() ? { magazines: magazines.magazines(), status: magazines.status() } : off(reply)));
   app.get('/api/v1/magazines/undated', async (_request, reply) => (magazines.enabled() ? { issues: magazines.undated(), guessed: magazines.guessed() } : off(reply)));
   app.get('/api/v1/magazines/search', async (request, reply) => {

@@ -22,6 +22,16 @@ Squirrelcade reads the folder a few minutes after it starts and then every night
 
 With **Read the rest of their text at night** on (Settings > Magazines, off to start), Tesseract reads the pages without text, at the lowest priority, in the **Reading hours** (it starts within a few minutes of them opening). It runs beside Squirrelcade's other work, so email checks, the game of the day and the syncs never wait for it. **Processor cores for each page** (2) is what one page may use; **Pages read at once** (1) reads several pages together, each with its own Tesseract: on a server with 8 cores or more, 4 at once reads about three times as fast. On a NAS with a slow processor (an Intel Atom, a Celeron J-series, an ARM NAS), keep 1, or leave the reading off and use scans that come with their text: there it takes about an hour or more per 100 pages.
 
+## Sharing the text with a friend
+
+Someone with the same scans doesn't have to read them again. On **Settings > Magazines > Share the text with a friend**:
+
+- **Export the text** writes a zip (in the config folder's `exports`, with a link to download it; a big library is a few hundred megabytes): each page's words and where they are, as Tesseract's hOCR, a folder per issue, with a list of the issues (their file, magazine, number, volume and date). **Only what was read since the last export** makes the next share small. It holds only the magazines' text, never your collection.
+- **Import a friend's text** reads their zip into your issues that have no text yet (never over text you have), each found by its file's name, else by its magazine and its number and volume (or its date), with the same number of pages; it says how many it filled and how many it couldn't find. **Also their answers about which game a page means** brings their Review > Magazines answers too (off to start). Then the games on the new pages are found.
+- A big export uploads best from home: through a tunnel, an upload can be limited (Cloudflare's free plan stops at 100 MB). Or put the zip in the magazines' text folder (**Text already read**): the next reading of the folder brings it in, once.
+
+On a NAS with a slow processor, this is the way to have the magazines' text without the night's reading: leave **Read the rest of their text at night** off and import a friend's.
+
 ## Reading
 
 **Leaves** in the menu shows your magazines as covers, with how many issues and their years. A magazine shows its issues by year; an issue opens the **reader**: a page at a time on a phone, two side by side on a wider screen (**Two pages side by side on a wide screen**, as they were printed), turned with the arrows, your keyboard's arrow keys or a swipe; the zoom buttons (or a double tap) to read the small print. The next pages are fetched ahead, and Squirrelcade remembers the page you were on in each issue. Each page is sent as wide as your screen needs (a phone gets a much smaller file than the scan, a cover tile a tiny one), made once on the server and kept in the config folder's magazines-cache, so pages open fast on the phone; **Largest page sent** and **Room for the pages made** (Settings > Magazines, after Show advanced) set how wide and how much room.

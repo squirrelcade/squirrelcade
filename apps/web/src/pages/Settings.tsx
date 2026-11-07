@@ -70,6 +70,7 @@ import { EmailTest, StoreFinder } from './EmailExtras';
 import { RaButtons } from './RaExtras';
 import { AchievementButtons } from './AchievementExtras';
 import { TelegramChatFinder } from './TelegramExtras';
+import { MagazineTextShare } from './MagazineText';
 import { SetupGuide } from '../SetupGuide';
 import { TypedPasswordInput, TypedTextInput } from '../typedOnly';
 import { PercentTiersEditor, PlatformCheckboxes, PointsEditor, SourceOrderEditor, TiersEditor } from './SettingEditors';
@@ -500,6 +501,7 @@ export function SettingsPage({ pageId: fixedPage }: { pageId?: string } = {}) {
           </Alert>
         ))}
         {pageId === 'features' && <FeatureExtras />}
+        {pageId === 'magazines' && <MagazineTextShare />}
         {pageId === 'ai' && <AiExtras />}
         {pageId === 'security' && <SecurityExtras />}
         {pageId === 'notifications' && <NotificationExtras unsaved={changedKeys.length > 0} />}

@@ -105,6 +105,33 @@ export function parseHocr(hocr: string): { words: PageWord[]; text: string } {
   return { words, text: lines.join('\n') };
 }
 
+const escapeXml = (s: string) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/'/g, '&#39;').replace(/"/g, '&quot;');
+
+/**
+ * A page's hOCR from its stored words and text (D209, sharing a magazine's read text): each line of the text a line
+ * of its words, with their boxes, so parseHocr gives back the same words, boxes and text. Words the text doesn't
+ * line up with go on a last line of their own.
+ */
+export function writeHocr(words: readonly PageWord[], text: string): string {
+  const word = (w: PageWord) => `<span class='ocrx_word' title='bbox ${w.box.join(' ')}; x_wconf 95'>${escapeXml(w.text)}</span>`;
+  const line = (ws: readonly PageWord[]) => {
+    const box = [Math.min(...ws.map((w) => w.box[0])), Math.min(...ws.map((w) => w.box[1])), Math.max(...ws.map((w) => w.box[2])), Math.max(...ws.map((w) => w.box[3]))];
+    return `<span class='ocr_line' title='bbox ${box.join(' ')}'>${ws.map(word).join(' ')}</span>`;
+  };
+  const lines: string[] = [];
+  let k = 0;
+  for (const textLine of text.split('\n')) {
+    const tokens = textLine.split(' ').filter(Boolean);
+    if (tokens.length === 0) continue;
+    const ws = words.slice(k, k + tokens.length);
+    if (ws.length !== tokens.length || ws.some((w, i) => w.text !== tokens[i])) break;
+    lines.push(line(ws));
+    k += tokens.length;
+  }
+  if (k < words.length) lines.push(line(words.slice(k)));
+  return `<?xml version="1.0" encoding="UTF-8"?>\n<html xmlns="http://www.w3.org/1999/xhtml"><head><meta name="ocr-system" content="squirrelcade" /></head><body>\n<div class='ocr_page'>\n${lines.join('\n')}\n</div>\n</body></html>\n`;
+}
+
 /** An issue's name as the library shows it: "Nintendo Power #45 · February 1993", or with its volume. */
 export function issueLabel(i: { magazine: string; number: string | null; volume: string | null; year: number | null; month: number | null }): string {
   const months = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];

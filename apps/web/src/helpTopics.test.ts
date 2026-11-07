@@ -84,7 +84,7 @@ describe('help guides', () => {
     // Other apps' own settings (Playnite's backups, Fastmail's and Pushbullet's accounts, the iPhone's, RetroAchievements' keys, Claude's connectors).
     const elsewhere = ['Backup', 'Privacy & Security', 'Account', 'POP3 & IMAP', 'Safari', 'Keys', 'Connectors'];
     // What a settings page shows besides its settings, and the buttons above them.
-    const extras: Record<string, string[]> = { security: ['API key'], ai: ['Claude Code and Cowork on your network', "Claude's apps on the internet", 'Guests', 'Connected apps', 'Latest calls'] };
+    const extras: Record<string, string[]> = { magazines: ['Share the text with a friend'], security: ['API key'], ai: ['Claude Code and Cowork on your network', "Claude's apps on the internet", 'Guests', 'Connected apps', 'Latest calls'] };
     const actions = ['Import', 'Export', 'Show advanced'];
     // "IGDB" names "IGDB (game details and covers)", and a path's last part runs on into its sentence.
     const named = (part: string, names: string[]) => names.flatMap((n) => [n, n.replace(/ \(.*\)$/, '')]).some((n) => part === n || part.startsWith(`${n} `));

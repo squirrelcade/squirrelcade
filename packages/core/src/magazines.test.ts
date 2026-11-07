@@ -1,5 +1,20 @@
 import { describe, expect, it } from 'vitest';
-import { issueFromFileName, issueLabel, pageNames, parseComicInfo, parseHocr, skippedName } from './magazines.js';
+import { issueFromFileName, issueLabel, pageNames, parseComicInfo, parseHocr, skippedName, writeHocr } from './magazines.js';
+import { describe as describeShare, expect as expectShare, it as itShare } from 'vitest';
+
+describeShare("a page's text shared (D209)", () => {
+  itShare('writes hOCR that reads back as the same words, boxes and text, odd characters and all', () => {
+    const page = parseHocr(
+      `<div class='ocr_page'><span class='ocr_line' title="bbox 0 0 300 40"><span class='ocrx_word' title='bbox 10 5 120 40; x_wconf 91'>Zelda</span> <span class='ocrx_word' title='bbox 130 5 200 40'>&amp;</span> <span class='ocrx_word' title='bbox 210 5 300 40'>&lt;Link&gt;</span></span><span class='ocr_line' title="bbox 0 50 300 60"><span class='ocrx_word' title='bbox 10 50 60 60'>It's</span> <span class='ocrx_word' title='bbox 70 50 160 60'>"great"</span></span></div>`,
+    );
+    expectShare(page.words).toHaveLength(5);
+    expectShare(parseHocr(writeHocr(page.words, page.text))).toEqual(page);
+    // Words the text doesn't line up with still come back, on a line of their own.
+    const odd = { words: [...page.words, { text: 'extra', box: [1, 2, 3, 4] as [number, number, number, number] }], text: page.text };
+    expectShare(parseHocr(writeHocr(odd.words, odd.text)).words).toEqual(odd.words);
+    expectShare(parseHocr(writeHocr([], ''))).toEqual({ words: [], text: '' });
+  });
+});
 
 describe('magazines (D177)', () => {
   it("reads an issue's ComicInfo.xml", () => {

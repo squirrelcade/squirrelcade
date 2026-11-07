@@ -1,4 +1,4 @@
-import { mkdirSync, mkdtempSync, readdirSync, rmSync, unlinkSync, writeFileSync } from 'node:fs';
+import { copyFileSync, mkdirSync, mkdtempSync, readdirSync, rmSync, unlinkSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import sharp from 'sharp';
@@ -118,6 +118,71 @@ describe('Leaves: the magazine scans (D177)', () => {
     expect(await g.magazines.scan()).toBe('2 issues; 2 back in line for their text');
     expect(await g.magazines.readText(() => undefined)).toBe('2 issues read (4 pages)');
     expect(most).toBe(2);
+  });
+
+  it("shares the read text with a friend's install: exported as hOCR, found by path or number, never over text, only what's new the next time (D209)", async () => {
+    dir = mkdtempSync(join(tmpdir(), 'squirrelcade-magazines-'));
+    const theirs = mkdtempSync(join(tmpdir(), 'squirrelcade-magazines-friend-'));
+    for (const root of [dir, theirs]) mkdirSync(join(root, 'Nintendo Power'));
+    cbz(join(dir, 'Nintendo Power', 'Nintendo Power #001 (1988-07).cbz'), 2, null);
+    cbz(join(dir, 'Nintendo Power', 'Nintendo Power #002 (1988-09).cbz'), 2, null);
+    cbz(join(dir, 'Nintendo Power', 'Nintendo Power #003 (1988-11).cbz'), 3, null);
+    // The friend has #1 under the same name, #2 under another name, and #3 with another page count (another scan).
+    cbz(join(theirs, 'Nintendo Power', 'Nintendo Power #001 (1988-07).cbz'), 2, null);
+    cbz(join(theirs, 'Nintendo Power', 'NP 002.cbz'), 2, { Series: 'Nintendo Power', Number: 2, Year: 1988, Month: 9 });
+    cbz(join(theirs, 'Nintendo Power', 'Nintendo Power #003 (1988-11).cbz'), 4, null);
+    const words = (n: number) => hocr(['Super', 'Mario', `page${n}`]);
+    let n = 0;
+    g = await testApp({ magazineReader: async () => words(++n) });
+    g.settings.update({ 'features.magazines': true, 'magazines.folder': dir, 'magazines.ocr': true, 'magazines.ocrHours': '0-24' });
+    await g.magazines.scan();
+    await g.magazines.readText(() => undefined, true);
+    await g.magazines.readText(() => undefined, true);
+    await g.magazines.readText(() => undefined, true);
+    const result = await g.magazines.exportText('all');
+    expect(result).toMatchObject({ issues: 3, pages: 7 });
+    // Kept out of the owner's config folder, which goes when their install does.
+    const zipPath = join(theirs, 'shared.zip');
+    copyFileSync(join(g.env.configDir, 'exports', result.file), zipPath);
+    const mine = (g.magazines as unknown as { store(): import('better-sqlite3').Database }).store();
+    const pagesOf = (db: import('better-sqlite3').Database, file: string) =>
+      db.prepare('SELECT p.n, p.text, p.words FROM pages p JOIN issues i ON i.id = p.issue_id WHERE i.path LIKE ? ORDER BY p.n').all(`%${file}`);
+    const myPages = pagesOf(mine, '#002 (1988-09).cbz');
+    await g.cleanup();
+
+    // The friend's install: nothing read; the export fills #1 by its path and #2 by its number; #3 is another scan.
+    g = await testApp();
+    const cookies = await setUp(g);
+    g.settings.update({ 'features.magazines': true, 'magazines.folder': theirs });
+    await g.magazines.scan();
+    expect(await g.magazines.importTextZip(zipPath, { rules: false })).toMatchObject({ issues: 3, filled: 2, skipped: 0, unmatched: 1, rules: 0 });
+    const friend = (g.magazines as unknown as { store(): import('better-sqlite3').Database }).store();
+    // The same words, boxes and text as read on the owner's.
+    expect(pagesOf(friend, 'NP 002.cbz')).toEqual(myPages);
+    // Never over text already there.
+    expect(await g.magazines.importTextZip(zipPath, { rules: false })).toMatchObject({ filled: 0, skipped: 2, unmatched: 1 });
+    // The routes: the owner's only, and an export listed for download.
+    const share = (await g.app.inject({ url: '/api/v1/magazines/text', cookies })).json();
+    expect(share).toMatchObject({ job: null, exports: [] });
+    rmSync(theirs, { recursive: true, force: true });
+  });
+
+  it('exports only the issues read since the last export, when asked (D209)', async () => {
+    dir = mkdtempSync(join(tmpdir(), 'squirrelcade-magazines-'));
+    mkdirSync(join(dir, 'Nintendo Power'));
+    cbz(join(dir, 'Nintendo Power', 'Nintendo Power #001 (1988-07).cbz'), 1, null);
+    g = await testApp({ magazineReader: async () => hocr(['Zelda']) });
+    g.settings.update({ 'features.magazines': true, 'magazines.folder': dir, 'magazines.ocr': true, 'magazines.ocrHours': '0-24' });
+    await g.magazines.scan();
+    await g.magazines.readText(() => undefined, true);
+    expect(await g.magazines.exportText('last')).toMatchObject({ issues: 1 });
+    expect(await g.magazines.exportText('last')).toMatchObject({ issues: 0 });
+    cbz(join(dir, 'Nintendo Power', 'Nintendo Power #002 (1988-09).cbz'), 1, null);
+    await g.magazines.scan();
+    await g.magazines.readText(() => undefined, true);
+    expect(await g.magazines.exportText('last')).toMatchObject({ issues: 1 });
+    expect(await g.magazines.exportText('all')).toMatchObject({ issues: 2 });
+    expect(g.magazines.textShare().exports).toHaveLength(3);
   });
 
   it("sends a page as wide as the screen needs, made once and kept, and its words' boxes in the scan's pixels (D182)", async () => {
