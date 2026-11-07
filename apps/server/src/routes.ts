@@ -167,7 +167,18 @@ const CLIENT_ERROR_WINDOW_MS = 10 * 60 * 1000;
 /** System: health, status (version, uptime, database size, folders and problems) and the recent log lines. */
 export function registerSystemRoutes(
   app: FastifyInstance,
-  deps: { env: Env; settings: SettingsService; backups: BackupService; logs: LogBuffer; startedAt: Date; pc?: PcService; tasks?: TaskRunner; problems?: () => { level: 'warning' | 'error'; message: string }[] },
+  deps: {
+    env: Env;
+    settings: SettingsService;
+    backups: BackupService;
+    logs: LogBuffer;
+    startedAt: Date;
+    pc?: PcService;
+    tasks?: TaskRunner;
+    problems?: () => { level: 'warning' | 'error'; message: string }[];
+    /** The integrations' lights (T-202): Health points to the red ones. */
+    integrations?: () => { light: string }[];
+  },
 ): void {
   app.get('/api/v1/health', async () => ({ status: 'ok', version: APP_VERSION }));
 
@@ -175,6 +186,9 @@ export function registerSystemRoutes(
     const { env } = deps;
     const dbPath = join(env.configDir, DB_FILE);
     const { folders, health } = computeHealth(deps);
+    // Integrations in red are said in Health, which points to their card (T-202).
+    const red = (deps.integrations?.() ?? []).filter((l) => l.light === 'red').length;
+    if (red > 0) health.unshift({ level: 'error', message: `${red} ${red === 1 ? 'integration needs' : 'integrations need'} you: see Integrations below.` });
     return {
       version: APP_VERSION,
       startedAt: deps.startedAt.toISOString(),

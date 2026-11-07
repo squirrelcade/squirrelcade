@@ -47,6 +47,7 @@ import { catalogTarget, registerGameRoutes } from './games.js';
 import { ItadClient, PcPriceService, registerPcPriceRoutes, type PcPrice } from './itad.js';
 import { GameFlyService, registerGameFlyRoutes } from './gamefly.js';
 import { MarksService, registerMarkRoutes } from './marks.js';
+import { integrationLines, registerIntegrationRoutes, type Deps as IntegrationDeps } from './integrations.js';
 import { MagazineService, registerMagazineRoutes, type PageReader } from './magazines.js';
 import { PurchaseSheetService, registerPurchaseSheetRoutes } from './purchaseSheet.js';
 import { GgDealsService, ggAsPcPrice, type GgPrice } from './ggdeals.js';
@@ -432,7 +433,10 @@ export async function buildApp(options: BuildOptions = {}): Promise<Squirrelcade
     }
   });
   registerSettingsRoutes(app, settings, (value) => auth.isAccountPassword(value));
-  registerSystemRoutes(app, { env, settings, backups, logs: logs.buffer, startedAt, pc, tasks, problems: () => achievements.problems() });
+  registerSystemRoutes(app, { env, settings, backups, logs: logs.buffer, startedAt, pc, tasks, problems: () => achievements.problems(), integrations: () => integrationLines(integrationDeps()) });
+  // The integrations' lights (T-202): read from what's recorded, so System > Status opens at once.
+  const integrationDeps = (): IntegrationDeps => ({ db, settings, tasks, youtubeUnits: () => videos.units(), problems: () => achievements.problems(), notified: () => notifications.sent() });
+  registerIntegrationRoutes(app, integrationDeps());
   registerTaskRoutes(app, tasks);
   registerBackupRoutes(app, backups);
   // The standard photos, estimates and Collection > Improve (0.21.0).
@@ -852,7 +856,9 @@ export async function buildApp(options: BuildOptions = {}): Promise<Squirrelcade
     firstRunDelayMs: 30 * 60_000,
     run: async () => {
       const { health } = computeHealth({ env, settings, backups, pc, problems: () => achievements.problems() });
-      const current = health.map((h) => h.message);
+      // T-202: a light turned red is told too, with Settings > Notifications' switch (off to start).
+      const red = settings.get('notifications.onIntegrationRed') ? integrationLines(integrationDeps()).filter((l) => l.light === 'red').map((l) => `${l.name}: ${l.says}`) : [];
+      const current = [...health.map((h) => h.message), ...red];
       const row = db.select().from(appState).where(eq(appState.key, HEALTH_ALERTED)).get();
       const alerted = row ? (JSON.parse(row.value) as string[]) : [];
       const fresh = current.filter((m) => !alerted.includes(m));

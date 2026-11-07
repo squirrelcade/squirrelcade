@@ -3026,6 +3026,13 @@ export const settingDefinitions = {
     description: 'Send a message when a background task keeps failing (see below), an export file is refused, or a collection update is held until you confirm it.',
     default: true,
   }),
+  'notifications.onIntegrationRed': bool({
+    page: 'notifications',
+    section: 'When to notify',
+    label: 'When an integration turns red',
+    description: 'Send a message when one of the outside parts on System > Status > Integrations is on and failing (a locked magazines folder, refused keys, an expired PlayStation token), once until it changes. The health check looks every few hours.',
+    default: false,
+  }),
   'notifications.failuresBeforeAlert': num({
     page: 'notifications',
     section: 'When to notify',

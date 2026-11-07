@@ -12,6 +12,7 @@ import { GameDrawer } from './GameDrawer';
 import { HeaderSearch } from './Search';
 import { TalkButton } from './Talk';
 import { api } from './api';
+import { useIntegrations } from './pages/system/Integrations';
 import { clearCopy } from './offline';
 import { PasswordModal } from './Password';
 import { useFeature, usePageTitle, useSession, useSetting, useSettings } from './hooks';
@@ -136,6 +137,9 @@ export function Layout({ children }: { children: ReactNode }) {
   // Copies a file no longer has wait there too (0.19.0).
   const goneCopies = useQuery({ queryKey: ['collection', 'missing'], queryFn: () => api<unknown[]>('/collection/missing'), enabled: !!session?.authenticated && owner });
   const reviewCount = (review.data?.lookAlikes.length ?? 0) + (goneCopies.data?.length ?? 0);
+  // The integrations in red count on System too (T-202), so a failing part is seen with the menu folded.
+  const integrations = useIntegrations(!!session?.authenticated && owner);
+  const redCount = integrations.data?.lines.filter((l) => l.light === 'red').length ?? 0;
   // Friends by name in the menu (0.58.0): the most recently active first, at most MENU_FRIENDS; All friends has them all.
   const friends = useQuery({ queryKey: ['friends'], queryFn: () => api<{ friends: MenuFriend[] }>('/friends'), enabled: !!session?.authenticated && owner });
   const friendList = [...(friends.data?.friends ?? [])].sort((a, b) => activity(b).localeCompare(activity(a)) || a.name.localeCompare(b.name));
@@ -333,7 +337,13 @@ export function Layout({ children }: { children: ReactNode }) {
             <NavLink
               label="System"
               leftSection={<IconServer size={18} />}
-              rightSection={reviewBadge}
+              rightSection={
+                reviewCount + redCount > 0 ? (
+                  <Badge size="xs" variant="light" color={redCount > 0 ? 'red' : 'yellow'}>
+                    {reviewCount + redCount}
+                  </Badge>
+                ) : undefined
+              }
               defaultOpened={path.startsWith('/system') || path === '/review'}
               childrenOffset={28}
             >

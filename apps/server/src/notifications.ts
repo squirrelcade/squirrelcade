@@ -227,6 +227,13 @@ export class NotificationService {
     return base ? `${base}${path}` : '';
   }
 
+  /** Each channel's last sending since Squirrelcade started (T-202: the integrations' lights). */
+  private readonly lastSent = new Map<string, { at: string; ok: boolean; error?: string }>();
+
+  sent(): Map<string, { at: string; ok: boolean; error?: string }> {
+    return this.lastSent;
+  }
+
   async send(report: Report, url = this.link(), kind: MessageKind = 'summary'): Promise<SendResult[]> {
     const s = this.settings;
     const results: SendResult[] = [];
@@ -259,10 +266,12 @@ export class NotificationService {
           await this.post(channel, this.request(channel, report, url, kind, importance));
         }
         results.push({ channel, ok: true });
+        this.lastSent.set(channel, { at: new Date().toISOString(), ok: true });
       } catch (err) {
         const error = err instanceof Error ? err.message : String(err);
         this.log.warn({ context: 'notifications' }, `Sending by ${channel} failed: ${error}`);
         results.push({ channel, ok: false, error });
+        this.lastSent.set(channel, { at: new Date().toISOString(), ok: false, error });
       }
     }
     return results;

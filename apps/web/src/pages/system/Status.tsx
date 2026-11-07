@@ -7,6 +7,7 @@ import { PageHeader, StatCard } from '../../components';
 import { bytes, dateTime } from '../../format';
 import { useSetting } from '../../hooks';
 import { changesOf, ChangesModal, type Section } from '../../WhatsNew';
+import { IntegrationsCard } from './Integrations';
 import { SetupChecklist } from './SetupChecklist';
 
 interface Status {
@@ -68,6 +69,7 @@ export function StatusPage() {
           )}
         </Card>
         {changes && <ChangesModal sections={changes} onClose={() => setChanges(null)} />}
+        <IntegrationsCard />
         <SetupChecklist />
         <SimpleGrid cols={{ base: 2, md: 4 }}>
           <StatCard
