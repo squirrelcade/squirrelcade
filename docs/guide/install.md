@@ -49,6 +49,14 @@ docker compose up -d
 
 **Older models** run it too, more slowly. On a 2017 Synology with an Intel Atom C2538 (the processor in many 2014 to 2017 Plus models), pages open in about a second and Squirrelcade uses under 400 MB of memory, but the work it does in the background, such as a collection update or Acorns, takes 8 to 12 times as long as on a recent mini PC (8 seconds for a 3,000-copy update instead of under one). The first start, download included, takes about 2 minutes.
 
+**What suits a weaker processor.** Squirrelcade itself is fine on it; two optional parts are heavier:
+
+- **RomM** (Squirrelcade only links to it) hashes every ROM when it scans and runs its own database; RomM's documentation asks for about 2 GB of memory and 2 cores for a library of thousands. On an Atom-class NAS, run RomM on another machine, or leave it out.
+- **Leaves' night reading** (Tesseract reading magazine scans) crawls on a processor without AVX2, roughly an hour or more per 100 pages. Use scans that already come with their text, or leave **Read the rest of their text at night** off. On a strong machine, **Settings > Magazines > Pages read at once** (4, say) reads about three times as fast.
+- The one-time work (building catalogs, the first IGDB download, finding the games in magazines) is slower and finishes; everyday use (the search, a barcode, a game's page) stays quick.
+
+This is advice, never a limit: nothing changes by itself on a weaker machine. The AI setup prompt asks about your machine and tailors its plan the same way, and an install's own brief (Help > AI-assisted setup) says its processor, cores, memory and AVX2.
+
 ## On Unraid
 
 The quickest way is the template:

@@ -1,5 +1,7 @@
 import { CHANNEL_NAMES, CHANNEL_SWITCHES, CHANNELS, FEATURE_SETTINGS, FEATURE_SETUP, settingDefinitions, SETTINGS_PAGES, type Channel, type FeatureKey, type SettingDefinition, type SettingKey } from '@squirrelcade/core';
 import type { FastifyInstance } from 'fastify';
+import { readFileSync } from 'node:fs';
+import os from 'node:os';
 import type { AuthService } from './auth.js';
 import type { BackupService } from './backups.js';
 import type { CatalogService } from './catalogs.js';
@@ -106,6 +108,26 @@ const scrub = (text: string) => text.replace(/[\w.+-]+@[\w-]+(\.[\w-]+)+/g, '(an
 const has = (value: unknown) => (Array.isArray(value) ? value.length > 0 : typeof value === 'string' ? value.trim() !== '' : value !== null && value !== undefined);
 
 /** "http://nas:7575" from what the page gives (its own address), else the setting, else nothing (relative links). */
+/**
+ * The server's processor, its cores, its memory and whether it has AVX2 (read from /proc/cpuinfo on Linux), for the
+ * setup brief: an AI continuing setup sorts the machine into light, middle or strong and tailors its advice.
+ */
+export function machineInfo(): { cpu: string; cores: number; memoryGb: number; avx2: boolean | null } {
+  const cpus = os.cpus();
+  let flags: string | null = null;
+  try {
+    flags = /^flags\s*:\s*(.*)$/m.exec(readFileSync('/proc/cpuinfo', 'utf8'))?.[1] ?? null;
+  } catch {
+    // Not Linux (a Mac, Windows): no flags to read.
+  }
+  return {
+    cpu: (cpus[0]?.model ?? 'an unknown processor').replace(/\s+/g, ' ').trim(),
+    cores: cpus.length,
+    memoryGb: Math.round((os.totalmem() / 1024 ** 3) * 10) / 10,
+    avx2: flags === null ? null : /\bavx2\b/.test(flags),
+  };
+}
+
 export function briefAddress(given: unknown, publicUrl: string): string {
   const pick = (s: string) => {
     try {
@@ -170,6 +192,11 @@ export function setupBrief(deps: BriefDeps, address: string, now = new Date()): 
   lines.push(`Summarized by Squirrelcade on ${day(now.toISOString())}. It never includes passwords, keys or tokens: only whether each is set.`);
   lines.push('');
   lines.push(`- **Installed:** yes, version ${APP_VERSION}${deps.env.inDocker ? ', in Docker' : ''} (${process.platform} ${process.arch}).`);
+  // The machine, so the AI tailors its advice (item 2 of the owner's 1.3 list): advice only, never a limit.
+  const machine = machineInfo();
+  lines.push(
+    `- **Processor and memory:** ${machine.cpu}, ${machine.cores} ${machine.cores === 1 ? 'core' : 'cores'}, ${machine.memoryGb} GB of memory${machine.avx2 === null ? '' : machine.avx2 ? ', with AVX2' : ', no AVX2 (Tesseract, the magazines\' night reading, runs slowly here)'}.`,
+  );
   lines.push(`- **Address:** ${address || 'not known'}${settings.get('general.publicUrl') ? '' : ` (Settings > General > ${label('general.publicUrl')} isn't set)`}.`);
   lines.push(`- **Region, currency and time zone:** ${shown('general.homeRegion')}, ${settings.get('general.currency')}, ${settings.get('general.timeZone') || 'no time zone set'}.`);
   const current = summary.currentImport;

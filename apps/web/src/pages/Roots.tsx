@@ -77,7 +77,7 @@ function HaveLine({ platformKey, completion, games }: { platformKey: string; com
       <Anchor component={Link} to={`/consoles/${platformKey}`} underline="never" mt={6} style={{ display: 'inline-flex' }} onClick={(e) => e.stopPropagation()} aria-label={`You have ${completion.percent}% of it`}>
         <Group gap={6} wrap="nowrap">
           <StashMark size={12} />
-          <Progress value={completion.percent} w={80} size="sm" color={completion.percent >= 90 ? 'green' : 'forest'} />
+          <Progress aria-label={`${completion.percent}% of it yours`} value={completion.percent} w={80} size="sm" color={completion.percent >= 90 ? 'green' : 'forest'} />
           <Text size="xs" c="var(--mantine-color-text)">
             {completion.percent}%
           </Text>

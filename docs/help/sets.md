@@ -4,6 +4,8 @@
 
 Your own sets of games beyond consoles: a publisher's releases (Limited Run Games, say), a series, any theme. Each has its completion, a filter by console, its missing and owned games, and a download of what's missing (with release numbers and values).
 
+The sets are listed **most owned first** (then by percent); a heading sorts by its column, and the order you choose is kept on that device. The **Have** column has the Stash's chest.
+
 **Sets > New set**, then either:
 
 - a **ready-made** set: **Limited Run Games** or **Super Rare Games** (one click fills in its Wikipedia page);
@@ -13,6 +15,10 @@ Your own sets of games beyond consoles: a publisher's releases (Limited Run Game
 Whether you own a set's game is its console catalog's answer (your Review answers and mappings count). A game outside the console's catalog counts by its title, and an owned copy that only looks like it is pointed out ("the same game?"), for you to answer **Same game** or **Not it**, never counted on its own.
 
 **Release numbers.** When the list numbers its releases (Super Rare Games' "Release No.", Limited Run's "Limited run #", or a No. column in your CSV), each game shows its number on its console, and the set opens on **All**: every game in number order, each console's own numbers together (Super Rare Games' Switch #1 to #163, then its Switch 2 #1 and #2), with **Have it** or **Need it**. A double pack listed as "#11 & #12" goes by its first number. A set made before numbers were read gets them with **Read again**.
+
+**A list that doesn't name each game's console.** A table's console is read from the nearest heading above it that names one (Platinum Hits' "Xbox" and "Xbox 360" tables); otherwise each game is placed on the consoles IGDB says it came out on ("List of video games listed among the best"). When neither works, the page asks **Which console is this list for?** (PlayStation Hits is the PlayStation 4's) and reads it again.
+
+**Digital-only games.** A publisher's list often has games it only sold as downloads. With **Settings > Catalogs and matching > Sets count only games you can have** (on), a set's game that its console's catalog calls a download (not confirmed physical) stays in the list but is left out of the set's count and percentage, and the sets list says how many ("12 digital only, not counted").
 
 **Value.** A game you have shows what your copies are worth (from your PriceCharting export or spreadsheet), and the summary adds them up. A game you don't have links to its prices on PriceCharting.
 

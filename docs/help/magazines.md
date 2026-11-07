@@ -16,6 +16,12 @@
 
 Squirrelcade reads the folder a few minutes after it starts and then every night (**Read the folder now** on Leaves does it at once). The first time it reads every issue's table of contents and `ComicInfo.xml` only (a few kilobytes each, never the whole scan), so even a big library is read in minutes; after that, only the files that changed. Folders and files starting with `_` or `.` are left out (**Folders and files to leave out**).
 
+**If Squirrelcade can't read the folder.** Squirrelcade runs as the `user:` in your compose file (`1000:1000`, say), and that account needs permission to read the magazines folder and every file in it. When it can't, the folder's light on **System > Status > Integrations** turns red with "Squirrelcade can't open the magazines folder", the night's reading stops instead of marking every issue failed, and the issues it couldn't open are counted apart from ones that couldn't be read. Give the account read permission (on Linux, `sudo chmod -R a+rX /path/to/Magazines`; on a Synology, the folder's Permissions, read for that user or Everyone), then **Check now** on its line: the issues that couldn't be opened go back in line by themselves.
+
+## Reading their text at night
+
+With **Read the rest of their text at night** on (Settings > Magazines, off to start), Tesseract reads the pages without text, at the lowest priority, in the **Reading hours** (it starts within a few minutes of them opening). It runs beside Squirrelcade's other work, so email checks, the game of the day and the syncs never wait for it. **Processor cores for each page** (2) is what one page may use; **Pages read at once** (1) reads several pages together, each with its own Tesseract: on a server with 8 cores or more, 4 at once reads about three times as fast. On a NAS with a slow processor (an Intel Atom, a Celeron J-series, an ARM NAS), keep 1, or leave the reading off and use scans that come with their text: there it takes about an hour or more per 100 pages.
+
 ## Reading
 
 **Leaves** in the menu shows your magazines as covers, with how many issues and their years. A magazine shows its issues by year; an issue opens the **reader**: a page at a time on a phone, two side by side on a wider screen (**Two pages side by side on a wide screen**, as they were printed), turned with the arrows, your keyboard's arrow keys or a swipe; the zoom buttons (or a double tap) to read the small print. The next pages are fetched ahead, and Squirrelcade remembers the page you were on in each issue. Each page is sent as wide as your screen needs (a phone gets a much smaller file than the scan, a cover tile a tiny one), made once on the server and kept in the config folder's magazines-cache, so pages open fast on the phone; **Largest page sent** and **Room for the pages made** (Settings > Magazines, after Show advanced) set how wide and how much room.
@@ -34,6 +40,8 @@ Squirrelcade finds the games your issues talk about, two ways, once a day (Syste
 **Review > Magazines** (Leaves' menu, and a link on Review) lists every maybe, the surest first, to answer the same way.
 
 On a game's page, **In your magazines** (in its Roots) lists its reviews and mentions in your scans, each opening at its page; Now in and the Time machine show its reviews beside it.
+
+**The chest on a magazine's games.** Every game found in your magazines has the Stash's chest: on the page (at its box's top right, while the boxes show), in **In this issue**, on **Review > Magazines**, on its card and in a game's **Magazines** tab. It's **filled when you have the game on the console the article is about**: a console the page names that the game came out on ("PS2", "Nintendo 64"), any of them when it names several, or the magazine's console when the page names none. It's **grey** otherwise, including when you have it only on a console the article isn't about (its blue outline still says "on another console").
 
 ## Searching
 

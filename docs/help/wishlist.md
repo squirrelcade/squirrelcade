@@ -19,7 +19,7 @@ The wishlist ranks the games you don't have, on the consoles you collect, by rul
 ## Using the list
 
 - **Snooze** a game for a few months to leave it off the list for now.
-- Your **preference** for a game, from wherever a game you don't have is listed: the wishlist, the game's drawer, a console's page (its missing games), the Top 100 and History tabs, Platforms > Timeline, sets, series, Coming soon, Past releases, Store Mode and Check a list. A change shows everywhere at once.
+- Your **preference** for a game, from wherever a game you don't have is listed: the wishlist, the game's drawer, a console's page (its missing games), the Top 100 and History tabs, Roots > Timeline, sets, series, Coming soon, Past releases, Store Mode and Check a list. A change shows everywhere at once.
 - **Download** gives the list as a spreadsheet.
 - **Share** makes a link anyone can open without signing in, to see your top picks and where to buy them: for birthdays and holidays. See [Sharing your collection](sharing.md).
 - **Priority** (High, Medium, Low) comes from the acorns (the cut-offs are settings).

@@ -27,10 +27,14 @@ A game's **stars** beside its name come partly from Roots: **#2 best-selling** o
 
 **Roots** in the menu has:
 
-- **Consoles:** each console's history (with a few games to start with) and its **Top 100** list, by generation. Click a console's card for its page (its history first, else its Top 100), or its **History** or **Top 100** link. Each opens the console's page in Roots, with its **History** and **Top 100** tabs (see [Top 100 and history](top100-history.md)); its checklist stays in the Nutshell (Platforms), linked from there.
-- **Timeline:** year by year, the consoles that came out and the landmark games of each (the best of its Top 100 and its "Start here" games). Platforms has it too.
+- **Consoles:** each console's history (with a few games to start with) and its **Top 100** list, by generation. Click a console's card for its page (its history first, else its Top 100), or its **History** or **Top 100** link. Each opens the console's page in Roots, with its **History** and **Top 100** tabs (see [Top 100 and history](top100-history.md)); its checklist stays in the Nutshell (Consoles), linked from there.
+- **Timeline:** year by year, the consoles that came out and the landmark games of each (the best of its Top 100 and its "Start here" games). Nutshell > Consoles has it too.
 
 Both show the consoles you collect; **Consoles you don't collect too**, on Roots › Consoles, adds the others, and is remembered on that device (the timeline follows it).
+
+### Top 20
+
+**Roots > Top 20**: each year's twenty **Highest rated** games (IGDB's ratings, counting games rated by at least **Settings > Roots > Top 20 > Ratings a game needs for Highest rated**, 10) or **Best selling** (each year's chart from Wikipedia's "YYYY in video games": the United States to start, **Best selling: whose sales**; a year without that chart shows the one it has and says whose). Every year from this one back is a row: the year, then the chest with "you have 7 of 20" and a small bar, so you see your strong years without opening any; open one for its games as box art, each with its rank and the cover's banner. The newest year starts open, and a row of decades jumps down the page. A game counts as yours on any console it came out on. **Consoles you don't collect too** adds games only on consoles you don't collect. The ratings are worked out from what Squirrelcade already stores, and the charts are read once in the background (this year's again each week: System > Tasks > Read each year's best sellers), so the page only reads what's kept; the first visit after an IGDB update takes a moment.
 
 ### Consoles you follow
 

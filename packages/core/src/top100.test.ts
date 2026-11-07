@@ -13,10 +13,10 @@ describe('parseTop100', () => {
     });
     expect(data.lists.map((l) => l.platformKey)).toEqual(['super-nintendo', 'vectrex']);
     expect(data.lists[0]!.entries).toEqual([
-      { rank: 1, title: 'Final Fantasy VI', altTitles: ['Final Fantasy III'], year: 1994 },
-      { rank: 2, title: 'Super Metroid', altTitles: [], year: 1994 },
+      { rank: 1, title: 'Final Fantasy VI', altTitles: ['Final Fantasy III'], year: 1994, digital: false, disc: null },
+      { rank: 2, title: 'Super Metroid', altTitles: [], year: 1994, digital: false, disc: null },
     ]);
-    expect(data.lists[1]!.entries[0]).toEqual({ rank: 1, title: 'Mine Storm', altTitles: [], year: null });
+    expect(data.lists[1]!.entries[0]).toEqual({ rank: 1, title: 'Mine Storm', altTitles: [], year: null, digital: false, disc: null });
     expect(() => parseTop100({ version: '1', platforms: [{ platform: 'x', name: 'X', list: [{ rank: 0, title: 'Bad' }] }] })).toThrow();
     // Every mapped key is one of Squirrelcade's.
     expect(Object.values(TOP100_PLATFORMS).every((k) => /^[a-z0-9-]+$/.test(k))).toBe(true);

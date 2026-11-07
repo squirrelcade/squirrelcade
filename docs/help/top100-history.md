@@ -1,6 +1,6 @@
 # Top 100 and history
 
-With **Roots** on (Settings > Features; it is by default), each console's page has two more tabs, Platforms has a timeline, and the menu has the **Roots** section with both (see [Roots](roots.md)). A game in its console's Top 100 has its place as a star beside its name, on its page and in Store Mode.
+With **Roots** on (Settings > Features; it is by default), each console's page has two more tabs, Nutshell > Consoles has a timeline, and the menu has the **Roots** section with both (see [Roots](roots.md)). A game in its console's Top 100 has its place as a star beside its name, on its page and in Store Mode.
 
 ## Top 100
 
@@ -11,7 +11,11 @@ A console's best games in ranked order: a consensus of critics' and retrospectiv
 - **what you have of it:** owned (with each copy's condition: CIB, sealed, loose...), to review (a copy of yours may be it: answer on the Review page), or not owned (with the other consoles or PC storefronts you have it on, its place on your wishlist and your preference);
 - a link to it in [RomM](romm.md), when that's on.
 
-The top line sums it up ("Own 63 of 100 · 58 of them in RomM"). The list opens as a **board** of ten by ten: each square a game, its box art in the middle and its rank in the corner, filled green when you own it (the art in color), a dashed gold square when you don't (the art in gray), with a dot when it's in RomM; a square opens its game. On a phone the squares show the rank alone. Beside it, the **hunting list**: the games you don't have, best first, with where each one is (on PC, on another console, on your wishlist) and your preference. **List** shows the list itself with why each game matters. Filter to the games you own or don't own, or to the ones in RomM: on the board the others dim.
+The top line sums it up ("Have 91 of 93 you can have (7 digital only) · 58 of them in RomM").
+
+**Counting the games you can have.** Some Top 100 games were only ever sold as downloads on their console (Braid on the PlayStation 3, WiiWare and XBLA games). They stay in the list, faded and labeled **Digital only**, and don't count: **Settings > Roots > Top 100 percentages count** is "Games with a physical release" to start (or "Every game"). The lists that come with Squirrelcade say which games were download-only, and where a disc came out in one region only ("On a disc or cartridge in Japan": a game you can have); a console's catalog adds its own word. In the list view each game you don't have shows what's known, with **It's physical** and **Digital only** to correct it.
+
+**A game you have on another console.** The same game on its other generation (Switch and Switch 2, PlayStation 4 and 5, and the rest of the cross-generation pairs, released close enough together for Settings > Catalogs and matching) counts as yours, while Settings > Catalogs and matching > Cross-generation games count for both consoles is on. One you have on any other console or on PC follows **Settings > Roots > A Top 100 game you have on another console**: left out of the count (to start: "88 of 95, 5 you have elsewhere"), counted as yours, or still one to get. A remake with the same name isn't the same game: when both have IGDB's game it must be the same one, otherwise their years must be close. On the board these tiles are blue, with the console you have it on in their corner; the Hunting list leaves out the ones that count and says where the others are. Today's Completion card and Nutshell > Consoles' Top 100 column read the same count. The list opens as a **board** of ten by ten: each square a game, its box art in the middle and its rank in the corner, filled green when you own it (the art in color), a dashed gold square when you don't (the art in gray), with a dot when it's in RomM; a square opens its game. On a phone the squares show the rank alone. Beside it, the **hunting list**: the games you don't have, best first, with where each one is (on PC, on another console, on your wishlist) and your preference. **List** shows the list itself with why each game matters. Filter to the games you own or don't own, or to the ones in RomM: on the board the others dim.
 
 Whether you own a listed game follows your console's catalog, so your Review answers and mappings count; a game the catalog doesn't have counts by its title. Another region's console of its own counts with its console: a Super Famicom copy counts on the Super Nintendo's list, and the Super Famicom's page shows the same list.
 
@@ -35,7 +39,7 @@ Your version is kept apart from Squirrelcade's. If a later version of Squirrelca
 
 ## Timeline
 
-**Platforms > Timeline** (and Roots › Timeline): year by year, each console's launch and its landmark games (the best of its Top 100, and its Start here games), marked when you have them; the generations side by side are on Roots › Consoles. It shows the consoles you collect; **Consoles you don't collect too** (on Roots › Consoles, remembered on that device) shows them all. How many games per console is a setting (Settings > Interface > "Landmark games per console on the timeline").
+**Nutshell > Consoles > Timeline** (and Roots › Timeline): year by year, each console's launch and its landmark games (the best of its Top 100, and its Start here games), marked when you have them; the generations side by side are on Roots › Consoles. It shows the consoles you collect; **Consoles you don't collect too** (on Roots › Consoles, remembered on that device) shows them all. How many games per console is a setting (Settings > Interface > "Landmark games per console on the timeline").
 
 ## In the game drawer
 

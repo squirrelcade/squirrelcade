@@ -29,23 +29,50 @@ The form stays on the console for the next game, and **Added just now** lists wh
 
 Click any game's title or cover to open its page (the game drawer). Every game looks the same wherever it's shown large (here, Game of the Day, Store Mode):
 
-- **At the top:** its cover (with the consoles you have it on in its corner); its **consoles' marks**, one for each console it came out on, in color where you have it, faded grey where you don't, the one you're on outlined, PC at the end (tap one to open it there); its place on your wishlist and its priority; **Play on RomM** when your [RomM](romm.md) has the game (Open in RomM when RomM can't play it in the browser).
+- **At the top:** its cover (with its banner in the corner: the chest, its consoles and PC, see below); its **consoles' marks**, one for each console it came out on, in color where you have it, faded grey where you don't, the one you're on outlined, PC at the end (tap one to open it there); its place on your wishlist and its priority; **Play on RomM** when your [RomM](romm.md) has the game (Open in RomM when RomM can't play it in the browser).
 - **Its name with its stars:** its place in its console's Top 100 ("★ #2 Top 100"), its place on Wikipedia's best-selling list for its console, its headline awards (from Wikidata, with [Roots](roots.md) on), **Critics' favorite** (reviews of 90 or more: **Critics' favorite from**, Settings › Interface › Game pages), **Launch title** (out the day its console launched). Three show (**Stars beside a game's name**, same place); the rest are under "+n". Each says where it comes from when you point at it, and the Top 100 and best-selling stars open their lists.
 - **Two circles**, as Game of the Day draws them: **Worth** for a game you have (what your copies are worth together, the ring filled by how much of your collection is worth less), or **Acorns** for a game you don't; and **Reviews**: Metacritic's score when the game's Wikipedia article gives it for that console (with Roots on), IGDB's rating otherwise (it says which).
 
-Then **Your copy** comes first, whatever else is on: each copy with its condition, what you paid, what it's worth, where it's kept, its photos (tap one for full size), its tests and tags, and its own **Edit this copy**. Click **Worth** (or the small line beside it) to see what that copy has been worth at each collection update, with what you paid as a dashed line; **Show as a table** lists the values.
+Then **your collection**, right under the head, whatever else is on (the owner's layout in 1.3):
+
+- **If you have it:** **Your copy** first, then what you played and its rating, and your note.
+- **If you don't have it on this console:** **Get it** (below), with its acorns and why, its place on your wishlist, its prices and shops.
+
+Then three tabs, each with its count; a tab with nothing in it is faded and says why, and the one you opened last opens next time on that device (About to start):
+
+- **About:** IGDB's summary (or Wikipedia's) with Read on Wikipedia; its facts (released on each console, developer, publisher, genres); why it matters and its Top 100 place; its reviews of the time and since, what it came from and led to, its honors; its series ("you have 2 of its 4 games"); its timeline of re-releases and remakes.
+- **Videos:** **Of its time** first (reviews and trailers from around its release), then **Looking back**; **Find its videos** and **Add a YouTube video** at the bottom (its date puts it in one or the other).
+- **Magazines:** every issue and page of your magazines that mentions it, with the chest (yours for what the article is about, or not), its scores, and the reviews its Wikipedia article cites, each opening your scan at its page.
+
+On a phone the tabs' bar stays at the top while the page scrolls.
+
+**Your copy:** each copy with its condition, what you paid, what it's worth, where it's kept, its photos (tap one for full size), its tests and tags, and its own **Edit this copy**. Click **Worth** (or the small line beside it) to see what that copy has been worth at each collection update, with what you paid as a dashed line; **Show as a table** lists the values.
 
 **A game on several consoles** has a row of every console it came out on, in release order: the ones you have lit with how many copies, the others dashed (tap one to open that console's page and get it), and **PC apart at the end**, after a line, since owning it on PC never counts as owning it on a console. Your copies on the console you opened it from are shown in full, with **Add a copy** beside **Edit this copy**; another console's copies are a tap on its chip above.
 
-**A game you don't have** shows **Get it** in Your copy's place: your shops (the used marketplaces first; the rest under "more shops"), PriceCharting for what it sells for (Squirrelcade knows prices only for games you have), why it has its acorns, **I bought it**, **Add a copy**, **Snooze**, **Not a target** and your preference, and the consoles you have it on.
+**A game you don't have** (on the console picked) shows **Get it** in Your copy's place: your shops (the used marketplaces first; the rest under "more shops"), PriceCharting for what it sells for (Squirrelcade knows prices only for games you have), why it has its acorns, the big green **Add it** at its top right (Store Mode's, starting the same walk-through: condition, paid, date, notes, photos), **I bought it**, **Snooze**, **Not a target** and your preference, and the consoles you have it on. The circle at the top right shows its **acorns** (with its wishlist place under it) instead of a value. A game you have on another console opens on yours (your best copy's console, with its value); its marks switch to the others.
 
 Below them: IGDB's summary, its Roots (its Top 100 place and why it matters), what you played, the sets it's in, your note, and links (its console's page, IGDB, PriceCharting, your shops).
 
-## Consoles' marks
+## The Stash's chest and the consoles' marks
 
-Every console has its own small mark, drawn after the console itself (its pad, its shape, its symbol: the Switch's two Joy-Con with the Switch 2's 2 beside them, PlayStation's symbol with its number, the N64's pad...), wherever a console is named: the search, Store Mode, a game's page, Roots, Nutshell > Platforms and a console's page, Series, the Stash's console filter. A mark is in its console's **color** where you have the game (or the console's games) and **faded grey** where you don't; PC's screen is lit when you have it on PC. A console without a drawing yet has a small pixel mark of its short name.
+Two symbols say what you have:
 
-**On covers:** a small banner in the top right corner of a game's cover shows the consoles you have it on: the two newest, one per company (a game you have on the PS5, an Xbox and the Switch 2 shows the Switch 2 and the PS5), two of one company only when that's all you have it on, and PC at the right end. Settings > Interface > Appearance: **Console marks on covers** (on) and **A cover's PC mark when you don't have it on PC** (a faded PC mark, or none).
+- **The Stash's chest means "yours".** Filled when you have it, grey and empty when you don't: beside what you have of a console (Nutshell > Consoles' Games and Complete columns, Roots' console cards, Today's Completion, a set's Have column), on every magazine game (on the page, In this issue, a game's Magazines tab), and first on every cover.
+- **A console's mark means "where".** When a game is shown across consoles, its marks say which: in color where you have it, grey where you don't. Where a page is already about one console, its mark isn't repeated: the chest says it's yours.
+
+Every console has its own small mark, drawn after the console itself (its pad, its shape, its symbol: the Switch's two Joy-Con with the Switch 2's 2 beside them, PlayStation's symbol with its number, the N64's pad...), wherever a console is named: the search, Store Mode, a game's page, Roots, Nutshell > Consoles and a console's page, Series, the Stash's console filter. A mark is in its console's **color** where you have the game (or the console's games) and **faded grey** where you don't; PC's screen is lit when you have it on PC. A console without a drawing yet has a small pixel mark of its short name.
+
+**On covers:** every cover has a small banner in its top right corner: the chest (filled when you have the game on any console or PC, grey when you don't), then two console marks, then PC at the right end. The marks are the newest consoles you have it on, one per company (a game you have on the PS5, an Xbox and the Switch 2 shows the Switch 2 and the PS5), in color; a place left goes to the newest other console it came out on, in grey. A game you don't have shows the two newest consoles it came out on, all grey, with a grey chest and PC: you have it on none of them. Settings > Interface > Appearance: **Console marks on covers** (on) and **A cover's PC mark when you don't have it on PC** (a faded PC mark, or none).
+
+## Your hardware
+
+Consoles, controllers and accessories you log on PriceCharting come in like games, on their console ("Nintendo 64 Console" under Nintendo 64). Squirrelcade tells them apart by PriceCharting's names: a console's name followed by Console or System (with a model or color after it), and controllers and accessories by their words (Controller, Joy-Con, Memory Card, Rumble Pak...); a game with such a word in its title (System Shock, Catan: Console Edition) stays a game.
+
+- Hardware is never in a console's game count (or whether it's tracked), its catalog, "owned, not in the catalog" or Review.
+- **Your hardware** on Nutshell > Consoles lists every piece, with its kind, condition and worth, and a console's page lists its own.
+- **This is a game** (on Your hardware) and **this is hardware** (under a copy on its game page) correct Squirrelcade's reading; your word is kept through every update.
+- What it's worth is in the collection's value unless **Settings > Collection > Hardware's worth in the collection's value** is off.
 
 ## Adding a copy in Squirrelcade
 
@@ -179,4 +206,4 @@ On consoles that can't play other regions' games (a setting: Settings > Consoles
 
 ## Value and prices
 
-Each copy's value is PriceCharting's price in the export, for the condition you recorded (loose, complete, new...), in the currency set in Settings > General (Squirrelcade shows the export's amounts as they are; it doesn't convert between currencies). Squirrelcade keeps each copy's value from every export that changed it, so the game drawer shows its history, and the Platforms page shows how much each console's value moved since the previous update. Prices of games you don't own aren't known: PriceCharting's export only has your own.
+Each copy's value is PriceCharting's price in the export, for the condition you recorded (loose, complete, new...), in the currency set in Settings > General (Squirrelcade shows the export's amounts as they are; it doesn't convert between currencies). Squirrelcade keeps each copy's value from every export that changed it, so the game drawer shows its history, and the Consoles page shows how much each console's value moved since the previous update. Prices of games you don't own aren't known: PriceCharting's export only has your own.

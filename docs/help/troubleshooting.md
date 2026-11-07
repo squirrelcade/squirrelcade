@@ -2,7 +2,7 @@
 
 ## First places to look
 
-- **System > Status:** health problems, the version, the folders Squirrelcade uses, and the setup checklist (also on Today while essential steps are left).
+- **System > Status:** health problems, the **Integrations** card (a light for each outside part: green works, yellow needs a look soon, red failing with what went wrong, grey off; each with **Check now**, its setting and a ? that explains it: [Integrations](integrations.md)), the version, the folders Squirrelcade uses, and the setup checklist (also on Today while essential steps are left).
 - **System > Tasks:** each background task's last run, what it did or why it failed, and **Run now**.
 - **System > Logs:** what Squirrelcade wrote down, newest first (Settings > General > Log level for more detail).
 

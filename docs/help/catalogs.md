@@ -1,6 +1,6 @@
 # Consoles, catalogs and completion
 
-A console's **catalog** is the list of games there are to collect for it. Squirrelcade compares your copies with it to show what you have, what's missing and how complete you are. **Platforms** lists your consoles; open one for its page.
+A console's **catalog** is the list of games there are to collect for it. Squirrelcade compares your copies with it to show what you have, what's missing and how complete you are. **Nutshell > Consoles** lists your consoles (with the chest and bar of what you have, each one's Top 100 count, and Your hardware); open one for its page. Old links to /platforms still arrive.
 
 ## Which consoles get a catalog
 

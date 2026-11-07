@@ -50,7 +50,7 @@ An export shows what Squirrelcade found in it: how many games on which consoles,
 
 ![The setup checklist: the collection and catalogs done, the first backup still to come, and the optional steps](img/status-setup.jpg)
 
-- **Nutshell > Platforms** lists your consoles with their completion (for example "PlayStation 3: 312 of 1,847").
+- **Nutshell > Consoles** lists your consoles with their completion (for example "PlayStation 3: 312 of 1,847").
 - **Stash** lists your copies, with their value from a PriceCharting export (or none, for games added by hand).
 - **System > Review** may have questions: titles that look alike ("Doraemon 2" and "Doraemon 2: Nobita no Toys Land Daibouken"). Answer a few; each answer counts everywhere. [How matching works](../MATCHING.md) explains when a copy counts.
 

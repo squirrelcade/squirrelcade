@@ -220,6 +220,7 @@ export async function uiTest(target, account, check) {
       '/wishlist/coming-soon',
       '/wishlist/past',
       '/acorns',
+      '/consoles',
       '/platforms',
       '/platforms/playstation-3',
       '/platforms/playstation-3?tab=owned',
@@ -254,6 +255,7 @@ export async function uiTest(target, account, check) {
       '/collection?view=grid&sort=value',
       '/roots',
       '/roots?view=timeline',
+      '/roots?view=top20',
       '/roots/playstation-3',
       '/roots/playstation-3?tab=top100',
       '/pc',
@@ -399,7 +401,7 @@ export async function uiTest(target, account, check) {
     // The Top 100 tab's list: every "Write why it matters" starts at the same place, under its game's title (it wandered
     // when a long line of developers stretched it).
     await page.goto(`${base}/platforms/playstation-3?tab=top100&view=list`);
-    await page.getByText(/^Own \d+ of 100/).waitFor({ timeout: 15000 });
+    await page.getByText(/^Have \d+ of \d+/).waitFor({ timeout: 15000 });
     const whyLefts = await page.getByRole('button', { name: 'Write why it matters' }).evaluateAll((els) => [...new Set(els.map((el) => Math.round(el.getBoundingClientRect().left)))]);
     // Every link that is a button keeps its words at the start (where there's no why to write yet, the links line up).
     const centered = await page.locator('button.mantine-Anchor-root').evaluateAll((els) => els.filter((el) => getComputedStyle(el).textAlign === 'center').map((el) => el.textContent));
@@ -408,7 +410,7 @@ export async function uiTest(target, account, check) {
 
     // The Top 100 tab: Journey is ranked, owned, and says why it matters; its title opens the drawer, which says so too.
     await page.goto(`${base}/platforms/playstation-3?tab=top100&view=list&show=owned`);
-    await page.getByText(/^Own \d+ of 100/).waitFor({ timeout: 15000 });
+    await page.getByText(/^Have \d+ of \d+/).waitFor({ timeout: 15000 });
     await page.getByRole('button', { name: 'Show Journey' }).first().click();
     await drawer.getByText("in the console's Top 100").waitFor({ timeout: 10000 });
     await settle();
@@ -420,7 +422,7 @@ export async function uiTest(target, account, check) {
 
     // The owner's version of why a game matters: written in its modal, verified, shown on the list.
     await page.goto(`${base}/platforms/playstation-3?tab=top100&view=list&show=missing`);
-    await page.getByText(/^Own \d+ of 100/).waitFor({ timeout: 15000 });
+    await page.getByText(/^Have \d+ of \d+/).waitFor({ timeout: 15000 });
     await page.getByRole('button', { name: /^Edit why .* matters$/ }).first().click();
     const whyModal = page.getByRole('dialog');
     await whyModal.getByLabel('Why it matters').fill('A test note written by the walk-through.');
