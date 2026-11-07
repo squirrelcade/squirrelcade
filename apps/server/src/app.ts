@@ -48,6 +48,7 @@ import { ItadClient, PcPriceService, registerPcPriceRoutes, type PcPrice } from 
 import { GameFlyService, registerGameFlyRoutes } from './gamefly.js';
 import { MarksService, registerMarkRoutes } from './marks.js';
 import { HardwareService, registerHardwareRoutes } from './hardware.js';
+import { registerTop20Routes, Top20Service } from './top20.js';
 import { integrationLines, registerIntegrationRoutes, type Deps as IntegrationDeps } from './integrations.js';
 import { MagazineService, registerMagazineRoutes, type PageReader } from './magazines.js';
 import { PurchaseSheetService, registerPurchaseSheetRoutes } from './purchaseSheet.js';
@@ -546,6 +547,19 @@ export async function buildApp(options: BuildOptions = {}): Promise<Squirrelcade
   registerHardwareRoutes(app, hardware);
   const marks = new MarksService(db, collection, catalogs, pc, igdb);
   registerMarkRoutes(app, marks);
+  // Roots > Top 20 (T-218): each year's highest rated and best selling, worked out once and kept.
+  const top20 = new Top20Service(db, settings, igdb, wikipedia, log, (keys) => marks.released(keys));
+  registerTop20Routes(app, top20, () => collection.summary().platforms.map((p) => p.key));
+  setTimeout(() => top20.warm(), 90_000).unref();
+  tasks.register({
+    name: 'top20-read',
+    title: "Read each year's best sellers",
+    description: "Reads Wikipedia's \"YYYY in video games\" for each year's best-selling games (Roots > Top 20): once for every year, and this year's again each week.",
+    interval: () => (settings.get('features.history') ? 86_400_000 : null),
+    firstRunDelayMs: 15 * 60_000,
+    run: async (_log, progress) => top20.readYears(progress),
+    quiet: (m) => m === 'Nothing new to read',
+  });
   // The consoles games came out on (covers' grey marks): built a minute after start, so the first page doesn't wait.
   setTimeout(() => void marks.released([]).catch(() => undefined), 60_000).unref();
   const mail = new MailImportService(db, settings, collection, log, notifications, options.mailbox, options.exportDownload);

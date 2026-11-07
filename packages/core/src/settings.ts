@@ -557,6 +557,28 @@ export const settingDefinitions = {
     default: FEATURE_DEFAULTS.history,
   }),
   // Roots (D165): each game's article read for its own time and since.
+  'roots.top20MinRatings': num({
+    page: 'roots',
+    section: 'Top 20',
+    label: 'Ratings a game needs for Highest rated',
+    description: "Roots > Top 20's Highest rated takes each year's games by IGDB's rating, counting only games rated by at least this many people, so one or two ratings don't put an unknown game on top. The 1970s have few games rated that often, so their years show what there is.",
+    default: 10,
+    min: 1,
+    max: 1000,
+  }),
+  'roots.top20SalesRegion': select({
+    page: 'roots',
+    section: 'Top 20',
+    label: 'Best selling: whose sales',
+    description: "Roots > Top 20's Best selling reads each year's charts from Wikipedia's \"YYYY in video games\". Most years have the United States (NPD, now Circana) and Japan (Famitsu); some have Europe or the world. A year without the one chosen shows the one it has, and says whose.",
+    options: [
+      { value: 'us', label: 'The United States' },
+      { value: 'japan', label: 'Japan' },
+      { value: 'europe', label: 'Europe' },
+      { value: 'worldwide', label: 'The world' },
+    ],
+    default: 'us',
+  }),
   'roots.top100Counts': select({
     page: 'roots',
     section: 'Top 100 lists',

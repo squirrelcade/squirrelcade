@@ -303,7 +303,8 @@ export function Layout({ children }: { children: ReactNode }) {
               Top 100 lists and history on (Settings > Features). Its consoles and timeline stay linked from Platforms. */}
           {historyOn && (
             <NavLink label="Roots" description={SECTION_RULE.roots} leftSection={<RootsMark size={18} />} opened={path.startsWith('/roots')} onClick={() => navigate('/roots')} childrenOffset={28}>
-              <NavLink component={Link} to="/roots" label="Consoles" active={path.startsWith('/roots') && !['timeline', 'now-in', 'time-machine'].includes(rootsView ?? '')} onClick={close} />
+              <NavLink component={Link} to="/roots" label="Consoles" active={path.startsWith('/roots') && !['timeline', 'now-in', 'time-machine', 'top20'].includes(rootsView ?? '')} onClick={close} />
+              <NavLink component={Link} to="/roots?view=top20" label="Top 20" active={path === '/roots' && rootsView === 'top20'} onClick={close} />
               <NavLink component={Link} to="/roots?view=timeline" label="Timeline" active={path === '/roots' && rootsView === 'timeline'} onClick={close} />
               <NavLink component={Link} to="/roots?view=now-in" label="Now in" active={path === '/roots' && rootsView === 'now-in'} onClick={close} />
               <NavLink component={Link} to="/roots?view=time-machine" label="Time machine" active={path === '/roots' && rootsView === 'time-machine'} onClick={close} />

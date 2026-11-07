@@ -44,6 +44,7 @@ export * from './magazines.js';
 export * from './magazineIndex.js';
 export * from './purchaseKind.js';
 export * from './hardware.js';
+export * from './top20.js';
 export * from './markDrawings.js';
 export * from './timeMachine.js';
 export * from './magazineCitation.js';
