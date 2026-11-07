@@ -43,6 +43,25 @@ Every feature keeps the app fast to use: searching, scanning a barcode, opening 
 
 The version a server runs shows at the bottom of the menu, small and grey ("Squirrelcade 1.2.2 · f6b0323", from `/api/v1/health`; D170), so the owner can tell at a glance that an update arrived. Keep it there, quiet but visible, through any redesign of the menu.
 
+## The Stash's chest and the console marks
+
+Two symbols say what the owner has (D142, D175, D185; the owner's rule, 2026-11-06). Keep them consistent everywhere, use them together often, and never add another symbol for "you have it".
+
+- **The Stash's chest means "yours".** Wherever a page says what the owner has, the chest marks it: filled when they have it, grey when they don't. That includes:
+  - a count or a bar of what they have of one console (Nutshell's Games and Complete columns, the console cards' bar);
+  - a game's verdict ("You own it").
+- **The console marks mean "where".** When a game is shown across consoles, its marks show which ones: in color where the owner has it, grey where they don't, PC at the right end. Where a page is already about one console (its row, its card, its page), the console isn't repeated: the chest alone says it's theirs.
+- **On every cover, both:** a banner at the top shows, in order:
+  1. the chest: filled when the owner has the game on any console or PC, grey when they don't;
+  2. two console marks, one per company: the newest consoles they have it on, then the newest other consoles it came out on, grey;
+  3. PC, at the right end.
+
+  A game they don't have shows all of it in grey.
+
+## Words
+
+In what people read, a console is a **console**: Nutshell > Consoles and Roots > Consoles, "the consoles you have it on". PC is named as PC. "Platform" stays in code, the API and the database.
+
 ## Hard rule
 
 - Never handle passwords: the person types them.
