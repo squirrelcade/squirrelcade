@@ -7,7 +7,10 @@ import type { CollectionService } from './collection.js';
 import type { Db } from './db/index.js';
 import { catalogEntries, copies, platforms } from './db/schema.js';
 import type { IgdbService } from './igdb.js';
-import type { PcService } from './pc.js';
+import type { PcFamily, PcService } from './pc.js';
+
+/** A PC game's edition and the console game of the same name: the same game when they came out at most this many years apart. */
+const PC_EDITION_YEARS = 12;
 
 /** The consoles a game is yours on (D175), by the game's title key (as catalogs compare titles): PC is "pc". */
 export type OwnedMarks = Record<string, string[]>;
@@ -73,17 +76,41 @@ export class MarksService {
     const stamp = `${c?.n}|${c?.last}|${c?.changed}|${this.collection.updateRevision()}|${this.catalogs.stamp()}`;
     if (!this.cache || this.cache.stamp !== stamp || Date.now() - this.cache.at > 60_000) {
       const consoles = new Map<string, Set<string>>();
+      // One title and console for each key, to tell a PC game's year against (the guard on the PC mark below).
+      const sample = new Map<string, { title: string; key: string }>();
       const add = (title: string, key: string) => {
         const k = matchKey(baseTitle(title));
-        if (k) consoles.set(k, (consoles.get(k) ?? new Set()).add(key));
+        if (!k) return;
+        consoles.set(k, (consoles.get(k) ?? new Set()).add(key));
+        if (key !== 'pc' && !sample.has(k)) sample.set(k, { title, key });
       };
       for (const r of this.db.select({ title: copies.title, key: platforms.key }).from(copies).innerJoin(platforms, eq(platforms.id, copies.platformId)).where(isNull(copies.goneAt)).all()) add(r.title, r.key);
       for (const p of this.catalogs.allMatches()) for (const t of p.match.targets) if (t.status === 'owned') add(t.target.title, p.key);
       const withoutPc = Object.fromEntries([...consoles].map(([k, v]) => [k, [...v]]));
-      for (const f of this.pc.enabled() ? this.pc.families() : []) if (f.owned) add(f.title, 'pc');
+      for (const f of this.pc.enabled() ? this.pc.families() : []) {
+        if (!f.owned) continue;
+        add(f.title, 'pc');
+        // Its name without edition words too, as the PC library groups it (2026-11-07: "Grand Theft Auto IV: The Complete
+        // Edition" on Steam left Grand Theft Auto IV's PC mark grey), unless the console game of that name came out years
+        // apart: SimCity Digital Deluxe Edition (2013) isn't the Super Famicom's SimCity (1991).
+        if (f.key && f.key !== matchKey(baseTitle(f.title)) && this.sameGame(f, sample.get(f.key))) consoles.set(f.key, (consoles.get(f.key) ?? new Set()).add('pc'));
+      }
       this.cache = { stamp, at: Date.now(), owned: Object.fromEntries([...consoles].map(([k, v]) => [k, [...v]])), withoutPc };
     }
     return withPc ? this.cache.owned : this.cache.withoutPc;
+  }
+
+  /**
+   * Whether a PC game is the console game that shares its name without edition words: not when both years are known
+   * and more than PC_EDITION_YEARS apart (a remaster comes years later; a game of the same name decades later is another).
+   */
+  private sameGame(f: PcFamily, console: { title: string; key: string } | undefined): boolean {
+    if (!console) return true;
+    const years = f.records.map((r) => r.releaseYear).filter((y): y is number => typeof y === 'number' && y > 0);
+    const released = this.igdb?.findByKey(console.key, console.title)?.released ?? null;
+    const consoleYear = released ? Number(released.slice(0, 4)) : Number.NaN;
+    if (years.length === 0 || !Number.isFinite(consoleYear)) return true;
+    return Math.abs(Math.min(...years) - consoleYear) <= PC_EDITION_YEARS;
   }
 }
 

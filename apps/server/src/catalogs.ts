@@ -516,6 +516,7 @@ export class CatalogService {
       .innerJoin(catalogEntries, eq(catalogEntries.id, pendingPurchases.entryId))
       .where(eq(catalogEntries.platformId, platformId))
       .all();
+    const t0 = Date.now();
     const result = matchCatalog(targets, [...owned.values()], mappings, decisions, {
       variantsSatisfy: this.settings.get('catalogs.variantsSatisfy'),
       suggest: this.settings.get('catalogs.suggestMatches'),
@@ -525,6 +526,9 @@ export class CatalogService {
       romaji: ownRegion === 'japan',
       shortTitles: shortTitles === 'all' || (shortTitles === 'japan' && ownRegion === 'japan'),
     });
+    // A slow one is said in the log (2026-11-07: freezes the log couldn't explain): it runs in one go.
+    const ms = Date.now() - t0;
+    if (ms >= 300) this.log.info({ context: 'catalogs', ms }, `Catalog matching worked out again for console ${platformId} in ${ms} ms (${targets.length} games)`);
     forgetConsole(this.cache, platformId);
     this.cache.set(cacheKey, result);
     return result;

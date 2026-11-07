@@ -6,7 +6,7 @@ afterEach(async () => {
   await g?.cleanup();
 });
 
-type Line = { key: string; light: string; says: string; check: string | null; settings: string; help: string };
+type Line = { key: string; light: string; says: string; check: string | null; settings: string; help: string; notNeeded?: boolean };
 
 describe("the integrations' lights (T-202)", () => {
   it('shows every outside part, off ones grey; a failing one red first with what went wrong, and Health points to it', async () => {
@@ -37,4 +37,31 @@ describe("the integrations' lights (T-202)", () => {
     expect((await lines()).find((l) => l.key === 'https')).toMatchObject({ light: 'yellow' });
     expect((await lines()).find((l) => l.key === 'barcodes')).toMatchObject({ light: 'green' });
   });
+
+  it('exchange rates and the AI model say what they do: on for purchases in pounds; a helper of your own counts (2026-11-07)', async () => {
+    g = await testApp();
+    const cookies = await setUp(g);
+    const line = async (key: string) => ((await g.app.inject({ url: '/api/v1/system/integrations', cookies })).json().lines as Line[]).find((l) => l.key === key)!;
+    // On the way turns a purchase in another currency into yours (on to start): green, saying so.
+    let rates = await line('rates');
+    expect(rates).toMatchObject({ light: 'green', settings: '/settings/email' });
+    expect(rates.says).toMatch(/pounds\) gets its price paid in USD/);
+    // Turned off, with prices in dollars: grey because nothing needs it, so its link says Settings, not Set it up.
+    g.settings.update({ 'orders.exchangeRates': false });
+    rates = await line('rates');
+    expect(rates).toMatchObject({ light: 'grey', notNeeded: true });
+    expect(rates.says).toMatch(/^Not needed/);
+    // The AI model: optional and not set up.
+    let ai = await line('ai-model');
+    expect(ai).toMatchObject({ light: 'grey', notNeeded: false });
+    expect(ai.says).toMatch(/^Optional, not set up/);
+    // Set to a helper of your own: red while none asks for work, green once one does.
+    g.settings.update({ 'sources.visionApi': 'helper' });
+    expect(await line('ai-model')).toMatchObject({ light: 'red' });
+    expect((await g.app.inject({ url: '/api/v1/helper/next?wait=0', cookies })).statusCode).toBe(204);
+    ai = await line('ai-model');
+    expect(ai).toMatchObject({ light: 'green' });
+    expect(ai.says).toMatch(/helper of your own answers/);
+  });
 });
+

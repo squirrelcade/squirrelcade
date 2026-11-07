@@ -425,6 +425,25 @@ export async function buildApp(options: BuildOptions = {}): Promise<Squirrelcade
     return reply.code(status).send({ error: 'bad-request', message: error instanceof Error ? error.message : 'Bad request.' });
   });
 
+  // A request slower than a second is said in the log with its route, and the task runner's busy watch names the ones in
+  // progress (2026-11-07: freezes of a few seconds the log couldn't explain). The helper's long wait for work and the
+  // Claude connector's stream are slow on purpose.
+  const inFlight = new Map<object, { what: string; at: number }>();
+  const slowOnPurpose = new Set(['/api/v1/helper/next', '/mcp']);
+  app.addHook('onRequest', async (request) => {
+    const route = request.routeOptions?.url ?? request.url.split('?')[0] ?? '';
+    if (!slowOnPurpose.has(route)) inFlight.set(request, { what: `${request.method} ${route}`, at: Date.now() });
+  });
+  app.addHook('onResponse', async (request, reply) => {
+    const r = inFlight.get(request);
+    if (!r) return;
+    inFlight.delete(request);
+    const ms = Date.now() - r.at;
+    if (ms >= 1000) log.warn({ context: 'requests', ms, status: reply.statusCode }, `A request took ${(ms / 1000).toFixed(1)} s: ${r.what}`);
+  });
+  app.addHook('onRequestAbort', async (request) => void inFlight.delete(request));
+  tasks.watchRequests(() => [...inFlight.values()].map((r) => `${r.what} (${((Date.now() - r.at) / 1000).toFixed(1)} s)`));
+
   registerAuth(app, auth, settings);
   // An optional part that's off answers as if it weren't there (after the sign-in check, which comes first).
   app.addHook('onRequest', async (request, reply) => {
@@ -437,7 +456,7 @@ export async function buildApp(options: BuildOptions = {}): Promise<Squirrelcade
   registerSettingsRoutes(app, settings, (value) => auth.isAccountPassword(value));
   registerSystemRoutes(app, { env, settings, backups, logs: logs.buffer, startedAt, pc, tasks, problems: () => achievements.problems(), integrations: () => integrationLines(integrationDeps()) });
   // The integrations' lights (T-202): read from what's recorded, so System > Status opens at once.
-  const integrationDeps = (): IntegrationDeps => ({ db, settings, tasks, youtubeUnits: () => videos.units(), problems: () => achievements.problems(), notified: () => notifications.sent() });
+  const integrationDeps = (): IntegrationDeps => ({ db, settings, tasks, youtubeUnits: () => videos.units(), problems: () => achievements.problems(), notified: () => notifications.sent(), helperThere: () => vision.helperThere(), ratesLast: () => orders.ratesLast() });
   registerIntegrationRoutes(app, integrationDeps());
   registerTaskRoutes(app, tasks);
   registerBackupRoutes(app, backups);

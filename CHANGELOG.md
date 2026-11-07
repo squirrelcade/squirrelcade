@@ -2,6 +2,15 @@
 
 What changed in each version of Squirrelcade (called Gamefolio before 0.35.0). The decisions behind these (D01, D02...) are in [docs/DECISIONS.md](docs/DECISIONS.md), each with a tag to roll it back.
 
+## 1.3.1 (2026-11-07): the integrations' lights tell the truth, and the PC mark for editions
+
+### Fixed
+
+- **Exchange rates' light** (D210): it was grey whenever your currency was dollars, while On the way turned a UK store's pounds and a Canadian shop's dollars into yours. It's now on while **Turn other currencies into mine** is (Settings > Email > On the way), says what it does and when Frankfurter last gave a rate, turns yellow when Frankfurter didn't, and says **Not needed** (with a Settings link, not Set it up) when nothing uses it.
+- **The AI model's light** (D210): a helper of your own (Settings > Sources > Vision model: a program on your server that answers with your own AI plan, such as Claude Code) counts: green while it asks for work, red when Squirrelcade is set to a helper and none is asking. A model not set up says it's optional.
+- **The PC mark for a PC game named with its edition** (D211): "Grand Theft Auto IV: The Complete Edition" on Steam now lights Grand Theft Auto IV's PC mark (the game page's head, the search, covers), as the PC library already counted it; so do Game of the Year, Definitive, Complete and Remastered editions. Not when the console game of that name came out more than 12 years apart (SimCity Digital Deluxe Edition, 2013, isn't the Super Famicom's SimCity).
+- **What a freeze was busy with** (D212): a request slower than a second is said in the log with its route ("A request took 3.2 s: GET /api/v1/wishlist"), the busy watch names the requests in progress, and a catalog's matching or the wishlist worked out again in more than 300 ms says how long it took.
+
 ## 1.3.0 (2026-11-07): the game page, games in their time, the magazines, and what you buy
 
 ### Added

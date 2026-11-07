@@ -221,6 +221,13 @@ export class OrderService {
   /** Exchange rates kept, by "day|from|to" (a past day's rate doesn't change). */
   private readonly rates = new Map<string, number>();
 
+  /** Frankfurter's last answer (System > Status's light for exchange rates): when, and whether it gave a rate. */
+  private ratesSeen: { at: string; ok: boolean } | null = null;
+
+  ratesLast(): { at: string; ok: boolean } | null {
+    return this.ratesSeen;
+  }
+
   /** A currency's value in another on a day (D173), from Frankfurter (the European Central Bank's rates); null when it can't be had. */
   private async rateOf(from: string, to: string, day: string): Promise<number | null> {
     if (from === to) return 1;
@@ -229,12 +236,14 @@ export class OrderService {
     if (kept !== undefined) return kept;
     try {
       const res = await (this.d.ratesFetch ?? fetch)(`https://api.frankfurter.app/${day}?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}`, { signal: AbortSignal.timeout(10_000) });
-      if (!res.ok) return null;
-      const rate = ((await res.json()) as { rates?: Record<string, unknown> }).rates?.[to];
-      if (typeof rate !== 'number' || !(rate > 0)) return null;
+      const rate = res.ok ? ((await res.json()) as { rates?: Record<string, unknown> }).rates?.[to] : null;
+      const ok = typeof rate === 'number' && rate > 0;
+      this.ratesSeen = { at: new Date().toISOString(), ok };
+      if (!ok) return null;
       this.rates.set(key, rate);
       return rate;
     } catch {
+      this.ratesSeen = { at: new Date().toISOString(), ok: false };
       return null;
     }
   }

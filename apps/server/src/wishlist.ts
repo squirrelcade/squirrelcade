@@ -143,6 +143,7 @@ export class WishlistService {
   compute(): WishlistResult {
     const key = `${this.catalogs.stamp()}|${this.revision}|${this.igdb?.stamp() ?? 0}`;
     if (this.cache?.key === key) return this.cache.result;
+    const t0 = Date.now();
 
     const s = this.settings.all() as SettingsValues;
     const config = scoringConfig(s);
@@ -248,6 +249,9 @@ export class WishlistService {
       counts: { candidates: candidates.length, scored: scored.length, hidden: hiddenCount },
     };
     this.cache = { key, result };
+    // A slow one is said in the log (2026-11-07: freezes the log couldn't explain): it runs in one go.
+    const ms = Date.now() - t0;
+    if (ms >= 300) this.log.info({ context: 'wishlist', ms }, `The wishlist was worked out again in ${ms} ms`);
     return result;
   }
 

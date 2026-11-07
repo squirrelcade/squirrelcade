@@ -28,6 +28,8 @@ export interface IntegrationLine {
   help: string;
   /** The task Check now runs; null when there's nothing to run. */
   check: string | null;
+  /** Grey because nothing needs it (not a missing step): its link says Settings, not Set it up. */
+  notNeeded?: boolean;
 }
 
 /** An outside part: its tasks (on when one of them is scheduled, as their settings decide) and how to judge it besides. */
@@ -36,8 +38,8 @@ interface Definition {
   name: string;
   tasks: string[];
   settings: string;
-  /** More to say, or a light of its own (a part without a task, a token running out). */
-  extra?: (d: Deps, tasks: TaskInfo[]) => { on?: boolean; light?: Light; says?: string } | null;
+  /** More to say, or a light of its own (a part without a task, a token running out). notNeeded: off because nothing needs it. */
+  extra?: (d: Deps, tasks: TaskInfo[]) => { on?: boolean; light?: Light; says?: string; notNeeded?: boolean } | null;
 }
 
 /** What the lights read besides the tasks. */
@@ -51,6 +53,10 @@ export interface Deps {
   problems?: () => { level: 'warning' | 'error'; message: string }[];
   /** Each notification channel's last sending. */
   notified?: () => Map<string, { at: string; ok: boolean; error?: string }>;
+  /** Whether the owner's AI helper asked for work lately (the AI model set to a helper). */
+  helperThere?: () => boolean;
+  /** Frankfurter's last answer, when it was asked for an exchange rate. */
+  ratesLast?: () => { at: string; ok: boolean } | null;
 }
 
 const NOTIFY_CHANNELS = ['email', 'pushover', 'pushbullet', 'ntfy', 'gotify', 'discord', 'telegram', 'slack', 'webhook', 'apprise'] as const;
@@ -105,8 +111,19 @@ const DEFINITIONS: Definition[] = [
     key: 'rates',
     name: 'Exchange rates (Frankfurter)',
     tasks: [],
-    settings: '/settings/general',
-    extra: (d) => (d.settings.get('general.currency') === 'USD' ? { on: false } : { on: true, light: 'green', says: `Prices in dollars are shown in ${d.settings.get('general.currency')}: rates are asked for when needed` }),
+    settings: '/settings/email',
+    // Used for two things (2026-11-07: the light was grey while purchases in pounds were being turned into dollars):
+    // showing dollar prices in another currency, and a purchase's price paid in another currency (On the way, D173).
+    extra: (d) => {
+      const home = d.settings.get('general.currency');
+      const converts = d.settings.get('orders.exchangeRates') && d.settings.get('orders.page');
+      if (home === 'USD' && !converts) return { on: false, notNeeded: true, says: "Not needed: your prices are in dollars, and a purchase in another currency keeps its own price (Settings > Email > On the way)" };
+      const uses = [home !== 'USD' ? `prices in dollars are shown in ${home}` : null, converts ? `a purchase in another currency (a UK store's pounds) gets its price paid in ${home}, at the rate of its order's day` : null].filter((x): x is string => x !== null).join('; ');
+      const last = d.ratesLast?.() ?? null;
+      const when = (at: string) => at.slice(0, 16).replace('T', ' ') + ' UTC';
+      if (last && !last.ok) return { on: true, light: 'yellow', says: `Frankfurter didn't give a rate at ${when(last.at)}: a purchase waiting for its rate gets it on a later look. On: ${uses}` };
+      return { on: true, light: 'green', says: `On: ${uses}${last ? `. Last rate ${when(last.at)}` : ''}` };
+    },
   },
   {
     key: 'barcodes',
@@ -124,7 +141,16 @@ const DEFINITIONS: Definition[] = [
     name: 'The AI model (Check a shelf, Talk)',
     tasks: [],
     settings: '/settings/ai',
-    extra: (d) => (d.settings.get('sources.visionUrl') || d.settings.get('sources.visionKey') ? { on: true, light: 'green', says: `Set up: ${d.settings.get('sources.visionModel') || 'its model'}` } : { on: false }),
+    // A helper of the owner's own counts (2026-11-07: Claude Code on the owner's plan answered, and the light was grey).
+    extra: (d) => {
+      if (d.settings.get('sources.visionApi') === 'helper') {
+        return d.helperThere?.()
+          ? { on: true, light: 'green', says: 'A helper of your own answers (on your own plan, no API key here), and it is asking for work' }
+          : { on: true, light: 'red', says: "Set to a helper of your own, but no helper is asking for work: is it running? (Help > Store Mode)" };
+      }
+      if (d.settings.get('sources.visionUrl') && d.settings.get('sources.visionModel')) return { on: true, light: 'green', says: `Set up: ${d.settings.get('sources.visionModel')}` };
+      return { on: false, says: 'Optional, not set up: Check a shelf reads with the phone alone, and Talk needs it' };
+    },
   },
   {
     key: 'claude-keys',
@@ -168,7 +194,7 @@ export function integrationLines(d: Deps): IntegrationLine[] {
     const extra = def.extra?.(d, tasks) ?? null;
     const on = extra?.on ?? scheduled.length > 0;
     const base = { key: def.key, name: def.name, settings: def.settings, help: `integrations#${def.key}`, check: scheduled[0]?.name ?? null };
-    if (!on) return { ...base, light: 'grey', says: extra?.says ?? 'Off, or not set up', lastOk: null, lastRun: null, check: null };
+    if (!on) return { ...base, light: 'grey', says: extra?.says ?? 'Off, or not set up', notNeeded: extra?.notNeeded === true, lastOk: null, lastRun: null, check: null };
     // A part without a task of its own (notifications, the barcode lookup, the address) is what its own check says.
     if (scheduled.length === 0) return { ...base, light: extra?.light ?? 'green', says: extra?.says ?? 'On', lastOk: null, lastRun: null, check: null };
     // The newest run of its tasks (a quiet check's look counts), and the newest that worked.

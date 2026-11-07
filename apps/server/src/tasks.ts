@@ -99,7 +99,9 @@ export class TaskRunner {
   private timer: NodeJS.Timeout | null = null;
   private watchTimer: NodeJS.Timeout | null = null;
   /** The stretches without an answer since the last log line about them. */
-  private busy = { times: 0, longestMs: 0, tasks: new Set<string>(), reportedAt: 0 };
+  private busy = { times: 0, longestMs: 0, tasks: new Set<string>(), requests: new Set<string>(), reportedAt: 0 };
+  /** The requests being answered now ("GET /api/v1/wishlist (3.2 s)"), so a stretch without an answer names them too. */
+  private requestsNow: () => string[] = () => [];
   private idle: Promise<void> = Promise.resolve();
   private stopped = false;
   private stopping: Promise<void> | null = null;
@@ -129,21 +131,30 @@ export class TaskRunner {
         this.busy.times++;
         this.busy.longestMs = Math.max(this.busy.longestMs, late);
         for (const name of this.current.keys()) this.busy.tasks.add(name);
+        for (const r of this.requestsNow()) this.busy.requests.add(r);
       }
       if (this.busy.times > 0 && now - this.busy.reportedAt >= this.watch.reportMs) this.reportBusy(now);
     }, this.watch.checkMs);
     this.watchTimer.unref();
   }
 
+  /** Where the busy watch learns the requests being answered (the app's own hooks keep the list). */
+  watchRequests(now: () => string[]): void {
+    this.requestsNow = now;
+  }
+
   private reportBusy(now: number): void {
     const { times, longestMs, tasks } = this.busy;
     const names = [...tasks];
-    const what = names.length > 0 ? `busy with ${names.map((n) => this.tasks.get(n)?.title ?? n).join(', ')} (${names.join(', ')})` : 'no background task running (a request or start-up)';
+    const requests = [...this.busy.requests].slice(0, 5);
+    const running = names.length > 0 ? `busy with ${names.map((n) => this.tasks.get(n)?.title ?? n).join(', ')} (${names.join(', ')})` : 'no background task running';
+    // A request answered in one go is in the "A request took" line instead (it's over by the time the watch looks).
+    const what = requests.length > 0 ? `${running}; requests in progress: ${requests.join(', ')}` : names.length > 0 ? running : `${running} (a request that answered in one go, or start-up: see "A request took" lines)`;
     this.log.warn(
-      { context: 'tasks', busyMs: longestMs, times, tasks: names },
+      { context: 'tasks', busyMs: longestMs, times, tasks: names, requests },
       `The server couldn't answer anything for ${(longestMs / 1000).toFixed(1)} s${times > 1 ? ` (the longest of ${times} such stretches)` : ''}: ${what}`,
     );
-    this.busy = { times: 0, longestMs: 0, tasks: new Set(), reportedAt: now };
+    this.busy = { times: 0, longestMs: 0, tasks: new Set(), requests: new Set(), reportedAt: now };
   }
 
   register(def: TaskDefinition): void {

@@ -19,6 +19,8 @@ export interface IntegrationLine {
   settings: string;
   help: string;
   check: string | null;
+  /** Grey because nothing needs it: its link says Settings, not Set it up. */
+  notNeeded?: boolean;
 }
 
 const LIGHT: Record<IntegrationLine['light'], { color: string; label: string }> = {
@@ -134,7 +136,7 @@ export function IntegrationsCard() {
                 </Button>
               )}
               <Anchor component={Link} to={l.settings} size="xs">
-                {l.light === 'grey' ? 'Set it up' : 'Settings'}
+                {l.light === 'grey' && !l.notNeeded ? 'Set it up' : 'Settings'}
               </Anchor>
             </Group>
           </Group>

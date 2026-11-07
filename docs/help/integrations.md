@@ -104,10 +104,12 @@ GameFly's prices for the games on your wishlist, as a place to buy.
 
 ## Exchange rates (Frankfurter)
 
-When your currency isn't dollars, prices are converted with the European Central Bank's rates, from Frankfurter.
+The European Central Bank's rates, from Frankfurter, for two things: a purchase in another currency (a UK store's pounds, a Canadian shop's dollars) gets its price paid in yours, at the rate of its order's day (On the way); and when your currency isn't dollars, prices in dollars are shown in it.
 
-- **Needs:** nothing; it's on when Settings > General > Currency isn't USD.
-- **Leaves your server:** the two currencies' names.
+- **Needs:** nothing. It's on while Settings > Email > On the way > **Turn other currencies into mine** is on (it is to start), or Settings > General > Currency isn't USD.
+- **Grey, "Not needed"?** Your prices are in dollars and purchases keep their own currency: nothing to set up.
+- **Yellow?** Frankfurter didn't give a rate the last time it was asked: a purchase waiting for its rate gets it on a later look.
+- **Leaves your server:** the two currencies' names and the order's day.
 
 ## The barcode lookup
 
@@ -126,10 +128,12 @@ The catalogs (each console's list of games), the sets, Roots' articles, reviews 
 
 ## The AI model (Check a shelf, Talk)
 
-A vision model for Check a shelf (reading a photo of your shelf) and Talk.
+A vision model for Check a shelf (the spines a phone can't read in a photo of your shelf), and for Talk.
 
-- **Needs:** a model's address and key (Settings > Sources > Vision model).
-- **Leaves your server:** the photo or what you asked, to the model you chose.
+- **Needs:** either a model's address and model name (and a key, if the service wants one) in Settings > Sources > Vision model, or **a helper of your own**: a program on your server that asks Squirrelcade for work and answers with your own AI plan, no API key in Squirrelcade (Help > Store Mode has one that uses Claude Code).
+- **Green** with a helper means it asked for work in the last minute and a half; **red** means Squirrelcade is set to a helper but none is asking: is it running?
+- **Grey, "Optional, not set up"?** Check a shelf still reads with the phone alone; Talk needs a model.
+- **Leaves your server:** the photo or what you asked, to the model or helper you chose.
 
 ## Claude's plugin keys
 
