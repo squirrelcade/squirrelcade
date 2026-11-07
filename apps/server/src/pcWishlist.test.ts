@@ -1,4 +1,6 @@
 import { afterEach, describe, expect, it } from 'vitest';
+import { eq } from 'drizzle-orm';
+import { appState } from './db/schema.js';
 import type { FetchLike } from './igdb.js';
 import { exportCsv, multipartFile, setUp, testApp, type TestApp } from './test-helpers.js';
 
@@ -112,5 +114,60 @@ describe('PC wishlist', () => {
     g = await testApp({ features: ['pc'] });
     cookies = await setUp(g);
     expect(await g.pcWishlist.discover()).toBe("IGDB's keys are needed to look for PC games (Settings > Sources).");
+  });
+});
+
+describe("Steam's reviews when Steam won't give them (2026-11-07: 229 'Unexpected token <' warnings in a week)", () => {
+  const pauseValue = () => g.db.select().from(appState).where(eq(appState.key, 'pc.steamReviews.pause')).get()?.value ?? null;
+  async function searchWith(answer: () => Response) {
+    const calls: string[] = [];
+    g = await testApp({
+      features: ['pc'],
+      igdbFetch: fakeIgdb().fetch,
+      steamFetch: async (url, init) => {
+        calls.push(url);
+        expect(init.redirect).toBe('manual');
+        return answer();
+      },
+    });
+    cookies = await setUp(g);
+    g.settings.update({ 'sources.igdbClientId': 'id', 'sources.igdbClientSecret': 'secret', 'wishlist.genrePoints': { RPG: 22, Platformer: 18 }, 'pc.discoverGenres': 2 });
+    return calls;
+  }
+
+  it('a redirect to the store page pauses the reading after one request, and the search still finishes', async () => {
+    const calls = await searchWith(() => new Response('<!DOCTYPE html><html>store front</html>', { status: 302, headers: { location: 'https://store.steampowered.com/', 'content-type': 'text/html; charset=UTF-8' } }));
+    const message = await g.pcWishlist.discover();
+    expect(message).toMatch(/^\d+ PC games found .*; Steam's reviews paused until \d{4}-\d\d-\d\d \d\d:\d\d UTC \(Steam answered with a web page instead of the review data\)$/);
+    expect(calls).toHaveLength(1);
+    // The next search doesn't ask Steam at all while the pause lasts.
+    expect(await g.pcWishlist.discover()).toMatch(/Steam's reviews paused until/);
+    expect(calls).toHaveLength(1);
+    expect((await g.app.inject({ url: '/api/v1/pc/wishlist', cookies })).json().found).toBeGreaterThan(0);
+  });
+
+  it('a web page with status 200 (a followed redirect) is a web page too, never parsed as data', async () => {
+    const calls = await searchWith(() => new Response('<!DOCTYPE html><html></html>', { status: 200, headers: { 'content-type': 'text/html; charset=UTF-8' } }));
+    expect(await g.pcWishlist.discover()).toMatch(/Steam answered with a web page/);
+    expect(calls).toHaveLength(1);
+  });
+
+  it('"too many requests" pauses for 6 hours, doubling with each failed try', async () => {
+    const calls = await searchWith(() => new Response('slow down', { status: 429 }));
+    const before = Date.now();
+    await g.pcWishlist.discover();
+    const pause = JSON.parse(pauseValue() ?? '{}');
+    expect(pause.failures).toBe(1);
+    expect(Date.parse(pause.until) - before).toBeGreaterThanOrEqual(6 * 3_600_000 - 5_000);
+    expect(Date.parse(pause.until) - before).toBeLessThan(6 * 3_600_000 + 60_000);
+    expect(calls).toHaveLength(1);
+  });
+
+  it('good answers clear the pause', async () => {
+    const calls = await searchWith(() => Response.json({ success: 1, query_summary: { total_positive: 90, total_reviews: 100, review_score_desc: 'Very Positive' } }));
+    g.db.insert(appState).values({ key: 'pc.steamReviews.pause', value: JSON.stringify({ until: new Date(Date.now() - 1000).toISOString(), failures: 3, reason: 'old' }) }).run();
+    expect(await g.pcWishlist.discover()).toMatch(/; \d+ Steam review summaries read$/);
+    expect(calls.length).toBeGreaterThan(0);
+    expect(pauseValue()).toBe('');
   });
 });
