@@ -7,6 +7,7 @@ import { api } from '../../api';
 import { CopyButton } from '../../Copy';
 import { PageHeader } from '../../components';
 import { date, timeAgo } from '../../format';
+import { homeAddress } from '../../homeAddress';
 import { notifyError, notifySuccess, useSetting } from '../../hooks';
 
 /** The accounts and the links not used yet (GET /api/v1/users). */
@@ -32,6 +33,9 @@ export function UsersPage() {
   const queryClient = useQueryClient();
   const navigate = useNavigate();
   const dateFormat = useSetting('general.dateFormat', 'us');
+  // A link for someone elsewhere uses this Squirrelcade's address from outside when one is set (a tester sent a link
+  // to his home address, which works only at home).
+  const publicUrl = useSetting('general.publicUrl', '');
   const state = useQuery({ queryKey: ['users'], queryFn: () => api<UsersState>('/users') });
   const [inviting, setInviting] = useState(false);
   const [name, setName] = useState('');
@@ -43,7 +47,8 @@ export function UsersPage() {
     onSuccess: async (r, v) => {
       setInviting(false);
       setName('');
-      setMade({ url: `${window.location.origin}${r.path}`, expiresAt: r.expiresAt, forWhom: v.forWhom, reset: v.userId !== undefined });
+      const base = typeof publicUrl === 'string' && publicUrl.trim() ? publicUrl.trim().replace(/\/+$/, '') : window.location.origin;
+      setMade({ url: `${base}${r.path}`, expiresAt: r.expiresAt, forWhom: v.forWhom, reset: v.userId !== undefined });
       await refresh();
     },
     onError: (err) => notifyError(err),
@@ -212,6 +217,11 @@ export function UsersPage() {
             <Alert color="yellow" variant="light">
               This is the only time the link is shown. It works once, until {date(made.expiresAt, dateFormat)}; anyone with it can use it, so send it only to {made.forWhom}.
             </Alert>
+            {homeAddress(made.url) && (
+              <Alert color="orange" variant="light">
+                This link is an address on your home network, so it opens only for someone on it. For someone elsewhere, make Squirrelcade reachable from outside (Help &gt; Integrations &gt; The HTTPS address), put that address in Settings &gt; General &gt; Address of this Squirrelcade, and make a new link.
+              </Alert>
+            )}
             <TextInput readOnly value={made.url} aria-label="The link" onFocus={(e) => e.currentTarget.select()} />
             <Group justify="flex-end">
               <CopyButton value={made.url}>

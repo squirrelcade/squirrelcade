@@ -27,7 +27,7 @@ Squirrelcade can send a message after each collection update and an alert when s
 Only the way I chose; all of it happens in **Settings > Notifications**: turn on its switch, and its fields and steps show under it.
 
 - **ntfy** (https://ntfy.sh): the ntfy app on my phone, subscribed to a topic nobody would guess (anyone who knows a topic can read it). The same topic goes in the ntfy fields in Squirrelcade (**Server** `https://ntfy.sh`, unless I run my own).
-- **Email:** my email account (see Settings > Email: provider, address, an **app password** made at the provider, such as Gmail's at https://myaccount.google.com/apppasswords with 2-Step Verification on), then **Send notifications by email** and **To**. Outlook.com, Hotmail and Live addresses can't send from programs.
+- **Email:** my email account (see Settings > Email: provider, address, an **app password** made at the provider, such as Gmail's at https://myaccount.google.com/apppasswords with 2-Step Verification on), the account's **Test**, then on Settings > Notifications **Send notifications by email**, **Send from** (that account) and **To**. Outlook.com, Hotmail and Live addresses can't send from programs.
 - **Discord:** the channel's settings > Integrations > Webhooks > New Webhook, then **Copy Webhook URL**. I paste it into Squirrelcade myself (a webhook address works like a password). **Slack:** an app with Incoming Webhooks. **Telegram:** `/newbot` to @BotFather for a bot token; I send the bot a message, then press **Find my chat** in Squirrelcade.
 - **Pushover** (https://pushover.net): my user key and an application's token. **Pushbullet:** an access token. **Gotify** (my own server): an application's token.
 - **A webhook** or **Apprise** (my own Apprise API server): its address.

@@ -1,13 +1,13 @@
 # 4. Connect what you use
 
-Each of these is optional, and each has one home: its card on **Settings > Sources** (your email account on **Settings > Email**, messages on **Settings > Notifications**). The card has the switch, the steps (open **Set it up, step by step**), the keys it needs and a **test** button; Settings > Features has the same switches, each with a link to its card. Do them in any order, any day. **Settings > Features** lists every one of them (and a few more) with what it needs, a padded time ("about 10 minutes; give it 25": setting up outside accounts usually takes longer than it looks) and whether it works now, and **Set it up with AI** copies a prompt for that one feature (also at [docs/ai/features](https://github.com/squirrelcade/squirrelcade/tree/main/docs/ai/features)). Nothing here is needed to use Squirrelcade.
+Each of these is optional, and each has one home: its card on **Settings > Sources** (your email accounts on **Settings > Email**, which is only that list; what reads or sends with them is chosen on each feature's own page; messages on **Settings > Notifications**). The card has the switch, the steps (open **Set it up, step by step**), the keys it needs and a **test** button; Settings > Features has the same switches, each with a link to its card. Do them in any order, any day. **Settings > Features** lists every one of them (and a few more) with what it needs, a padded time ("about 10 minutes; give it 25": setting up outside accounts usually takes longer than it looks) and whether it works now, and **Set it up with AI** copies a prompt for that one feature (also at [docs/ai/features](https://github.com/squirrelcade/squirrelcade/tree/main/docs/ai/features)). Nothing here is needed to use Squirrelcade.
 
 | What | What it gives you | What it needs | Time |
 | --- | --- | --- | --- |
 | [Covers and game details](#covers-and-game-details-igdb) | Box art, genres, series, developers; a much better wishlist | A free Twitch developer application | 5 minutes |
 | [Messages](#messages) | A summary after each update, alerts, release reminders | Email, or a phone or chat app | 5 minutes |
-| [Exports from your email](#exports-from-your-email) | Your collection updated by itself after you export on PriceCharting | Your mailbox's app password | 5 minutes |
-| [On the way](#on-the-way) | The games you bought, waiting to be checked and added when they arrive | Nothing, or your mailbox (for purchase emails) | 5 minutes |
+| [Exports from your email](#exports-from-your-email) | Your collection updated by itself after you export on PriceCharting | An email account and its app password (Settings > Email) | 5 minutes |
+| [On the way](#on-the-way) | The games you bought, waiting to be checked and added when they arrive | Nothing, or an email account (for purchase emails) | 5 minutes |
 | [Family and friends](#family-and-friends) | Viewers, a gift link for your wishlist, a game check without an account | Step 3 done | 10 minutes |
 | [PC library](#pc-library-playnite) | Your PC games from every store, next to your console copies | Playnite on a Windows PC, a shared folder | 15 minutes |
 | [Leaves](#leaves-your-magazine-scans) | Your magazine scans, read on any screen, searched and linked to their games | A folder of CBZ scans | 10 minutes |
@@ -30,21 +30,21 @@ Free with a Twitch account: [IGDB keys](../help/features.md#igdb-keys) has the s
 
 ## Messages
 
-**Settings > Notifications:** each way of sending has its own switch, and shows its fields and setup steps once on. Email picks your provider (Gmail, Yahoo, iCloud...) and fills in the server; you make an **app password** at your provider (the steps link to the page). Phones: Pushover, Pushbullet, ntfy, Gotify. Chats: Discord, Telegram, Slack. For automations: a webhook (n8n, Home Assistant) or Apprise. **Check:** **Send a test message**. See [Notifications](../help/notifications.md).
+**Settings > Notifications:** each way of sending has its own switch, and shows its fields and setup steps once on. Email sends from one of your accounts on **Settings > Email** (add it there: its provider, Gmail, Yahoo, iCloud..., fills in the servers, and you make an **app password** at your provider; the steps link to the page), then choose **Send from** and **To** under Notifications > Email. Phones: Pushover, Pushbullet, ntfy, Gotify. Chats: Discord, Telegram, Slack. For automations: a webhook (n8n, Home Assistant) or Apprise. **Check:** an account's **Test** on Settings > Email, then **Send a test message**. See [Notifications](../help/notifications.md).
 
 ![Pushover turned on: its two setup steps, each linking to its page, then its two fields](img/notify-pushover.jpg)
 
 ## Exports from your email
 
-PriceCharting emails a link to your export when you ask for one; Squirrelcade can pick it up from your mailbox and update your collection by itself. **Settings > Email:** fill in your email account once (your address and an app password; your provider's steps are under **Set it up, step by step**), then turn on **Stash updates from your email**. **Check:** **Test sending and reading** says how many export emails it found. Then **Settings > Collection > Reminders > Remind me to export after** 7 days sends a message with PriceCharting's page each week. See [Your collection](../help/collection.md#from-your-email).
+PriceCharting emails a link to your export when you ask for one; Squirrelcade can pick it up from your mailbox and update your collection by itself. **Settings > Email:** add your email account once (**Add an account**: its provider, your address and an app password, which you type yourself; the provider's steps show there), and press its **Test**. Then turn on **Stash updates from your email** (Settings > Features) and, on **Settings > Collection > Stash updates from your email**, pick **Accounts to read** (none chosen: all of them). **Check:** the account's **Test** says it signed in and read the mailbox, and **System > Status** shows the mailbox light. Then **Settings > Collection > Reminders > Remind me to export after** 7 days sends a message with PriceCharting's page each week. See [Your collection](../help/collection.md#from-your-email).
 
-![Stash updates from your email turned on: the mailbox, its app password and server, Test the mailbox, and Export on PriceCharting](img/features-mail.jpg)
+![Stash updates from your email turned on, with its options](img/features-mail.jpg)
 
 ## On the way
 
 **Acorns > On the way** keeps the games you've bought until they arrive (**It's here** adds each one, with the store, the day and the price filled in). It's in the menu to start (**Settings > Features > On the way** hides it); your purchase emails are read for it only with **Settings > Collection > On the way > Watch for games you bought: On the way** on (off to start). Ways in, any or all:
 
-- **Purchase emails** (with your email account set up, as above): add your stores to **Purchase emails from** (eBay and Mercari to start; tap Amazon, Super Rare Games and the others, type `gamefly.com`, or **Find my stores in my email**). Amazon's emails don't name the game, so it waits as "a video game" until its order page names it.
+- **Purchase emails** (with an email account on Settings > Email, and **Accounts to read** in the On the way section choosing which): add your stores to **Purchase emails from** (eBay and Mercari to start; tap Amazon, Super Rare Games and the others, type `gamefly.com`, or **Find my stores in my email**). Amazon's emails don't name the game, so it waits as "a video game" until its order page names it.
 - **A shop's order page:** **Add from an order page** on On the way: paste the page (Ctrl+A, Ctrl+C) or a screenshot of it.
 - **Amazon's order history:** on Amazon, Account > **Request your data** > **Your Orders**; then **Amazon's order history** on On the way takes the zip.
 - **A purchases CSV** of your own: **Settings > Sources > Purchases CSV** (off to start), then **Stash updates > Your purchases**. Nothing changes until you tick rows and press **Write the chosen**.

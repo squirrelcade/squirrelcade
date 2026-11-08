@@ -27,7 +27,7 @@ const FEATURE_TASK: Partial<Record<FeatureKey, string>> = {
   steam: 'steam-sync',
 };
 
-/** What each way of sending messages needs before it sends (its other fields are optional). */
+/** What each way of sending messages needs before it sends (its other fields are optional). Email also needs an account that sends (Settings > Email), checked apart from these settings. */
 const CHANNEL_NEEDS: Record<Channel, SettingKey[]> = {
   email: ['notifications.emailTo'],
   pushover: ['notifications.pushoverToken', 'notifications.pushoverUser'],
@@ -158,6 +158,8 @@ export interface BriefDeps {
   shares: ShareService;
   /** How many keys may put games on On the way (D179). */
   writeKeys?: () => number;
+  /** The email accounts (Settings > Email, D218): whether each can read and whether it can send. Never an address or a password. */
+  mailAccounts?: () => { reads: boolean; sends: boolean }[];
   /** System > Status's problems (folders, space, backups, the parts' own). */
   health: () => { level: 'warning' | 'error'; message: string }[];
 }
@@ -225,6 +227,12 @@ export function setupBrief(deps: BriefDeps, address: string, now = new Date()): 
   );
   lines.push(`- **What my wishlist is:** ${shown('wishlist.source')}.`);
   lines.push(`- **Friends' live links:** live files go in ${settings.get('friends.liveFolder') || 'the friends-live folder in the config folder'}; read every ${settings.get('friends.liveReadHours')} hours.`);
+  const accounts = deps.mailAccounts?.() ?? [];
+  const senders = accounts.filter((a) => a.sends).length;
+  const readers = accounts.filter((a) => a.reads).length;
+  lines.push(
+    `- **Email accounts** (Settings > Email, D218): ${accounts.length === 0 ? 'none yet' : `${accounts.length} (${readers} can read mail, ${senders} can send)`}; ${senders > 0 ? `${senders === 1 ? 'one sends' : `${senders} send`}, so notifications by email have an account to send from` : "no account that sends, so notifications by email can't send yet"}.`,
+  );
   const writers = deps.writeKeys?.() ?? 0;
   lines.push(`- **Keys that put games on On the way** (record_on_the_way, D179): ${writers > 0 ? writers : 'none (every key and app only reads)'}.`);
   lines.push('- **Optional parts** (Settings > Features):');
@@ -248,6 +256,7 @@ export function setupBrief(deps: BriefDeps, address: string, now = new Date()): 
   // The ways of sending that are on, and what each still needs.
   const channels = CHANNELS.filter((c) => values[CHANNEL_SWITCHES[c]] === true).map((c) => {
     const missing = CHANNEL_NEEDS[c].filter((key) => !has(values[key])).map((key) => label(key));
+    if (c === 'email' && senders === 0) missing.push('an email account that sends (Settings > Email)');
     return missing.length === 0 ? CHANNEL_NAMES[c] : `${CHANNEL_NAMES[c]} (still needs: ${missing.join(', ')})`;
   });
   lines.push(`- **Messages:** ${channels.length > 0 ? channels.join('; ') : 'none set up'}.`);
@@ -277,7 +286,7 @@ export function setupBrief(deps: BriefDeps, address: string, now = new Date()): 
   out.push('');
   for (const f of FEATURE_LIST) out.push(`- ${f.name} (${featureTime(f)}): ${link(f.settings)}; ${featurePromptUrl(f.id)}`);
   out.push('');
-  out.push('Links on this install. Each part is set up on its card (Settings > Sources; the email account on Settings > Email), its switch included; advanced settings show with "Show advanced".');
+  out.push('Links on this install. Each part is set up on its card (Settings > Sources; email accounts on Settings > Email, where the person types each app password and the AI never sees it; each feature has its own email options on its own page), its switch included; advanced settings show with "Show advanced".');
   out.push('');
   out.push('**Optional parts** (turn one on, then fill in what shows under it, and press Save and test):');
   out.push('');

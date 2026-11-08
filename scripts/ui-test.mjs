@@ -106,6 +106,23 @@ export async function welcomeTest(target, account, csv, check) {
     await page.getByRole('button', { name: 'Next' }).click();
     await page.getByText('PlayStation 3').first().waitFor({ timeout: 10000 });
     check('ui: the welcome guide takes the export and shows the consoles to track', problems.length === 0, problems.join(' | '));
+    // 1.4.0: four steps (Collection, Consoles, Catalogs, Wishlist); a new install is asked what its wishlist is (kept
+    // as Suggested here), and the last page lists the features with their padded times.
+    const steps = await page.locator('.mantine-Stepper-stepLabel').allInnerTexts();
+    await page.getByRole('button', { name: 'Next' }).click();
+    await page.getByRole('heading', { name: /Catalogs|What there is to collect|Your own lists/ }).first().waitFor({ timeout: 10000 });
+    await page.getByRole('button', { name: 'Next' }).last().click();
+    const asked = await page.getByText('What your wishlist is').first().waitFor({ timeout: 10000 }).then(() => true, () => false);
+    const radios = await page.getByRole('radio').count();
+    await page.getByRole('button', { name: 'Next' }).last().click();
+    const done = await page.getByText("You're set up").first().waitFor({ timeout: 10000 }).then(() => true, () => false);
+    const featureRows = await page.locator('table tr', { hasText: /about|minute|hour/ }).count();
+    const addAnyTime = await page.getByText('Add these any time').first().isVisible();
+    check(
+      'ui: the welcome guide is four steps, asks what the wishlist is on a new install, and ends with the features list (1.4.0)',
+      problems.length === 0 && steps.join(',') === 'Collection,Consoles,Catalogs,Wishlist' && asked && radios === 2 && done && addAnyTime && featureRows > 5,
+      problems.join(' | ') || `steps ${steps.join(',')}, asked ${asked}, radios ${radios}, done ${done}, feature rows ${featureRows}`,
+    );
   } catch (err) {
     if (process.env.UI_SHOTS) await browser.contexts()[0]?.pages()[0]?.screenshot({ path: `${process.env.UI_SHOTS}/welcome-test-stopped.png` }).catch(() => undefined);
     check('ui: the welcome guide takes the export and shows the consoles to track', false, err instanceof Error ? err.message.split('\n')[0] : String(err));
@@ -910,7 +927,7 @@ export async function uiTest(target, account, check) {
     await page.getByRole('button', { name: 'Fill in' }).first().click();
     const priceWindow = page.locator('.mantine-Modal-content');
     await priceWindow.getByRole('button', { name: 'Find in my email' }).click();
-    const mailboxSaid = await page.getByText(/Fill in your email account on Settings > Email/).first().waitFor({ timeout: 15000 }).then(() => true, () => false);
+    const mailboxSaid = await page.getByText(/Add an email account on Settings > Email/).first().waitFor({ timeout: 15000 }).then(() => true, () => false);
     await settle();
     const findAccess = await seriousProblems();
     await closeModal(priceWindow);
@@ -1480,21 +1497,67 @@ export async function uiTest(target, account, check) {
       found.join(' | ') || `autofill ignored ${autofillIgnored}, typing counts ${typingCounts}, password refused ${passwordRefused}`,
     );
 
-    // Email: your account, entered once on Settings > Email; choosing Gmail fills in its server, with the steps for an
-    // app password folded under "Setting up Gmail" (a link, and a web search beside it). Notifications: another
-    // service's fields show under its switch.
+    // YouTube (1.4.0): Settings > Roots says how much of YouTube to use; Light needs no key.
+    await page.goto(`${base}/settings/roots`);
+    const ytBox = page.locator('#setting-roots\\.youtubeMode input').first();
+    await ytBox.waitFor({ timeout: 10000 });
+    const ytNow = await ytBox.inputValue();
+    await ytBox.click();
+    const ytOptions = await page.getByRole('option').allInnerTexts();
+    await page.getByRole('option', { name: /^Light/ }).click();
+    await page.getByRole('button', { name: 'Save changes' }).click();
+    await page.getByText('Settings saved.').first().waitFor({ timeout: 10000 });
+    const ytSaved = (await (await page.request.get(`${base}/api/v1/settings`)).json()).values['roots.youtubeMode'] ?? '';
+    await page.request.put(`${base}/api/v1/settings`, { data: { changes: { 'roots.youtubeMode': 'auto' } } });
+    found = await pageProblems();
+    check(
+      'ui: Settings > Roots chooses how much of YouTube to use: Automatic, Light, Deep (1.4.0)',
+      found.length === 0 && ytNow === 'Automatic' && ytOptions.length === 3 && /^Automatic/.test(ytOptions[0]) && /^Deep/.test(ytOptions[2]) && ytSaved === 'light',
+      found.join(' | ') || `was ${ytNow}, options ${ytOptions.join(' / ')}, saved ${JSON.stringify(ytSaved)}`,
+    );
+
+    // Email accounts (1.4.0, D218): Settings > Email is a list. Add one (a provider fills in its server, with its app
+    // password steps folded under "Setting up Gmail"), made-up values only; Test says what it could not do (nothing listens
+    // on the made-up server); a feature's own page offers it under "Accounts to read"; Notifications picks what sends.
     await page.goto(`${base}/settings/email`);
-    await page.locator('#setting-notifications\\.emailProvider input').first().click();
+    await page.getByText('No accounts yet.').waitFor({ timeout: 10000 });
+    await page.getByRole('button', { name: 'Add an account' }).click();
+    const acctWindow = page.getByRole('dialog', { name: 'Add an account' });
+    await acctWindow.getByLabel('Provider').click();
     await page.getByRole('option', { name: 'Gmail' }).click();
-    const mailServer = await page.getByLabel('Outgoing mail server').inputValue();
-    await page.getByRole('button', { name: /Setting up Gmail, step by step/ }).click();
+    const mailServer = await acctWindow.getByLabel('Outgoing server').inputValue();
+    await acctWindow.getByRole('button', { name: /Setting up Gmail/ }).click();
     const appPasswords = await page.getByRole('link', { name: /Google app passwords/ }).getAttribute('href');
     const searches = await page.getByRole('link', { name: /Search the web/ }).count();
     await settle();
     const emailAccess = await seriousProblems();
     if (process.env.UI_SHOTS) await page.screenshot({ path: `${process.env.UI_SHOTS}/settings-email.png`, fullPage: true });
-    await page.getByRole('button', { name: 'Discard' }).click();
+    await acctWindow.getByLabel('Provider').click();
+    await page.getByRole('option', { name: 'Another provider' }).click();
+    await acctWindow.getByLabel('Name', { exact: true }).fill('Walkthrough mail');
+    await acctWindow.getByLabel('Address').fill('walkthrough@example.invalid');
+    await acctWindow.getByLabel('App password').fill('made-up-not-a-password');
+    await acctWindow.getByLabel('Incoming server').fill('127.0.0.1');
+    await acctWindow.getByLabel('Outgoing server').fill('127.0.0.1');
+    await acctWindow.getByRole('button', { name: 'Save', exact: true }).click();
+    await acctWindow.waitFor({ state: 'detached', timeout: 10000 });
+    const acctCard = page.locator('.mantine-Card-root', { hasText: 'Walkthrough mail' });
+    await acctCard.waitFor({ timeout: 10000 });
+    const acctBadges = await acctCard.innerText();
+    await acctCard.getByRole('button', { name: 'Test' }).click();
+    const testSaid = await acctCard.getByRole('status').getByText(/✗ Reading/).waitFor({ timeout: 30000 }).then(() => true, () => false);
+    await settle();
+    emailAccess.push(...(await seriousProblems()));
+    // A feature's own page chooses among the accounts.
+    await page.request.put(`${base}/api/v1/settings`, { data: { changes: { 'orders.find': true } } });
+    await page.goto(`${base}/settings/collection`);
+    await page.getByText('Accounts to read').first().waitFor({ timeout: 10000 });
+    const readPickers = await page.getByText('Accounts to read').count();
+    await page.request.put(`${base}/api/v1/settings`, { data: { changes: { 'orders.find': false } } });
     await page.goto(`${base}/settings/notifications`);
+    await page.getByRole('switch', { name: 'Send notifications by email' }).click({ force: true });
+    await page.getByText('Send from').first().waitFor({ timeout: 5000 });
+    await page.getByRole('button', { name: 'Discard' }).click();
     await page.getByRole('switch', { name: 'Send ntfy notifications' }).click({ force: true });
     await page.getByLabel('Topic').waitFor({ timeout: 5000 });
     await settle();
@@ -1508,7 +1571,19 @@ export async function uiTest(target, account, check) {
       found.length === 0 && mailServer === 'smtp.gmail.com' && appPasswords === 'https://myaccount.google.com/apppasswords' && searches > 0 && topicGone,
       found.join(' | ') || `server ${mailServer}, link ${appPasswords}, searches ${searches}, topic gone ${topicGone}`,
     );
+    check(
+      'ui: Settings > Email adds an account to its list, tests it, and a feature page offers it under Accounts to read (1.4.0)',
+      /Walkthrough mail/.test(acctBadges) && /reads/.test(acctBadges) && /sends/.test(acctBadges) && testSaid && readPickers > 0,
+      `card ${acctBadges.replace(/\s+/g, ' ').slice(0, 120)}, test said ${testSaid}, pickers ${readPickers}`,
+    );
     check('ui: no serious accessibility problems in the notification setup', notifyAccess.length === 0, notifyAccess.join('; '));
+    // Removing the account (it asks first) empties the list again, so the checks below start with no mailbox.
+    await page.goto(`${base}/settings/email`);
+    const removeCard = page.locator('.mantine-Card-root', { hasText: 'Walkthrough mail' });
+    page.once('dialog', (d) => void d.accept());
+    await removeCard.getByRole('button', { name: 'Remove' }).click();
+    const acctRemoved = await page.getByText('No accounts yet.').waitFor({ timeout: 10000 }).then(() => true, () => false);
+    check('ui: an email account is removed after asking, and the list is empty again', acctRemoved);
 
     // Settings > Export downloads every setting as a file, and Import takes the file back.
     await page.goto(`${base}/settings/general`);
@@ -1728,6 +1803,41 @@ export async function uiTest(target, account, check) {
       [...found, ...serious].join(' | ') || `${ideaText.slice(0, 200)} / ${offerText.slice(0, 200)}`,
     );
 
+    // Live links (1.4.0): a friend's card has a "Live link" part. Sharing live shows the file's shared-link field (the
+    // invite waits for the link, a made-up one here), and the page's top takes an invite from anyone.
+    await page.goto(`${base}/friends`);
+    const liveCard = page.locator('.mantine-Card-root', { hasText: 'Walkthrough Friend' });
+    await liveCard.getByText('Live link', { exact: true }).waitFor({ timeout: 10000 });
+    await liveCard.getByRole('switch', { name: 'Share live with Walkthrough Friend' }).click({ force: true });
+    const sharedLink = liveCard.getByLabel("The file's shared link");
+    await sharedLink.waitFor({ timeout: 10000 });
+    const copyInvite = liveCard.getByRole('button', { name: 'Copy the invite' });
+    const inviteWaits = await copyInvite.isDisabled();
+    await sharedLink.fill('https://example.invalid/walkthrough-live.json');
+    await sharedLink.press('Enter');
+    for (let i = 0; i < 40 && (await copyInvite.isDisabled()); i++) await page.waitForTimeout(250);
+    const inviteReady = !(await copyInvite.isDisabled());
+    const pasteOffered = (await liveCard.getByRole('button', { name: /^Paste .*invite$/ }).count()) === 1;
+    await page.getByRole('button', { name: 'Add a friend from an invite' }).click();
+    const inviteWindow = page.getByRole('dialog', { name: 'Add a friend from an invite' });
+    await inviteWindow.getByLabel('The invite').waitFor({ timeout: 10000 });
+    const addDisabled = await inviteWindow.getByRole('button', { name: 'Add the friend' }).isDisabled();
+    await settle();
+    const liveAccess = await seriousProblems();
+    await closeModal(inviteWindow);
+    const switchOff = page.waitForResponse((r) => /\/friends\/\d+\/live$/.test(r.url()) && r.request().method() === 'PUT', { timeout: 10000 }).then((r) => r.status(), () => 'no request');
+    await liveCard.getByRole('switch', { name: 'Share live with Walkthrough Friend' }).waitFor({ state: 'visible' });
+    // A click from the page itself: Playwright's own click on this switch waits for it to settle and never gets its turn here.
+    await liveCard.getByRole('switch', { name: 'Share live with Walkthrough Friend' }).evaluate((el) => el.click());
+    const offStatus = await switchOff;
+    const linkGone = await sharedLink.waitFor({ state: 'detached', timeout: 10000 }).then(() => true, () => false);
+    found = await pageProblems();
+    check(
+      "ui: a friend's card shares live with a shared link and an invite to copy, and the page takes an invite from anyone (1.4.0)",
+      found.length === 0 && liveAccess.length === 0 && inviteWaits && inviteReady && pasteOffered && addDisabled && linkGone,
+      [...found, ...liveAccess].join(' | ') || `invite waits ${inviteWaits}, ready ${inviteReady}, paste offered ${pasteOffered}, add disabled ${addDisabled}, sharing switched off: request ${offStatus}, field gone ${linkGone}`,
+    );
+
     // System > Status lists what's set up, with the PC library off as on a new install (it once waited for the
     // PC library's page, which answers only while that part is on, and never showed).
     await page.request.put(`${base}/api/v1/settings`, { data: { changes: { 'features.pc': false } } });
@@ -1754,6 +1864,49 @@ export async function uiTest(target, account, check) {
     await page.getByText(/^Snoozed \(1\)$/).waitFor({ state: 'detached', timeout: 10000 });
     found = await pageProblems();
     check('ui: a wishlist game snoozes and wakes up', found.length === 0, found.join(' | '));
+
+    // My wishlist (1.4.0): with the wishlist the owner's own, the page has My wishlist and Suggestions tabs; Add on a
+    // suggestion puts it on My wishlist, Take off removes it; Want it is on a game you need (its page, Store Mode);
+    // Share as a file is one web page. Put back to Suggested after.
+    await page.request.put(`${base}/api/v1/settings`, { data: { changes: { 'wishlist.source': 'mine' } } });
+    await page.goto(`${base}/wishlist`);
+    await page.getByRole('tab', { name: 'My wishlist' }).waitFor({ timeout: 10000 });
+    await page.getByRole('tab', { name: 'Suggestions' }).click();
+    const addButton = page.getByRole('button', { name: 'Add', exact: true }).first();
+    await addButton.waitFor({ timeout: 10000 });
+    await addButton.click();
+    const onList = await page.getByText('On your wishlist').first().waitFor({ timeout: 10000 }).then(() => true, () => false);
+    await page.getByRole('tab', { name: 'My wishlist' }).click();
+    const takeOff = page.getByRole('button', { name: 'Take off' }).first();
+    await takeOff.waitFor({ timeout: 10000 });
+    await takeOff.click();
+    const takenOff = await page.getByRole('button', { name: 'Take off' }).waitFor({ state: 'detached', timeout: 10000 }).then(() => true, () => false);
+    const fileHref = await page.getByRole('link', { name: 'Share as a file' }).getAttribute('href');
+    const fileRes = await page.request.get(`${base}${fileHref}`);
+    const fileBody = fileRes.ok() ? await fileRes.text() : '';
+    await settle();
+    const mineAccess = await seriousProblems();
+    found = await pageProblems();
+    check(
+      'ui: My wishlist and Suggestions tabs, Add puts a suggestion on it and Take off removes it, and Share as a file gives one web page (1.4.0)',
+      found.length === 0 && mineAccess.length === 0 && onList && takenOff && fileRes.ok() && /<html/i.test(fileBody),
+      [...found, ...mineAccess].join(' | ') || `on the list ${onList}, taken off ${takenOff}, file ${fileRes.status()} ${fileHref}`,
+    );
+    // A game the owner doesn't have: the first of Suggestions.
+    const needed = (await (await page.request.get(`${base}/api/v1/wishlist`)).json()).suggestions[0];
+    await page.goto(`${base}/store`);
+    await page.getByPlaceholder('Barcode or title').fill(needed.title);
+    const storeWant = page.getByRole('button', { name: 'Want it' }).first();
+    await storeWant.waitFor({ timeout: 10000 });
+    await storeWant.click();
+    const storeOn = await page.getByRole('button', { name: 'On your wishlist' }).first().waitFor({ timeout: 10000 }).then(() => true, () => false);
+    await page.getByRole('button', { name: 'On your wishlist' }).first().click();
+    const storeOff = await page.getByRole('button', { name: 'Want it' }).first().waitFor({ timeout: 10000 }).then(() => true, () => false);
+    await page.goto(`${base}/platforms/${needed.platformKey}?game=${encodeURIComponent(`${needed.platformKey}|${needed.title}`)}`);
+    const pageWant = await drawer.getByRole('button', { name: 'Want it' }).waitFor({ timeout: 10000 }).then(() => true, () => false);
+    await page.request.put(`${base}/api/v1/settings`, { data: { changes: { 'wishlist.source': 'suggested' } } });
+    found = await pageProblems();
+    check("ui: Want it is on a game you need, in Store Mode and on its page, and toggles (1.4.0)", found.length === 0 && storeOn && storeOff && pageWant, found.join(' | ') || `${needed.platformKey}|${needed.title}: store on ${storeOn}, off ${storeOff}, game page ${pageWant}`);
 
     // A PriceCharting export uploaded on the Collection updates page: the smoke test's seven games and one more.
     await page.goto(`${base}/updates`);
@@ -1842,24 +1995,23 @@ export async function uiTest(target, account, check) {
 
     // Collection updates from email: switched on on Settings > Email, under your account and its one test, and
     // Collection updates says what's missing (no mailbox is signed in to here).
-    await page.goto(`${base}/settings/email`);
+    await page.goto(`${base}/settings/features`);
     await page.getByRole('switch', { name: 'Stash updates from your email' }).click({ force: true });
-    const mailTest = await page.getByRole('button', { name: 'Save and test' }).count();
     await page.getByRole('button', { name: 'Save changes' }).click();
     await page.getByText('Settings saved.').first().waitFor({ timeout: 10000 });
     await page.goto(`${base}/updates`);
     await page.getByText('From your email').waitFor({ timeout: 10000 });
-    await page.getByText(/Fill in your email account/).waitFor({ timeout: 10000 });
+    await page.getByText(/Add an email account on Settings > Email/).waitFor({ timeout: 10000 });
     // Wishlist > Deals is in the menu while it's on, and says where deals come from.
     await page.goto(`${base}/wishlist/deals`);
     await page.getByText(/No deals in the last 7 days/).waitFor({ timeout: 10000 });
     await page.getByRole('link', { name: 'Deals', exact: true }).waitFor({ timeout: 5000 });
     found = await pageProblems();
     await page.request.put(`${base}/api/v1/settings`, { data: { changes: { 'features.mail': false } } });
-    check('ui: Stash updates from email are switched on on Settings > Email, and shown on Stash updates', found.length === 0 && mailTest > 0, found.join(' | ') || (mailTest > 0 ? '' : 'no Save and test button'));
+    check('ui: Stash updates from email are switched on on Settings > Features, and shown on Stash updates', found.length === 0, found.join(' | '));
 
     // On the way's stores (D158): a store the order reader knows is a tap away, and Find my stores sits beside the list.
-    await page.goto(`${base}/settings/email`);
+    await page.goto(`${base}/settings/collection`);
     await page.getByRole('switch', { name: 'Watch for games you bought: On the way' }).click({ force: true });
     await page.getByRole('button', { name: 'Add Amazon (amazon.com)' }).click();
     const amazonChip = await page.getByText('amazon.com', { exact: true }).count();

@@ -28,11 +28,15 @@ describe('AI-assisted setup', () => {
       'notifications.pushoverEnabled': true,
       'notifications.pushoverToken': 'SECRET-push-4',
       'notifications.pushoverUser': 'SECRET-push-5',
-      'notifications.smtpPassword': 'SECRET-smtp-6',
-      'mail.password': 'SECRET-mail-7',
       'notifications.emailTo': ['owner@example.com'],
     });
     await g.tasks.runNow('xbox-sync');
+    // Email accounts are their own list (D218): one that only reads, then one that also sends.
+    const account = (name: string, extra: object) => g.app.inject({ method: 'POST', url: '/api/v1/mail/accounts', cookies, payload: { name, address: 'owner@example.com', password: 'SECRET-mail-7', imapHost: 'imap.example.com', ...extra } });
+    expect((await account('Reader', {})).statusCode).toBeLessThan(300);
+    const noSender = (await g.app.inject({ url: '/api/v1/system/ai-setup', cookies })).json() as { state: string };
+    expect(noSender.state).toContain('- **Email accounts** (Settings > Email, D218): 1 (1 can read mail, 0 can send); no account that sends');
+    expect((await account('Sender', { smtpHost: 'smtp.example.com' })).statusCode).toBeLessThan(300);
 
     const res = await g.app.inject({ url: '/api/v1/system/ai-setup?address=http%3A%2F%2Fnas.local%3A7575%2Fhelp%2Fai-setup', cookies });
     expect(res.statusCode).toBe(200);
@@ -45,6 +49,7 @@ describe('AI-assisted setup', () => {
     expect(state).toMatch(/Covers and game details from IGDB: on, set up; (not run yet|last run)/);
     expect(state).toContain('Steam achievements: on, still needs: Your Steam profile');
     expect(state).toContain('RomM links: off.');
+    expect(state).toContain('- **Email accounts** (Settings > Email, D218): 2 (2 can read mail, 1 can send); one sends');
     expect(state).toContain('- **Messages:** Pushover.');
     g.settings.update({ 'notifications.telegramEnabled': true });
     expect((await g.app.inject({ url: '/api/v1/system/ai-setup', cookies })).json().state).toContain('- **Messages:** Pushover; Telegram (still needs: Bot token, Chat ID).');

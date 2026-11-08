@@ -24,8 +24,8 @@ Squirrelcade can read a mailbox of mine for three things: **PriceCharting's expo
 
 ## Steps
 
-1. In Squirrelcade: **Settings > Email**. I add my mail account to the list: the provider (it fills in the server), my address, and the app password. I type the password myself. Save.
-2. Press the account's test (**Test sending and reading** says how many emails it could see). A wrong password shows here.
+1. In Squirrelcade: **Settings > Email** > **Add an account**: the **Provider** (choosing one fills in its mail servers; Another provider for anything else), a name for it, my address, and the app password. I type the password myself. Save. More than one account is fine.
+2. Press the account's **Test**: it says whether it could read the mailbox (and send, when the account sends). A wrong password shows here. Then each feature that uses email picks its accounts on its own page (**Accounts to read** on Settings > Collection for PriceCharting's exports, order prices and On the way; deals on Acorns ranking; **Send from** on Settings > Notifications).
 3. Then the feature's own page, only for what I chose:
    - **Stash updates from your email:** turn it on. From then on **My Collection > Download (CSV)** on PriceCharting updates the collection within half an hour. (**Settings > Collection > Reminders > Remind me to export after** 7 days sends a weekly reminder.)
    - **On the way:** turn on **Watch for games you bought**, then add the stores I buy from to **Purchase emails from** (eBay and Mercari to start; `amazon.com`, `superraregames.com`, `gamefly.com`, or **Find my stores in my email**). Amazon's emails don't name the game: **Read Amazon's emails** helps. A shop's order page pasted into **Acorns > On the way > Add from an order page**, or Amazon's order history download, need no email at all.

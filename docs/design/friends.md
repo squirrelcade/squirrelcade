@@ -12,10 +12,14 @@ Most installs sit behind a sign-in at home, so neither can simply call the other
 
 ### By email (the simplest)
 
-- **Send:** on a friend, **Send my collection** emails your share file (a small attachment) to them from your account (Settings > Email), with a short note. **Download my share file** gives it to you to send however you like.
-- **Bring in:** in the friend's Squirrelcade, **Bring in from email** finds share files from their friends in the mailbox Squirrelcade already reads (Settings > Email, the same Gmail app password as PriceCharting's exports) and brings them in with one click, or as they arrive (a setting). Without a mailbox: drop the file (or a zip of it) on the Friends page, or paste its text.
+- **Send:** on a friend, **Send my collection** emails your share file (a small attachment) to them from the account chosen as **Send from** (as for notifications; the accounts are on Settings > Email), with a short note. **Download my share file** gives it to you to send however you like.
+- **Bring in:** in the friend's Squirrelcade, **Bring in from email** finds share files from their friends in the mailboxes Squirrelcade reads (the email accounts on Settings > Email, chosen by an **Accounts to read** option like the other mail features have) and brings them in with one click, or as they arrive (a setting). Without a mailbox: drop the file (or a zip of it) on the Friends page, or paste its text.
 - **Reply:** after bringing one in, **Send mine back** sends yours to that friend.
 - Nothing is opened to the internet. Each friend's file carries a **friend code** (made when the friend is added, given to them once), so a file from a stranger, or from a known address without the right code, is ignored.
+
+### Live links (1.4.0, D214)
+
+A third way, with no email each time: Squirrelcade writes an encrypted live file for each friend into a folder (Settings > Friends > Live links) that Google Drive, Dropbox or a similar tool carries to the cloud; the owner shares it as Anyone with the link and pastes the link on the friend's card, and sends the friend an invite once. The friend's Squirrelcade reads it on a schedule, so their view stays current by itself. Help > Friends > Live links has the steps.
 
 ### Directly (a key per friend)
 
