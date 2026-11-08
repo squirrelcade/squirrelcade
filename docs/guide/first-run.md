@@ -35,14 +35,10 @@ An export shows what Squirrelcade found in it: how many games on which consoles,
 
 ![The Catalogs step once every catalog is built, with each console's number of games](img/welcome-catalogs.jpg)
 
-## The optional steps
+## The wishlist, and what comes after
 
-- **Covers:** free IGDB keys give covers, genres and series, and make the wishlist much better. It takes 5 minutes: see [IGDB keys](../help/features.md#igdb-keys). You can do it later.
-- **Wishlist:** put the consoles and genres you like in your own order. Squirrelcade suggests an order from what you collected lately.
-
-![The Covers step: where to get IGDB's free keys, with a Skip for now](img/welcome-covers.jpg)
-
-![The Wishlist step: the consoles in the order Squirrelcade learned, and the genres and styles you like](img/welcome-wishlist.jpg)
+- **Wishlist:** the guide's last step asks one question on a new install, **What your wishlist is**. **Suggested** (the start) is Squirrelcade's own ranked list of the games you're missing, as acorns order them. **Picked by you** is a list of only the games you add yourself (from Suggestions, a game's page or Store Mode); the ranked list stays as Suggestions to choose from. You can change it any time on **Acorns**.
+- **Add these any time:** the guide ends with the list of everything optional (covers from IGDB, messages, your email, your PC games, YouTube videos, friends' live links, Claude...), with how long each takes. None is asked now: Squirrelcade works without them, and **Settings > Features** has the same list, each with a **Set it up with AI** button that copies a prompt for just that one. Look around first, then add what you want, one at a time.
 
 ## Check that it worked
 
@@ -56,4 +52,4 @@ An export shows what Squirrelcade found in it: how many games on which consoles,
 
 Numbers that look wrong? Open a console's page, then a game you own that shows as missing: its drawer says what the catalog has and why the copy didn't count.
 
-Next: [reach it from your phone](phone.md), for Store Mode in a store. Or let an AI you use take you through the rest (your phone, covers, messages, the services you use), one step at a time: the welcome guide links to [AI-assisted setup](../help/ai-setup.md).
+Next: [reach it from your phone](phone.md), for Store Mode in a store. Or add what you want from **Settings > Features**, one feature at a time, each with its own AI prompt (or the whole-install prompt in [AI-assisted setup](../help/ai-setup.md), which starts by asking: a quick start, or everything now).

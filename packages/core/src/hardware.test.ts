@@ -7,7 +7,15 @@ describe('hardware from PriceCharting names (T-217)', () => {
       expect([t, hardwareKind(t)]).toEqual([t, 'console']);
     }
     for (const t of ['Nintendo 64 Controller', 'DualShock 4 Controller Black', 'Joy-Con Pair Neon', 'Pro Controller']) expect([t, hardwareKind(t)]).toEqual([t, 'controller']);
-    for (const t of ['Memory Card 8MB', 'Controller Pak', 'Rumble Pak', 'Expansion Pak', 'AC Adapter', 'Zapper', 'Game Boy Player']) expect([t, hardwareKind(t)]).toEqual([t, 'accessory']);
+    for (const t of ['Memory Card 8MB', 'Controller Pak', 'Rumble Pak', 'Expansion Pak', 'AC Adapter', 'Zapper', 'Game Boy Player', 'PlayStation Move Motion Controller', 'PlayStation Move', 'PlayStation Move Navigation Controller', 'PlayStation Eye Camera', 'Xbox Live Headset']) {
+      expect([t, hardwareKind(t)]).toEqual([t, 'accessory']);
+    }
+  });
+
+  it('leaves games named after hardware alone (1.4.0, D217: they were suggested though owned)', () => {
+    for (const t of ['PlayStation Move Heroes', 'PlayStation Move Ape Escape', 'Zapper: One Wicked Cricket', 'SOCOM U.S. Navy SEALs [Headset Bundle]', 'Kinect Sports', 'Kinect Adventures']) {
+      expect([t, hardwareKind(t)]).toEqual([t, null]);
+    }
   });
 
   it('leaves games with those words in their names alone', () => {

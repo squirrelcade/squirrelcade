@@ -9,7 +9,7 @@ import { notifyError, notifySuccess, useSetting } from '../hooks';
 /** What GET /api/v1/mail answers: collection updates from email, set up or not, and the last look at the mailbox. */
 export interface MailStatus {
   on: boolean;
-  account: { user: string; host: string; port: number } | null;
+  accounts: { id: number; name: string; address: string }[];
   problem: string | null;
   lastCheck: { at: string; ok: boolean; message: string } | null;
   recent: { id: string; date: string; subject: string; status: string; detail: string; importId: number | null; checkedAt: string }[];
@@ -40,7 +40,7 @@ export function MailCard() {
     return (
       <Text size="xs" c="dimmed" mb="lg">
         PriceCharting can email your export: with{' '}
-        <Anchor component={Link} to="/settings/email#setting-features.mail" size="xs">
+        <Anchor component={Link} to="/settings/features#setting-features.mail" size="xs">
           collection updates from your email
         </Anchor>{' '}
         on, Squirrelcade picks it up from your mailbox, so an update is one tap on PriceCharting.
@@ -60,7 +60,7 @@ export function MailCard() {
             <Button component="a" href={s?.exportUrl ?? 'https://www.pricecharting.com/my-collection'} target="_blank" rel="noreferrer" size="compact-sm" variant="light" rightSection={<IconExternalLink size={12} />}>
               Export on PriceCharting
             </Button>
-            <Button size="compact-sm" variant="default" leftSection={<IconMailSearch size={14} />} loading={check.isPending} onClick={() => check.mutate()} disabled={!s?.account}>
+            <Button size="compact-sm" variant="default" leftSection={<IconMailSearch size={14} />} loading={check.isPending} onClick={() => check.mutate()} disabled={!s || s.accounts.length === 0}>
               Check now
             </Button>
           </Group>
@@ -68,13 +68,13 @@ export function MailCard() {
         {s?.problem ? (
           <Alert color="yellow" p="xs">
             {s.problem}{' '}
-            <Anchor component={Link} to="/settings/email#setting-features.mail" size="sm" c="inherit" fw={600} underline="always">
+            <Anchor component={Link} to="/settings/features#setting-features.mail" size="sm" c="inherit" fw={600} underline="always">
               Set it up
             </Anchor>
           </Alert>
         ) : (
           <Text size="xs" c="dimmed">
-            Ask PriceCharting for an export (My Collection › Download (CSV)): its email comes to {s?.account?.user ?? 'your mailbox'}, and Squirrelcade updates your collection from it{s?.lastCheck ? `. Last looked ${timeAgo(s.lastCheck.at)}` : ''}.
+            Ask PriceCharting for an export (My Collection › Download (CSV)): its email comes to {s && s.accounts.length > 0 ? s.accounts.map((a) => a.address).join(' or ') : 'your mailbox'}, and Squirrelcade updates your collection from it{s?.lastCheck ? `. Last looked ${timeAgo(s.lastCheck.at)}` : ''}.
           </Text>
         )}
         {s?.lastCheck && !s.lastCheck.ok && !s.problem && (

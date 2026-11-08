@@ -60,6 +60,8 @@ export interface Deps {
   ratesLast?: () => { at: string; ok: boolean } | null;
   /** Friends' live links (D214): one line each, from when each was last read and what it said. */
   friendLinks?: () => { id: number; name: string; link: string; readAt: string | null; checkedAt: string | null; error: string | null }[];
+  /** The email accounts (Settings > Email), each with what it last did: one line each. */
+  mailAccounts?: () => { id: number; name: string; reads: boolean; sends: boolean; state: { read?: { at: string; ok: boolean; message: string }; send?: { at: string; ok: boolean; message: string } } }[];
   /** Your live friend files: how many friends you share with live, the folder, the last writing. */
   friendLive?: () => { sharing: number; folder: string; writtenAt: string | null } | null;
 }
@@ -68,6 +70,7 @@ const NOTIFY_CHANNELS = ['email', 'pushover', 'pushbullet', 'ntfy', 'gotify', 'd
 
 const DEFINITIONS: Definition[] = [
   { key: 'igdb', name: 'IGDB', tasks: ['igdb-sync'], settings: '/settings/sources' },
+  // With accounts set up, each has its own line (mailboxLines); this one is what's left until the first is added.
   { key: 'mailbox', name: 'The mailbox (PriceCharting exports, purchase emails)', tasks: ['mail-import', 'orders-watch'], settings: '/settings/email' },
   {
     key: 'notifications',
@@ -244,8 +247,26 @@ export function integrationLines(d: Deps): IntegrationLine[] {
     if (extra?.says && (extra.light || light === 'green')) says = extra.says;
     return { ...base, light, says, lastOk, lastRun: latest?.at ?? null };
   });
+  if ((d.mailAccounts?.() ?? []).length > 0) lines.splice(lines.findIndex((l) => l.key === 'mailbox'), 1);
+  lines.push(...mailboxLines(d));
   lines.push(...friendLinkLines(d));
   return lines.map((l, i) => ({ l, i })).sort((a, b) => ORDER[a.l.light] - ORDER[b.l.light] || a.i - b.i).map((x) => x.l);
+}
+
+/** A line for each email account (D218): its name, when it last read or sent, and whether that failed. */
+function mailboxLines(d: Deps): IntegrationLine[] {
+  const when = (at: string) => at.slice(0, 16).replace('T', ' ') + ' UTC';
+  return (d.mailAccounts?.() ?? []).map((a) => {
+    const { read, send } = a.state;
+    const failing = [read, send].filter((x): x is { at: string; ok: boolean; message: string } => x !== undefined && !x.ok);
+    const used = [read, send].filter((x): x is { at: string; ok: boolean; message: string } => x !== undefined);
+    const ok = used.filter((x) => x.ok).map((x) => x.at).sort().at(-1) ?? null;
+    const run = used.map((x) => x.at).sort().at(-1) ?? null;
+    const parts = [read?.ok ? `read ${when(read.at)}` : null, send?.ok ? `sent ${when(send.at)}` : null].filter((x): x is string => x !== null);
+    const light: Light = failing.length > 0 ? 'red' : used.length === 0 ? 'yellow' : 'green';
+    const says = failing.length > 0 ? short(failing.map((f) => f.message).join(' ')) : used.length === 0 ? `Not used yet: it is read on its schedule, or test it on Settings > Email${a.reads ? '' : ' (it only sends)'}` : parts.join('; ').replace(/^./, (c) => c.toUpperCase());
+    return { key: `mailbox-${a.id}`, name: `The mailbox: ${a.name}`, light, says, lastOk: ok, lastRun: run, settings: '/settings/email', help: 'integrations#mailbox', check: a.reads && d.settings.get('features.mail') ? 'mail-import' : null };
+  });
 }
 
 /** Your live friend files, and a line for each friend's live link (D214): read lately, failing, or not read yet. */

@@ -3,6 +3,7 @@ import {
   SETTINGS_EXPORT_VERSION,
   defaultSettings,
   isSettingKey,
+  LEGACY_MAIL_SETTINGS,
   secretKeys,
   settingDefinitions,
   settingKeys,
@@ -72,8 +73,30 @@ export class SettingsService {
     return { values, secretsSet };
   }
 
+  private legacyMail: ((values: Record<string, unknown>) => void) | null = null;
+
+  /** Told of the email settings from before accounts (D218) that a file or an AI wrote, to move onto an account. */
+  onLegacyMail(handler: (values: Record<string, unknown>) => void): void {
+    this.legacyMail = handler;
+  }
+
+  /** Takes the old email settings out of a set of changes, moving them onto an account; what's left is the settings. */
+  private withoutLegacy(changes: Record<string, unknown>): Record<string, unknown> {
+    const old = (LEGACY_MAIL_SETTINGS as readonly string[]).filter((k) => k in changes);
+    if (old.length === 0 || !this.legacyMail) return changes;
+    const rest = { ...changes };
+    const values: Record<string, unknown> = {};
+    for (const k of old) {
+      values[k] = rest[k];
+      delete rest[k];
+    }
+    this.legacyMail(values);
+    return rest;
+  }
+
   /** Applies all changes or none. Throws SettingsError listing every problem. */
-  update(changes: Record<string, unknown>): SettingsValues {
+  update(changesIn: Record<string, unknown>): SettingsValues {
+    const changes = this.withoutLegacy(changesIn);
     const { valid, issues } = validateSettingChanges(changes);
     if (issues.length > 0) throw new SettingsError(issues);
     const keys = Object.keys(valid) as SettingKey[];
@@ -135,11 +158,12 @@ export class SettingsService {
     if (typeof file.version !== 'number' || file.version > SETTINGS_EXPORT_VERSION) {
       throw new SettingsError([{ key: 'file', message: `Settings export version ${String(file.version)} is newer than this Squirrelcade supports` }]);
     }
-    const { issues } = validateSettingChanges(file.settings as Record<string, unknown>);
+    const fileSettings = this.withoutLegacy(file.settings as Record<string, unknown>);
+    const { issues } = validateSettingChanges(fileSettings);
     if (issues.length > 0) throw new SettingsError(issues);
-    const merged: Record<string, unknown> = { ...defaultSettings(), ...file.settings };
+    const merged: Record<string, unknown> = { ...defaultSettings(), ...fileSettings };
     // Exports carry no secrets, so an import keeps the ones already saved.
-    for (const key of secretKeys) if (!(key in file.settings)) delete merged[key];
+    for (const key of secretKeys) if (!(key in fileSettings)) delete merged[key];
     return this.update(merged);
   }
 }

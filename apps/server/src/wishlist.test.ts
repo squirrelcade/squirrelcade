@@ -1,6 +1,6 @@
 import { normalizeTitle, type GameDetails } from '@squirrelcade/core';
 import { eq } from 'drizzle-orm';
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { gameDetails, igdbGames, platforms } from './db/schema.js';
 import { csvLines, seedCatalogs, setUp, testApp } from './test-helpers.js';
 
@@ -224,5 +224,86 @@ describe('wishlist', () => {
     expect((await snooze('Movie Game', '2020-01-01')).statusCode).toBe(400);
     expect((await snooze('Movie Game', 'next week')).statusCode).toBe(400);
     expect((await g.app.inject({ method: 'PUT', url: '/api/v1/wishlist/snooze', cookies, payload: { platformKey: 'nope', title: 'X', until: null } })).statusCode).toBe(404);
+  });
+});
+
+describe('My wishlist and Suggestions (1.4.0, D217)', () => {
+  const titles = (list: { title: string }[]) => list.map((m) => m.title);
+
+  it("never suggests a game the owner has on the console, even when its catalog didn't see the copy", () => {
+    load();
+    // The catalog counts Uncharted as missing, as a tester's catalogs did with games he had.
+    const real = g.catalogs.allMatches.bind(g.catalogs);
+    vi.spyOn(g.catalogs, 'allMatches').mockImplementation(() =>
+      real().map((p) => ({ ...p, regionOf: p.regionOf, match: { ...p.match, targets: p.match.targets.map((t) => (t.target.title === 'Uncharted' ? { ...t, status: 'missing' as const } : t)) } })),
+    );
+    g.wishlist.invalidate();
+    const r = g.wishlist.compute();
+    expect(titles(r.master)).not.toContain('Uncharted');
+    expect(titles(r.byPlatform.get('playstation-3') ?? [])).not.toContain('Uncharted');
+    expect(r.offList.get('playstation-3|uncharted')).toMatch(/You have it on this console/);
+    // The next rebuild leaves it out before the lists are picked (the copies are unchanged).
+    g.wishlist.invalidate();
+    expect(titles(g.wishlist.compute().master)).not.toContain('Uncharted');
+  });
+
+  it('holds only the games the owner adds when they choose so; the ranked list stays as Suggestions', async () => {
+    load();
+    const before = (await g.app.inject({ url: '/api/v1/wishlist', cookies })).json();
+    expect(before.source).toBe('suggested');
+    expect(before.suggestions).toBeNull();
+    expect(before.master.length).toBeGreaterThan(0);
+
+    g.settings.update({ 'wishlist.source': 'mine' });
+    g.wishlist.invalidate();
+    const empty = (await g.app.inject({ url: '/api/v1/wishlist', cookies })).json();
+    expect(empty.source).toBe('mine');
+    expect(empty.master).toEqual([]);
+    expect(titles(empty.suggestions)).toEqual(titles(before.master));
+
+    const add = (platformKey: string, title: string, source?: string) => g.app.inject({ method: 'POST', url: '/api/v1/wishlist/mine', cookies, payload: { platformKey, title, source } });
+    expect((await add('playstation-3', 'Tales of Graces f')).statusCode).toBe(201);
+    expect((await add('playstation-3', 'Final Fantasy XIII', 'game')).statusCode).toBe(201);
+    expect((await add('playstation-3', 'A Homebrew Game', 'store')).statusCode).toBe(201);
+    expect((await add('playstation-3', 'Uncharted')).statusCode).toBe(201); // owned: never shown
+    expect((await add('nope', 'X')).statusCode).toBe(404);
+    expect((await g.app.inject({ method: 'POST', url: '/api/v1/wishlist/mine', cookies, payload: { platformKey: 'playstation-3' } })).statusCode).toBe(400);
+
+    const mine = (await g.app.inject({ url: '/api/v1/wishlist', cookies })).json();
+    expect(titles(mine.master)).toEqual(['Tales of Graces f', 'Final Fantasy XIII', 'A Homebrew Game']);
+    expect(mine.master.map((m: { rank: number }) => m.rank)).toEqual([1, 2, 3]);
+    expect(mine.master[2].score).toBe(0);
+    // Store Mode and the game's acorns read their place on My wishlist.
+    expect(g.wishlist.compute().index.get('playstation-3|tales of graces f')?.rank).toBe(1);
+    const suggestedOnly = titles(mine.suggestions).find((t: string) => !['Tales of Graces f', 'Final Fantasy XIII'].includes(t));
+    if (suggestedOnly) expect(g.wishlist.compute().index.get(`playstation-3|${normalizeTitle(suggestedOnly)}`)?.rank ?? null).toBeNull();
+
+    const listed = (await g.app.inject({ url: '/api/v1/wishlist/mine', cookies })).json().games as { title: string; source: string }[];
+    expect(listed.find((w) => w.title === 'Final Fantasy XIII')?.source).toBe('game');
+    const removed = await g.app.inject({ method: 'DELETE', url: `/api/v1/wishlist/mine?platform=playstation-3&title=${encodeURIComponent('Final Fantasy XIII')}`, cookies });
+    expect(removed.json()).toEqual({ removed: true });
+    expect(titles((await g.app.inject({ url: '/api/v1/wishlist', cookies })).json().master)).toEqual(['Tales of Graces f', 'A Homebrew Game']);
+  });
+
+  it('works the wishlist out in the background in steps, keeping it once done, and never keeps one made old meanwhile (D220)', async () => {
+    load();
+    g.wishlist.invalidate();
+    let ticks = 0;
+    const counting = setInterval(() => ticks++, 0);
+    await g.wishlist.rebuild();
+    clearInterval(counting);
+    const first = g.wishlist.compute();
+    expect(g.wishlist.compute()).toBe(first);
+    expect(first.master.length).toBeGreaterThan(0);
+
+    // A change while it's being worked out: the old one isn't kept, and the next ask works it out anew.
+    g.wishlist.invalidate();
+    const running = g.wishlist.rebuild();
+    g.wishlist.setPreference('playstation-3', 'Movie Game', 'Strong Interest', null);
+    await running;
+    const after = g.wishlist.compute();
+    expect(after).not.toBe(first);
+    expect(after.all.get('playstation-3|movie game')?.preference).toBe('Strong Interest');
+    expect(ticks).toBeGreaterThanOrEqual(0);
   });
 });

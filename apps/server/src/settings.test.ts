@@ -90,20 +90,20 @@ describe('settings API', () => {
       method: 'PUT',
       url: '/api/v1/settings',
       cookies,
-      payload: { changes: { 'notifications.smtpPassword': 'hunter2-app-password', 'notifications.smtpUser': 'me@example.test' } },
+      payload: { changes: { 'notifications.pushoverToken': 'hunter2-app-password', 'notifications.ntfyTopic': 'me@example.test' } },
     });
     const body = put.json() as { values: Record<string, unknown>; secretsSet: string[] };
-    expect(body.values['notifications.smtpPassword']).toBe('');
-    expect(body.secretsSet).toEqual(['notifications.smtpPassword']);
+    expect(body.values['notifications.pushoverToken']).toBe('');
+    expect(body.secretsSet).toEqual(['notifications.pushoverToken']);
     expect((await g.app.inject({ url: '/api/v1/settings', cookies })).body).not.toContain('hunter2');
     const file = (await g.app.inject({ url: '/api/v1/settings/export', cookies })).json();
-    expect(file.settings).toEqual({ 'notifications.smtpUser': 'me@example.test' });
+    expect(file.settings).toEqual({ 'notifications.ntfyTopic': 'me@example.test' });
     // Importing a file (which has no secrets) keeps the saved password.
     await g.app.inject({ method: 'POST', url: '/api/v1/settings/import', cookies, payload: file });
-    expect(g.settings.get('notifications.smtpPassword')).toBe('hunter2-app-password');
+    expect(g.settings.get('notifications.pushoverToken')).toBe('hunter2-app-password');
     // Sending an empty value clears it.
-    await g.app.inject({ method: 'PUT', url: '/api/v1/settings', cookies, payload: { changes: { 'notifications.smtpPassword': '' } } });
-    expect(g.settings.get('notifications.smtpPassword')).toBe('');
+    await g.app.inject({ method: 'PUT', url: '/api/v1/settings', cookies, payload: { changes: { 'notifications.pushoverToken': '' } } });
+    expect(g.settings.get('notifications.pushoverToken')).toBe('');
   });
 
   it('refuses files that are not settings exports', async () => {

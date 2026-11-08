@@ -17,7 +17,7 @@ const TASK_HOME: Record<string, string> = {
   'igdb-sync': '/settings/sources#setting-features.igdb',
   'romm-sync': '/settings/sources#setting-features.romm',
   'pc-prices': '/settings/sources#setting-features.itad',
-  'mail-import': '/settings/email#setting-features.mail',
+  'mail-import': '/settings/features#setting-features.mail',
   'pc-read': '/settings/pc#setting-features.pc',
   'pc-discover': '/settings/pc#setting-features.pc',
 };

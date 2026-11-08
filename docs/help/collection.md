@@ -110,9 +110,9 @@ A copy you sold or removed here that PriceCharting still lists is on the same ca
 
 PriceCharting emails you a link to your export when you ask for one. Squirrelcade can watch your mailbox for that email and update your collection from it, so an update is one tap on PriceCharting:
 
-1. **Settings > Email:** fill in your email account once: your address, and an **app password** (a separate password your email provider makes for one app; for Gmail, make one at Google's app passwords page). The provider's steps are under **Set it up, step by step**.
-2. Turn on **Stash updates from your email**, and click **Test sending and reading**: it signs in and says what it found. (PriceCharting's emails go to another mailbox? Its address and password go under **Show advanced > A different mailbox for exports**.)
-3. On PriceCharting, **My Collection > Download (CSV)** as usual. Within half an hour (Settings > Email), Squirrelcade finds the email, downloads the export from its link, and updates your collection, with the same safety check as an upload.
+1. **Settings > Email:** add your email account once: **Add an account**, with your address and an **app password** (a separate password your email provider makes for one app; for Gmail, make one at Google's app passwords page). **Provider** shows the steps, and **Test** checks it.
+2. Turn on **Stash updates from your email** (Settings > Features), then on Settings > Collection > Stash updates from your email, choose which account or accounts to read under **Accounts to read** (none chosen: all of them). PriceCharting's emails go to another mailbox? Add it as a second account and choose it there.
+3. On PriceCharting, **My Collection > Download (CSV)** as usual. Within half an hour (**Check the mailbox every**), Squirrelcade finds the email, downloads the export from its link, and updates your collection, with the same safety check as an upload.
 
 **Stash updates** shows the last look at the mailbox, with **Check now** and **Export on PriceCharting**.
 

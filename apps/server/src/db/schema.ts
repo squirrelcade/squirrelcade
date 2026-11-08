@@ -1368,3 +1368,29 @@ export const videoLookups = sqliteTable('video_lookups', {
   value: text('value'),
   at: text('at').notNull(),
 });
+
+/**
+ * The email accounts (Settings > Email, D218): each a mailbox Squirrelcade can read and, when it has an outgoing server,
+ * send from. What reads email (PriceCharting's exports, deals, order prices, On the way) says on its own page which
+ * accounts it reads. The password is kept here, as secret settings are, and never sent to a browser.
+ */
+export const mailAccounts = sqliteTable('mail_accounts', {
+  id: integer('id').primaryKey({ autoIncrement: true }),
+  /** What the owner calls it ("Home Gmail"). */
+  name: text('name').notNull(),
+  /** The email address. */
+  address: text('address').notNull(),
+  /** The sign-in name when it isn't the address; empty: the address. */
+  username: text('username').notNull().default(''),
+  password: text('password').notNull().default(''),
+  /** The IMAP server to read from; empty: it isn't read. */
+  imapHost: text('imap_host').notNull().default(''),
+  imapPort: integer('imap_port').notNull().default(993),
+  /** ssl (encrypted from the start) or starttls. */
+  imapSecurity: text('imap_security').notNull().default('ssl'),
+  /** The SMTP server to send from; empty: it doesn't send. */
+  smtpHost: text('smtp_host').notNull().default(''),
+  smtpPort: integer('smtp_port').notNull().default(587),
+  position: integer('position').notNull().default(0),
+  createdAt: text('created_at').notNull(),
+});

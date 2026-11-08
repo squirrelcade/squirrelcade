@@ -1,3 +1,4 @@
+import { WantButton } from './MyWishlist';
 import { COMPLETENESS_LABELS, priceChartingUrl, shopLinksFor, shopUrl, SHOPS_IN_LISTS, type Completeness, type SettingsValues } from '@squirrelcade/core';
 import { Anchor, Box, Button, Group, Image, Modal, Stack, Table, Text, Tooltip, UnstyledButton } from '@mantine/core';
 import { IconExternalLink, IconPencil, IconPlus } from '@tabler/icons-react';
@@ -584,6 +585,7 @@ export function GetItCard({
         </Group>
       )}
       <Group gap="xs" wrap="wrap">
+        {platformKey !== 'pc' && <WantButton platformKey={platformKey} title={title} source="game" />}
         {actions}
       </Group>
       {versions}

@@ -36,6 +36,7 @@ import { GameStars, RommChip, type GameStar } from '../GameHeader';
 import { useOrdersOn } from '../OrderEmails';
 import { type Answer } from '../choices';
 import { Verdict } from '../Verdict';
+import { WantButton } from '../MyWishlist';
 import { PreferencePicker } from '../Preference';
 import { Link, useSearchParams } from 'react-router';
 import { ConsoleChips } from '../ConsoleChips';
@@ -619,6 +620,7 @@ export function StorePage() {
                 <span>Add it</span>
               </button>
             )}
+            {canEdit && (r.answer === 'need' || r.answer === 'not-tracked') && r.platformKey !== 'pc' && <WantButton big platformKey={r.platformKey} title={r.title} source="store" />}
           </div>
           <Group justify="space-between" align="flex-start" wrap="nowrap" mt="sm">
             <Group gap="sm" align="flex-start" wrap="nowrap" style={{ minWidth: 0, flex: 1 }}>

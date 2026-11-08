@@ -19,12 +19,19 @@ const CONSOLE_HINT = /\b(console|system)\s*$|\b(console|system)\s+(?:\d+\s*(?:gb
 const CONTROLLER = /\b(controllers?|gamepad|joy-?cons?|joystick|dualshock|dualsense|wii remote|wiimote|nunchuc?k|arcade stick|fight ?stick|steering wheel|pro controller)\b/i;
 
 const ACCESSORY =
-  /\b(memory card|controller pak|rumble pak|expansion pak|transfer pak|ac adapter|power (?:supply|adapter|cord|cable)|av cables?|composite cables?|component cables?|hdmi cables?|link cable|multi-?tap|zapper|light gun|sensor bar|kinect sensor|playstation (?:camera|eye|move)|charging (?:station|dock|stand|grip)|charge kit|headset|memory unit|rf (?:switch|adapter)|game boy player|super game boy|wii motion ?plus|play ?&? ?charge)\b/i;
+  /\b(memory card|controller pak|rumble pak|expansion pak|transfer pak|ac adapter|power (?:supply|adapter|cord|cable)|av cables?|composite cables?|component cables?|hdmi cables?|link cable|multi-?tap|zapper|light gun|sensor bar|kinect sensor|playstation (?:camera|eye)|playstation move(?=\s*$|\s+(?:motion|navigation|controller|charging|starter|shooting|sharp|racing|pack|bundle|camera|eye))|charging (?:station|dock|stand|grip)|charge kit|headset|memory unit|rf (?:switch|adapter)|game boy player|super game boy|wii motion ?plus|play ?&? ?charge)\b/i;
+
+/**
+ * Games named after hardware (1.4.0, D217: a game read as an accessory was left out of its catalog, so the wishlist
+ * suggested it to its owner): a title starting "Zapper:" (Zapper: One Wicked Cricket), and a game sold with a headset.
+ */
+const GAME_NAMED_AFTER_HARDWARE = /^zapper\s*:|\bheadset bundle\b|\bwith headset\b/i;
 
 /** Whether a PriceCharting name is hardware, and which kind; null for a game. */
 export function hardwareKind(title: string): HardwareKind | null {
   const t = title.trim();
   if (!t) return null;
+  if (GAME_NAMED_AFTER_HARDWARE.test(t)) return null;
   if (ACCESSORY.test(t)) return 'accessory';
   if (CONTROLLER.test(t) && !/\b(game|edition)\b/i.test(t)) return 'controller';
   if (CONSOLE.test(t) && CONSOLE_HINT.test(t)) return 'console';

@@ -34,6 +34,7 @@ import {
   splitEvenly,
   storesSeen,
   type FoundOrder,
+  type MailHeader,
   type OrderEmail,
   type PaidCounts,
   type StoreSeen,
@@ -49,6 +50,7 @@ import type { FetchLike } from './igdb.js';
 import { appState, comingItems, copies, platforms, purchaseRows } from './db/schema.js';
 import { HelperError, type HelperQueue } from './helper.js';
 import type { LookupService } from './lookup.js';
+import type { MailAccountRow } from './mailAccounts.js';
 import { signInProblem, type FoundMail, type Mailbox, type MailboxOpener, type MailImportService } from './mailImport.js';
 import { isZip, readZip } from './zip.js';
 import type { NotificationService } from './notifications.js';
@@ -196,6 +198,16 @@ export interface OnTheWay {
   paidCents: number | null;
 }
 
+/** An account signed in to, with its open mailbox. */
+interface Opened {
+  box: Mailbox;
+  account: MailAccountRow;
+}
+
+const closeAll = async (boxes: Opened[]) => {
+  for (const { box } of boxes) await box.close().catch(() => undefined);
+};
+
 export class OrderService {
   private readonly finds = new Map<string, FindJob>();
   private readonly batches = new Map<string, BatchJob>();
@@ -279,12 +291,12 @@ export class OrderService {
   }
 
   status() {
-    const { account, problem } = this.d.mail.account('orders');
+    const { accounts, problem } = this.d.mail.accounts.readers(this.d.settings.get('orders.watchAccounts'));
     const waiting = this.d.db.select({ id: comingItems.id }).from(comingItems).where(eq(comingItems.status, 'waiting')).all().length;
     return {
       find: this.findOn(),
       watch: this.watchOn(),
-      account: account ? { user: account.user, host: account.host } : null,
+      accounts: accounts.map((a) => ({ name: a.name, address: a.address })),
       problem,
       reader: this.aiReady() ? 'ai' : 'plain',
       lastWatch: this.readState<{ at: string; ok: boolean; message: string }>(LAST_KEY),
@@ -302,10 +314,10 @@ export class OrderService {
     const job: FindJob = { id: randomUUID(), state: 'reading', found: [], read: 0, message: null, error: null, finishedAt: null };
     this.finds.set(job.id, job);
     void (async () => {
-      let box: Mailbox | null = null;
+      let boxes: Opened[] = [];
       try {
-        box = await this.openBox();
-        const { found, read } = await this.findFor(box, copy);
+        boxes = await this.openBoxes(this.d.settings.get('orders.findAccounts'));
+        const { found, read } = await this.findAll(boxes, copy);
         job.found = found;
         job.read = read;
         job.message = found.length > 0 ? null : read > 0 ? `${read === 1 ? 'One email names' : `${read} emails name`} ${copy.title}, but none reads as its order.` : `No order or receipt email from the last ${this.d.settings.get('orders.lookBackDays')} days names ${copy.title}.`;
@@ -315,7 +327,7 @@ export class OrderService {
         job.state = 'failed';
         job.error = err instanceof Error ? err.message : String(err);
       } finally {
-        await box?.close().catch(() => undefined);
+        await closeAll(boxes);
         job.finishedAt = Date.now();
       }
     })();
@@ -340,12 +352,12 @@ export class OrderService {
     const job: BatchJob = { id: randomUUID(), state: 'reading', total: list.length, done: 0, found: 0, error: null, finishedAt: null };
     this.batches.set(job.id, job);
     void (async () => {
-      let box: Mailbox | null = null;
+      let boxes: Opened[] = [];
       let read = 0;
       try {
-        if (list.length > 0) box = await this.openBox();
+        if (list.length > 0) boxes = await this.openBoxes(this.d.settings.get('orders.findAccounts'));
         for (const copy of list) {
-          const { found, read: n } = await this.findFor(box!, copy);
+          const { found, read: n } = await this.findAll(boxes, copy);
           read += n;
           job.done++;
           // The best one with a price (they come first): a price to use or turn down.
@@ -361,7 +373,7 @@ export class OrderService {
         job.state = 'failed';
         job.error = err instanceof Error ? err.message : String(err);
       } finally {
-        await box?.close().catch(() => undefined);
+        await closeAll(boxes);
         job.finishedAt = Date.now();
       }
     })();
@@ -387,14 +399,18 @@ export class OrderService {
     const job: StoresJob = { id: randomUUID(), state: 'reading', stores: [], read: 0, days, error: null, finishedAt: null };
     this.storeJobs.set(job.id, job);
     void (async () => {
-      let box: Mailbox | null = null;
+      let boxes: Opened[] = [];
       try {
-        box = await this.openBox();
-        if (!box.headers) throw new Error("This mailbox can't be searched for stores.");
+        boxes = await this.openBoxes(s.get('orders.watchAccounts'));
         const yes = s.get('orders.watchSubjects');
         const no = s.get('orders.watchNotSubjects');
         const since = new Date(Date.now() - days * 86_400_000);
-        const headers = await box.headers({ since, ...(box.gmail ? { gmail: gmailPurchaseSearch(yes, days) } : {}), subjects: yes, limit: MAX_STORE_HEADERS });
+        const headers: MailHeader[] = [];
+        for (const { box } of boxes) {
+          if (!box.headers) continue;
+          headers.push(...(await box.headers({ since, ...(box.gmail ? { gmail: gmailPurchaseSearch(yes, days) } : {}), subjects: yes, limit: MAX_STORE_HEADERS })));
+        }
+        if (!boxes.some((b) => b.box.headers)) throw new Error("These mailboxes can't be searched for stores.");
         job.read = headers.length;
         job.stores = storesSeen(headers, yes, no).slice(0, MAX_STORES);
         job.state = 'done';
@@ -403,7 +419,7 @@ export class OrderService {
         job.state = 'failed';
         job.error = err instanceof Error ? err.message : String(err);
       } finally {
-        await box?.close().catch(() => undefined);
+        await closeAll(boxes);
         job.finishedAt = Date.now();
       }
     })();
@@ -467,15 +483,44 @@ export class OrderService {
     );
   }
 
-  /** Signs in to the mailbox (the account on Settings > Email), or says what's missing. */
-  private async openBox(): Promise<Mailbox> {
-    const { account, problem } = this.d.mail.account('orders');
-    if (!account) throw new Error(problem!);
-    try {
-      return await this.d.open(account);
-    } catch (err) {
-      throw new Error(signInProblem(err));
+  /**
+   * Signs in to the accounts a part reads (its choice on its own settings page; empty: all), or says what's missing. An
+   * account that can't be signed in to is noted on the status board and left out while another works.
+   */
+  private async openBoxes(choice: readonly string[]): Promise<Opened[]> {
+    const accounts = this.d.mail.accounts;
+    const { accounts: readable, skipped, problem } = accounts.readers(choice);
+    for (const sk of skipped) accounts.record(sk.account.id, 'read', false, sk.problem);
+    if (readable.length === 0) throw new Error(problem!);
+    const out: Opened[] = [];
+    const failed: string[] = [];
+    for (const account of readable) {
+      try {
+        out.push({ box: await this.d.open(accounts.imap(account)), account });
+        accounts.record(account.id, 'read', true, 'Signed in and read.');
+      } catch (err) {
+        const message = signInProblem(err);
+        accounts.record(account.id, 'read', false, message);
+        failed.push(readable.length > 1 ? `${account.name}: ${message}` : message);
+      }
     }
+    if (out.length === 0) throw new Error(failed.join(' '));
+    return out;
+  }
+
+  /** One copy's orders in every account opened: the answers together, in the order a single mailbox's are. */
+  private async findAll(boxes: Opened[], copy: { title: string; platformKey: string | null; datePurchased: string | null }): Promise<{ found: FoundPrice[]; read: number }> {
+    if (boxes.length === 1) return this.findFor(boxes[0]!.box, copy);
+    const found: FoundPrice[] = [];
+    let read = 0;
+    for (const { box } of boxes) {
+      const one = await this.findFor(box, copy);
+      read += one.read;
+      for (const f of one.found) if (!found.some((x) => x.store === f.store && x.orderNumber === f.orderNumber && x.itemTitle === f.itemTitle && x.date === f.date)) found.push(f);
+    }
+    const near = (f: FoundPrice) => (copy.datePurchased && f.date ? Math.abs(Date.parse(f.date) - Date.parse(copy.datePurchased)) : -Date.parse(f.date ?? '1970-01-01'));
+    found.sort((a, b) => Number(b.paidCents !== null) - Number(a.paidCents !== null) || near(a) - near(b));
+    return { found, read };
   }
 
   /**
@@ -615,13 +660,13 @@ export class OrderService {
    * it is when Squirrelcade is sure. A message for the new ones, if asked. What happened, in a line.
    */
   async watch(): Promise<string> {
-    if (!this.watchOn()) return 'On the way is off (Settings > Email).';
+    if (!this.watchOn()) return 'On the way is off (Settings > Collection > On the way).';
     const s = this.d.settings;
     const last = this.readState<{ at: string; ok: boolean; message: string }>(LAST_KEY);
     const since = new Date(last?.ok ? Date.parse(last.at) - 2 * 86_400_000 : Date.now() - s.get('orders.watchFirstDays') * 86_400_000);
-    let box: Mailbox;
+    let boxes: Opened[];
     try {
-      box = await this.openBox();
+      boxes = await this.openBoxes(s.get('orders.watchAccounts'));
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
       this.saveWatch(false, message);
@@ -631,7 +676,7 @@ export class OrderService {
     const fresh: FoundMail[] = [];
     try {
       const purchase = (subject: string) => purchaseSubject(subject, s.get('orders.watchSubjects'), s.get('orders.watchNotSubjects'));
-      for (const sender of s.get('orders.watchSenders')) {
+      for (const { box } of boxes) for (const sender of s.get('orders.watchSenders')) {
         const want = sender.trim().toLowerCase().replace(/^@/, '');
         if (!want) continue;
         // Only the purchase emails are fetched whole: the subjects of the newest few hundred are looked at first.
@@ -649,12 +694,12 @@ export class OrderService {
         }
       }
     } catch (err) {
-      await box.close().catch(() => undefined);
+      await closeAll(boxes);
       const message = signInProblem(err);
       this.saveWatch(false, message);
       throw new Error(message);
     }
-    await box.close().catch(() => undefined);
+    await closeAll(boxes);
     const orders = await this.read(fresh);
     const added: ComingView[] = [];
     fresh.forEach((mail, i) => {
@@ -1146,7 +1191,7 @@ const refOf = (messageId: string) => createHash('sha256').update(messageId).dige
 
 export function registerOrderRoutes(app: FastifyInstance, orders: OrderService, tasks: { enqueue: (name: string) => boolean }): void {
   const off = (reply: { code: (n: number) => { send: (b: unknown) => unknown } }, what: 'find' | 'watch') =>
-    reply.code(409).send({ error: 'off', message: what === 'find' ? 'Turn on "Find what you paid in your order emails" first (Settings > Email).' : 'Turn on On the way first (Settings > Email).' });
+    reply.code(409).send({ error: 'off', message: what === 'find' ? 'Turn on "Find what you paid in your order emails" first (Settings > Collection).' : 'Turn on On the way first (Settings > Collection > On the way).' });
   app.get('/api/v1/orders', async () => orders.status());
   app.post('/api/v1/orders/find', async (request, reply) => {
     if (!orders.findOn()) return off(reply, 'find');

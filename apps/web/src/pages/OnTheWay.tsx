@@ -51,7 +51,7 @@ export interface ComingItem {
 interface OrdersStatus {
   find: boolean;
   watch: boolean;
-  account: { user: string; host: string } | null;
+  accounts: { name: string; address: string }[];
   problem: string | null;
   reader: 'ai' | 'plain';
   lastWatch: { at: string; ok: boolean; message: string } | null;
@@ -202,7 +202,7 @@ function SplitLot({ item, onClose, onDone }: { item: ComingItem | null; onClose:
 
 /**
  * On the way (D156): games bought that haven't arrived, from the purchase emails Squirrelcade watches for (eBay and
- * Mercari, and the senders Settings > Email lists). They're not in the collection, not counted, and never sent to
+ * Mercari, and the senders Settings > Collection lists). They're not in the collection, not counted, and never sent to
  * PriceCharting. It's here makes one a copy, with its price and day filled in, and opens its window; Not coming
  * takes it off the list.
  */
@@ -288,7 +288,7 @@ export function OnTheWayPage() {
               )}
             </FileButton>
             {on && watching && (
-              <Button variant="default" leftSection={<IconMailSearch size={16} />} loading={check.isPending} onClick={() => check.mutate()} disabled={!s?.account}>
+              <Button variant="default" leftSection={<IconMailSearch size={16} />} loading={check.isPending} onClick={() => check.mutate()} disabled={!s || s.accounts.length === 0}>
                 Check my email now
               </Button>
             )}
@@ -308,8 +308,8 @@ export function OnTheWayPage() {
           {!watching && (
             <Text size="xs" c="dimmed">
               Your purchase emails aren't read for it.{' '}
-              <Anchor component={Link} to="/settings/email#setting-orders.watch" size="xs">
-                Settings › Email › On the way
+              <Anchor component={Link} to="/settings/collection#setting-orders.watch" size="xs">
+                Settings › Collection › On the way
               </Anchor>{' '}
               has Squirrelcade look for your eBay and Mercari purchases (and the stores you name) every day or as often as you like.
             </Text>

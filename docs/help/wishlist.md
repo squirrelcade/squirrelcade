@@ -5,6 +5,16 @@ The wishlist ranks the games you don't have, on the consoles you collect, by rul
 - **Acorns** say how much you'd want a game: Squirrelcade's own unit, so it's never taken for a review score. A game's acorns are the sum of what each rule gives it, and you can see every one: open a game (or its row) for the list.
 - **Reviews** sit beside a game's acorns: IGDB's rating out of 100 (critics and players together) with a star, and how many ratings on hover. They show on the wishlist, a console's missing games (sortable), Coming soon, Past releases, Store Mode, Deals, Today and the game drawer.
 
+## My wishlist or Suggestions
+
+You choose what your wishlist is: **Acorns > Acorns ranking > Your wishlist > What your wishlist is**.
+
+- **Suggestions** (the start, and what an install that already had a wishlist keeps): Squirrelcade's own ranked list, worked out from your catalogs and your rules. Games arrive on it by themselves.
+- **Picked by you** (My wishlist): nothing is added for you. The Wishlist page has two tabs, **My wishlist** (the games you chose, ranked by their acorns) and **Suggestions** (the ranked list to go down). Press **Add** on a suggestion to put it on your wishlist; a game already there says "On your wishlist", with a way to take it off. **Take off** on My wishlist removes a game (it goes back to Suggestions).
+- **Want it** appears on a game's page, beside its shops, when you don't have the game on that console, and in [Store Mode](store-mode.md) beside Add it. It adds the game to My wishlist; **On your wishlist** takes it off again.
+
+A game you have on a console is never suggested for it, even when a catalog didn't match your copy: Squirrelcade also checks by title.
+
 ## Where the acorns come from
 
 - **Reviews** from IGDB (with IGDB keys), trusted more when many people rated the game.
@@ -31,7 +41,7 @@ The wishlist ranks the games you don't have, on the consoles you collect, by rul
 
 ## Deals
 
-With a wishlist on PriceCharting, PriceCharting emails you when someone lists one of its games on eBay below the market value. With [collection updates from your email](collection.md#from-your-email) on, Squirrelcade reads those emails too (Settings > Email > PriceCharting's deal emails > "Read PriceCharting's deal emails too"). Nothing is fetched from PriceCharting or eBay: it's only what PriceCharting emails you.
+With a wishlist on PriceCharting, PriceCharting emails you when someone lists one of its games on eBay below the market value. With [collection updates from your email](collection.md#from-your-email) on, Squirrelcade reads those emails too (Acorns ranking > PriceCharting's deal emails > "Read PriceCharting's deal emails too", with **Accounts to read** for which email accounts). Nothing is fetched from PriceCharting or eBay: it's only what PriceCharting emails you.
 
 **Acorns > Deals** lists the deals of the last 7 days:
 
@@ -39,7 +49,7 @@ With a wishlist on PriceCharting, PriceCharting emails you when someone lists on
 - The best deals first (the biggest saving against the market value), or your wishlist's games first. Pick one console, or only new or sealed copies (as the seller's listing title says: PriceCharting's emails don't give the condition).
 - Today shows the top three the same way, and the game of the day gives a game with a fresh deal a few more acorns.
 
-PriceCharting emails every deal on its wishlist. To be told only about the ones that matter, **Settings > Email > PriceCharting's deal emails > "Tell me about deals on my wishlist's top"** (25, say) sends a message only for the deals on games your Squirrelcade wishlist ranks that high.
+PriceCharting emails every deal on its wishlist. To be told only about the ones that matter, **Acorns ranking > PriceCharting's deal emails > "Tell me about deals on my wishlist's top"** (25, say) sends a message only for the deals on games your Squirrelcade wishlist ranks that high.
 
 Prices for new copies in shops aren't read anywhere (no shop or price site offers them to apps like this). The shop links in each game's drawer (Deku Deals for Switch games, Amazon, Best Buy...) open a search there.
 

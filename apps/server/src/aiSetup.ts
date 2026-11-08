@@ -1,4 +1,4 @@
-import { CHANNEL_NAMES, CHANNEL_SWITCHES, CHANNELS, FEATURE_SETTINGS, FEATURE_SETUP, settingDefinitions, SETTINGS_PAGES, type Channel, type FeatureKey, type SettingDefinition, type SettingKey } from '@squirrelcade/core';
+import { CHANNEL_NAMES, CHANNEL_SWITCHES, CHANNELS, everythingNowSentence, FEATURE_LIST, FEATURE_SETTINGS, FEATURE_SETUP, featurePromptUrl, featureTime, settingDefinitions, SETTINGS_PAGES, type Channel, type FeatureKey, type SettingDefinition, type SettingKey } from '@squirrelcade/core';
 import type { FastifyInstance } from 'fastify';
 import { readFileSync } from 'node:fs';
 import os from 'node:os';
@@ -29,7 +29,7 @@ const FEATURE_TASK: Partial<Record<FeatureKey, string>> = {
 
 /** What each way of sending messages needs before it sends (its other fields are optional). */
 const CHANNEL_NEEDS: Record<Channel, SettingKey[]> = {
-  email: ['notifications.smtpHost', 'notifications.smtpUser', 'notifications.smtpPassword', 'notifications.emailTo'],
+  email: ['notifications.emailTo'],
   pushover: ['notifications.pushoverToken', 'notifications.pushoverUser'],
   pushbullet: ['notifications.pushbulletToken'],
   ntfy: ['notifications.ntfyServer', 'notifications.ntfyTopic'],
@@ -70,6 +70,7 @@ const LINKED: SettingKey[] = [
   'interface.coverMarks',
   'interface.coverMarksPc',
   'roots.videos',
+  'roots.youtubeMode',
   'roots.videoChannels',
   'sources.youtubeKey',
   'roots.youtubeDailyUnits',
@@ -79,6 +80,11 @@ const LINKED: SettingKey[] = [
   'collection.goal',
   'selling.ebayFeePercent',
   'collection.ripConsoles',
+  'wishlist.source',
+  'wishlist.fileGames',
+  'wishlist.fileCovers',
+  'friends.liveFolder',
+  'friends.liveReadHours',
 ];
 
 /** The pages the brief links to. */
@@ -211,10 +217,14 @@ export function setupBrief(deps: BriefDeps, address: string, now = new Date()): 
   );
   lines.push(`- **Watched folder:** ${settings.get('collection.dropFolderEnabled') ? 'on' : 'off'}.`);
   lines.push(
-    `- **On the way** (Acorns > On the way, its switch in Settings > Features): ${settings.get('orders.page') ? 'shown' : 'hidden, with its menu entry'}; purchase emails ${settings.get('orders.watch') ? `read (Settings > Email > On the way), from ${(settings.get('orders.watchSenders') as string[]).length} stores; ${lastRun('orders-watch')}` : 'not read (Settings > Email > On the way, off)'}.`,
+    `- **On the way** (Acorns > On the way, its switch in Settings > Features): ${settings.get('orders.page') ? 'shown' : 'hidden, with its menu entry'}; purchase emails ${settings.get('orders.watch') ? `read (Settings > Collection > On the way), from ${(settings.get('orders.watchSenders') as string[]).length} stores; ${lastRun('orders-watch')}` : 'not read (Settings > Collection > On the way, off)'}.`,
   );
   lines.push(`- **Purchases CSV** (D178): ${settings.get('sources.purchaseCsv') ? `on; ${lastRun('purchase-sheet')}` : 'off'}.`);
-  lines.push(`- **Videos on a game's page:** ${settings.get('roots.videos') ? 'on' : 'off'}; YouTube API key ${settings.get('sources.youtubeKey') ? 'set' : 'not set (the video channels and Find its videos need one)'}.`);
+  lines.push(
+    `- **Videos on a game's page:** ${settings.get('roots.videos') ? 'on' : 'off'}; ${shown('roots.youtubeMode').toLowerCase()}; YouTube API key ${settings.get('sources.youtubeKey') ? 'set' : 'not set (Light needs none; Deep, whole channel lists and Find its videos need one)'}.`,
+  );
+  lines.push(`- **What my wishlist is:** ${shown('wishlist.source')}.`);
+  lines.push(`- **Friends' live links:** live files go in ${settings.get('friends.liveFolder') || 'the friends-live folder in the config folder'}; read every ${settings.get('friends.liveReadHours')} hours.`);
   const writers = deps.writeKeys?.() ?? 0;
   lines.push(`- **Keys that put games on On the way** (record_on_the_way, D179): ${writers > 0 ? writers : 'none (every key and app only reads)'}.`);
   lines.push('- **Optional parts** (Settings > Features):');
@@ -261,6 +271,12 @@ export function setupBrief(deps: BriefDeps, address: string, now = new Date()): 
     return link(`${d.page === 'wishlist' ? '/acorns' : `/settings/${d.page}`}#setting-${k}`);
   };
   const out: string[] = [];
+  out.push(`**Quick start or Everything now:** the brief's first question. Everything now is ${everythingNowSentence()}. Settings > Features is the list of every feature below with what it needs, its time and a light that says whether it works; each one has its own setup prompt (the link after its name), so nothing has to be done today.`);
+  out.push('');
+  out.push('**Features list** (name, time to allow, settings, its own prompt):');
+  out.push('');
+  for (const f of FEATURE_LIST) out.push(`- ${f.name} (${featureTime(f)}): ${link(f.settings)}; ${featurePromptUrl(f.id)}`);
+  out.push('');
   out.push('Links on this install. Each part is set up on its card (Settings > Sources; the email account on Settings > Email), its switch included; advanced settings show with "Show advanced".');
   out.push('');
   out.push('**Optional parts** (turn one on, then fill in what shows under it, and press Save and test):');

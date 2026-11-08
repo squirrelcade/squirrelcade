@@ -168,7 +168,7 @@ export function FindInEmail({ copyId, title, onUse, initial = null }: { copyId: 
                 </Group>
               ))}
               <Text size="xs" c="dimmed">
-                The price paid is {COUNTS_SAID[counts] ?? counts} (Settings › Email). Check it, then save the copy: nothing is kept until then.
+                The price paid is {COUNTS_SAID[counts] ?? counts} (Settings › Collection). Check it, then save the copy: nothing is kept until then.
               </Text>
             </Stack>
           )}

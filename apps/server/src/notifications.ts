@@ -25,6 +25,7 @@ import type { CatalogService } from './catalogs.js';
 import type { CollectionService, ImportOutcome } from './collection.js';
 import type { Db } from './db/index.js';
 import { appState, wishlistSnapshots } from './db/schema.js';
+import { MailAccounts, type MailAccountRow } from './mailAccounts.js';
 import type { SettingsService } from './settings.js';
 import type { WishlistService } from './wishlist.js';
 
@@ -151,7 +152,12 @@ export class NotificationService {
     private readonly log: Logger,
     private readonly transports: Transports = defaultTransports,
     private readonly catalogs?: CatalogService,
-  ) {}
+  ) {
+    this.accounts = new MailAccounts(db, settings);
+  }
+
+  /** The email accounts (Settings > Email): the one that sends email notifications is chosen on Settings > Notifications. */
+  private readonly accounts: MailAccounts;
 
   /** Resolves when the messages already queued have been handled. */
   idle(): Promise<unknown> {
@@ -166,7 +172,7 @@ export class NotificationService {
   channels(): Channel[] {
     const s = this.settings;
     const ready: Record<Channel, boolean> = {
-      email: s.get('notifications.emailEnabled') && Boolean(s.get('notifications.smtpHost')) && s.get('notifications.emailTo').length > 0,
+      email: s.get('notifications.emailEnabled') && this.accounts.sender() !== null && s.get('notifications.emailTo').length > 0,
       pushover: s.get('notifications.pushoverEnabled') && Boolean(s.get('notifications.pushoverToken') && s.get('notifications.pushoverUser')),
       pushbullet: s.get('notifications.pushbulletEnabled') && Boolean(s.get('notifications.pushbulletToken')),
       ntfy: s.get('notifications.ntfyEnabled') && Boolean(s.get('notifications.ntfyTopic').trim()),
@@ -242,17 +248,24 @@ export class NotificationService {
     for (const channel of this.channels()) {
       try {
         if (channel === 'email') {
-          await this.transports.sendMail({
-            host: s.get('notifications.smtpHost'),
-            port: s.get('notifications.smtpPort'),
-            user: s.get('notifications.smtpUser'),
-            pass: s.get('notifications.smtpPassword'),
-            from: `"${this.name().replace(/["<>]/g, '')}" <${s.get('notifications.emailFrom') || s.get('notifications.smtpUser') || (s.get('notifications.emailTo')[0] ?? '')}>`,
-            to: s.get('notifications.emailTo'),
-            subject: report.subject,
-            text: report.text,
-            html: emailLayout(report.html, url || null),
-          });
+          const account = this.accounts.sender()!;
+          try {
+            await this.transports.sendMail({
+              host: account.smtpHost.trim(),
+              port: account.smtpPort,
+              user: (account.username || account.address).trim(),
+              pass: account.password,
+              from: `"${this.name().replace(/["<>]/g, '')}" <${s.get('notifications.emailFrom') || account.address || (s.get('notifications.emailTo')[0] ?? '')}>`,
+              to: s.get('notifications.emailTo'),
+              subject: report.subject,
+              text: report.text,
+              html: emailLayout(report.html, url || null),
+            });
+            this.accounts.record(account.id, 'send', true, 'A notification went out.');
+          } catch (err) {
+            this.accounts.record(account.id, 'send', false, err instanceof Error ? err.message : String(err));
+            throw err;
+          }
         } else if (channel === 'pushover') {
           await this.transports.pushover({
             token: s.get('notifications.pushoverToken'),
@@ -432,23 +445,23 @@ export class NotificationService {
   }
 
   /**
-   * Settings > Email's test of sending: a message from your account to the notifications' address (or the account's
-   * own), whether email notifications are on or not. What happened, in a line.
+   * Settings > Email's test of sending from one account: a message from it to the notifications' address (or its own),
+   * whether email notifications are on or not. What happened, in a line.
    */
-  async testEmail(): Promise<{ ok: boolean; message: string }> {
+  async testEmail(account: MailAccountRow): Promise<{ ok: boolean; message: string }> {
     const s = this.settings;
-    const user = s.get('notifications.smtpUser').trim();
-    const host = s.get('notifications.smtpHost').trim();
-    if (!user || !host) return { ok: false, message: 'Fill in your email address and choose your provider (or its mail server), then save.' };
-    const to = s.get('notifications.emailTo').length > 0 ? s.get('notifications.emailTo') : [user];
+    const user = (account.username || account.address).trim();
+    const host = account.smtpHost.trim();
+    if (!user || !host) return { ok: false, message: 'Fill in its address and its outgoing mail server, then save.' };
+    const to = s.get('notifications.emailTo').length > 0 ? s.get('notifications.emailTo') : [account.address];
     const text = 'This is a test message from Squirrelcade. If you can read it, sending email works.';
     try {
       await this.transports.sendMail({
         host,
-        port: s.get('notifications.smtpPort'),
+        port: account.smtpPort,
         user,
-        pass: s.get('notifications.smtpPassword'),
-        from: `"${this.name().replace(/["<>]/g, '')}" <${s.get('notifications.emailFrom') || user}>`,
+        pass: account.password,
+        from: `"${this.name().replace(/["<>]/g, '')}" <${s.get('notifications.emailFrom') || account.address}>`,
         to,
         subject: `${this.name()}: test message`,
         text,
@@ -460,23 +473,22 @@ export class NotificationService {
     }
   }
 
-  /** Whether Squirrelcade has an email account to send from (Settings › Email). */
+  /** Whether Squirrelcade has an email account to send from (Settings > Email). */
   canEmail(): boolean {
-    return Boolean(this.settings.get('notifications.smtpUser').trim() && this.settings.get('notifications.smtpHost').trim());
+    return this.accounts.sender() !== null;
   }
 
-  /** One message to someone who isn't the owner (a guest's sign-in code for an AI app, 0.55.0), from the owner's account. */
+  /** One message to someone who isn't the owner (a guest's sign-in code for an AI app, 0.55.0), from the account that sends. */
   async emailTo(to: string, subject: string, text: string): Promise<void> {
     const s = this.settings;
-    const user = s.get('notifications.smtpUser').trim();
-    const host = s.get('notifications.smtpHost').trim();
-    if (!user || !host) throw new Error('Squirrelcade has no email account to send from (Settings › Email).');
+    const account = this.accounts.sender();
+    if (!account) throw new Error('Squirrelcade has no email account to send from (Settings > Email).');
     await this.transports.sendMail({
-      host,
-      port: s.get('notifications.smtpPort'),
-      user,
-      pass: s.get('notifications.smtpPassword'),
-      from: `"${this.name().replace(/["<>]/g, '')}" <${s.get('notifications.emailFrom') || user}>`,
+      host: account.smtpHost.trim(),
+      port: account.smtpPort,
+      user: (account.username || account.address).trim(),
+      pass: account.password,
+      from: `"${this.name().replace(/["<>]/g, '')}" <${s.get('notifications.emailFrom') || account.address}>`,
       to: [to],
       subject: `${this.name()}: ${subject}`,
       text,

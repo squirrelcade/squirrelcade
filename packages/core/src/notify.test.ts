@@ -13,7 +13,7 @@ import {
   telegramRequest,
   webhookRequest,
 } from './notify.js';
-import { settingDefinitions, settingKeys, type SettingDefinition } from './settings.js';
+import { isSettingKey, LEGACY_MAIL_SETTINGS, settingDefinitions, settingKeys, type SettingDefinition } from './settings.js';
 
 const message = { subject: 'Squirrelcade: test', text: 'Full text', html: '<p>Full text</p>', short: 'Short text' };
 
@@ -83,8 +83,8 @@ describe('setup guides', () => {
       const when = (settingDefinitions[k] as SettingDefinition).shownWhen!;
       expect([k, (settingDefinitions as Record<string, SettingDefinition>)[when]?.kind]).toEqual([k, 'boolean']);
     }
-    // Every provider is a choice of the provider setting, and "Another provider" too.
-    const providers = (settingDefinitions['notifications.emailProvider'] as SettingDefinition).options!.map((o) => o.value);
-    expect(providers).toEqual([...MAIL_PROVIDERS.map((m) => m.id), 'custom']);
+    // The email account settings moved onto accounts (D218): the old keys are no longer settings, and are all listed.
+    for (const k of LEGACY_MAIL_SETTINGS) expect([k, isSettingKey(k)]).toEqual([k, false]);
+    expect(MAIL_PROVIDERS.length).toBeGreaterThan(3);
   });
 });

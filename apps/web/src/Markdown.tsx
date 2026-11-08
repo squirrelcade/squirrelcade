@@ -33,6 +33,17 @@ export function inline(text: string, resolve?: LinkResolver): ReactNode[] {
   });
 }
 
+/** A heading's id: its words in lower case, joined by dashes ("Your live friend files" -> "your-live-friend-files"), so /help/integrations#your-live-friend-files scrolls to it. */
+export const slug = (text: string) =>
+  text
+    .replace(/[`*]/g, '')
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-|-$/g, '');
+
+/** Shorter anchors that other parts of the app use (a status line's `help` field), and the heading each means. */
+export const HELP_ANCHORS: Record<string, string> = { 'friends-live': 'your-live-friend-files' };
+
 /** The cells of a table row: "| a | b |" -> ["a", "b"]. */
 const cells = (line: string) =>
   line
@@ -121,7 +132,7 @@ export function Markdown({ text, resolve }: { text: string; resolve?: LinkResolv
     if (heading) {
       flush();
       blocks.push(
-        <Title key={blocks.length} order={(heading[1]!.length + 1) as 2 | 3 | 4} mt={heading[1]!.length === 1 ? 0 : 'sm'}>
+        <Title key={blocks.length} id={slug(heading[2]!)} order={(heading[1]!.length + 1) as 2 | 3 | 4} mt={heading[1]!.length === 1 ? 0 : 'sm'}>
           {inline_(heading[2]!)}
         </Title>,
       );

@@ -74,13 +74,13 @@ describe('collection updates from email', () => {
     });
     const cookies = await setUp(g);
     // Not set up: it says what's missing, and signs in to nothing.
-    expect((await g.app.inject({ url: '/api/v1/mail', cookies })).json()).toMatchObject({ on: true, account: null, problem: expect.stringContaining('Settings > Email') });
+    expect((await g.app.inject({ url: '/api/v1/mail', cookies })).json()).toMatchObject({ on: true, accounts: [], problem: expect.stringContaining('Settings > Email') });
     expect(await g.mail.check()).toMatch(/Settings > Email/);
     expect(box.calls).toHaveLength(0);
 
     // The email notifications' account is used when this part has none of its own (Gmail's IMAP server).
     g.settings.update({ 'notifications.emailProvider': 'gmail', 'notifications.smtpUser': 'me@example.com', 'notifications.smtpPassword': 'app password' });
-    expect(g.mail.status()).toMatchObject({ account: { user: 'me@example.com', host: 'imap.gmail.com', port: 993 }, problem: null });
+    expect(g.mail.status()).toMatchObject({ accounts: [{ name: 'Gmail', address: 'me@example.com' }], problem: null });
     const test = (await g.app.inject({ method: 'POST', url: '/api/v1/mail/test', cookies })).json();
     expect(test).toMatchObject({ ok: true, message: expect.stringContaining('one export email') });
     expect(box.calls[0]!.query).toMatchObject({ from: 'vgpc.com', subject: 'Exported Collection: Video Games' });

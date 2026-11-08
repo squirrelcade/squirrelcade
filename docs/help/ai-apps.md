@@ -68,7 +68,7 @@ A game is a title across consoles and PC, grouped as Stash > Copies groups it (y
 With the sign-in from the internet on, a guest connects their own Claude to your collection without an account here. Add them on **Settings > Claude and AI apps** under Guests, with a name and the email they use. When they connect, they prove that email with a one-time code:
 
 - **Behind Cloudflare Access**, Access sends the code (fill in your team's address and the sign-in page's audience tag, in the advanced settings under Guests; see below).
-- **Otherwise**, Squirrelcade emails it from your account (Settings > Email).
+- **Otherwise**, Squirrelcade emails it from the email account that sends (Settings > Email; chosen on Settings > Notifications).
 
 Guests get what viewers get, never what you paid or your notes. Every call they make is in the list of calls under their name. Remove a guest and their connections end. The code proves the email, not who's typing: a guest who lets someone else use their Claude still shows as that guest.
 

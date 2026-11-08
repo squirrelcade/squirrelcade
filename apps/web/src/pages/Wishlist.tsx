@@ -17,6 +17,7 @@ import { monthsFromNow, SNOOZES } from '../choices';
 import { ShareButton } from '../ShareLinks';
 import { GameOfTheDayCard } from './GameOfTheDay';
 import { Acorn, Acorns, Reviews, type ReviewsOf } from '../Acorn';
+import { useMyWishlist, useWishlistChange } from '../MyWishlist';
 
 interface Entry {
   platformKey: string;
@@ -46,6 +47,9 @@ interface Overview {
   platforms: { key: string; name: string; candidates: number }[];
   snoozed: { platformKey: string; platform: string; title: string; until: string }[];
   master: Entry[];
+  /** 'mine': the master list is My wishlist and `suggestions` is Squirrelcade's ranked list (D217). */
+  source?: 'suggested' | 'mine';
+  suggestions?: Entry[] | null;
 }
 
 
@@ -80,6 +84,7 @@ export function WishlistPage() {
   });
 
   const o = overview.data;
+  const mine = o?.source === 'mine';
   const snooze = useSnooze();
   const canEdit = useCanEdit();
   return (
@@ -132,19 +137,43 @@ export function WishlistPage() {
       <WithoutIgdb />
       <Tabs value={tab} onChange={(v) => setParams({ tab: v ?? 'top', ...(platform ? { platform } : {}) }, { replace: true })} mb="md">
         <Tabs.List>
-          <Tabs.Tab value="top">Top picks</Tabs.Tab>
+          <Tabs.Tab value="top">{mine ? 'My wishlist' : 'Top picks'}</Tabs.Tab>
+          {mine && <Tabs.Tab value="suggestions">Suggestions</Tabs.Tab>}
           <Tabs.Tab value="platform">By platform</Tabs.Tab>
         </Tabs.List>
       </Tabs>
       {!o ? (
         <Loader />
+      ) : tab === 'suggestions' && mine ? (
+        <Stack>
+          <Text size="sm" c="dimmed">
+            Squirrelcade's ranked suggestions, from your catalogs and your rules. Add the games you want to My wishlist.
+          </Text>
+          {(o.suggestions ?? []).length === 0 ? (
+            <Text c="dimmed" ta="center">
+              Nothing to suggest yet. Suggestions are built from missing games in your catalogs.
+            </Text>
+          ) : (
+            <EntryTable entries={o.suggestions ?? []} ranked mode="suggestions" />
+          )}
+        </Stack>
       ) : tab === 'top' ? (
         o.master.length === 0 ? (
           <Text c="dimmed" ta="center">
-            Nothing to recommend yet. The wishlist is built from missing games in your catalogs.
+            {mine ? (
+              <>
+                Nothing on your wishlist yet. Go down{' '}
+                <Anchor component={Link} to="/wishlist?tab=suggestions" size="sm">
+                  Suggestions
+                </Anchor>{' '}
+                and add the games you want.
+              </>
+            ) : (
+              'Nothing to recommend yet. The wishlist is built from missing games in your catalogs.'
+            )}
           </Text>
         ) : (
-          <EntryTable entries={o.master} ranked />
+          <EntryTable entries={o.master} ranked mode={mine ? 'mine' : undefined} />
         )
       ) : (
         <Stack>
@@ -157,8 +186,17 @@ export function WishlistPage() {
             w={320}
           />
           {perPlatform.isFetching && <Loader size="sm" />}
-          {perPlatform.data && <EntryTable entries={perPlatform.data.entries} />}
+          {perPlatform.data && <EntryTable entries={perPlatform.data.entries} mode={mine ? 'suggestions' : undefined} />}
         </Stack>
+      )}
+      {o && !mine && canEdit && (
+        <Text size="xs" c="dimmed" mt="md">
+          Want to pick your own games instead? Settings › Acorns ranking › What your wishlist is:{' '}
+          <Anchor component={Link} to="/acorns#setting-wishlist.source" size="xs">
+            Picked by you
+          </Anchor>
+          .
+        </Text>
       )}
       {o && o.snoozed.length > 0 && (
         <Card withBorder mt="lg">
@@ -188,7 +226,8 @@ export function WishlistPage() {
   );
 }
 
-function EntryTable({ entries: all, ranked }: { entries: Entry[]; ranked?: boolean }) {
+/** In a table: 'mine' is My wishlist (Take off on each row), 'suggestions' a ranked list to pick from (Add on each row). */
+function EntryTable({ entries: all, ranked, mode }: { entries: Entry[]; ranked?: boolean; mode?: 'mine' | 'suggestions' }) {
   // GameFly's price beside a game it sells (D174), read in the background.
   const gameflyOf = useGameFly();
   const [open, setOpen] = useState<string | null>(null);
@@ -213,6 +252,9 @@ function EntryTable({ entries: all, ranked }: { entries: Entry[]; ranked?: boole
     sorting.dir,
   );
   const snooze = useSnooze();
+  // My wishlist's games, read once for every row.
+  const wish = useMyWishlist(mode !== undefined);
+  const change = useWishlistChange();
   // A viewer sees the wishlist, not the snooze.
   const canEdit = useCanEdit();
   // On a phone the table keeps game, score and snooze: the platform goes under the title, the score takes the
@@ -337,6 +379,28 @@ function EntryTable({ entries: all, ranked }: { entries: Entry[]; ranked?: boole
                   )}
                   {!narrow && <Table.Td onClick={(ev) => ev.stopPropagation()}>{preferenceSelect(e)}</Table.Td>}
                   <Table.Td onClick={(ev) => ev.stopPropagation()}>
+                    <Group gap={6} wrap="nowrap" justify="flex-end">
+                    {canEdit && mode === 'mine' && (
+                      <Button size="compact-xs" variant="default" miw="max-content" onClick={() => change.remove.mutate({ platformKey: e.platformKey, title: e.title })} loading={change.remove.isPending && change.remove.variables?.title === e.title && change.remove.variables?.platformKey === e.platformKey}>
+                        Take off
+                      </Button>
+                    )}
+                    {canEdit && mode === 'suggestions' && wish.ready && (
+                      wish.has(e.platformKey, e.title) ? (
+                        <Group gap={6} wrap="nowrap">
+                          <Text size="xs" c="dimmed" miw="max-content">
+                            On your wishlist
+                          </Text>
+                          <Anchor component="button" type="button" size="xs" miw="max-content" onClick={() => change.remove.mutate({ platformKey: e.platformKey, title: e.title })}>
+                            take off
+                          </Anchor>
+                        </Group>
+                      ) : (
+                        <Button size="compact-xs" miw="max-content" onClick={() => change.add.mutate({ platformKey: e.platformKey, title: e.title, source: 'suggestions' })} loading={change.add.isPending && change.add.variables?.title === e.title && change.add.variables?.platformKey === e.platformKey}>
+                          Add
+                        </Button>
+                      )
+                    )}
                     {canEdit && (
                     <Menu position="bottom-end" withinPortal>
                       <Menu.Target>
@@ -356,6 +420,7 @@ function EntryTable({ entries: all, ranked }: { entries: Entry[]; ranked?: boole
                       </Menu.Dropdown>
                     </Menu>
                     )}
+                    </Group>
                   </Table.Td>
                 </Table.Tr>
                 {expanded && (

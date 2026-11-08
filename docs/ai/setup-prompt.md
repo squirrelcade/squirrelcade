@@ -1,8 +1,47 @@
 # Help me set up Squirrelcade
 
-I'm setting up **Squirrelcade**, a free, self-hosted web app for my video game collection. Please be my guide, from an empty server to a Squirrelcade that runs and is set up the way I want, one step at a time. This brief says how to work with me, what to ask me, and every step. Read all of it before you answer.
+I'm setting up **Squirrelcade**, a free, self-hosted web app for my video game collection. Please be my guide, from an empty server to a Squirrelcade that runs, one step at a time, and then (only if I want) through each optional integration. This brief says how to work with me, what to ask me, and every step. Read all of it before you answer.
 
-**Your first message:** say in two sentences what we'll do together. Then ask round 1 of the interview (Phase 1), and STOP and wait for my answers.
+**Your first message:** say in two sentences what we'll do together. Then ask the one question under "First: Quick start or Everything now" (just that one), and STOP and wait for my answer.
+
+## First: Quick start or Everything now
+
+Squirrelcade works on its own, with no outside account. Most of what it can connect to is optional, and there are a lot of integrations (more than anyone needs). A tester who tried to set everything up on the first visit needed over two hours: about ten times longer than it should have taken. So **get it running first, try it, and add the rest later.** Ask me this as your very first question, in these words, and STOP and wait:
+
+> **Quick start (recommended):** install Squirrelcade, make my account, and get my collection in (a PriceCharting export, or typed in with Add a game). About 30 minutes; give it an hour. It ends by showing me **Settings > Features**, the list of everything else, which I can add any time, each with its own setup prompt.
+>
+> **Everything now:** the same, and then every integration, one after another, each one skippable. A warning first: there are many integrations, most need an outside account, and all together take hours. I can stop at any point and pick up later from the features list.
+
+- **If I choose Quick start** (or I'm unsure, or say "whatever you think"): do Phases 1 to 5, then Phase 6 as "Quick start ends here" below, then Phase 9. Never offer the integrations one by one.
+- **If I choose Everything now:** first give me the warning below word for word (in your own phrasing, but with the numbers), and ask "Still want everything now?" Then do Phases 1 to 9, with Phase 7 going through the features list in order. I can switch to a Quick start at any time ("let's stop here"): then go to Phase 9.
+
+**The warning for Everything now:** "There are 19 integrations in all. Most need an account on another site, and some need changes on your server. If everything goes smoothly the whole thing takes about 4 hours. Setting up accounts usually takes longer than it looks, so give it 9 hours. You can skip any of them, and stop whenever you like: Settings > Features lists every one, with a button that gives you its own setup prompt for later."
+
+**The features list** (Settings > Features has the same list, with what each one needs and a light that says whether it works; **Set it up with AI** copies that feature's own prompt, and each prompt is also at https://github.com/squirrelcade/squirrelcade/tree/main/docs/ai/features). In the order "Everything now" goes through them; the times are a guess, then the time to allow:
+
+| Feature | What it needs | Time |
+| --- | --- | --- |
+| 1. Covers and game details (IGDB) | A free Twitch account (for IGDB) | about 10 minutes; give it 25 |
+| 2. Notifications | A phone app or chat of your choice (ntfy is free and needs no account) | about 10 minutes; give it 25 |
+| 3. Email accounts | An email account, and an app password made at its provider | about 10 minutes; give it 25 |
+| 4. Naming barcodes | Nothing (a free UPC Database key is optional) | about 5 minutes; give it 10 |
+| 5. Backups to a second folder | Another disk, a NAS share or a synced folder | about 10 minutes; give it 20 |
+| 6. YouTube videos | Light: nothing. Deep: a free YouTube key from Google | about 10 minutes; give it 25 |
+| 7. GameFly's prices | Nothing | about 2 minutes; give it 5 |
+| 8. HTTPS and a public address | Tailscale (free), or a domain on Cloudflare, or a reverse proxy you already run | about 20 minutes; give it 45 |
+| 9. PC library (Playnite) | Playnite on a Windows PC, and its backup folder shared to the server | about 20 minutes; give it 45 |
+| 10. Magazines (Leaves) | Magazine scans of your own (CBZ files) in a folder | about 15 minutes; give it 30 |
+| 11. RomM links | A RomM server of your own, and an API token from it | about 10 minutes; give it 20 |
+| 12. RetroAchievements | A free RetroAchievements account and its web API key | about 5 minutes; give it 15 |
+| 13. Xbox achievements | A free OpenXBL account (sign in with your Microsoft account) | about 5 minutes; give it 15 |
+| 14. Steam achievements | The PC library, a free Steam Web API key, and public game details on your Steam profile | about 10 minutes; give it 25 |
+| 15. PlayStation trophies | A sign-in token copied from your browser (it lasts about two months) | about 10 minutes; give it 25 |
+| 16. PC game prices (IsThereAnyDeal, GG.deals) | The PC library, and free keys from IsThereAnyDeal and GG.deals | about 15 minutes; give it 35 |
+| 17. Friends' live links | A sync tool you already use (Google Drive for desktop, Synology Cloud Sync, rclone or Dropbox) | about 15 minutes; give it 30 |
+| 18. Claude and AI apps (the connector) | An AI app that speaks MCP (Claude Code, Claude Desktop, claude.ai) | about 10 minutes; give it 25 |
+| 19. An AI model (Check a shelf, Talk) | An AI service's API key (OpenAI, Gemini, Claude, OpenRouter), or a model at home | about 10 minutes; give it 25 |
+
+The total for Everything now, with the quick start (30 minutes; give it 60) included: about 4 hours if everything goes smoothly; give it 9 hours, spread over several days.
 
 ## How to work with me
 
@@ -13,7 +52,7 @@ I'm setting up **Squirrelcade**, a free, self-hosted web app for my video game c
 5. **Ask before changing my server.** Before a command or a click that installs, changes or deletes something, say what it does and wait for my OK. Read-only checks need no OK: `uname -m`, `docker ps`, `docker logs squirrelcade`, opening an address.
 6. **If you can run commands yourself** (an agent with a terminal, such as Claude Code), the same rules apply, and never read, print or copy a secret.
 7. **Stick to the facts:** this brief, Squirrelcade's own help, and the official pages it links. Never make up a menu, a setting or a feature. If something isn't covered here, say so and point me to its official guide. If what I see doesn't match, ask me what I see.
-8. **Free and simple first.** Every extra is optional: don't push one I didn't ask for, and say what it costs in money and upkeep.
+8. **Free and simple first.** Every integration is optional: on a Quick start don't offer them one by one, and on Everything now take each in turn but let me skip it. Say what it costs in money and upkeep, and the time to allow.
 9. **Keep it safe.** Never open Squirrelcade's port to the internet. Away from home there's always a gate in front: a VPN (a private network of my own devices) such as Tailscale, Cloudflare Access, or a reverse proxy with its own sign-in.
 10. **Logs are mine to share.** Before I share a log or the support file, remind me to look it over: no passwords or keys, but maybe my email address or folder names.
 11. **If my answer is unclear** (I may be dictating), ask again rather than guess. Explain a technical word the first time you use it.
@@ -22,15 +61,18 @@ I'm setting up **Squirrelcade**, a free, self-hosted web app for my video game c
 
 | Phase | What we do | Skip it when |
 | --- | --- | --- |
+| 0. Quick start or Everything now | I choose (the section above) | Never |
 | 1. The interview | You ask, I answer, you write a plan | Never |
 | 2. Can it run here? | Check the processor, Docker, memory and disk | Squirrelcade is installed already |
 | 3. Install | Squirrelcade runs on my server | It's installed already |
-| 4. The first visit | My account and the basics | It's installed already |
+| 4. The first visit | My account, the basics, and what my wishlist is | It's installed already |
 | 5. My collection | My games are in Squirrelcade | "My Squirrelcade now" shows copies, and I don't want to add more |
-| 6. Extras | Backups, updates, then the extras I chose | Never: backups and updates are for everyone |
-| 7. Finish | Everything checked, and a summary | Never |
+| 6. Try it out | I look around; a Quick start ends here, pointing me to Settings > Features | Never |
+| 7. The integrations | Each one in turn, each skippable (Everything now only) | I chose Quick start |
+| 8. Backups and updates | A second copy of the backups, and updating | Never offer it on a Quick start beyond a mention |
+| 9. Finish | Everything checked, and a summary | Never |
 
-"Installed already" means "My Squirrelcade now" below says **Installed:** yes, or I told you Squirrelcade runs.
+"Quick start ends here" means Phase 9 comes right after Phase 6, and Phase 9 shows the features list. "Installed already" means "My Squirrelcade now" below says **Installed:** yes, or I told you Squirrelcade runs.
 
 ## What Squirrelcade is
 
@@ -42,7 +84,7 @@ I'm setting up **Squirrelcade**, a free, self-hosted web app for my video game c
 - **The menu:** Today (the home page: the squirrel at the top left comes back to it); Stash (Stash, Recently added, Copies, Upgrades, Improve, Backlog, Loans, Places, and PC library when it's on); Acorns (Add a game, On the way, Stash updates, Acorns wishlist, Coming soon, Past releases, Deals, For sale, Sales, Acorns ranking, and PC wishlist and PC deals with the PC library on); Nutshell (Consoles, Series, Sets, Statistics, Report); Roots (Consoles, Top 20, Timeline, Now in, Time machine; with Roots on); Leaves (Magazines, Search, Review; with the magazines on); Friends; Settings; System (Review, Status, Tasks, Backups, Logs, Users); Help. On this install the menu shows only what's on (the PC library, for example, once its switch is on). A game's title anywhere opens its page: its header (its consoles' marks, Play on RomM, stars beside its name, the Worth or Acorns and Reviews circles), then my collection (my copies, each with its own Edit this copy, what I played and my note; or, for a console I don't have it on, **Get it** with a big **Add it** and its acorns), then three tabs: **About** (a summary, its facts, why it matters, its reviews of the time, its series and timeline), **Videos** (of its time, then looking back) and **Magazines** (every issue that mentions it). Two symbols say what I have: the **Stash's chest** means "yours" (filled when I have it, grey when I don't; beside what I have of a console, and on every magazine game), and every console has its own small mark, drawn after the console itself, in its color where I have the game and grey where I don't. Every cover has a small card at the top right: the chest, the two newest consoles (mine in color, others it came out on in grey) and PC at the end; a game I don't have shows it all in grey (Settings > Interface > Appearance: **Console marks on covers**, on; **A cover's PC mark when you don't have it on PC**, a faded PC mark or none); the search and Store Mode list a game once with its consoles' marks. Settings > Interface > Game pages sets how many stars show (Stars beside a game's name, 3) and the score for Critics' favorite (90). In Check a shelf, tapping a spine's box fixes it (remembered per console); Check a shelf knows every game on the console (Settings > Interface > Store Mode, on) adds IGDB's full list when IGDB is set up.
 - **Acorns** say how much I want a game I don't have yet. The **Acorns wishlist** ranks those games; its rules are on **Acorns ranking**.
 - **Settings** pages: General, Email, Features, Interface, Collection, Consoles, Catalogs and matching, PC library (when it's on), Magazines, Roots, Sources, Notifications, Storage and backups, Tasks, Friends, Claude and AI apps, Security. The wishlist's own rules are on **Acorns > Acorns ranking**. Some settings show only after **Show advanced**.
-- **Each optional part** has a card on **Settings > Sources** (the PC library and the magazines have their own pages): its switch, its steps (under **Set it up, step by step**), its fields and **Save and test**. **Settings > Features** has the same switches. The email account is on **Settings > Email**, messages on **Settings > Notifications**.
+- **Each optional part** has a card on **Settings > Sources** (the PC library and the magazines have their own pages): its switch, its steps (under **Set it up, step by step**), its fields and **Save and test**. **Settings > Features** is the list of every optional feature and integration: what each adds, what it needs, how long it takes (with padding), whether it's set up now (a light from System > Status > Integrations), a link to its settings, and **Set it up with AI**, which copies that feature's own prompt. Its switches are on the same page. The mail accounts are on **Settings > Email** (a list: there can be more than one, and each email-reading feature has its own options on its own page), messages on **Settings > Notifications**.
 - **Help:** Help in the menu, and the **?** on each page. Online: the help (https://github.com/squirrelcade/squirrelcade/tree/main/docs/help) and the install guide (https://github.com/squirrelcade/squirrelcade/tree/main/docs/guide).
 
 ## My Squirrelcade now
@@ -53,7 +95,7 @@ This brief came from Squirrelcade's repository, not from an install, so nothing 
 
 ## The interview (Phase 1)
 
-One message per round, then STOP and wait for my answers. Skip a question that "My Squirrelcade now" or an earlier answer already answers. Installed already? Then round 1 is questions 1, 4 and 5, and round 2 is question 6.
+One message per round, then STOP and wait for my answers. Skip a question that "My Squirrelcade now" or an earlier answer already answers. Installed already? Then round 1 is questions 1, 4 and 5. **Quick start:** rounds 1 and 2 only, then the plan. **Everything now:** rounds 1 and 2, then round 3 (just the plan, no choosing: each integration comes up in turn in Phase 7).
 
 **Round 1: the server**
 
@@ -66,22 +108,9 @@ One message per round, then STOP and wait for my answers. Skip a question that "
 4. Where's your collection today: on PriceCharting, in CLZ Games, GAMEYE or VGCollect, in a spreadsheet, or nowhere yet? About how many games?
 5. Will you use Squirrelcade only at home, or also on your phone away from home (in a store, say)? If away: do you already use Tailscale, a domain on Cloudflare, or a reverse proxy?
 
-**Round 3: the extras**
+**Round 3 (Everything now only): no questions.** I've already chosen to go through every integration, so don't ask which I'd like. Phase 7 takes them in the order of the features list, and for each one asks whether I'm ready, want to skip it or want to stop. Skip a question here that I answered earlier.
 
-6. Show me this list and ask which I'd like now, later or never:
-   - **Covers and game details** (IGDB): box art, genres, a better wishlist. Free, with a Twitch account.
-   - **The phone's barcode camera**, and Squirrelcade away from home: needs an HTTPS address (Tailscale is the simplest).
-   - **Messages** after each update, and alerts: email, a phone app (ntfy is free) or a chat.
-   - **Automatic updates** (or one command by hand, now and then).
-   - **Stash updates from your email** (with PriceCharting): PriceCharting's export email updates the collection by itself.
-   - **On the way:** games you've bought, waiting to be checked and added when they arrive: from your purchase emails (eBay, Mercari, Amazon, GameFly, Super Rare Games and other shops), a shop's order page pasted or screenshotted, Amazon's order history download, or a purchases CSV of your own.
-   - **PC games** from Playnite on a Windows PC.
-   - **Magazines** (Leaves): scanned game magazines (CBZ files) of your own, to read, search and link to their games.
-   - **RomM links**, for a RomM server (a library of game backups of one's own).
-   - **Videos** on a game's page, with its reviews from YouTube channels: a free YouTube key.
-   - **More:** achievements (RetroAchievements, Xbox, PlayStation, Steam), PC game prices, GameFly's prices, naming barcodes, family and friends, selling, Claude or another AI app, a start page.
-
-**The plan.** After the last round, write a short plan: numbered steps from the phases that apply (Phase 6 always starts with backups and updates), each with what it gives me and about how long (install: 10 to 20 minutes; the first visit: 10 minutes, then a few minutes of waiting; each extra: 5 to 30 minutes). Anything under **Needs attention** in "My Squirrelcade now", or a part that "still needs" something, comes first. Ask "Does this plan look right?" Then STOP and wait.
+**The plan.** After the last round, write a short plan: numbered steps from the phases that apply, each with what it gives me and about how long (install: 10 to 20 minutes; the first visit: 10 minutes, then a few minutes of waiting). For a Quick start the plan is Phases 3 to 6 and the features list at the end; for Everything now it adds Phase 7's list with each integration's time and padded time, and the padded total. Anything under **Needs attention** in "My Squirrelcade now", or a part that "still needs" something, comes first. Ask "Does this plan look right?" Then STOP and wait.
 
 ## Can it run here? (Phase 2)
 
@@ -191,7 +220,7 @@ One step at a time; ask me what the page shows.
 2. **A setup code?** From outside my home network (through a tunnel, say), the page also asks for a setup code, so nobody else can claim a new Squirrelcade. Squirrelcade writes it in its log when it starts, on the line that begins "No account yet": `docker logs squirrelcade`, or on a Synology **Container Manager > Container > squirrelcade > Log**. I type it in myself. From home, no code is needed.
 3. **The owner's account:** a username and a password (at least 8 characters; a few words together is easy to remember), and the password again. I type them myself: don't suggest a password, and don't ask for it.
 4. **The basics:** **Home region** (North America, Europe (PAL), Japan or Asia; it fills in the currency and date format), **Currency** (amounts are shown in it, never converted), **Date format** (month/day/year, day/month/year or year-month-day) and **Time zone**. Then **Create account and start**. All of it can change later in **Settings > General**.
-5. The **welcome guide** opens, with five steps: Collection, Consoles, Catalogs, Covers and Wishlist. Its first step is Phase 5.
+5. The **welcome guide** opens, with short steps: Collection, Consoles, Catalogs and Wishlist, then "add these any time" (the features list). Its first step is Phase 5. On a new install its last step asks one question, **What your wishlist is** (`wishlist.source`): **Suggested (the ranked list)** is Squirrelcade's own ranked list of the games I'm missing (the start, and what an install that already existed keeps), or **Picked by you (My wishlist)**, which holds only the games I add myself from Suggestions, a game's page or Store Mode, with the ranked list kept as Suggestions to choose from. Ask me which I'd like and tell me where to click; it changes later in **Acorns > Acorns ranking > Your wishlist**.
 
 ## My collection (Phase 5)
 
@@ -216,17 +245,29 @@ Squirrelcade works without any export. Values (what each copy is worth) come fro
 
 **Catalogs:** a console gets a catalog (the list of its games, built from Wikipedia) a few minutes after it has 6 different games: a setting, **Settings > Consoles > Unique games to track a console** (also in the welcome guide's Consoles step). Typing games in by hand, I can set it to 1, so each console gets its catalog, and its suggestions, after the first game. The activity icon at the top shows the work.
 
-**The rest of the welcome guide:** **Consoles** (which are tracked), **Catalogs** (built, a minute or two each), **Covers** (IGDB's keys, Phase 6, or **Skip for now**) and **Wishlist** (the consoles and genres I like, in my order; optional).
+**The rest of the welcome guide:** **Consoles** (which are tracked), **Catalogs** (built, a minute or two each), **Wishlist** (what my wishlist is: suggested or picked by me), and a last page with the features list: **add these any time**. IGDB's covers, messages and the other integrations are on that list, not steps of the guide.
 
 **Check:** **System > Status** has the setup checklist. **Nutshell > Consoles** lists my consoles with their completion (and their Top 100), **Stash** my copies. Consoles, controllers and accessories in a PriceCharting export ("Nintendo 64 Console") are hardware: they show as **Your hardware**, never in the game counts or the catalogs, and **This is a game** corrects one. **System > Review** may ask about look-alike titles: each answer counts everywhere.
 
 **Values later:** **Stash updates > Send to PriceCharting** gives my games as lines for PriceCharting's importer (free: one import and one export a week); then I export there and upload the export here. A copy can go with its **PriceCharting ID** (Find it on PriceCharting, copy the ID, Paste): each ID is checked against my own exports first, and one that doesn't agree (or that no export has) waits on **Check these**, out of the CSV, until I press **It's right**, **Change** it or **Take it back**, because PriceCharting adds every CSV row as a new copy and a wrong one can't be taken back there.
 
-## Extras (Phase 6)
+## Try it out, and the integrations (Phases 6 to 8)
 
-Backups and updates first: they're for everyone. Then only the extras I chose, in this order (simplest first): covers, messages, collection updates from your email, On the way, the phone's camera, PC games, magazines, RomM, videos, then the rest. Before each one, ask whether I'm ready, then STOP and wait. For each: what it gives, what it needs and costs (free, unless this says otherwise), the steps one at a time, then its **Check**. Another program (Tailscale, a tunnel's connector, an updater, ntfy, RomM...) needs my OK first, and its own official install guide.
+### Phase 6: try it out (the Quick start ends here)
 
-### Backups
+Before anything else, let me use it: **Stash** (my copies), **Nutshell > Consoles** (each console's completion), **Acorns > Acorns wishlist** (what to get next, every acorn explained), **Store Mode** on a phone at home (typing a title), and a game's page. Ask what I'd like to try, show me one or two things at most, and say that the wishlist and the covers get better with the integrations below, none of which are needed. Backups run by themselves every week into the config folder; a copy on another disk is on the features list.
+
+**On a Quick start, stop here and go to Phase 9.** On Everything now, go on.
+
+### Phase 7: the integrations (Everything now only)
+
+Go through the features list in its order, one at a time (the sections below are the same steps as each feature's own prompt, which has them in full: docs/ai/features/<name>.md). For each: say its name, what it adds, what it needs and costs, and its time ("about 10 minutes; give it 25"), and ask **Ready, skip it, or stop here?** Then STOP and wait. **Skip** moves on to the next at once, with no persuading. **Stop here** goes to Phase 9, which says where to pick up. Never ask me for a key in the chat, and ask before changing the server. Another program (Tailscale, a tunnel's connector, an updater, ntfy, RomM...) needs my OK first, and its own official install guide. After each one, its **Check**, and mention the light on **System > Status > Integrations**.
+
+### Phase 8: backups and updates
+
+On Everything now, this comes after the integrations (the features list has the backups entry). On a Quick start, mention in one sentence that backups run weekly by themselves, and how to update by hand (below), and nothing more.
+
+### Backups to a second folder
 
 - Squirrelcade backs up its database every week by default (**Settings > Tasks > Back up the database every**: 1 to 30 days) into the `backups` folder inside the config folder (`config/backups` on the server; `/config/backups` inside the container), and keeps 14 (**Settings > Storage and backups > Backups to keep**). **System > Backups** makes, downloads and restores them.
 - Those sit on the same disk, so also keep a copy elsewhere, one way or both:
@@ -271,7 +312,7 @@ Backups and updates first: they're for everyone. Then only the extras I chose, i
 Each way of sending has its own switch; once it's on, its fields and steps show under it. Simplest first:
 
 - **ntfy** (https://ntfy.sh): the ntfy app on my phone, subscribed to a topic nobody would guess (anyone who knows a topic can read it); the same topic in **Settings > Notifications**, under ntfy.
-- **Email:** **Settings > Email**: my email account (**Email provider** fills in the server; my address; an **app password** made at my provider, such as Gmail's at https://myaccount.google.com/apppasswords with 2-Step Verification on). Then turn on **Send notifications by email** and fill in **To**. Outlook.com, Hotmail and Live addresses can't send from programs.
+- **Email:** **Settings > Email** (a list of mail accounts; add one): my email account (**Email provider** fills in the server; my address; an **app password** made at my provider, such as Gmail's at https://myaccount.google.com/apppasswords with 2-Step Verification on). Then turn on **Send notifications by email** and fill in **To**. Outlook.com, Hotmail and Live addresses can't send from programs.
 - **Discord:** the channel's settings > Integrations > Webhooks > New Webhook, then **Copy Webhook URL**. **Telegram:** `/newbot` to @BotFather for a bot token; send the bot a message, then **Find my chat**. **Slack:** an app with Incoming Webhooks.
 - **Pushover** (a one-time purchase after a trial, https://pushover.net): my user key and an application's token. **Pushbullet:** an access token. **Gotify** (my own server): an application's token.
 - **A webhook** (n8n, Home Assistant): its address. **Apprise** (my own Apprise API server): its notify address.
@@ -282,13 +323,13 @@ Each way of sending has its own switch; once it's on, its fields and steps show 
 
 With PriceCharting only: Squirrelcade picks up PriceCharting's export email and updates my collection by itself.
 
-1. **Settings > Email:** my email account, once (address and app password, as for messages). Then turn on **Stash updates from your email**. Outlook.com and Microsoft 365 mailboxes can't be read with a password; a forwarding rule to another mailbox works.
+1. **Settings > Email:** my mail account, once (address and app password, as for messages; there can be several accounts). Then, on the page of **Stash updates from your email** (each email-reading feature has its own options there), turn it on. Outlook.com and Microsoft 365 mailboxes can't be read with a password; a forwarding rule to another mailbox works.
 2. **Check:** **Test sending and reading** says how many export emails it found.
 3. From then on, **My Collection > Download (CSV)** on PriceCharting updates my collection within half an hour. **Settings > Collection > Reminders > Remind me to export after** 7 days sends a weekly reminder.
 
 ### On the way: games I've bought
 
-What I buy waits on **Acorns > On the way** until it comes (**It's here** adds it, with the store, day and price filled in); it never counts as mine before that. The page and its menu entry show to start; **Settings > Features > On the way** hides them. My purchase emails are read for it only with **Settings > Email > On the way > Watch for games you bought: On the way** on (off to start). Ways in, any or all:
+What I buy waits on **Acorns > On the way** until it comes (**It's here** adds it, with the store, day and price filled in); it never counts as mine before that. The page and its menu entry show to start; **Settings > Features > On the way** hides them. My purchase emails are read for it only with **Watch for games you bought: On the way** on, on the On the way options under **Settings > Email** (off to start). Ways in, any or all:
 
 - **Purchase emails** (needs the email account, as for messages): with that switch on, add the stores I buy from to **Purchase emails from** (eBay and Mercari to start; tap a suggested store such as `amazon.com` or `superraregames.com`, type `gamefly.com` for GameFly, or **Find my stores in my email**). Amazon's emails don't name the game, so an Amazon order waits as "a video game" until its order page names it (**Read Amazon's emails**, on). A console game bought as a download code is left out (**Count console games bought as digital codes**, off).
 - **A shop's order page:** **Add from an order page** (at the top of On the way): the page pasted (Ctrl+A, Ctrl+C on it) or a screenshot of it, read on my own device. No email needed.
@@ -356,13 +397,13 @@ On a light processor (Phase 2), suggest RomM on another machine, or not at all: 
 
 On to start, nothing to set up: **Roots** in the menu has each console's history and Top 100 list (its percentage counts the games I can have on a disc or cartridge, and a game I have on its other generation counts; Settings > Roots > Top 100 lists), **Top 20** (each year's highest-rated and best-selling games, from IGDB's ratings and Wikipedia's charts, with what I have of each year), the timeline, **Now in** (today's date a decade back at a time: the games out then, and my magazines on sale then, with **On this day** at the top) and the **Time machine** (the same for any date I pick; both need IGDB for their games); Today's game history card has a **Week** and a **Month** side; each game's page has its Roots (its reviews of the time with each magazine's issue and page, the web and videos of its day, the games it came from and led to, later writing, awards and reference sites), read from its Wikipedia article and Wikidata the first time it's opened, and at night for the games I have and want. To use Squirrelcade for collecting only: **Settings > Features**, turn off **Roots: games in their time**.
 
-To adjust (only if I ask): **Settings > Roots**: reading the articles on or off, looking up articles the catalogs don't link, how long "At the time" lasts (18 months), and the **Reference sites** a game links to, each a name and its Wikidata properties ("MobyGames | P11688, P1933") or a search address with {title}. **Settings > Tasks > Games' Roots read each night** (400). The consoles Roots knows that I don't collect are **followed** (IGDB's box art, my RomM's games, their games' pages, never a checklist): Settings > Consoles > Consoles you follow turns it off if I'd rather save the disk space. **Videos** on a game's page (Settings > Roots > Videos on a game's page, off to start): pasted videos and IGDB's trailers need nothing; the **Video channels** (IGN, GameSpot, Gaming Historian on) need a free YouTube Data API key, which I make myself in Google Cloud's console (a project, YouTube Data API v3 enabled, an API key restricted to it) and paste into Settings > Sources > YouTube (videos) > **YouTube API key**: never paste it into this chat (Help > Roots, "A YouTube key", has the clicks). With the key, **Find its videos** on a game's page searches each channel that's on for that game (older reviews a channel's list leaves out), only when pressed: each channel costs 100 of the 10,000 units the key gets a day, and Squirrelcade stays under **Settings > Roots > Videos > YouTube's units Squirrelcade may use a day** (8,000), so the nightly reading always has room.
+To adjust (only if I ask): **Settings > Roots**: reading the articles on or off, looking up articles the catalogs don't link, how long "At the time" lasts (18 months), and the **Reference sites** a game links to, each a name and its Wikidata properties ("MobyGames | P11688, P1933") or a search address with {title}. **Settings > Tasks > Games' Roots read each night** (400). The consoles Roots knows that I don't collect are **followed** (IGDB's box art, my RomM's games, their games' pages, never a checklist): Settings > Consoles > Consoles you follow turns it off if I'd rather save the disk space. **Videos** on a game's page (Settings > Roots > Videos on a game's page, off to start) come in two ways, chosen by **How much of YouTube to use** (`roots.youtubeMode`: Automatic, Light or Deep). **Light** needs no key and no setup: IGDB's trailers, videos pasted onto the game, the ones its Wikipedia article cites, a YouTube search link, and each video channel's newest uploads (about its latest 15 videos, read from the channel's public feed at night, so a game's videos build up over time: fewer videos). **Deep** needs a free YouTube Data API key, which I make myself in Google Cloud's console (a project, YouTube Data API v3 enabled, an API key restricted to it) and paste into Settings > Sources > YouTube (videos) > **YouTube API key**: never paste it into this chat (Help > Roots, "A YouTube key", has the clicks). Automatic is Deep when a key is set and Light when none is. With Deep, each channel's whole list is read and **Find its videos** on a game's page searches each channel that's on for that game (older reviews a channel's list leaves out), only when pressed: each channel costs 100 of the 10,000 units the key gets a day, and Squirrelcade stays under **Settings > Roots > Videos > YouTube's units Squirrelcade may use a day** (8,000), so the nightly reading always has room.
 
 **Check:** open a game I have from the 1990s: its Roots shows its magazines with issue and page within a few seconds.
 
 ### More extras (only when I ask)
 
-The first seven have a card in **Settings > Sources** (the achievements ones with **Save and test**):
+The first few have a card in **Settings > Sources** (the achievements ones with **Save and test**):
 
 - **RetroAchievements:** signed in on its site (https://retroachievements.org): Settings > Keys > Web API Key. My username and that key.
 - **Xbox achievements:** sign in at https://xbl.io with my Microsoft account (in a regular browser), and copy the API key from its profile page.
@@ -377,21 +418,34 @@ The first seven have a card in **Settings > Sources** (the achievements ones wit
 - **Selling and a goal:** **Settings > Collection > Selling** and **Your goal**.
 - **A start page:** the key on **Settings > Security > API key** (a secret), sent in the `X-Api-Key` header to `GET /api/v1/stats`.
 - **Claude or another AI app:** **Settings > Claude and AI apps**, as in Finish, step 5. Help's "Claude and AI apps" has the other ways in (a key for Claude Code alone, Claude's apps from the internet).
-- **Videos** (a free YouTube key): under Roots above.
+- **Videos:** Light needs nothing; Deep needs a free YouTube key: under Roots above.
+- **Friends' live links:** see the section after this list.
+- **Share the wishlist as a file** (no setup): **Acorns wishlist > Share as a file** makes a web page of the top picks to send by email or chat (**Acorns > Acorns ranking > Sharing**: **Games in a wishlist file**, **Covers in a wishlist file**).
 
-## Finish (Phase 7)
+### Friends' live links
 
-1. Check each part with its **Check** (Phase 6), and **System > Status**: its health, its **Integrations** card (a light for each outside part: green works, yellow needs a look soon, red failing, grey off; each with **Check now**, its setting and a **?** that explains it) and the setup checklist.
+Friends keep comparing by swapping files (Friends > Add a friend). A **live link** keeps a friend's collection current by itself, about 15 minutes of work (give it 30) if a sync tool is already there, and only for someone who has a friend with a Squirrelcade of version 1.4.0 or later.
+
+1. Squirrelcade writes an encrypted live file for each friend I share with into a folder (**Settings > Friends > Live links > Folder for live friend files**; empty: `/config/friends-live` in Docker), again after every collection update. If the sync tool can't reach the config folder, ask before adding a line under `volumes:` in the compose file for a synced folder (such as `- /path/to/synced-folder:/friends-live`), recreate the container, and set the folder to `/friends-live`.
+2. Something carries that folder to the cloud: Google Drive for desktop, Synology Cloud Sync, rclone or Dropbox (their own install guides; ask before installing one).
+3. On **Friends**, the friend's card > **Live link**: **Share live with** that friend; the file is written (**Write now**). I share that file in the cloud as **Anyone with the link** and paste its link into **The file's shared link** on the card (the link is a secret: never in this chat). An invite is then offered, which I send the friend once; their invite and link come to me the same way.
+4. **Settings > Friends > Read friends' live links every** (24 hours) sets how often theirs are read.
+
+**Check:** **System > Status > Integrations** shows **Your live friend files** and each friend's live link in green after they're read.
+
+## Finish (Phase 9)
+
+1. Check each part I set up with its **Check**, and **System > Status**: its health, its **Integrations** card (a light for each outside part: green works, yellow needs a look soon, red failing, grey off; each with **Check now**, its setting and a **?** that explains it) and the setup checklist.
 2. Give me a summary table: each part, whether it works, and where it lives (Squirrelcade's address, the compose file's folder, the config folder with its backups and their second copy, each extra's settings page).
-3. List what's left for another day.
+3. **Show me the features list** (Settings > Features): everything I haven't set up is there with what it needs, its time to allow, and **Set it up with AI**, which gives a prompt for that one feature. Say that nothing on it is needed, and that I can add any of it, any day. On a Quick start this is the main point of Phase 9; on Everything now, list what was skipped or not reached, so I can pick up from there.
 4. Tell me where help is: **Help** in the menu, the **?** on each page, **System > Status**.
-5. Mention once, without pushing, the extras I didn't choose. One of them: **Settings > Claude and AI apps** lets Claude (or another AI app) read my collection and answer "do I have this game?" (optional; nothing needs it). With **Let AI apps read your collection** on, **Download the plugin** gives a file for the Claude app (Customize > Plugins > Add > Upload plugin), which works in Cowork and in Claude Code on my computers at home (it needs Node.js). It only reads, unless I tick **This plugin may also put games on On the way** before downloading it: then Claude, or a task of mine that reads my orders, can tell Squirrelcade about games I've bought (record_on_the_way); they wait on On the way, and it never changes my collection. The plugin carries its own key: never paste a key into a chat.
+5. Mention once, without pushing, the integrations I didn't set up. One of them: **Settings > Claude and AI apps** lets Claude (or another AI app) read my collection and answer "do I have this game?" (optional; nothing needs it). With **Let AI apps read your collection** on, **Download the plugin** gives a file for the Claude app (Customize > Plugins > Add > Upload plugin), which works in Cowork and in Claude Code on my computers at home (it needs Node.js). It only reads, unless I tick **This plugin may also put games on On the way** before downloading it: then Claude, or a task of mine that reads my orders, can tell Squirrelcade about games I've bought (record_on_the_way); they wait on On the way, and it never changes my collection. The plugin carries its own key: never paste a key into a chat.
 
 ## A settings file
 
 Only when "Where things are" below has links (a brief from an install), and only if I want it: instead of me typing several settings, you write them into a file and I load it with **Settings**, any page, **Import**. The import window shows each change first; **Apply the file, keep these** changes only what's in the file.
 
-- JSON, with only the settings to change: `{"format": "squirrelcade-settings", "version": 1, "settings": {"features.romm": true, "sources.rommUrl": "http://192.0.2.20:8080"}}`. A setting's key is the part of its link after `#setting-`.
+- JSON, with only the settings to change: `{"format": "squirrelcade-settings", "version": 1, "settings": {"features.romm": true, "sources.rommUrl": "http://192.0.2.20:8080", "wishlist.source": "mine", "roots.youtubeMode": "light"}}`. A setting's key is the part of its link after `#setting-`. Settings that suit a file: `wishlist.source` ("suggested" or "mine"), `wishlist.fileGames` and `wishlist.fileCovers` (the shared wishlist file), `roots.youtubeMode` ("auto", "light" or "deep"), `friends.liveFolder` and `friends.liveReadHours` (friends' live links). The prompt with every guide ends with every setting.
 - Never a password, key, token, app password or webhook address in it (rule 4). Only keys and values you're sure of: Squirrelcade refuses a key it doesn't know.
 - In a code block; I save it as `squirrelcade-settings.json`.
 

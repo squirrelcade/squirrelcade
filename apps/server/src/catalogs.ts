@@ -338,6 +338,17 @@ export class CatalogService {
       .filter((p) => consoleInUse(p.key, home, locked));
   }
 
+  /**
+   * Every console's catalog matched in the background, one console at a time with requests let in between (1.4.0,
+   * D220): after a start or an update this took seconds in one go. What's matched is kept, so asking afterwards is quick.
+   */
+  async warm(): Promise<void> {
+    for (const p of this.withCatalog()) {
+      this.matchFor(p.id);
+      await new Promise((r) => setImmediate(r));
+    }
+  }
+
   /** Each console's matching with its cross-generation games, kept while its own and its neighbors' stay the same. */
   private crossCache = new Map<number, { inputs: unknown[]; result: CatalogMatch }>();
 

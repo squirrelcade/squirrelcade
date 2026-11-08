@@ -1,13 +1,19 @@
 # AI-assisted setup
 
-Squirrelcade works with many other services, and setting each one up takes a few steps of its own. An AI assistant can take you through all of it, one step at a time, if it knows Squirrelcade: this page gives you a prompt that tells it everything it needs.
+Squirrelcade works with many other services, and setting each one up takes a few steps of its own. An AI assistant can take you through it, one step at a time, if it knows Squirrelcade: this page gives you a prompt that tells it everything it needs. It's for the whole job; for one feature on an install that already runs, each feature has its own prompt (below).
 
 ## How it works
 
 1. **Copy the prompt** (or download it) with the buttons above. It's made for your Squirrelcade: what's set up already, and a link to each of its settings.
 2. Paste it into a new chat with the AI you use (Claude, ChatGPT, Gemini, Grok, Copilot...), or attach the downloaded file.
-3. The AI asks what you have and what you'd like, a few questions at a time: your server, your collection, reaching Squirrelcade from your phone, the services you use, and the ones you'd be willing to install.
-4. It writes a plan, checks it with you, then takes you through it one step at a time: what to click, what to type, what to run, and how to check that each part works.
+3. The AI first asks one question: **Quick start** or **Everything now**.
+   - **Quick start (recommended)** gets the app going and your collection in (a PriceCharting export, or games typed in with Add a game): about 30 minutes, give it an hour. It ends by pointing you to **Settings > Features**, the list of everything else, to add any day.
+   - **Everything now** begins with a warning: there are many integrations, most need an outside account, and all together take hours (the prompt gives the honest total, padded, summed from the features list). Then it goes through each integration in turn, each one skippable, and you can stop at any point and pick up later from the features list.
+4. It asks what you have, a few questions at a time (your server, your collection, whether you'll use it away from home), writes a plan, checks it with you, then takes you through it one step at a time: what to click, what to type, what to run, and how to check that each part works.
+
+## One feature at a time
+
+**Settings > Features** lists every optional feature and integration. Each has **Set it up with AI**, which copies a prompt for just that one (what it is, what to have ready, the steps, how to check it works, and the time to allow), for an install that already runs. Paste it into any AI chat. The prompts are bundled in Squirrelcade, so copying works with no internet, and they match the version you run; they're also at [docs/ai/features](https://github.com/squirrelcade/squirrelcade/tree/main/docs/ai/features) in the repository.
 
 ## Keys and passwords stay with you
 
@@ -17,7 +23,8 @@ It also tells the AI to ask before anything that installs or changes something o
 
 ## What's in the prompt
 
-- How the AI should work with you: interview first, then a plan, then one step at a time.
+- How the AI should work with you: the quick or everything question first, then an interview, a plan, and one step at a time.
+- The features list: each feature's needs, its time with padding, and a link to its own prompt.
 - What Squirrelcade is, and how each part is set up, with the official pages to get keys from.
 - **My Squirrelcade now:** the version, your collection's size, backups, which optional parts are on and whether they work, messages, sign-in and sharing, and anything that needs attention. Never passwords, keys or tokens (only whether each is set), and email addresses are left out.
 - **Where things are:** a link to each setting and page on your Squirrelcade, from its address as your browser reaches it.

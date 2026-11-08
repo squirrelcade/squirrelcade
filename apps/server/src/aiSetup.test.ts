@@ -55,6 +55,13 @@ describe('AI-assisted setup', () => {
     expect(links).toContain('- Pushover: http://nas.local:7575/settings/notifications#setting-notifications.pushoverEnabled');
     expect(links).toContain('- Trusted proxies (Settings > Security > Network, advanced): http://nas.local:7575/settings/security#setting-security.trustedProxies');
     expect(links).toContain('- System > Users (Invite someone): http://nas.local:7575/system/users');
+    // The features list, with each one's own prompt, and the settings the 1.4.0 features added.
+    expect(links).toContain('**Quick start or Everything now:**');
+    expect(links).toContain('- Covers and game details (IGDB) (about 10 minutes; give it 25): http://nas.local:7575/settings/sources#setting-features.igdb; https://github.com/squirrelcade/squirrelcade/blob/main/docs/ai/features/igdb.md');
+    expect(links).toContain("- Friends' live links (about 15 minutes; give it 30): http://nas.local:7575/settings/friends#setting-friends.liveFolder;");
+    expect(links).toContain('- What your wishlist is (Settings > Acorns > Your wishlist): http://nas.local:7575/acorns#setting-wishlist.source');
+    expect(links).toContain('http://nas.local:7575/settings/roots#setting-roots.youtubeMode');
+    expect(links).toContain('http://nas.local:7575/settings/friends#setting-friends.liveReadHours');
 
     // An address that isn't a web address: the setting's, else links from the page's own address (relative).
     const bad = (await g.app.inject({ url: '/api/v1/system/ai-setup?address=javascript%3Aalert(1)', cookies })).json() as { state: string; links: string };
@@ -78,7 +85,8 @@ describe('AI-assisted setup', () => {
     expect(state).toContain('PC library (Playnite): off.');
     expect(state).toContain('- **Messages:** none set up.');
     expect(state).toContain('- **On the way** (Acorns > On the way, its switch in Settings > Features): shown; purchase emails not read');
-    expect(state).toContain("- **Videos on a game's page:** off; YouTube API key not set");
+    expect(state).toContain("- **Videos on a game's page:** off; automatic; YouTube API key not set (Light needs none");
+    expect(state).toContain('- **What your wishlist is:**'.replace('your', 'my') + ' Suggested (the ranked list).');
     expect(state).toContain('Leaves: your magazine scans: off.');
   });
 });

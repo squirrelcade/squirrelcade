@@ -1,9 +1,7 @@
 import {
   CHANNEL_GUIDES,
-  CUSTOM_MAIL_GUIDE,
   FEATURE_SETTINGS,
   FEATURE_HOME,
-  MAIL_PROVIDERS,
   featureOfSwitch,
   IGDB_GENRE_NAMES,
   IGDB_STYLE_NAMES,
@@ -64,9 +62,11 @@ import { fileChanges, same, type FileChange } from '../settingsFile';
 import { AiExtras } from './AiExtras';
 import { SecurityExtras } from './SecurityExtras';
 import { FeatureExtras } from './FeatureExtras';
+import { FeatureList } from './FeatureList';
 import { ItadButtons } from './ItadExtras';
 import { VisionPresets, VisionTest } from './VisionExtras';
-import { EmailTest, StoreFinder } from './EmailExtras';
+import { StoreFinder } from './EmailExtras';
+import { AccountPicker, MailAccounts, SenderPicker } from './EmailAccounts';
 import { RaButtons } from './RaExtras';
 import { AchievementButtons } from './AchievementExtras';
 import { TelegramChatFinder } from './TelegramExtras';
@@ -106,6 +106,9 @@ interface Tastes {
   platforms: { key: string; name: string; recent: number; owned: number; points: number | null }[];
   genres: { name: string; owned: number; catalog: number; lift: number; points: number | null }[];
 }
+
+/** The settings that choose which email accounts a feature reads (a list of account numbers; empty: all). */
+const ACCOUNT_CHOICES = new Set<string>(['mail.accounts', 'mail.dealAccounts', 'orders.findAccounts', 'orders.watchAccounts']);
 
 /** The help guide for each settings page (docs/help). */
 const SETTINGS_HELP: Record<string, string> = {
@@ -228,24 +231,13 @@ export function SettingsPage({ pageId: fixedPage }: { pageId?: string } = {}) {
 
   function update(key: SettingKey, v: unknown) {
     setDraft((d) => {
-      const next: Values = { ...d, [key]: v };
-      // Choosing an email provider fills in its mail server and port.
-      const provider = key === 'notifications.emailProvider' ? MAIL_PROVIDERS.find((m) => m.id === v) : undefined;
-      if (provider) {
-        next['notifications.smtpHost'] = provider.host;
-        next['notifications.smtpPort'] = provider.port;
-      }
-      return next;
+      return { ...d, [key]: v } as Values;
     });
     setIssues((list) => list.filter((i) => i.key !== key));
   }
 
-  /** The setup steps that go under a setting: an email provider's, or a service's under its switch while it's on. */
+  /** The setup steps that go under a setting: a service's, under its switch while it's on. */
   function guideAfter(k: SettingKey) {
-    if (k === 'notifications.emailProvider') {
-      const provider = MAIL_PROVIDERS.find((m) => m.id === value(k));
-      return <SetupGuide guide={provider?.guide ?? CUSTOM_MAIL_GUIDE} title={provider ? `Setting up ${provider.name}` : 'Another provider'} folded />;
-    }
     const channel = CHANNEL_SWITCH[k];
     const guide = channel ? CHANNEL_GUIDES[channel] : undefined;
     return guide && value(k) === true ? <SetupGuide guide={guide} folded /> : null;
@@ -278,8 +270,6 @@ export function SettingsPage({ pageId: fixedPage }: { pageId?: string } = {}) {
       <VisionPresets onPick={(values) => Object.entries(values).forEach(([key, v]) => update(key as SettingKey, v))} />
     ) : k === 'sources.visionKey' ? (
       <VisionTest unsaved={changedKeys.length > 0} save={save} />
-    ) : k === 'notifications.smtpPassword' ? (
-      <EmailTest unsaved={changedKeys.length > 0} save={save} />
     ) : k === 'orders.watchSenders' ? (
       <StoreFinder unsaved={changedKeys.length > 0} save={save} current={value(k) as string[]} onAdd={(domains) => update(k, [...new Set([...(value(k) as string[]), ...domains])])} />
     ) : k === 'sources.raApiKey' ? (
@@ -436,12 +426,13 @@ export function SettingsPage({ pageId: fixedPage }: { pageId?: string } = {}) {
         }
       />
       <Stack pb={changedKeys.length > 0 ? 80 : 0}>
+        {pageId === 'features' && <FeatureList />}
         {(pageId === 'notifications' || pageId === 'collection') && (
           <Alert color="gray" variant="light">
             <Text size="sm">
               {pageId === 'notifications'
-                ? 'Notifications by email use your email account, set up once on Settings › Email. '
-                : "Stash updates from PriceCharting's export emails are set up on Settings › Email. "}
+                ? 'Notifications by email send from an email account you add on Settings › Email. '
+                : 'Anything here that reads your email reads the accounts you add on Settings › Email. '}
               <Anchor component={Link} to="/settings/email" size="sm">
                 Go to Settings › Email
               </Anchor>
@@ -459,14 +450,20 @@ export function SettingsPage({ pageId: fixedPage }: { pageId?: string } = {}) {
                 .filter((k) => settingDefinitions[k].section === section)
                 .map((k) => (
                   <div key={k} id={`setting-${k}`}>
-                    <Field
-                      settingKey={k}
-                      value={value(k)}
-                      secretSaved={secretsSet.has(k)}
-                      onChange={(v) => update(k, v)}
-                      issue={issues.find((i) => i.key === k)?.message}
-                      shape={scoring && settingDefinitions[k].kind === 'points' ? shapeOf(k) : undefined}
-                    />
+                    {ACCOUNT_CHOICES.has(k) ? (
+                      <AccountPicker label={settingDefinitions[k].label} description={settingDefinitions[k].description} value={value(k) as string[]} onChange={(v) => update(k, v)} />
+                    ) : k === 'notifications.emailAccount' ? (
+                      <SenderPicker label={settingDefinitions[k].label} description={settingDefinitions[k].description} value={value(k) as string} onChange={(v) => update(k, v)} />
+                    ) : (
+                      <Field
+                        settingKey={k}
+                        value={value(k)}
+                        secretSaved={secretsSet.has(k)}
+                        onChange={(v) => update(k, v)}
+                        issue={issues.find((i) => i.key === k)?.message}
+                        shape={scoring && settingDefinitions[k].kind === 'points' ? shapeOf(k) : undefined}
+                      />
+                    )}
                     {/* A service's test goes right under its key; its setup steps under its switch. */}
                     {buttonsAfter(k) && <Box mt="sm">{buttonsAfter(k)}</Box>}
                     {guideAfter(k)}
@@ -500,6 +497,7 @@ export function SettingsPage({ pageId: fixedPage }: { pageId?: string } = {}) {
             </Button>
           </Alert>
         ))}
+        {pageId === 'email' && <MailAccounts />}
         {pageId === 'features' && <FeatureExtras />}
         {pageId === 'magazines' && <MagazineTextShare />}
         {pageId === 'ai' && <AiExtras />}

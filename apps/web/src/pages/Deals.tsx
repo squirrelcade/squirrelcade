@@ -67,10 +67,10 @@ export function DealsPage() {
       {data.isPending && <Loader />}
       {d && !d.on && (
         <Alert color="gray" mb="md">
-          Deals come from PriceCharting's emails: on Settings › Email, turn on collection updates from your email, with "Read PriceCharting's deal emails too".{' '}
+          Deals come from PriceCharting's emails: add an email account (Settings › Email), turn on collection updates from your email, and leave its deal emails on.{' '}
           {canEdit && (
-            <Anchor component={Link} to="/settings/email#setting-features.mail" c="inherit" fw={600} underline="always">
-              Settings › Email
+            <Anchor component={Link} to="/settings/features#setting-features.mail" c="inherit" fw={600} underline="always">
+              Settings › Features
             </Anchor>
           )}
         </Alert>
@@ -106,8 +106,8 @@ export function DealsPage() {
         <Text c="dimmed" size="sm" mb="sm">
           {d!.partsLeftOut === 1 ? 'A listing' : `${d!.partsLeftOut} listings`} of a manual, a case or a box alone {d!.partsLeftOut === 1 ? 'is' : 'are'} left out: PriceCharting compares {d!.partsLeftOut === 1 ? 'it' : 'them'} with a whole game's value.{' '}
           {canEdit && (
-            <Anchor component={Link} to="/settings/email#setting-mail.dealsLeaveOutParts" size="sm">
-              Settings › Email
+            <Anchor component={Link} to="/acorns#setting-mail.dealsLeaveOutParts" size="sm">
+              Settings › Acorns
             </Anchor>
           )}
         </Text>

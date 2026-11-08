@@ -56,6 +56,7 @@ import { GgDealsService, ggAsPcPrice, type GgPrice } from './ggdeals.js';
 import { registerRetroAchievementsRoutes, RetroAchievementsService } from './retroachievements.js';
 import { AchievementsService, registerAchievementRoutes, xboxHttpsGet, type PsnApi, type XboxGet } from './achievements.js';
 import { psnApi } from './psn.js';
+import { registerMailAccountRoutes } from './mailAccounts.js';
 import { imapMailbox, MailImportService, registerMailRoutes, type ExportDownloader, type MailboxOpener } from './mailImport.js';
 import { OrderService, registerOrderRoutes } from './orders.js';
 import { registerMcpRoute } from './mcp.js';
@@ -472,6 +473,7 @@ export async function buildApp(options: BuildOptions = {}): Promise<Squirrelcade
     ratesLast: () => orders.ratesLast(),
     friendLinks: () => friendsRef?.linkLines() ?? [],
     friendLive: () => friendsRef?.liveSummary() ?? null,
+    mailAccounts: () => mail.accounts.list().map((a) => ({ id: a.id, name: a.name, reads: a.imapHost.trim() !== '', sends: a.smtpHost.trim() !== '', state: mail.accounts.state(a.id) })),
   });
   registerIntegrationRoutes(app, integrationDeps());
   registerTaskRoutes(app, tasks);
@@ -600,8 +602,11 @@ export async function buildApp(options: BuildOptions = {}): Promise<Squirrelcade
   setTimeout(() => void marks.released([]).catch(() => undefined), 60_000).unref();
   const mail = new MailImportService(db, settings, collection, log, notifications, options.mailbox, options.exportDownload);
   registerMailRoutes(app, mail, tasks);
-  // Settings > Email's one test: sending from your account, and reading its mailbox.
-  app.post('/api/v1/email/test', async () => ({ send: await notifications.testEmail(), read: await mail.test() }));
+  // Settings > Email (D218): the accounts, each tested on its own. An install from before accounts has its one account moved
+  // here once (it becomes account 1), and a settings file that still writes the old keys is moved onto an account too.
+  mail.accounts.moveOld();
+  settings.onLegacyMail((values) => mail.accounts.moveLegacy(values));
+  registerMailAccountRoutes(app, mail.accounts, notifications, options.mailbox ?? imapMailbox);
   // Prices from your order emails and On the way (D155, D156): the same mailbox, read-only, with the AI model if set up.
   const orders = new OrderService({ db, settings, mail, collection, lookup, helpers, vision, log, notifications, open: options.mailbox ?? imapMailbox, ratesFetch: options.ratesFetch });
   registerOrderRoutes(app, orders, tasks);
@@ -873,7 +878,7 @@ export async function buildApp(options: BuildOptions = {}): Promise<Squirrelcade
   tasks.register({
     name: 'mail-import',
     title: 'Check your email for exports',
-    description: "Updates your collection from PriceCharting's export emails in your mailbox (Settings > Email > Stash updates from your email).",
+    description: "Updates your collection from PriceCharting's export emails in your mailbox (Settings > Collection > Stash updates from your email).",
     interval: () => (mail.enabled() ? settings.get('mail.checkMinutes') * 60_000 : null),
     firstRunDelayMs: 60_000,
     run: async () => mail.check(),
@@ -882,7 +887,7 @@ export async function buildApp(options: BuildOptions = {}): Promise<Squirrelcade
   tasks.register({
     name: 'orders-watch',
     title: 'Look for games on the way',
-    description: 'Reads your purchase emails (eBay, Mercari and the senders you list) for games bought and not here yet (Settings > Email > On the way).',
+    description: 'Reads your purchase emails (eBay, Mercari and the senders you list) for games bought and not here yet (Settings > Collection > On the way).',
     interval: () => (orders.watchOn() ? settings.get('orders.watchHours') * 3_600_000 : null),
     firstRunDelayMs: 2 * 60_000,
     run: async () => orders.watch(),
@@ -1135,15 +1140,20 @@ export async function buildApp(options: BuildOptions = {}): Promise<Squirrelcade
     // Consoles of their own made just now get their catalogs a few minutes after the start (asking before the
     // start doesn't count), once an updater's before-and-after checks of the catalogs are done.
     if (remapped) tasks.soon('catalog-build', 5 * 60_000);
-    // Work out completion and the wishlist once in the background, so the first page doesn't wait for it.
-    setTimeout(() => {
+    // Work out completion and the wishlist once in the background, so the first page doesn't wait for it: a console
+    // at a time, then the wishlist in steps, with requests let in between (1.4.0, D220: in one go it held the server
+    // for seconds after each update).
+    const warmUp = async (context: string) => {
       try {
+        await catalogs.warm();
         catalogs.summary();
-        wishlist.compute();
+        await new Promise((r) => setImmediate(r));
+        await wishlist.rebuild();
       } catch (err) {
-        log.warn({ err, context: 'startup' }, 'Warming up the catalogs failed');
+        log.warn({ err, context }, context === 'startup' ? 'Warming up the catalogs failed' : 'Working out the wishlist after a change failed');
       }
-    }, 1000).unref();
+    };
+    setTimeout(() => void warmUp('startup'), 1000).unref();
     // And again just after the copies change (I bought it in a store, say), while the phone shows the change: the next
     // search then finds the wishlist worked out (a second or two on a collection of thousands) instead of waiting for it.
     let rewarm: NodeJS.Timeout | null = null;
@@ -1151,12 +1161,7 @@ export async function buildApp(options: BuildOptions = {}): Promise<Squirrelcade
       if (rewarm) clearTimeout(rewarm);
       rewarm = setTimeout(() => {
         rewarm = null;
-        try {
-          catalogs.summary();
-          wishlist.compute();
-        } catch (err) {
-          log.warn({ err, context: 'collection' }, 'Working out the wishlist after a change failed');
-        }
+        void warmUp('collection');
       }, 250);
       rewarm.unref();
     });

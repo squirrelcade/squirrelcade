@@ -213,7 +213,7 @@ export function PurchaseSheetPage() {
                 Left out ({count(a.leftOut!.length)})
               </Title>
               <Text size="xs" c="dimmed">
-                Not put on the way or written anywhere. Console games bought as digital codes count when Settings › Email › Count console games bought as digital codes is on.
+                Not put on the way or written anywhere. Console games bought as digital codes count when Settings › Collection › Count console games bought as digital codes is on.
               </Text>
               {a.leftOut!.map((l, k) => (
                 <Text key={k} size="sm">

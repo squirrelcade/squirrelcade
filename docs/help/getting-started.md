@@ -11,7 +11,7 @@ Squirrelcade keeps track of a video game collection. Bring yours in from an expo
 - each console's Top 100 games and history, games in their time (Now in, the Time machine), and every copy you have of each game;
 - your scanned game magazines, if you have some, read and searched (Leaves).
 
-**Squirrelcade works on its own:** no AI, no outside account and no subscription. Only your games are needed. Everything else (values from PriceCharting, covers from IGDB, your PC games from Playnite, links to RomM, notifications, Claude) is optional and can be switched on or off: see [Optional parts](features.md). Rather have an AI assistant take you through the setup? See [AI-assisted setup](ai-setup.md).
+**Squirrelcade works on its own:** no AI, no outside account and no subscription. Only your games are needed. Everything else (values from PriceCharting, covers from IGDB, your PC games from Playnite, links to RomM, notifications, Claude) is optional and can be added any day: see [Optional parts](features.md). Rather have an AI assistant take you through the setup? See [AI-assisted setup](ai-setup.md): it asks first whether you want a quick start (the app and your collection, about 30 minutes) or everything now.
 
 ## What you need
 
@@ -24,12 +24,12 @@ Values come from a PriceCharting export, or from a Value column in a spreadsheet
 ## The first visit
 
 1. **Create your account.** The first page asks for a username and password. This account is the collection's owner. From outside your home network, it also asks for a **setup code**, which Squirrelcade writes in its log when it starts (on the line that begins "No account yet"), so nobody else can claim a new install.
-2. **The welcome guide** takes you through five steps:
+2. **The welcome guide** takes you through four short steps, then shows everything optional as "add these any time":
    - **Your collection:** drop in the export (the `collection.zip` PriceCharting sends works as it is), or **Add games one at a time** (then **Back to the welcome guide** at the top of Add a game).
    - **Consoles:** a console gets a catalog once you own a few different games for it (6 by default; Settings > Consoles).
    - **Catalogs:** each of those consoles gets a catalog, built from Wikipedia's list of its games. If you keep your own list of a console's games, you can use it instead.
-   - **Covers (optional):** free IGDB keys give covers, genres and series. See [Optional parts](features.md).
-   - **Wishlist (optional):** put the consoles and genres you like in your own order.
+   - **Wishlist:** one question on a new install, **What your wishlist is**: **Suggested** (Squirrelcade's own ranked list of the games you're missing) or **Picked by you** (only the games you add yourself, with the ranked list kept as Suggestions). An install that already had games isn't asked, and keeps Suggested. Change it any time on Acorns.
+   - **Add these any time:** the list of optional features (covers from IGDB, messages, your email, PC games, videos, friends' live links...). The same list is on **Settings > Features**: what each adds, what it needs, how long it takes (padded: setting up outside accounts usually takes longer than it looks), whether it works now, and **Set it up with AI**.
 
 After that, the menu on the left has everything (on a phone, the bar at the bottom has Today, Stash, Scan and Acorns, and **More** opens the menu). At its bottom, in small grey type, is the version your server runs (Squirrelcade 1.2.2 · f6b0323), to check that an update arrived. Its three main sections each say what they're for under their names: the **Stash** is the games you have, **Acorns** is games coming in and going out, and the **Nutshell** is your collection by the numbers.
 

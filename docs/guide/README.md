@@ -7,16 +7,16 @@ A step-by-step guide from nothing to a Squirrelcade you use every day: on your s
 | 1. [Install it](install.md) | Squirrelcade running on your server, open in a browser at home. | 10 to 20 minutes |
 | 2. [The first visit](first-run.md) | Your account, your collection in, catalogs built for your consoles. | 10 minutes, then a few minutes of waiting |
 | 3. [Reach it from your phone](phone.md) | Squirrelcade on your phone away from home, with the barcode camera working. | 15 to 30 minutes |
-| 4. [Connect what you use](connect.md) | Covers, messages, exports picked up from your email, your PC games, RomM, family access. Each one optional. | 5 to 15 minutes each |
+| 4. [Connect what you use](connect.md) | Covers, messages, exports picked up from your email, your PC games, RomM, family access, and the rest. Each one optional, any day: **Settings > Features** lists them all. | 5 to 45 minutes each (see the list: it pads the time) |
 | 5. [Keep it running](maintain.md) | Updates, backups, moving to a new server, and what to do when something's wrong. | Read once |
 
-Prefer to be walked through it? Paste [the setup prompt](../ai/setup-prompt.md) into the AI you use (Claude, ChatGPT...; a free account is enough). It asks about your server and your collection, checks that Squirrelcade can run there, and takes you through these same steps one at a time. It never asks for your passwords or keys. Once Squirrelcade runs, **Help > AI-assisted setup** gives the same prompt with your install's details filled in ([how it works](../help/ai-setup.md)).
+Prefer to be walked through it? Paste [the setup prompt](../ai/setup-prompt.md) into the AI you use (Claude, ChatGPT...; a free account is enough). It first asks: **Quick start** (steps 1 and 2: about 30 minutes, then Settings > Features for the rest) or **Everything now** (every integration, with a warning that it takes hours). It asks about your server and your collection, checks that Squirrelcade can run there, and takes you through these same steps one at a time. It never asks for your passwords or keys. Once Squirrelcade runs, **Help > AI-assisted setup** gives the same prompt with your install's details filled in ([how it works](../help/ai-setup.md)).
 
 ## Before you start
 
 - **A machine that runs Docker all the time:** a NAS (Synology, QNAP, Unraid, TrueNAS), a mini PC, or any Linux server. Squirrelcade runs on 64-bit processors: Intel and AMD (x86-64), and ARM (a Raspberry Pi 4 or 5 with a 64-bit system, NAS models with ARM processors, a Mac with Apple silicon). To check on Linux: `uname -m` says `x86_64` or `aarch64` (both fine); `armv7l` is a 32-bit system, which isn't supported.
 - **Your games.** Bring them in from an export (PriceCharting, CLZ Games, GAMEYE, VGCollect, or a spreadsheet of your own), or type them in one at a time. Values come from a PriceCharting export, or from a Value column in a spreadsheet of your own; games you type in have none until then, and everything else works the same. See [Your collection](../help/collection.md).
-- **About 30 minutes** for steps 1 and 2. The rest can wait for another day.
+- **About 30 minutes** for steps 1 and 2 (give it an hour). The rest can wait for another day: there are a lot of integrations, and most need an outside account.
 
 **Squirrelcade works on its own.** It needs no AI, no outside account and no subscription. Everything else (covers, messages, the PC library, Claude...) is optional, and each has its own switch in **Settings > Features**.
 

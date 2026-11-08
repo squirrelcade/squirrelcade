@@ -1,7 +1,7 @@
 import { COMPLETENESS_SHORT, type Completeness } from '@squirrelcade/core';
-import { ActionIcon, Alert, Anchor, Badge, Button, Card, Chip, FileButton, Group, List, Loader, Menu, Modal, Select, SimpleGrid, Stack, Table, Tabs, Text, TextInput, Textarea, Title } from '@mantine/core';
+import { ActionIcon, Alert, Anchor, Badge, Button, Card, Chip, Divider, FileButton, Group, List, Loader, Menu, Modal, Select, SimpleGrid, Stack, Table, Tabs, Text, TextInput, Textarea, Title } from '@mantine/core';
 import { Dropzone } from '@mantine/dropzone';
-import { IconArrowsExchange, IconClipboardText, IconDots, IconDownload, IconPencil, IconPlus, IconScale, IconTrash, IconUpload } from '@tabler/icons-react';
+import { IconArrowsExchange, IconClipboardText, IconDots, IconDownload, IconLink, IconPencil, IconPlus, IconScale, IconTrash, IconUpload } from '@tabler/icons-react';
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useState, type ReactNode } from 'react';
 import { Link, Navigate, useNavigate, useParams, useSearchParams } from 'react-router';
@@ -12,6 +12,7 @@ import { PageHeader, type SortDirection } from '../components';
 import { count, date, money, timeAgo } from '../format';
 import { notifyError, notifySuccess, usePageTitle, useSetting } from '../hooks';
 import { sortRows, useSort } from '../sort';
+import { InviteModal, LiveLink, type LiveState } from './FriendLive';
 
 /** A friend's file, in short (GET /api/v1/friends). */
 interface FileSummary {
@@ -32,6 +33,7 @@ interface Friend {
   email: string | null;
   createdAt: string;
   lastSentAt: string | null;
+  live: LiveState;
   file: FileSummary | null;
 }
 
@@ -369,6 +371,7 @@ function FriendsTab({ list, adding, setAdding }: { list: Friend[]; adding: boole
   const [editing, setEditing] = useState<Friend | null>(null);
   const [removing, setRemoving] = useState<Friend | null>(null);
   const [pasting, setPasting] = useState(false);
+  const [inviting, setInviting] = useState(false);
   const [naming, setNaming] = useState(false);
   const [incoming, setIncoming] = useState<Incoming | null>(null);
   const { bring, conflictModal } = useBringIn(list, () => setIncoming(null));
@@ -426,6 +429,9 @@ function FriendsTab({ list, adding, setAdding }: { list: Friend[]; adding: boole
         </Button>
         <Button variant="default" leftSection={<IconClipboardText size={16} />} onClick={() => setPasting(true)}>
           Paste a friend's file
+        </Button>
+        <Button variant="default" leftSection={<IconLink size={16} />} onClick={() => setInviting(true)}>
+          Add a friend from an invite
         </Button>
       </Group>
       <Text size="sm" c="dimmed">
@@ -487,7 +493,8 @@ function FriendsTab({ list, adding, setAdding }: { list: Friend[]; adding: boole
                   {f.lastSentAt ? `You last saved yours for them ${timeAgo(f.lastSentAt)}.` : "You haven't saved your file for them yet."}
                 </Text>
               </Stack>
-              <Group gap="xs" mt="sm">
+              <Divider label="By hand" labelPosition="left" mt="sm" />
+              <Group gap="xs" mt="xs">
                 <Button
                   size="xs"
                   variant={f.lastSentAt ? 'default' : 'light'}
@@ -517,6 +524,9 @@ function FriendsTab({ list, adding, setAdding }: { list: Friend[]; adding: boole
                   </>
                 )}
               </Group>
+              <Stack gap="xs" mt="sm">
+                <LiveLink friend={f} />
+              </Stack>
             </Card>
           ))}
         </SimpleGrid>
@@ -527,6 +537,7 @@ function FriendsTab({ list, adding, setAdding }: { list: Friend[]; adding: boole
           setEditing(null);
         }} />
       <RemoveModal friend={removing} onClose={() => setRemoving(null)} />
+      <InviteModal opened={inviting} friend={null} onClose={() => setInviting(false)} />
       <NameModal opened={naming} name={chosenName} onClose={() => setNaming(false)} />
       <PasteModal opened={pasting} onClose={() => setPasting(false)} onRead={(text) => preview.mutate(text)} reading={preview.isPending} />
       {incoming && <IncomingModal incoming={incoming} list={list} onClose={() => setIncoming(null)} onBring={(to) => bring.mutate({ what: incoming.file ?? incoming.text, ...to })} bringing={bring.isPending} />}

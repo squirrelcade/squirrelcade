@@ -63,7 +63,7 @@ describe('features', () => {
     expect(settingFeature('sources.rommLinkUnowned')).toBe('romm');
     expect(settingFeature('sources.igdbClientId')).toBe('igdb');
     expect(settingFeature('interface.timelineGames')).toBe('history');
-    expect(settingFeature('mail.password')).toBe('mail');
+    expect(settingFeature('mail.accounts')).toBe('mail');
     expect(settingFeature('magazines.folder')).toBe('magazines');
     expect(settingFeature('sources.xboxApiKey')).toBe('xbox');
     expect(settingFeature('sources.psnMarkPlayed')).toBe('playstation');

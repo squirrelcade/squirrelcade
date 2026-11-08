@@ -1,20 +1,17 @@
-import { KNOWN_PLATFORMS, listPlatform, parseCatalogList, settingDefinitions } from '@squirrelcade/core';
-import { Alert, Anchor, Badge, Button, Card, FileButton, Group, List, Loader, NumberInput, Select, Stack, Stepper, Table, Text, Title } from '@mantine/core';
+import { FEATURE_LIST, featureTime, KNOWN_PLATFORMS, listPlatform, parseCatalogList, settingDefinitions } from '@squirrelcade/core';
+import { Alert, Anchor, Badge, Button, Card, FileButton, Group, List, Loader, NumberInput, Radio, Select, Stack, Stepper, Table, Text, Title } from '@mantine/core';
 import { Dropzone } from '@mantine/dropzone';
 import { useDebouncedCallback, useMediaQuery } from '@mantine/hooks';
-import { IconCheck, IconFileSpreadsheet, IconPlugConnected, IconPlus, IconTable, IconUpload } from '@tabler/icons-react';
+import { IconCheck, IconFileSpreadsheet, IconPlus, IconSparkles, IconTable, IconUpload } from '@tabler/icons-react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { useState, type ReactNode } from 'react';
+import { useEffect, useState, type ReactNode } from 'react';
 import { Link, useNavigate } from 'react-router';
 import { api } from '../api';
-import { SavedLabel } from '../SavedLabel';
-import { TypedPasswordInput, TypedTextInput } from '../typedOnly';
 import { PageHeader } from '../components';
 import { count, dateTime } from '../format';
-import { notifyError, notifySuccess, usePageTitle, useSetting, useSettingsState } from '../hooks';
+import { notifyError, notifySuccess, usePageTitle, useSetting } from '../hooks';
 import type { CatalogSourceStatus } from './CatalogSource';
 import { EXPORT_FILES } from './Imports';
-import { WishlistStep } from './WishlistSetup';
 
 interface Summary {
   totals: { games: number; copies: number };
@@ -38,9 +35,9 @@ interface ImportOutcome {
 const optionLabel = (key: 'general.homeRegion' | 'general.currency', value: string) => settingDefinitions[key].options?.find((o) => o.value === value)?.label ?? value;
 
 /**
- * The welcome guide for a new install: the collection export, which consoles to track, their
- * catalogs (with the user's own lists, several at once), IGDB, and the wishlist's first order of
- * consoles and genres. Every step can be changed later.
+ * The welcome guide for a new install (shortened in 1.4.0, D219): the collection, which consoles to track, their catalogs
+ * (with the user's own lists, several at once) and what the wishlist is, then the features list as "add these any time".
+ * It gets the app going and the collection in; every integration is on Settings > Features, not a step here.
  */
 export function WelcomePage() {
   const appName = useSetting('general.instanceName', 'Squirrelcade') || 'Squirrelcade';
@@ -49,17 +46,21 @@ export function WelcomePage() {
   const [step, setStep] = useState(0);
   const next = () => setStep((s) => s + 1);
 
+  // A new install is asked what its wishlist is; one that already had games (opening this guide again) isn't, and keeps
+  // 'suggested'. The first look at an empty collection is remembered for the session, so adding games one at a time
+  // (which leaves this page and comes back) doesn't make the install look old.
+  const summary = useQuery({ queryKey: ['collection', 'summary'], queryFn: () => api<Summary>('/collection/summary') });
+  const [fresh, setFresh] = useState(() => readFresh());
+  useEffect(() => {
+    if (summary.data && summary.data.totals.games === 0 && !fresh) {
+      rememberFresh();
+      setFresh(true);
+    }
+  }, [summary.data, fresh]);
+
   return (
     <>
-      <PageHeader help="getting-started" title={`Welcome to ${appName}`} description="Five steps set it up. Each can be changed later in Settings, and this guide is on System › Status." />
-      {/* The rest (covers, messages, your phone, the services you use) with the owner's own AI (0.32.1). */}
-      <Text size="sm" c="dimmed" mb="md" maw={900}>
-        After these, an AI you use (Claude, ChatGPT...) can take you through connecting everything else, one step at a time:{' '}
-        <Anchor component={Link} to="/help/ai-setup" size="sm">
-          AI-assisted setup
-        </Anchor>
-        .
-      </Text>
+      <PageHeader help="getting-started" title={`Welcome to ${appName}`} description="Four short steps get it going and your games in. Everything else is optional, and on Settings > Features to add any time." />
       <Stepper active={step} onStepClick={setStep} size="sm" orientation={narrow ? 'vertical' : 'horizontal'} maw={900}>
         <Stepper.Step label="Collection" description={narrow ? undefined : 'Your games'}>
           <CollectionStep onNext={next} />
@@ -70,11 +71,8 @@ export function WelcomePage() {
         <Stepper.Step label="Catalogs" description={narrow ? undefined : 'What there is to collect'}>
           <CatalogsStep onNext={next} />
         </Stepper.Step>
-        <Stepper.Step label="Covers" description={narrow ? undefined : 'IGDB, recommended'}>
-          <IgdbStep onNext={next} />
-        </Stepper.Step>
-        <Stepper.Step label="Wishlist" description={narrow ? undefined : 'What you want most'}>
-          <WishlistStep onNext={next} />
+        <Stepper.Step label="Wishlist" description={narrow ? undefined : 'What it is'}>
+          <WishlistSourceStep asked={fresh} onNext={next} />
         </Stepper.Step>
         <Stepper.Completed>
           <DoneStep />
@@ -82,6 +80,22 @@ export function WelcomePage() {
       </Stepper>
     </>
   );
+}
+
+const FRESH_KEY = 'squirrelcade-welcome-new';
+function readFresh(): boolean {
+  try {
+    return window.sessionStorage.getItem(FRESH_KEY) === '1';
+  } catch {
+    return false;
+  }
+}
+function rememberFresh() {
+  try {
+    window.sessionStorage.setItem(FRESH_KEY, '1');
+  } catch {
+    // Without storage the question is asked only while the collection is still empty.
+  }
 }
 
 function StepCard({ title, children }: { title: string; children: ReactNode }) {
@@ -431,113 +445,114 @@ function CatalogsStep({ onNext }: { onNext: () => void }) {
   );
 }
 
-function IgdbStep({ onNext }: { onNext: () => void }) {
+/**
+ * The last question for a new install: what the wishlist is (wishlist.source). Suggested is Squirrelcade's own ranked list;
+ * Picked by you holds only the games the owner adds. Saved like any setting. An install that already had games isn't asked.
+ */
+function WishlistSourceStep({ asked, onNext }: { asked: boolean; onNext: () => void }) {
   const queryClient = useQueryClient();
-  const state = useSettingsState();
-  const [clientId, setClientId] = useState<string | null>(null);
-  const [secret, setSecret] = useState('');
-  const secretSaved = state.data?.secretsSet.includes('sources.igdbClientSecret') ?? false;
-  const savedId = state.data?.values['sources.igdbClientId'] ?? '';
-  const id = clientId ?? savedId;
-  const connect = useMutation({
-    mutationFn: async () => {
-      const changes: Record<string, string> = { 'sources.igdbClientId': id.trim() };
-      if (secret.trim()) changes['sources.igdbClientSecret'] = secret.trim();
-      await api('/settings', { method: 'PUT', json: { changes } });
-      const result = await api<{ ok: boolean; message: string }>('/sources/igdb/test', { method: 'POST' });
-      if (!result.ok) throw new Error(result.message);
-      await api('/tasks/igdb-sync/run', { method: 'POST' });
-      return result;
-    },
-    onSuccess: async (r) => {
-      setSecret('');
-      await queryClient.invalidateQueries({ queryKey: ['settings'] });
-      notifySuccess(`${r.message} The download runs in the background for a few minutes.`, 'IGDB');
-    },
-    onError: (err) => notifyError(err, 'IGDB'),
+  const def = settingDefinitions['wishlist.source'];
+  const current = useSetting('wishlist.source', 'suggested');
+  const save = useMutation({
+    mutationFn: (value: string) => api('/settings', { method: 'PUT', json: { changes: { 'wishlist.source': value } } }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['settings'] }),
+    onError: (err) => notifyError(err),
   });
-
+  const done = () => {
+    try {
+      window.sessionStorage.removeItem(FRESH_KEY);
+    } catch {
+      // Nothing to forget.
+    }
+    onNext();
+  };
+  if (!asked) {
+    return (
+      <StepCard title="Your wishlist">
+        <Text size="sm">
+          Your wishlist is set to <b>{def.options?.find((o) => o.value === current)?.label ?? current}</b>. It can be changed any time on{' '}
+          <Anchor component={Link} to="/acorns#setting-wishlist.source" size="sm">
+            Acorns
+          </Anchor>
+          .
+        </Text>
+        <NextButton onNext={done} />
+      </StepCard>
+    );
+  }
   return (
-    <StepCard title="Covers and game details (recommended)">
-      <Text size="sm">
-        IGDB is free and gives covers, genres and series, which the wishlist uses, and it tells which games had physical releases. Without it, the wishlist guesses from the names of the series you collect, and on consoles whose lists mix in download-only games (the Switch, PlayStation 4 and 5, Xbox One and Series X) most games wait as "not confirmed physical" instead of counting as missing. It takes about five minutes, with a Twitch developer app:
-      </Text>
-      <List size="sm" type="ordered">
-        <List.Item>
-          Sign in at{' '}
-          <Anchor href="https://dev.twitch.tv/console/apps" target="_blank" size="sm">
-            dev.twitch.tv/console/apps
-          </Anchor>{' '}
-          (a Twitch account with two-factor sign-in turned on).
-        </List.Item>
-        <List.Item>Register Your Application: any name, OAuth redirect URL http://localhost, category Application Integration, client type Confidential.</List.Item>
-        <List.Item>Manage: copy the Client ID, then "New Secret" and copy the secret. Apps such as RomM can share the same pair.</List.Item>
-      </List>
-      <Group align="flex-end" gap="sm">
-        <TypedTextInput label="Client ID" value={id} onValue={setClientId} w={280} autoComplete="off" />
-        <TypedPasswordInput label={secretSaved ? <SavedLabel label="Client secret" /> : 'Client secret'} placeholder={secretSaved ? 'Saved' : ''} value={secret} onValue={setSecret} w={280} autoComplete="off" data-1p-ignore data-bwignore data-form-type="other" />
-        <Button leftSection={<IconPlugConnected size={16} />} onClick={() => connect.mutate()} loading={connect.isPending} disabled={!id.trim() || (!secret.trim() && !secretSaved)}>
-          Connect
-        </Button>
-      </Group>
-      {connect.isSuccess && (
-        <Alert color="green" icon={<IconCheck />}>
-          Connected. Covers appear as the download finishes (System › Tasks shows it).
-        </Alert>
-      )}
-      <NextButton onNext={onNext} label={connect.isSuccess || secretSaved ? 'Next' : 'Skip for now'} />
+    <StepCard title="What your wishlist is">
+      <Text size="sm">One question, and it can be changed any time on Acorns (Settings &gt; Acorns &gt; Your wishlist).</Text>
+      <Radio.Group value={current} onChange={(v) => save.mutate(v)} name="wishlist-source" label={def.label}>
+        <Stack gap="xs" mt="xs">
+          <Radio value="suggested" label="Suggested (the ranked list)" description="Squirrelcade's own list of the games you're missing, ranked by acorns. Nothing to do: it fills itself." />
+          <Radio
+            value="mine"
+            label="Picked by you (My wishlist)"
+            description="Only the games you add yourself (from Suggestions, a game's page or Store Mode). The ranked list stays as Suggestions to choose from."
+          />
+        </Stack>
+      </Radio.Group>
+      <NextButton onNext={done} loading={save.isPending} />
     </StepCard>
   );
 }
 
+/** The end of the guide: where to go first, and the features list as "add these any time" (Settings > Features). */
 function DoneStep() {
   const navigate = useNavigate();
   return (
     <StepCard title="You're set up">
+      <Text size="sm">Squirrelcade works now. Look around before you add anything:</Text>
       <List size="sm" spacing={4}>
         <List.Item>
           <Anchor component={Link} to="/consoles" size="sm">
-            Platforms
+            Consoles
           </Anchor>
           : completion per console, and each console's missing games.
         </List.Item>
         <List.Item>
-          <Anchor component={Link} to="/review" size="sm">
-            Review
-          </Anchor>
-          : titles that look alike, for you to answer once.
-        </List.Item>
-        <List.Item>
           <Anchor component={Link} to="/wishlist" size="sm">
-            Wishlist
+            Acorns wishlist
           </Anchor>
-          : what to buy next, every acorn explained. Your tastes go in Acorns, in the menu.
+          : what to get next, every acorn explained.
         </List.Item>
         <List.Item>
           <Anchor component={Link} to="/store" size="sm">
             Store Mode
           </Anchor>
-          : on your phone in a store, scan or type a game to see if you need it. Add it to your home screen from the browser's menu.
-        </List.Item>
-        <List.Item>
-          <Anchor component={Link} to="/pc" size="sm">
-            PC library
-          </Anchor>{' '}
-          (optional): your PC games from every storefront, read from Playnite's backups, and a{' '}
-          <Anchor component={Link} to="/pc/wishlist" size="sm">
-            PC wishlist
-          </Anchor>
-          . The PC library page says how to set it up.
-        </List.Item>
-        <List.Item>
-          <Anchor component={Link} to="/settings/notifications" size="sm">
-            Notifications
-          </Anchor>
-          : a summary after each collection update, by email, a phone app (Pushover, ntfy...) or a chat (Discord, Telegram...).
+          : in a store, type a game to see if you need it. (The phone's barcode camera needs a secure address: it's on the list below.)
         </List.Item>
       </List>
-      <Group justify="flex-end">
-        <Button onClick={() => navigate('/consoles')}>Go to Consoles</Button>
+      <Title order={5} mt="xs">
+        Add these any time
+      </Title>
+      <Text size="sm">
+        There are a lot of optional features, and most need an outside account, so none is asked now. Each is on Settings &gt; Features with what it needs, how long it takes and a prompt for an AI that takes you through just that one.
+      </Text>
+      <Table verticalSpacing={2}>
+        <Table.Tbody>
+          {FEATURE_LIST.map((f) => (
+            <Table.Tr key={f.id}>
+              <Table.Td>
+                <Text size="sm">{f.name}</Text>
+              </Table.Td>
+              <Table.Td>
+                <Text size="xs" c="dimmed">
+                  {featureTime(f)}
+                </Text>
+              </Table.Td>
+            </Table.Tr>
+          ))}
+        </Table.Tbody>
+      </Table>
+      <Group justify="space-between">
+        <Button variant="default" onClick={() => navigate('/consoles')}>
+          Go to Consoles
+        </Button>
+        <Button leftSection={<IconSparkles size={16} />} onClick={() => navigate('/settings/features')}>
+          See the features list
+        </Button>
       </Group>
     </StepCard>
   );

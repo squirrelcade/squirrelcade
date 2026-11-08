@@ -527,26 +527,41 @@ export class MagazineService {
         const pages: { n: number; text: string; words: PageWord[] }[] = [];
         for (const f of files) pages.push({ n: Number.parseInt(f, 10), ...parseHocr(await readFile(join(dir, sub.name, f), 'utf8')) });
         if (pages.length === 0) continue;
-        this.savePages(issue.id, pages, 'hocr');
+        await this.savePages(issue.id, pages, 'hocr');
         done++;
       }
     }
     return done;
   }
 
-  private savePages(issueId: number, pages: { n: number; text: string; words: PageWord[] }[], source: 'hocr' | 'ocr'): void {
+  /**
+   * An issue's pages kept, with their words' boxes and the search index: a few pages at a time with requests let in
+   * between (1.4.0, D220: a big issue's tens of MB in one transaction held the server for seconds while the night
+   * reader ran). The issue counts as read only once all its pages are in.
+   */
+  private async savePages(issueId: number, pages: { n: number; text: string; words: PageWord[] }[], source: 'hocr' | 'ocr'): Promise<void> {
     const db = this.store();
     db.transaction(() => {
       db.prepare('DELETE FROM pages WHERE issue_id = ?').run(issueId);
       db.prepare('DELETE FROM pages_fts WHERE issue_id = ?').run(issueId);
-      const page = db.prepare('INSERT INTO pages (issue_id, n, text, words, source) VALUES (?, ?, ?, ?, ?)');
-      const fts = db.prepare('INSERT INTO pages_fts (text, issue_id, n) VALUES (?, ?, ?)');
-      for (const p of pages) {
+    })();
+    const page = db.prepare('INSERT INTO pages (issue_id, n, text, words, source) VALUES (?, ?, ?, ?, ?)');
+    const fts = db.prepare('INSERT INTO pages_fts (text, issue_id, n) VALUES (?, ?, ?)');
+    const some = db.transaction((list: { n: number; text: string; words: PageWord[] }[]) => {
+      for (const p of list) {
         page.run(issueId, p.n, p.text, JSON.stringify(p.words), source);
         if (p.text.trim()) fts.run(p.text, issueId, p.n);
       }
-      db.prepare('UPDATE issues SET text_state = ?, text_at = ? WHERE id = ?').run(source, new Date().toISOString(), issueId);
-    })();
+    });
+    let at = 0;
+    while (at < pages.length) {
+      // As many pages as fit in about 40 ms, at least one.
+      const started = Date.now();
+      do some(pages.slice(at, ++at));
+      while (at < pages.length && Date.now() - started < 40);
+      await new Promise((resolve) => setImmediate(resolve));
+    }
+    db.prepare('UPDATE issues SET text_state = ?, text_at = ? WHERE id = ?').run(source, new Date().toISOString(), issueId);
   }
 
   /** Whether now is in the reading hours ("01-06": 1 AM to 6 AM, in the owner's time zone). */
@@ -606,7 +621,7 @@ export class MagazineService {
         };
         await Promise.all(Array.from({ length: Math.min(atOnce, Math.max(1, names.length)) }, worker));
         if (broken !== null) throw broken;
-        this.savePages(issue.id, pages, 'ocr');
+        await this.savePages(issue.id, pages, 'ocr');
         read++;
         lockedInARow = 0;
       } catch (err) {
@@ -833,7 +848,7 @@ export class MagazineService {
           since50 = Date.now();
         }
       }
-      this.savePages(local.id, pages, 'hocr');
+      await this.savePages(local.id, pages, 'hocr');
       local.text_state = 'hocr';
       filled++;
     }

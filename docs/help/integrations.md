@@ -23,7 +23,7 @@ The Internet Game Database: box art, genres, release dates, ratings, the console
 
 A mailbox Squirrelcade reads for PriceCharting's export emails (your collection's updates) and, if you turn it on, emails about games you bought (On the way).
 
-- **Needs:** an email account's IMAP address and an app password (Settings > Email).
+- **Needs:** an email account's IMAP address and an app password (Settings > Email). Each account has its own line here: its name, when it last read or sent, and why it's failing.
 - **Leaves your server:** nothing; Squirrelcade only reads.
 - **Red?** The sign-in was refused (a new app password), or the server couldn't be reached.
 
@@ -106,7 +106,7 @@ GameFly's prices for the games on your wishlist, as a place to buy.
 
 The European Central Bank's rates, from Frankfurter, for two things: a purchase in another currency (a UK store's pounds, a Canadian shop's dollars) gets its price paid in yours, at the rate of its order's day (On the way); and when your currency isn't dollars, prices in dollars are shown in it.
 
-- **Needs:** nothing. It's on while Settings > Email > On the way > **Turn other currencies into mine** is on (it is to start), or Settings > General > Currency isn't USD.
+- **Needs:** nothing. It's on while Settings > Collection > On the way > **Turn other currencies into mine** is on (it is to start), or Settings > General > Currency isn't USD.
 - **Grey, "Not needed"?** Your prices are in dollars and purchases keep their own currency: nothing to set up.
 - **Yellow?** Frankfurter didn't give a rate the last time it was asked: a purchase waiting for its rate gets it on a later look.
 - **Leaves your server:** the two currencies' names and the order's day.
@@ -149,6 +149,16 @@ Leaves: your magazine scans, read from a folder (never changed), their text read
 - **Needs:** the folder mounted into Squirrelcade, readable by its account (Settings > Magazines).
 - **Leaves your server:** nothing.
 - **Red?** Usually the folder's permissions: Squirrelcade's account needs to read the folder and every file in it. Help > Magazines says how. Issues that couldn't be opened go back in line by themselves once they can.
+
+## Your live friend files
+
+Friends > Live link: your Squirrelcade's live files for friends (**Your live friend files**), and each friend's live link that yours reads (**<friend>'s live link**). Help > Friends > Live links has the steps.
+
+- **Needs:** Share live turned on for a friend, a folder that a syncing tool carries to the cloud (Settings > Friends > Live links), and the file shared as Anyone with the link. For a friend's file, the invite they sent.
+- **Leaves your server:** your live file is encrypted with the friendship's code; whoever has the link and the invite can read what your file shares.
+- **Green:** your files were written (rewritten a minute after each collection update), or the friend's link was read lately.
+- **Yellow:** a file hasn't been written yet (press Write now on the friend's card; check the folder is writable), or a friend's link hasn't been read yet or lately (Check now, or Read now on their card).
+- **Red:** a friend's file was refused, and the line says why (a web page: share it as Anyone with the link; not found: ask for a new invite; another friendship or doesn't check out: ask for a fresh invite). The last good file is kept.
 
 ## Backups
 

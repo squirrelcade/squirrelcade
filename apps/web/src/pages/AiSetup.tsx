@@ -27,7 +27,7 @@ export function AiSetupPanel() {
           <Title order={4}>Your setup prompt</Title>
         </Group>
         <Text size="sm">
-          Made for this Squirrelcade: what's set up already, and a link to each setting on it. It never includes passwords, keys or tokens. Paste it into a new chat with your AI, or attach the file.
+          Made for this Squirrelcade: what's set up already, and a link to each setting on it. It never includes passwords, keys or tokens. It asks first whether you want a quick start (the app and your collection, about 30 minutes) or everything now (every integration, with a warning that it takes hours). For one feature at a time, Settings &gt; Features has a prompt for each. Paste it into a new chat with your AI, or attach the file.
         </Text>
         {parts.isError && (
           <Alert color="yellow" variant="light">

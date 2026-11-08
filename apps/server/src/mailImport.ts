@@ -1,4 +1,4 @@
-import { exportAttachment, exportLinks, hostAllowed, MAIL_PROVIDERS, parseDealEmail, PRICECHARTING_COLLECTION_URL, type MailHeader, type PriceChartingDeal } from '@squirrelcade/core';
+import { exportAttachment, exportLinks, hostAllowed, parseDealEmail, PRICECHARTING_COLLECTION_URL, type MailHeader, type PriceChartingDeal } from '@squirrelcade/core';
 import { eq } from 'drizzle-orm';
 import type { FastifyInstance } from 'fastify';
 import { ImapFlow } from 'imapflow';
@@ -7,6 +7,7 @@ import type { Logger } from 'pino';
 import { exportDate, type CollectionService } from './collection.js';
 import type { Db } from './db/index.js';
 import { appState } from './db/schema.js';
+import { MailAccounts, type MailAccountRow } from './mailAccounts.js';
 import type { NotificationService } from './notifications.js';
 import type { SettingsService } from './settings.js';
 import type { TaskRunner } from './tasks.js';
@@ -55,6 +56,8 @@ export interface MailAccount {
   pass: string;
   /** A folder to look in; empty: All Mail where the server has one, else the inbox. */
   folder: string;
+  /** Encrypted from the start (false: STARTTLS); unset: by the port (143 is STARTTLS). */
+  secure?: boolean;
 }
 
 /** An open mailbox (IMAP in Squirrelcade, a stand-in in tests). */
@@ -89,8 +92,8 @@ export const imapMailbox: MailboxOpener = async (account) => {
   const client = new ImapFlow({
     host: account.host,
     port: account.port,
-    // 993 is encrypted from the start; 143 upgrades with STARTTLS.
-    secure: account.port !== 143,
+    // 993 is encrypted from the start; STARTTLS (port 143) upgrades.
+    secure: account.secure ?? account.port !== 143,
     auth: { user: account.user, pass: account.pass },
     logger: false,
     connectionTimeout: 20_000,
@@ -236,8 +239,8 @@ export interface MailCheck {
 /** Settings > Features and Collection updates show this: whether it's on and set up, the last look, the emails used. */
 export interface MailStatus {
   on: boolean;
-  /** The mailbox it signs in to (never the password), or null until one is set. */
-  account: { user: string; host: string; port: number } | null;
+  /** The accounts it reads (never their passwords); none until one is set up. */
+  accounts: { id: number; name: string; address: string }[];
   /** Why it can't look yet, when it can't. */
   problem: string | null;
   lastCheck: MailCheck | null;
@@ -266,7 +269,9 @@ export class MailImportService {
     private readonly notifications: Pick<NotificationService, 'notice'> | null = null,
     private readonly open: MailboxOpener = imapMailbox,
     private readonly download: ExportDownloader = downloadExport,
-  ) {}
+  ) {
+    this.accounts = new MailAccounts(db, settings);
+  }
 
   /** Told of each look's new deals (the deals service's messages about top-ranked games). */
   private dealListener: ((deals: StoredDeal[]) => Promise<void>) | null = null;
@@ -279,40 +284,26 @@ export class MailImportService {
     return this.settings.get('features.mail');
   }
 
-  /**
-   * The mailbox to read: this part's own username, password and server, each falling back to email notifications'
-   * (the same app password reads mail), and the server to the notification provider's IMAP server (or, for another
-   * provider, its SMTP server's name with "imap." for "smtp."). Null, with why, until there's enough to sign in.
-   */
-  account(purpose: 'exports' | 'orders' = 'exports'): { account: MailAccount | null; problem: string | null } {
-    const s = this.settings;
-    const providerId = s.get('notifications.emailProvider');
-    const provider = MAIL_PROVIDERS.find((m) => m.id === providerId);
-    const smtpHost = s.get('notifications.smtpHost').trim();
-    const providerHost = provider?.imapHost || (smtpHost.startsWith('smtp.') ? `imap.${smtpHost.slice(5)}` : '');
-    // Order emails come to your own account (Settings > Email > Your email account): "a different mailbox for exports" is for
-    // PriceCharting's emails, and is used for orders only when your account isn't filled in.
-    const own = purpose === 'orders' && s.get('notifications.smtpUser').trim() !== '' && s.get('notifications.smtpPassword') !== '';
-    const host = own ? providerHost || s.get('mail.imapHost').trim() : s.get('mail.imapHost').trim() || providerHost;
-    const user = own ? s.get('notifications.smtpUser').trim() : s.get('mail.username').trim() || s.get('notifications.smtpUser').trim();
-    const pass = own ? s.get('notifications.smtpPassword') : s.get('mail.password') || s.get('notifications.smtpPassword');
-    if (!user || !pass) return { account: null, problem: 'Fill in your email account on Settings > Email: your address and an app password.' };
-    if (!host) return { account: null, problem: 'Fill in the incoming mail server (IMAP), such as imap.gmail.com.' };
-    if ((own || !s.get('mail.imapHost').trim()) && (providerId === 'outlook' || providerId === 'microsoft365')) {
-      if (purpose === 'orders') return { account: null, problem: "Microsoft doesn't let programs read Outlook.com or Microsoft 365 mail with a password, so Squirrelcade can't read your order emails there." };
-      return { account: null, problem: "Microsoft doesn't let programs read Outlook.com or Microsoft 365 mail with a password. Use another mailbox that gets PriceCharting's email (a forwarding rule to Gmail works)." };
-    }
-    // Your own account is read where all its mail is (All Mail, else the inbox), on the usual port: the folder and port
-    // settings are the export mailbox's (a folder only PriceCharting's emails go to, say).
-    if (own) return { account: { host, port: 993, user, pass, folder: '' }, problem: null };
-    return { account: { host, port: s.get('mail.imapPort'), user, pass, folder: s.get('mail.folder').trim() }, problem: null };
+  /** The email accounts (Settings > Email). */
+  readonly accounts: MailAccounts;
+
+  /** The accounts that export and deal emails are read in: the ones chosen on Settings > Collection and Acorns (empty: all). */
+  private plan(): { reading: { account: MailAccountRow; exports: boolean; deals: boolean }[]; skipped: { account: MailAccountRow; problem: string }[]; problem: string | null } {
+    const exports = this.accounts.readers(this.settings.get('mail.accounts'));
+    const dealsOn = this.settings.get('mail.deals');
+    const deals = dealsOn ? this.accounts.readers(this.settings.get('mail.dealAccounts')) : { accounts: [] as MailAccountRow[], skipped: [] as { account: MailAccountRow; problem: string }[], problem: null };
+    const ids = new Map<number, MailAccountRow>();
+    for (const a of [...exports.accounts, ...deals.accounts]) ids.set(a.id, a);
+    const reading = [...ids.values()].map((account) => ({ account, exports: exports.accounts.some((a) => a.id === account.id), deals: deals.accounts.some((a) => a.id === account.id) }));
+    const skipped = [...exports.skipped, ...deals.skipped.filter((d) => !exports.skipped.some((e) => e.account.id === d.account.id))];
+    return { reading, skipped, problem: reading.length === 0 ? exports.problem : null };
   }
 
   status(): MailStatus {
-    const { account, problem } = this.account();
+    const { reading, problem } = this.plan();
     return {
       on: this.enabled(),
-      account: account ? { user: account.user, host: account.host, port: account.port } : null,
+      accounts: reading.map((r) => ({ id: r.account.id, name: r.account.name, address: r.account.address })),
       problem,
       lastCheck: this.readState<MailCheck>(LAST_KEY),
       recent: this.seen().slice(0, 10),
@@ -320,43 +311,68 @@ export class MailImportService {
     };
   }
 
-  /** Signs in and looks for export emails, changing nothing: whether it works, and what it found. */
+  /** Signs in to each account that exports are read in and looks for export emails, changing nothing: whether it works, and what it found. */
   async test(): Promise<{ ok: boolean; message: string }> {
-    const { account, problem } = this.account();
-    if (!account) return { ok: false, message: problem! };
-    try {
-      const { folder, mails } = await this.find(account);
-      const newest = mails.at(-1);
-      return {
-        ok: true,
-        message:
-          `Signed in to ${account.user} and looked in ${folder}: ` +
-          (newest
-            ? `${mails.length === 1 ? 'one export email' : `${mails.length} export emails`} from the last ${this.settings.get('mail.maxAgeDays')} days, the newest on ${newest.date.slice(0, 10)}.`
-            : `no export email from the last ${this.settings.get('mail.maxAgeDays')} days yet. Ask PriceCharting for an export (My Collection › Download (CSV)), and Squirrelcade picks it up within ${this.settings.get('mail.checkMinutes')} minutes.`),
-      };
-    } catch (err) {
-      return { ok: false, message: signInProblem(err) };
+    const { reading, problem } = this.plan();
+    if (reading.length === 0) return { ok: false, message: problem! };
+    const lines: string[] = [];
+    let ok = true;
+    for (const { account } of reading) {
+      try {
+        const { folder, mails } = await this.find(account, false, true);
+        const newest = mails.at(-1);
+        this.accounts.record(account.id, 'read', true, `Looked in ${folder}.`);
+        lines.push(
+          `${account.name}: signed in to ${account.address} and looked in ${folder}: ` +
+            (newest
+              ? `${mails.length === 1 ? 'one export email' : `${mails.length} export emails`} from the last ${this.settings.get('mail.maxAgeDays')} days, the newest on ${newest.date.slice(0, 10)}.`
+              : `no export email from the last ${this.settings.get('mail.maxAgeDays')} days yet. Ask PriceCharting for an export (My Collection \u203a Download (CSV)), and Squirrelcade picks it up within ${this.settings.get('mail.checkMinutes')} minutes.`),
+        );
+      } catch (err) {
+        ok = false;
+        const message = signInProblem(err);
+        this.accounts.record(account.id, 'read', false, message);
+        lines.push(`${account.name}: ${message}`);
+      }
     }
+    return { ok, message: lines.join(' ') };
   }
 
-  /** The task: each export email not seen before, oldest first, updates the collection. What happened, in a line. */
+  /**
+   * The task: each export email not seen before (in any of the accounts read), oldest first, updates the collection.
+   * An account that fails doesn't stop the others; it fails the task only when none could be read. What happened, in a line.
+   */
   async check(): Promise<string> {
     if (!this.enabled()) return 'Stash updates from email are off (Settings > Features).';
-    const { account, problem } = this.account();
-    if (!account) {
+    const { reading, skipped, problem } = this.plan();
+    for (const s of skipped) this.accounts.record(s.account.id, 'read', false, s.problem);
+    if (reading.length === 0) {
       this.saveCheck(false, problem!);
       return problem!;
     }
-    let mails: FoundMail[];
-    let dealMails: FoundMail[];
-    try {
-      ({ mails, deals: dealMails } = await this.find(account, this.settings.get('mail.deals')));
-    } catch (err) {
-      const message = signInProblem(err);
+    const mails: FoundMail[] = [];
+    const dealMails: FoundMail[] = [];
+    const failures: string[] = [];
+    let worked = 0;
+    for (const { account, exports, deals } of reading) {
+      try {
+        const found = await this.find(account, deals, exports);
+        for (const m of found.mails) if (!mails.some((x) => x.id === m.id)) mails.push(m);
+        for (const m of found.deals) if (!dealMails.some((x) => x.id === m.id)) dealMails.push(m);
+        this.accounts.record(account.id, 'read', true, `Looked in ${found.folder}.`);
+        worked++;
+      } catch (err) {
+        const message = signInProblem(err);
+        this.accounts.record(account.id, 'read', false, message);
+        failures.push(reading.length > 1 ? `${account.name}: ${message}` : message);
+      }
+    }
+    if (worked === 0) {
+      const message = failures.join(' ');
       this.saveCheck(false, message);
       throw new Error(message);
     }
+    mails.sort((a, b) => a.date.localeCompare(b.date));
     const seen = new Set(this.seen().map((o) => o.id));
     const fresh = mails.filter((m) => !seen.has(m.id));
     const lines: string[] = [];
@@ -371,8 +387,9 @@ export class MailImportService {
       lines.push(`${newDeals.length} new ${newDeals.length === 1 ? 'deal' : 'deals'} from PriceCharting.`);
       await this.dealListener?.(newDeals);
     }
+    lines.push(...failures);
     const message = lines.length > 0 ? lines.join(' ') : mails.length > 0 ? `No new export emails (${mails.length} used before).` : 'No export emails yet.';
-    this.saveCheck(true, message);
+    this.saveCheck(failures.length === 0, message);
     return message;
   }
 
@@ -422,14 +439,15 @@ export class MailImportService {
   }
 
   /** The export emails, and (with `withDeals`) PriceCharting's wishlist deal emails, in one visit to the mailbox. */
-  private async find(account: MailAccount, withDeals = false): Promise<{ folder: string; mails: FoundMail[]; deals: FoundMail[] }> {
+  private async find(row: MailAccountRow, withDeals = false, withExports = true): Promise<{ folder: string; mails: FoundMail[]; deals: FoundMail[] }> {
+    const account = this.accounts.imap(row, this.settings.get('mail.folder').trim());
     const since = new Date(Date.now() - this.settings.get('mail.maxAgeDays') * 86_400_000);
     const from = this.settings.get('mail.sender').trim();
     // The server's search is loose (a word anywhere in From); the sender is checked again here.
     const mine = (mails: FoundMail[]) => mails.filter((m) => !from || m.from.toLowerCase().endsWith(from.toLowerCase()));
     const box = await this.open(account);
     try {
-      const found = await box.find({ since, from, subject: this.settings.get('mail.subject').trim() });
+      const found = withExports ? await box.find({ since, from, subject: this.settings.get('mail.subject').trim() }) : { folder: 'its mail', mails: [] as FoundMail[] };
       let deals: FoundMail[] = [];
       if (withDeals) {
         const dealSince = new Date(Date.now() - this.settings.get('mail.dealDays') * 86_400_000);
@@ -525,7 +543,7 @@ export function registerMailRoutes(app: FastifyInstance, mail: MailImportService
   app.get('/api/v1/mail', async () => mail.status());
   app.post('/api/v1/mail/test', async () => mail.test());
   app.post('/api/v1/mail/check', async (_request, reply) => {
-    if (!mail.enabled()) return reply.code(409).send({ error: 'off', message: 'Turn on collection updates from your email first (Settings > Email).' });
+    if (!mail.enabled()) return reply.code(409).send({ error: 'off', message: 'Turn on collection updates from your email first (Settings > Features).' });
     return { queued: tasks.enqueue('mail-import') };
   });
 }

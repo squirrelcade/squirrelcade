@@ -1,9 +1,10 @@
 import { Card, Group, NavLink, Stack } from '@mantine/core';
 import { useMediaQuery } from '@mantine/hooks';
-import { Link, useParams } from 'react-router';
+import { useEffect } from 'react';
+import { Link, useLocation, useParams } from 'react-router';
 import { HELP_TEXTS, HELP_TOPICS, helpTitle, resolveHelpLink } from '../helpTopics';
 import { usePageTitle, useSetting } from '../hooks';
-import { Markdown } from '../Markdown';
+import { HELP_ANCHORS, Markdown } from '../Markdown';
 import { AiSetupPanel } from './AiSetup';
 
 /** Help: the guides (docs/help), with their index beside them on a wide screen (on a phone, /help is the index). */
@@ -13,6 +14,13 @@ export function HelpPage() {
   const appName = useSetting('general.instanceName', 'Squirrelcade') || 'Squirrelcade';
   const key = topic && HELP_TEXTS.has(topic) && topic !== 'README' ? topic : null;
   const text = key ? HELP_TEXTS.get(key)! : (HELP_TEXTS.get('README') ?? '# Help');
+  // A link like /help/integrations#friends-live scrolls to its heading (the ids are the headings' words).
+  const hash = useLocation().hash.slice(1);
+  useEffect(() => {
+    if (!hash) return;
+    const id = decodeURIComponent(hash);
+    (document.getElementById(id) ?? document.getElementById(HELP_ANCHORS[id] ?? ''))?.scrollIntoView({ block: 'start' });
+  }, [hash, key]);
   usePageTitle(key ? `${helpTitle(text, key)} · Help` : 'Help', appName);
   return (
     <Group align="flex-start" wrap="nowrap" gap="lg">

@@ -6,6 +6,7 @@ Store Mode is for your phone in a store (or a friend's list of games for sale): 
 - **Owned on another console**, or **You have it on PC**;
 - **Need it**, with its place on your wishlist and its acorns, or **Need it if physical** for a game not confirmed as a physical release;
 - the [sets](sets.md) it's in, and your note on it;
+- with your wishlist set to **Picked by you** (see [the wishlist](wishlist.md)), **Want it** beside Add it for a game you don't have on that console: it goes on My wishlist, and the button then says **On your wishlist**;
 - its stars beside its name, as on its page (its Top 100 place, Critics' favorite, Launch title), and **Play on RomM** for a game your [RomM](romm.md) has.
 
 A game on several consoles is **one card**, with its consoles' marks (in color where you have it, faded grey where you don't, PC last): the first answer shows to start, and tapping a mark shows that console's. The header's search (on a computer) lists a game once too, with its marks; a mark opens it on that console. The chips above the answers still show one console's only.

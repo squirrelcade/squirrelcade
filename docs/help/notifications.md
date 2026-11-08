@@ -1,6 +1,6 @@
 # Notifications
 
-Squirrelcade can tell you when something happens: a summary after each collection update, a problem, a lent game that's late, a price drop. It sends them by **email**, to a **phone app**, to a **chat**, or to a **webhook**: as many as you like, each with its own switch: email on **Settings > Email**, the others on **Settings > Notifications**. All are off until you set one up.
+Squirrelcade can tell you when something happens: a summary after each collection update, a problem, a lent game that's late, a price drop. It sends them by **email**, to a **phone app**, to a **chat**, or to a **webhook**: as many as you like, each with its own switch on **Settings > Notifications**; email sends from an account you add on **Settings > Email**. All are off until you set one up.
 
 Turn one on and its fields and setup steps show right under its switch. Each step links to the page where it's done, with **Search the web** beside it in case that page has moved (Settings > Interface > Web searches picks the search engine). **Send a test message** at the bottom checks everything that's on, and says what each service answered.
 
@@ -8,21 +8,40 @@ Passwords, tokens and webhook addresses are kept like passwords: never shown aga
 
 ## Email
 
-**Email provider** fills in the mail server and port, and shows how to get the **app password** your provider wants for programs like Squirrelcade (your account's own password usually won't work). Then enter your address as the username, the app password, and who gets the messages (yourself, usually).
+**Settings > Email** is only for your email accounts. Add each mailbox once, and use as many as you like (a Gmail at home, one for work). Each account has:
 
-| Provider | Mail server | Port | The password |
-| --- | --- | --- | --- |
-| Gmail | smtp.gmail.com | 587 | An [app password](https://myaccount.google.com/apppasswords) (2-Step Verification must be on) |
-| Yahoo Mail | smtp.mail.yahoo.com | 465 | An app password: [account security](https://login.yahoo.com/account/security) › Create app password |
-| iCloud Mail | smtp.mail.me.com | 587 | An app-specific password: [Apple Account](https://account.apple.com) › Sign-In and Security |
-| AOL Mail | smtp.aol.com | 465 | An app password: [account security](https://login.aol.com/account/security) › Generate app password |
-| Zoho Mail | smtp.zoho.com | 465 | An [app password](https://accounts.zoho.com/home#security/app_password) when two-factor sign-in is on (Europe: smtp.zoho.eu) |
-| Fastmail | smtp.fastmail.com | 465 | An app password: [Settings › Privacy & Security](https://app.fastmail.com/settings/security) |
-| GMX | mail.gmx.com | 587 | Your GMX password, after allowing POP3 & IMAP access in GMX's settings (gmx.de and gmx.net: smtp.gmx.net) |
-| Microsoft 365 (work or school) | smtp.office365.com | 587 | Your password or an app password, if your admin allows "Authenticated SMTP" (ending: it turns off by default at the end of 2026) |
-| **Another provider** | (its SMTP server) | 587 or 465 | Its help pages say; search for "your provider SMTP settings" |
+- **Name:** what you call it.
+- **Address** and **App password:** your provider wants an app password for programs like Squirrelcade (your account's own password usually won't work). **Provider** fills in the servers and shows the steps to make one.
+- **Incoming server** (IMAP, with its port and security): for reading mail. Empty: the account doesn't read.
+- **Outgoing server** (SMTP, with its port): for sending mail. Empty: the account doesn't send.
 
-**Outlook.com, Hotmail and Live addresses don't work:** since September 2024 Microsoft lets programs send from them only with Microsoft's own sign-in, never a password. Use another address for Squirrelcade's messages (a free Gmail works), or a phone app or chat below.
+Each account has **Test** (it signs in to read, and sends a message to itself when it has an outgoing server), **Edit** and **Remove**. The password is kept like any other: never shown again, never exported with the settings, and never in the support file. Editing without typing a password keeps the saved one.
+
+What uses an account chooses it on its own page, not here:
+
+| What | Where | Accounts it uses |
+| --- | --- | --- |
+| Notifications by email | **Settings > Notifications > Email** (turn it on, then **Send from**, **From** and **To**) | One: the first that has an outgoing server, until you choose |
+| PriceCharting's export emails | **Settings > Collection > Stash updates from your email** | **Accounts to read**: one, several, or none chosen for all |
+| PriceCharting's deal emails | **Acorns ranking > PriceCharting's deal emails** | **Accounts to read**, the same way |
+| Prices from your order emails | **Settings > Collection > Prices from your order emails** | **Accounts to read**, the same way |
+| On the way's purchase emails | **Settings > Collection > On the way** | **Accounts to read**, the same way |
+
+When one account fails to sign in, the others are still read, and System > Status shows a line for each account (its name, when it last read or sent, and why it's failing). An install from before accounts has its one account made for you (account 1, which everything reads), and a separate mailbox for exports, if you had one, becomes a second account that only the exports and deals read.
+
+| Provider | Outgoing server | Port | Incoming server | The password |
+| --- | --- | --- | --- | --- |
+| Gmail | smtp.gmail.com | 587 | imap.gmail.com | An [app password](https://myaccount.google.com/apppasswords) (2-Step Verification must be on) |
+| Yahoo Mail | smtp.mail.yahoo.com | 465 | imap.mail.yahoo.com | An app password: [account security](https://login.yahoo.com/account/security) › Create app password |
+| iCloud Mail | smtp.mail.me.com | 587 | imap.mail.me.com | An app-specific password: [Apple Account](https://account.apple.com) › Sign-In and Security |
+| AOL Mail | smtp.aol.com | 465 | imap.aol.com | An app password: [account security](https://login.aol.com/account/security) › Generate app password |
+| Zoho Mail | smtp.zoho.com | 465 | imap.zoho.com | An [app password](https://accounts.zoho.com/home#security/app_password) when two-factor sign-in is on (Europe: smtp.zoho.eu) |
+| Fastmail | smtp.fastmail.com | 465 | imap.fastmail.com | An app password: [Settings › Privacy & Security](https://app.fastmail.com/settings/security) |
+| GMX | mail.gmx.com | 587 | imap.gmx.com | Your GMX password, after allowing POP3 & IMAP access in GMX's settings (gmx.de and gmx.net: smtp.gmx.net) |
+| Microsoft 365 (work or school) | smtp.office365.com | 587 | (can't be read with a password) | Your password or an app password, if your admin allows "Authenticated SMTP" (ending: it turns off by default at the end of 2026) |
+| **Another provider** | (its SMTP server) | 587 or 465 | (its IMAP server, port 993) | Its help pages say; search for "your provider SMTP settings" |
+
+**Outlook.com, Hotmail and Live addresses don't work:** since September 2024 Microsoft lets programs send from or read them only with Microsoft's own sign-in, never a password. Use another address for Squirrelcade (a free Gmail works; a forwarding rule from Outlook to Gmail brings your mail there), or a phone app or chat below.
 
 ## Phone apps
 

@@ -4,6 +4,27 @@
  * normalize the same are treated as the same text, never as a fuzzy match.
  */
 export function normalizeTitle(title: string): string {
+  const hit = normalized.get(title);
+  if (hit !== undefined) return hit;
+  return remember(normalized, title, normalizeOnce(title));
+}
+
+/**
+ * Answers kept for titles asked again (1.4.0, D220): the same catalog and collection titles are normalized on every
+ * rebuild of the wishlist and the catalogs (two thirds of a rebuild's time went to it). Each cache is emptied when full.
+ */
+const KEEP_TITLES = 250_000;
+const normalized = new Map<string, string>();
+const latin = new Map<string, boolean>();
+const keys = new Map<string, string>();
+const tokensOf = new Map<string, string[]>();
+function remember<V>(cache: Map<string, V>, title: string, value: V): V {
+  if (cache.size >= KEEP_TITLES) cache.clear();
+  cache.set(title, value);
+  return value;
+}
+
+function normalizeOnce(title: string): string {
   return title
     .normalize('NFKD')
     .replace(/[̀-ͯ]/g, '')
@@ -21,7 +42,9 @@ export function normalizeTitle(title: string): string {
  * keeps only digits or stray Latin letters ("デッドオアアライブ2" becomes "2").
  */
 export function latinTitle(title: string): boolean {
-  return !/\p{L}/u.test(title.replace(/\p{Script=Latin}/gu, ''));
+  const hit = latin.get(title);
+  if (hit !== undefined) return hit;
+  return remember(latin, title, !/\p{L}/u.test(title.replace(/\p{Script=Latin}/gu, '')));
 }
 
 const ROMAN: Record<string, number> = {
@@ -42,7 +65,9 @@ const NUMBERED = new Set(['part', 'chapter', 'episode', 'volume', 'vol', 'act', 
  * meets "Mega Man 10".
  */
 export function matchKey(title: string): string {
-  return scriptKey(title) ?? matchTokens(title).join('');
+  const hit = keys.get(title);
+  if (hit !== undefined) return hit;
+  return remember(keys, title, scriptKey(title) ?? matchTokens(title).join(''));
 }
 
 /**
@@ -59,6 +84,12 @@ function scriptKey(title: string): string | null {
 
 /** The words behind matchKey, with numbers written as digits ("Tomb Raider II" -> tomb, raider, 2). */
 export function matchTokens(title: string): string[] {
+  const hit = tokensOf.get(title);
+  if (hit !== undefined) return [...hit];
+  return [...remember(tokensOf, title, matchTokensOnce(title))];
+}
+
+function matchTokensOnce(title: string): string[] {
   const prepared = title
     .replace(/['’`]s\b/gi, '')
     .replace(/(\d),(\d{3})\b/g, '$1$2')

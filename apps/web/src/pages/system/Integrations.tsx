@@ -6,7 +6,7 @@ import { api } from '../../api';
 import { dateTime } from '../../format';
 import { HELP_TEXTS, resolveHelpLink } from '../../helpTopics';
 import { notifyError, notifySuccess, useSetting } from '../../hooks';
-import { Markdown } from '../../Markdown';
+import { HELP_ANCHORS, Markdown, slug } from '../../Markdown';
 
 /** One outside part's light (GET /api/v1/system/integrations, T-202). */
 export interface IntegrationLine {
@@ -36,18 +36,29 @@ export function useIntegrations(enabled = true) {
 }
 
 /** A part's section of Help > Integrations (docs/help/integrations.md), for its help card: one source for the words. */
-function helpOf(name: string): string | null {
+function helpOf(name: string, anchor?: string): string | null {
   const text = HELP_TEXTS.get('integrations') ?? '';
-  const start = text.indexOf(`\n## ${name}\n`);
+  let heading = name;
+  let start = text.indexOf(`\n## ${heading}\n`);
+  if (start < 0 && anchor?.includes('#')) {
+    // A line named for a person ("Ana's live link") finds its card by the anchor of its help link ("integrations#friends-live").
+    const want = anchor.split('#')[1]!;
+    const wanted = HELP_ANCHORS[want] ?? want;
+    const found = [...text.matchAll(/\n## (.+)\n/g)].find((m) => slug(m[1]!) === wanted);
+    if (found) {
+      heading = found[1]!;
+      start = found.index!;
+    }
+  }
   if (start < 0) return null;
-  const rest = text.slice(start + name.length + 5);
+  const rest = text.slice(start + heading.length + 5);
   const end = rest.indexOf('\n## ');
   return (end < 0 ? rest : rest.slice(0, end)).trim();
 }
 
 /** The ? beside a part: what it is, what it adds, what it needs, what leaves your server, how to fix the usual problems. */
 function HelpCard({ line }: { line: IntegrationLine }) {
-  const words = helpOf(line.name);
+  const words = helpOf(line.name, line.help);
   return (
     <Popover width={360} position="bottom-start" shadow="md" withinPortal>
       <Popover.Target>

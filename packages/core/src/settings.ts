@@ -1,5 +1,4 @@
 import { IGDB_EXTRA_PLATFORM_IDS, IGDB_PLATFORM_IDS } from './igdb.js';
-import { MAIL_PROVIDERS } from './notify.js';
 import { EXPORT_LINK_HOSTS } from './mailImport.js';
 import { NOT_PURCHASE_SUBJECTS_DEFAULT, ORDER_STORES, ORDER_WORDS_DEFAULT, PURCHASE_SUBJECTS_DEFAULT, WATCH_SENDERS_DEFAULT } from './orders.js';
 import { NEW_GAME_PRICES, RIPPABLE_CONSOLES } from './copyCare.js';
@@ -788,8 +787,7 @@ export const settingDefinitions = {
     page: 'features',
     section: 'Optional features',
     label: 'Stash updates from your email',
-    description:
-      "PriceCharting emails you a link to your export when you ask for one (My Collection › Download (CSV)). With this on, Squirrelcade checks your mailbox for that email and updates your collection from it: you ask PriceCharting for the export, and the rest happens here. It looks only at PriceCharting's emails, never changes or deletes mail, and signs in with an app password (the one email notifications use works): turn this on, then fill in the account right below, or leave it empty to use the email notifications' account.",
+    description: "PriceCharting emails you a link to your export when you ask for one (My Collection › Download (CSV)). With this on, Squirrelcade checks your mailbox for that email and updates your collection from it: you ask PriceCharting for the export, and the rest happens here. It looks only at PriceCharting's emails, and never changes or deletes mail. Add the email account on Settings > Email, then choose which accounts it reads on Settings > Collection.",
     default: FEATURE_DEFAULTS.mail,
   }),
   'features.retroachievements': bool({
@@ -869,41 +867,8 @@ export const settingDefinitions = {
       { value: 'leave', label: 'Leave it (the same file is never used twice)' },
     ],
   }),
-  'mail.username': text({
-    page: 'email',
-    section: 'A different mailbox for exports',
-    label: 'Its address',
-    description: "Only if PriceCharting's emails go to another mailbox than your account above: its address. Empty: your account above.",
-    default: '',
-    advanced: true,
-  }),
-  'mail.password': secret({
-    page: 'email',
-    section: 'A different mailbox for exports',
-    label: 'Its app password',
-    description: "That mailbox's app password. Empty: your account's above.",
-    advanced: true,
-  }),
-  'mail.imapHost': text({
-    page: 'email',
-    section: 'A different mailbox for exports',
-    label: 'Incoming mail server',
-    description: "The IMAP server, such as imap.gmail.com. Empty: your provider's (Your email account).",
-    default: '',
-    advanced: true,
-  }),
-  'mail.imapPort': num({
-    page: 'email',
-    section: 'A different mailbox for exports',
-    label: 'Incoming mail port',
-    description: '993 (encrypted from the start) is what nearly every provider uses.',
-    default: 993,
-    min: 1,
-    max: 65535,
-    advanced: true,
-  }),
   'mail.checkMinutes': num({
-    page: 'email',
+    page: 'collection',
     section: 'Stash updates from your email',
     label: 'Check the mailbox every',
     description: "How often Squirrelcade looks for a new PriceCharting export email.",
@@ -913,7 +878,7 @@ export const settingDefinitions = {
     unit: 'minutes',
   }),
   'mail.sender': text({
-    page: 'email',
+    page: 'collection',
     section: 'Stash updates from your email',
     label: 'Export emails come from',
     description: "PriceCharting sends exports from sales@vgpc.com; \"vgpc.com\" matches any address there.",
@@ -921,7 +886,7 @@ export const settingDefinitions = {
     advanced: true,
   }),
   'mail.subject': text({
-    page: 'email',
+    page: 'collection',
     section: 'Stash updates from your email',
     label: 'Export emails\' subject has',
     description: 'Words in the subject of the export email ("Your Exported Collection: Video Games"; exports of PriceCharting\'s other collections, such as cards, are left alone).',
@@ -929,7 +894,7 @@ export const settingDefinitions = {
     advanced: true,
   }),
   'mail.folder': text({
-    page: 'email',
+    page: 'collection',
     section: 'Stash updates from your email',
     label: 'Folder to look in',
     description: "Empty: all your mail where the server has an All Mail folder (as Gmail does, so a filter that skips the inbox doesn't matter), else the inbox.",
@@ -937,7 +902,7 @@ export const settingDefinitions = {
     advanced: true,
   }),
   'mail.maxAgeDays': num({
-    page: 'email',
+    page: 'collection',
     section: 'Stash updates from your email',
     label: 'Look at emails from the last',
     description: "Older export emails are left alone: PriceCharting's download link lasts 7 days.",
@@ -948,7 +913,7 @@ export const settingDefinitions = {
     advanced: true,
   }),
   'mail.linkHosts': list({
-    page: 'email',
+    page: 'collection',
     section: 'Stash updates from your email',
     label: 'Download exports only from',
     description:
@@ -957,16 +922,33 @@ export const settingDefinitions = {
     maxItems: 10,
     advanced: true,
   }),
+  'mail.accounts': list({
+    page: 'collection',
+    section: 'Stash updates from your email',
+    label: 'Accounts to read',
+    description: "Which email accounts (Settings > Email) are checked for PriceCharting's export emails. Empty: all of them.",
+    default: [],
+    maxItems: 20,
+  }),
   'mail.deals': bool({
-    page: 'email',
+    page: 'wishlist',
     section: "PriceCharting's deal emails",
     label: "Read PriceCharting's deal emails too",
     description:
       "With a wishlist on PriceCharting, it emails you when one of its games is listed on eBay below the market value. Squirrelcade reads those emails too and lists the deals on Acorns > Deals, next to your own wishlist's ranks; the game of the day favors a game with a fresh deal.",
     default: true,
   }),
+  'mail.dealAccounts': list({
+    page: 'wishlist',
+    section: "PriceCharting's deal emails",
+    label: 'Accounts to read',
+    description: "Which email accounts (Settings > Email) are checked for PriceCharting's deal emails. Empty: all of them.",
+    default: [],
+    maxItems: 20,
+    shownWhen: 'mail.deals',
+  }),
   'mail.dealDays': num({
-    page: 'email',
+    page: 'wishlist',
     section: "PriceCharting's deal emails",
     label: 'Keep deals for',
     description: 'A deal older than this leaves the list (an eBay listing below the market value rarely lasts long).',
@@ -977,7 +959,7 @@ export const settingDefinitions = {
     advanced: true,
   }),
   'mail.dealsLeaveOutParts': bool({
-    page: 'email',
+    page: 'wishlist',
     section: "PriceCharting's deal emails",
     label: 'Leave out a manual, case or box listed alone',
     description:
@@ -985,7 +967,7 @@ export const settingDefinitions = {
     default: true,
   }),
   'mail.dealAlertRank': num({
-    page: 'email',
+    page: 'wishlist',
     section: "PriceCharting's deal emails",
     label: 'Tell me about deals on my wishlist\'s top',
     description:
@@ -996,15 +978,23 @@ export const settingDefinitions = {
     unit: 'games',
   }),
   'orders.find': bool({
-    page: 'email',
+    page: 'collection',
     section: 'Prices from your order emails',
     label: 'Find what you paid in your order emails',
-    description:
-      "A Find in my email button beside Price paid in a copy's window, and Look up prices in my email on Collection › Improve for the copies still missing one: Squirrelcade searches your mailbox for the order or receipt emails that name the game (the newest few from the time set below), reads them, and fills in the price and the day for you to check. Nothing is saved until you save the copy. The mailbox is only read, never changed, and only the amounts and items found are kept, never an email. It reads more of your mail than PriceCharting's emails, so it's off until you turn it on. It reads the mailbox of Your email account, on this page.",
+    description: "A Find in my email button beside Price paid in a copy's window, and Look up prices in my email on Collection › Improve for the copies still missing one: Squirrelcade searches your mailbox for the order or receipt emails that name the game (the newest few from the time set below), reads them, and fills in the price and the day for you to check. Nothing is saved until you save the copy. The mailbox is only read, never changed, and only the amounts and items found are kept, never an email. It reads more of your mail than PriceCharting's emails, so it's off until you turn it on. Which accounts it reads is set just below.",
     default: false,
   }),
+  'orders.findAccounts': list({
+    page: 'collection',
+    section: 'Prices from your order emails',
+    label: 'Accounts to read',
+    description: 'Which email accounts (Settings > Email) are searched for order emails. Empty: all of them.',
+    default: [],
+    maxItems: 20,
+    shownWhen: 'orders.find',
+  }),
   'orders.paidCounts': select({
-    page: 'email',
+    page: 'collection',
     section: 'Prices from your order emails',
     label: 'What counts as the price paid',
     description:
@@ -1017,7 +1007,7 @@ export const settingDefinitions = {
     ],
   }),
   'orders.reader': select({
-    page: 'email',
+    page: 'collection',
     section: 'Prices from your order emails',
     label: 'Read order emails with',
     description:
@@ -1029,7 +1019,7 @@ export const settingDefinitions = {
     ],
   }),
   'orders.lookBackDays': num({
-    page: 'email',
+    page: 'collection',
     section: 'Prices from your order emails',
     label: 'Look at order emails from the last',
     description: 'Older order emails are left alone.',
@@ -1039,7 +1029,7 @@ export const settingDefinitions = {
     unit: 'days',
   }),
   'orders.maxEmails': num({
-    page: 'email',
+    page: 'collection',
     section: 'Prices from your order emails',
     label: 'Emails read for each game',
     description: 'The newest of the emails that name the game, its order or receipt among them; none larger than 5 MB is fetched.',
@@ -1050,7 +1040,7 @@ export const settingDefinitions = {
     advanced: true,
   }),
   'orders.words': list({
-    page: 'email',
+    page: 'collection',
     section: 'Prices from your order emails',
     label: 'Order emails have one of these words',
     description: "On Gmail, the search asks for the game's title with one of these words; another mailbox's search asks for the title, and the reader checks the email is an order.",
@@ -1059,7 +1049,7 @@ export const settingDefinitions = {
     advanced: true,
   }),
   'orders.batchMax': num({
-    page: 'email',
+    page: 'collection',
     section: 'Prices from your order emails',
     label: 'Look up prices for at most',
     description: 'Look up prices in my email (Collection › Improve) takes the copies missing a price, the newest added first, up to this many at a time.',
@@ -1070,7 +1060,7 @@ export const settingDefinitions = {
     advanced: true,
   }),
   'orders.aiDailyEmails': num({
-    page: 'email',
+    page: 'collection',
     section: 'Prices from your order emails',
     label: 'Emails to the AI model a day',
     description: 'At most this many order emails go to the AI model in a day, so its cost stays known; the rest are read by Squirrelcade\'s own reader. 0 sets no limit.',
@@ -1081,15 +1071,23 @@ export const settingDefinitions = {
     advanced: true,
   }),
   'orders.watch': bool({
-    page: 'email',
+    page: 'collection',
     section: 'On the way',
     label: 'Watch for games you bought: On the way',
-    description:
-      "Whether your purchase emails are read for On the way (the page itself is Settings › Features › On the way). Squirrelcade looks through your purchase emails from eBay, Mercari and the senders you list below, as often as you set, and puts each game you bought on Acorns › On the way with the store, the day, the price paid and the listing: not in your collection yet, not counted anywhere, never sent to PriceCharting. When it arrives, It's here adds it with that filled in and opens its window; Store Mode says when a game you scan is on the way. Only the store, the day, the items and the amounts are kept, never an email; the email is read as Read order emails with says. Off until you turn it on.",
+    description: "Whether your purchase emails are read for On the way (the page itself is Settings › Features › On the way). Squirrelcade looks through your purchase emails from eBay, Mercari and the senders you list below, as often as you set, and puts each game you bought on Acorns › On the way with the store, the day, the price paid and the listing: not in your collection yet, not counted anywhere, never sent to PriceCharting. When it arrives, It's here adds it with that filled in and opens its window; Store Mode says when a game you scan is on the way. Only the store, the day, the items and the amounts are kept, never an email; the email is read as Read order emails with says. Off until you turn it on.",
     default: false,
   }),
+  'orders.watchAccounts': list({
+    page: 'collection',
+    section: 'On the way',
+    label: 'Accounts to read',
+    description: 'Which email accounts (Settings > Email) are watched for purchase emails. Empty: all of them.',
+    default: [],
+    maxItems: 20,
+    shownWhen: 'orders.watch',
+  }),
   'orders.watchHours': num({
-    page: 'email',
+    page: 'collection',
     section: 'On the way',
     label: 'Look every',
     description: 'How often Squirrelcade looks for new purchase emails (24: once a day).',
@@ -1100,7 +1098,7 @@ export const settingDefinitions = {
     shownWhen: 'orders.watch',
   }),
   'orders.watchSenders': list({
-    page: 'email',
+    page: 'collection',
     section: 'On the way',
     label: 'Purchase emails from',
     description:
@@ -1112,7 +1110,7 @@ export const settingDefinitions = {
     shownWhen: 'orders.watch',
   }),
   'orders.watchNotify': bool({
-    page: 'email',
+    page: 'collection',
     section: 'On the way',
     label: 'Tell me when something is on the way',
     description: 'A message (on the ways set up in Settings › Notifications) when a look finds a new purchase.',
@@ -1120,7 +1118,7 @@ export const settingDefinitions = {
     shownWhen: 'orders.watch',
   }),
   'orders.exchangeRates': bool({
-    page: 'email',
+    page: 'collection',
     section: 'On the way',
     label: 'Turn other currencies into mine',
     description:
@@ -1129,14 +1127,14 @@ export const settingDefinitions = {
     shownWhen: 'orders.watch',
   }),
   'orders.countDigitalCodes': bool({
-    page: 'email',
+    page: 'collection',
     section: 'On the way',
     label: 'Count console games bought as digital codes',
     description: "Off: a console game bought as a code to redeem (\"[Digital Code]\", \"Online Game Code\") isn't put on the way or written on a copy from a purchases CSV or Claude's connector; it's listed as left out. PC games count either way.",
     default: false,
   }),
   'orders.amazonEmails': bool({
-    page: 'email',
+    page: 'collection',
     section: 'On the way',
     label: "Read Amazon's emails",
     description: "Amazon's order emails don't name what you bought, so each game waits on On the way until its order page names it. Off: Amazon's emails are left alone (when a purchases CSV has your Amazon orders, Settings > Sources).",
@@ -1144,7 +1142,7 @@ export const settingDefinitions = {
     shownWhen: 'orders.watch',
   }),
   'orders.watchSubjects': list({
-    page: 'email',
+    page: 'collection',
     section: 'On the way',
     label: "A purchase email's subject has",
     description: "One of these words or phrases (eBay's \"Order confirmed: ...\", a store's receipt).",
@@ -1154,7 +1152,7 @@ export const settingDefinitions = {
     advanced: true,
   }),
   'orders.watchNotSubjects': list({
-    page: 'email',
+    page: 'collection',
     section: 'On the way',
     label: 'Not when the subject has',
     description: 'An email about the order that isn\'t the purchase (shipped, delivered, a refund) or about something you sold.',
@@ -1164,7 +1162,7 @@ export const settingDefinitions = {
     advanced: true,
   }),
   'orders.watchFirstDays': num({
-    page: 'email',
+    page: 'collection',
     section: 'On the way',
     label: 'The first look goes back',
     description: 'How far back the first look reads; each look after starts where the one before ended.',
@@ -1828,13 +1826,12 @@ export const settingDefinitions = {
     advanced: true,
   }),
 
-  // On the way's own switch (D195): the page shows whether or not purchase emails are read (Settings > Email).
+  // On the way's own switch (D195): the page shows whether or not purchase emails are read (Settings > Collection > On the way).
   'orders.page': bool({
     page: 'features',
     section: 'Optional features',
     label: 'On the way',
-    description:
-      "Acorns › On the way: the games you bought that haven't arrived, to check and add when they come. They get there from a shop's order page or Amazon's order history pasted in, a purchases CSV, Claude, or your purchase emails (Settings › Email › On the way, which only says whether emails are read). Off: the page and its menu entry are hidden, and Store Mode doesn't say a game is on the way.",
+    description: "Acorns › On the way: the games you bought that haven't arrived, to check and add when they come. They get there from a shop's order page or Amazon's order history pasted in, a purchases CSV, Claude, or your purchase emails (Settings › Collection › On the way, which also says which email accounts are read). Off: the page and its menu entry are hidden, and Store Mode doesn't say a game is on the way.",
     default: true,
   }),
 
@@ -1847,6 +1844,18 @@ export const settingDefinitions = {
     default: 50,
     min: 5,
     max: 300,
+  }),
+  'wishlist.source': select({
+    page: 'wishlist',
+    section: 'Your wishlist',
+    label: 'What your wishlist is',
+    description:
+      "Suggested: the wishlist is Squirrelcade's ranked list of the games you're missing, as acorns order them. Picked by you: the wishlist holds only the games you add (from Suggestions, a game's page or Store Mode), and the ranked list stays as Suggestions to choose from. Store Mode, deals, friends' files and the shared wishlist use the one you choose.",
+    default: 'suggested',
+    options: [
+      { value: 'suggested', label: 'Suggested (the ranked list)' },
+      { value: 'mine', label: 'Picked by you (My wishlist)' },
+    ],
   }),
   'wishlist.fileGames': num({
     page: 'wishlist',
@@ -3009,7 +3018,7 @@ export const settingDefinitions = {
     page: 'sources',
     section: 'Vision model (Check a shelf)',
     label: 'Model for Talk',
-    description: "Talk (Settings > Features) and reading order emails (Settings > Email) use this service too; name a model here to use another one for them (a cheaper text model, say). Empty uses the model above. A helper answers them itself.",
+    description: "Talk (Settings > Features) and reading order emails (Settings > Collection > Prices from your order emails) use this service too; name a model here to use another one for them (a cheaper text model, say). Empty uses the model above. A helper answers them itself.",
     default: '',
     maxLength: 120,
   }),
@@ -3244,53 +3253,23 @@ export const settingDefinitions = {
     advanced: true,
   }),
   'notifications.emailEnabled': bool({
-    page: 'email',
-    section: 'Notifications by email',
+    page: 'notifications',
+    section: 'Email',
     label: 'Send notifications by email',
-    description: 'Notifications (after collection updates, when something fails) also come by email, sent from your account above.',
+    description: "Notifications (after collection updates, when something fails) also come by email, sent from the account chosen below (accounts: Settings > Email).",
     default: false,
   }),
-  'notifications.emailProvider': select({
-    page: 'email',
-    section: 'Your email account',
-    label: 'Email provider',
-    description: 'Choosing one fills in its mail servers, with the steps for its app password below. "Another provider" is for any other server.',
-    default: 'custom',
-    options: [...MAIL_PROVIDERS.map((m) => ({ value: m.id, label: m.name })), { value: 'custom', label: 'Another provider (fill in its server)' }],
-  }),
-  'notifications.smtpHost': text({
-    page: 'email',
-    section: 'Your email account',
-    label: 'Outgoing mail server',
-    description: 'The SMTP (outgoing) server, such as smtp.gmail.com. Filled in when you choose a provider.',
+  'notifications.emailAccount': text({
+    page: 'notifications',
+    section: 'Email',
+    label: 'Send from',
+    description: 'The email account (Settings > Email) that sends them. Empty: the first account that has an outgoing server.',
     default: '',
-  }),
-  'notifications.smtpPort': num({
-    page: 'email',
-    section: 'Your email account',
-    label: 'Outgoing mail port',
-    description: '587 for STARTTLS (most servers), 465 for TLS from the start. Filled in when you choose a provider.',
-    default: 587,
-    min: 1,
-    max: 65535,
-    advanced: true,
-  }),
-  'notifications.smtpUser': text({
-    page: 'email',
-    section: 'Your email account',
-    label: 'Email address',
-    description: 'The account Squirrelcade signs in to, usually your full email address. It sends your notifications and reads PriceCharting\'s emails.',
-    default: '',
-  }),
-  'notifications.smtpPassword': secret({
-    page: 'email',
-    section: 'Your email account',
-    label: 'App password',
-    description: "Most providers want an app password here, not your account's own password: the steps above say how to get one. The same password sends and reads mail.",
+    shownWhen: 'notifications.emailEnabled',
   }),
   'notifications.emailFrom': text({
-    page: 'email',
-    section: 'Notifications by email',
+    page: 'notifications',
+    section: 'Email',
     label: 'From',
     description: 'Sender address. Empty uses the username.',
     default: '',
@@ -3298,8 +3277,8 @@ export const settingDefinitions = {
     advanced: true,
   }),
   'notifications.emailTo': list({
-    page: 'email',
-    section: 'Notifications by email',
+    page: 'notifications',
+    section: 'Email',
     label: 'To',
     description: 'Who gets the notifications (yourself, usually: the same address works).',
     default: [],
@@ -4013,7 +3992,7 @@ export const FEATURE_SETUP: Readonly<Record<FeatureKey, readonly SettingKey[]>> 
   pc: ['pc.playniteFolder'],
   romm: ['sources.rommUrl', 'sources.rommToken'],
   itad: ['sources.itadKey', 'sources.itadCountry'],
-  mail: ['mail.username', 'mail.password', 'mail.imapHost'],
+  mail: [],
   retroachievements: ['sources.raUsername', 'sources.raApiKey'],
   xbox: ['sources.xboxApiKey'],
   playstation: ['sources.psnToken'],
@@ -4033,7 +4012,7 @@ export const FEATURE_HOME: Readonly<Record<FeatureKey, SettingsPageId | null>> =
   pc: 'pc',
   romm: 'sources',
   itad: 'sources',
-  mail: 'email',
+  mail: 'collection',
   retroachievements: 'sources',
   xbox: 'sources',
   playstation: 'sources',
@@ -4134,3 +4113,19 @@ export interface SettingsExport {
   appVersion: string;
   settings: Partial<SettingsValues>;
 }
+
+/**
+ * Settings from before email accounts (1.4.0, D218), now kept on an email account: an old settings file or AI may still
+ * write them, and the server moves what they say onto an account instead of refusing them.
+ */
+export const LEGACY_MAIL_SETTINGS = [
+  'notifications.emailProvider',
+  'notifications.smtpHost',
+  'notifications.smtpPort',
+  'notifications.smtpUser',
+  'notifications.smtpPassword',
+  'mail.username',
+  'mail.password',
+  'mail.imapHost',
+  'mail.imapPort',
+] as const;

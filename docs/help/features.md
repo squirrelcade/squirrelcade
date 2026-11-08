@@ -1,6 +1,6 @@
 # Optional parts
 
-Only your games are required, typed in or from an export. Every part of Squirrelcade that needs another program or an outside service is optional, and **Settings > Features** switches the main ones on or off. Each part is set up in one place, with its switch there too: a card on Settings > Sources (the PC library and the magazines on their own pages, the email account on Settings > Email), with the steps under **Set it up, step by step**, what it needs (a key, an address, a folder) and a test. A switch on Features links to that card. A part that's off leaves the menus, its settings elsewhere are hidden (they keep their values, for when you turn it back on; the pages they're on say so, with a link to its card), and its background tasks stop.
+Only your games are required, typed in or from an export. Every part of Squirrelcade that needs another program or an outside service is optional, and **Settings > Features** is the list of them: for each, what it adds, what it needs (an outside account or nothing), how long it takes (with padding: "about 10 minutes; give it 25"), whether it's set up now (the same light as System > Status > Integrations), a link to where it's set up, and **Set it up with AI**, which copies a prompt for that one feature to paste into any AI chat (they're also in the repository, [docs/ai/features](https://github.com/squirrelcade/squirrelcade/tree/main/docs/ai/features)). There are a lot of them, and nothing is asked on the first visit: add them one at a time, on any day. The switches below the list turn the main ones on or off. Each part is set up in one place, with its switch there too: a card on Settings > Sources (the PC library and the magazines on their own pages, the email account on Settings > Email), with the steps under **Set it up, step by step**, what it needs (a key, an address, a folder) and a test. A switch on Features links to that card. A part that's off leaves the menus, its settings elsewhere are hidden (they keep their values, for when you turn it back on; the pages they're on say so, with a link to its card), and its background tasks stop.
 
 | Part | What it does | What it needs | New installs |
 | --- | --- | --- | --- |
@@ -10,7 +10,7 @@ Only your games are required, typed in or from an export. Every part of Squirrel
 | **PC library** | Your PC games from every storefront, read from Playnite's backups; a PC wishlist; your PC games next to your console copies. See [PC library](pc-library.md). | Playnite on a Windows PC, and its backup folder mounted into Squirrelcade. | Off |
 | **RomM links** | Links from your games to your own RomM, to open or play them. See [RomM](romm.md). | A RomM server and an API token. | Off |
 | **PC game prices (IsThereAnyDeal)** | The best price now and the lowest ever of each game on the PC wishlist, and a message when one drops. See [PC library](pc-library.md#pc-game-prices). | The PC library, and a free IsThereAnyDeal API key. | Off |
-| **Stash updates from your email** | Your collection updated from PriceCharting's export email as soon as it arrives. See [Your collection](collection.md#from-your-email). | Your email account on Settings > Email (address and app password), the same one notifications use. | Off |
+| **Stash updates from your email** | Your collection updated from PriceCharting's export email as soon as it arrives. See [Your collection](collection.md#from-your-email). | An email account on Settings > Email (address and app password); the same accounts can send notifications. | Off |
 | **RetroAchievements** | What you've beaten, completed and mastered on RetroAchievements, in each game's drawer, and if you like in What you played. See [What you played](playing.md#retroachievements). | Your RetroAchievements username and its free web API key. | Off |
 | **Xbox achievements** | How far you got in each game on Xbox 360, One and Series X and S, in its drawer, and if you like in What you played. See [What you played](playing.md#xbox-achievements-and-playstation-trophies). | A free OpenXBL key (sign in at xbl.io with your Microsoft account). | Off |
 | **Steam achievements** | Your achievements in the PC library's Steam games, beside each game, with a filter for the games you completed. See [PC library](pc-library.md#steam-achievements). | The PC library, a free Steam Web API key, and your Steam profile with its game details public. | Off |
@@ -20,11 +20,14 @@ Only your games are required, typed in or from an export. Every part of Squirrel
 
 Every outside service and tool, with its link, what you need and what it costs, is in [Services and tools](services.md).
 
-Other outside services have their own switch where they're set up; Settings > Features lists them too:
+Other outside services have their own switch where they're set up; Settings > Features lists them too (the list above has messages and barcodes as well):
 
 - **Messages:** email, Pushover, Pushbullet, ntfy, Gotify, Discord, Telegram, Slack, a webhook or Apprise, each with its own switch in Settings > Notifications. See [Notifications](notifications.md).
 - **Naming unknown barcodes:** Store Mode asks UPCitemdb (free, no account), UPC Database (upcdatabase.org: a free account's key) or both about a barcode it has never seen. Settings > Sources > Barcodes.
 - **Catalog sources:** Wikipedia's game lists, and Nintendo Life's lists of Switch 2 Game-Key Cards (off unless you turn it on). Settings > Sources > Catalog sources. See [Catalogs](catalogs.md).
+- **YouTube videos:** **Light** needs nothing (IGDB's trailers and each video channel's newest uploads); **Deep** needs a free YouTube key (whole channel lists, Find its videos). Settings > Roots > How much of YouTube to use. See [Roots](roots.md#videos).
+- **Friends' live links:** a folder Squirrelcade writes encrypted live files into (Settings > Friends > Live links), carried to the cloud by a sync tool you already use (Google Drive for desktop, Synology Cloud Sync, rclone, Dropbox) and shared as Anyone with the link. About 15 minutes if the sync tool is there; give it 30. See [Friends](friends.md).
+- **Share your wishlist as a file** needs no setup: Acorns wishlist > Share as a file. See [The wishlist](wishlist.md).
 - **Checking a game without signing in,** and **share links** for your wishlist or the games for sale: see [Sharing your collection](sharing.md).
 
 ## IGDB keys

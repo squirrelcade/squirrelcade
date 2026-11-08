@@ -382,3 +382,31 @@ describe('Amazon (D176)', () => {
     expect((await g!.app.inject({ method: 'POST', url: '/api/v1/coming/amazon-history', cookies, ...multipart('list.csv', 'Title\nOkami') })).statusCode).toBe(400);
   });
 });
+
+describe('On the way with two email accounts', () => {
+  it("reads the purchase emails of every account when set to all, and of the chosen one alone when set to one", async () => {
+    const mercari = orderMail('mercari1@mercari', 1, 'no-reply@mercari.com', 'You purchased Kingdom Hearts PS2 Greatest Hits', [['Item price', '$12.00'], ['Sales tax', '$1.00'], ['Total', '$13.00']]);
+    const homeBox = gmailBox([EBAY_OKAMI]);
+    const workBox = gmailBox([mercari]);
+    const opened: string[] = [];
+    const open: MailboxOpener = async (account) => {
+      opened.push(account.user);
+      return account.user === 'home@example.com' ? homeBox.open(account) : workBox.open(account);
+    };
+    const { transports } = fakeTransports();
+    g = await testApp({ mailbox: open, transports });
+    seedCatalogs(g, { owned: [], catalogs: { 'playstation-2': ['Okami', 'Kingdom Hearts'] } });
+    const base = { imapHost: 'imap.example.com', imapPort: 993, imapSecurity: 'ssl' as const, smtpHost: '', smtpPort: 587, username: '' };
+    g.mail.accounts.add({ ...base, name: 'Home', address: 'home@example.com', password: 'one' });
+    const work = g.mail.accounts.add({ ...base, name: 'Work', address: 'work@example.com', password: 'two' });
+    g.settings.update({ 'orders.watch': true });
+    // All (empty): both mailboxes are watched, and a purchase from each is on the way.
+    expect(await g.orders.watch()).toBe('2 new on the way (2 purchase emails read).');
+    expect(opened.sort()).toEqual(['home@example.com', 'work@example.com']);
+    // Chosen: only Work is signed in to.
+    opened.length = 0;
+    g.settings.update({ 'orders.watchAccounts': [String(work.id)] });
+    await g.orders.watch();
+    expect(opened).toEqual(['work@example.com']);
+  });
+});

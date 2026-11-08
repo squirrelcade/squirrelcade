@@ -1,6 +1,6 @@
 # 4. Connect what you use
 
-Each of these is optional, and each has one home: its card on **Settings > Sources** (your email account on **Settings > Email**, messages on **Settings > Notifications**). The card has the switch, the steps (open **Set it up, step by step**), the keys it needs and a **test** button; Settings > Features has the same switches, each with a link to its card. Do them in any order, any day.
+Each of these is optional, and each has one home: its card on **Settings > Sources** (your email account on **Settings > Email**, messages on **Settings > Notifications**). The card has the switch, the steps (open **Set it up, step by step**), the keys it needs and a **test** button; Settings > Features has the same switches, each with a link to its card. Do them in any order, any day. **Settings > Features** lists every one of them (and a few more) with what it needs, a padded time ("about 10 minutes; give it 25": setting up outside accounts usually takes longer than it looks) and whether it works now, and **Set it up with AI** copies a prompt for that one feature (also at [docs/ai/features](https://github.com/squirrelcade/squirrelcade/tree/main/docs/ai/features)). Nothing here is needed to use Squirrelcade.
 
 | What | What it gives you | What it needs | Time |
 | --- | --- | --- | --- |
@@ -11,7 +11,7 @@ Each of these is optional, and each has one home: its card on **Settings > Sourc
 | [Family and friends](#family-and-friends) | Viewers, a gift link for your wishlist, a game check without an account | Step 3 done | 10 minutes |
 | [PC library](#pc-library-playnite) | Your PC games from every store, next to your console copies | Playnite on a Windows PC, a shared folder | 15 minutes |
 | [Leaves](#leaves-your-magazine-scans) | Your magazine scans, read on any screen, searched and linked to their games | A folder of CBZ scans | 10 minutes |
-| [Videos](#videos-youtube) | A game's reviews and trailers on video, from YouTube channels | A free YouTube key | 10 minutes |
+| [Videos](#videos-youtube) | A game's reviews and trailers on video, from YouTube channels | Light: nothing. Deep: a free YouTube key | 2 minutes (Light), 10 (Deep) |
 | [PC game prices](#pc-game-prices) | Prices and lows for the PC wishlist | The PC library, a free key | 5 minutes |
 | [RomM](#romm) | Links from your games to your RomM, to play them | A RomM server | 5 minutes |
 | [RetroAchievements](#retroachievements) | What you beat and mastered in classic games, in each game's drawer | A free account's key | 5 minutes |
@@ -42,7 +42,7 @@ PriceCharting emails a link to your export when you ask for one; Squirrelcade ca
 
 ## On the way
 
-**Acorns > On the way** keeps the games you've bought until they arrive (**It's here** adds each one, with the store, the day and the price filled in). It's in the menu to start (**Settings > Features > On the way** hides it); your purchase emails are read for it only with **Settings > Email > On the way > Watch for games you bought: On the way** on (off to start). Ways in, any or all:
+**Acorns > On the way** keeps the games you've bought until they arrive (**It's here** adds each one, with the store, the day and the price filled in). It's in the menu to start (**Settings > Features > On the way** hides it); your purchase emails are read for it only with **Settings > Collection > On the way > Watch for games you bought: On the way** on (off to start). Ways in, any or all:
 
 - **Purchase emails** (with your email account set up, as above): add your stores to **Purchase emails from** (eBay and Mercari to start; tap Amazon, Super Rare Games and the others, type `gamefly.com`, or **Find my stores in my email**). Amazon's emails don't name the game, so it waits as "a video game" until its order page names it.
 - **A shop's order page:** **Add from an order page** on On the way: paste the page (Ctrl+A, Ctrl+C) or a screenshot of it.
@@ -91,7 +91,7 @@ See [Sharing your collection](../help/sharing.md).
 
 ## Videos (YouTube)
 
-**Settings > Roots > Videos on a game's page** (off to start) shows a game's videos: pasted ones and IGDB's trailers need nothing. The **Video channels** (IGN, GameSpot, Gaming Historian to start) and **Find its videos** (a search of each channel for one game, when you press it) need a free YouTube Data API key: [A YouTube key](../help/roots.md#a-youtube-key) has the steps, and it goes in **Settings > Sources > YouTube (videos)**. **YouTube's units Squirrelcade may use a day** (Settings > Roots, 8,000 of the key's 10,000) keeps the searches from using up the nightly reading's room.
+**Settings > Roots > Videos on a game's page** (off to start) shows a game's videos. **Light** (**How much of YouTube to use**: Light, or Automatic with no key) needs nothing: pasted videos, IGDB's trailers, the ones Wikipedia cites, and each **video channel's** (IGN, GameSpot, Gaming Historian to start) newest uploads, about its latest 15, read from its public feed at night. **Deep** reads each channel's whole list, and adds **Find its videos** (a search of each channel for one game, when you press it); it needs a free YouTube Data API key: [A YouTube key](../help/roots.md#a-youtube-key) has the steps, and it goes in **Settings > Sources > YouTube (videos)**. **YouTube's units Squirrelcade may use a day** (Settings > Roots, 8,000 of the key's 10,000) keeps the searches from using up the nightly reading's room.
 
 ## PC game prices
 
@@ -132,3 +132,7 @@ Nothing to connect, only your own numbers, in **Settings > Collection**: **Selli
 ## A start page or automation
 
 **Settings > Security > API key** shows the key. [Homepage](https://gethomepage.dev)'s customapi widget can show your totals from `GET /api/v1/stats`; any tool can ask whether games are owned with `POST /api/v1/owned`. Send the key in the `X-Api-Key` header. See [the API](../API.md).
+
+## Friends' live links
+
+Friends' collections that stay current by themselves (for a friend with a Squirrelcade of version 1.4.0 or later): Squirrelcade writes an encrypted live file for each friend you share with into a folder (**Settings > Friends > Live links**; `/config/friends-live` in Docker), something you already use carries that folder to the cloud (Google Drive for desktop, Synology Cloud Sync, rclone or Dropbox), you share each file as **Anyone with the link**, paste its link on the friend's card, and send the friend an invite once. About 15 minutes if a sync tool is already there: give it 30. The prompt for it is [docs/ai/features/friends-live.md](https://github.com/squirrelcade/squirrelcade/blob/main/docs/ai/features/friends-live.md).

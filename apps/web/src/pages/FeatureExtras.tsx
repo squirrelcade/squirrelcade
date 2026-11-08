@@ -1,4 +1,3 @@
-import { channelsOn } from '@squirrelcade/core';
 import { Anchor, Badge, Card, Group, Stack, Table, Text, Title } from '@mantine/core';
 import { Link } from 'react-router';
 import { useSettings } from '../hooks';
@@ -12,22 +11,7 @@ export function FeatureExtras() {
   if (!s) return null;
   const sources = s['sources.catalogOrder'] ?? [];
   const catalogOn = sources.filter((x) => x.on).length;
-  const channels = channelsOn(s);
   const rows: { name: string; what: string; on: boolean; state: string; to: string }[] = [
-    {
-      name: 'Messages',
-      what: 'A summary after each collection update, and alerts when something fails: by email, a phone app (Pushover, Pushbullet, ntfy, Gotify), a chat (Discord, Telegram, Slack), a webhook or Apprise. Each has its own switch.',
-      on: channels.length > 0,
-      state: channels.length > 0 ? channels.join(', ') : 'Off',
-      to: '/settings/notifications',
-    },
-    {
-      name: 'Naming unknown barcodes',
-      what: 'Store Mode asks UPCitemdb (free, no account) or UPC Database (a free account\'s key), or both, what product a barcode it has never seen is.',
-      on: s['sources.barcodeLookup'] !== 'off',
-      state: { off: 'Off', upcitemdb: 'UPCitemdb', upcdatabase: 'UPC Database', both: 'Both' }[s['sources.barcodeLookup']] ?? 'UPCitemdb',
-      to: '/settings/sources#setting-sources.barcodeLookup',
-    },
     {
       name: 'Catalog sources',
       what: "Where each console's list of games comes from: Wikipedia's lists and others. Catalogs are what completion and the wishlist are worked out against.",
@@ -59,7 +43,7 @@ export function FeatureExtras() {
           <Anchor component={Link} to="/updates" size="sm">
             Stash updates
           </Anchor>{' '}
-          or dropped in the watched folder. Everything above and below is optional, and each has its own switch.
+          or dropped in the watched folder. Everything in the list above is optional, and each has its own switch. Below: a few more things Squirrelcade can use.
         </Text>
         <Table verticalSpacing={6}>
           <Table.Tbody>

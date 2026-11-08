@@ -7,7 +7,9 @@ import {
   normalizeTitle,
   scoreCandidates,
   scoringConfig,
+  SAME_GAME_AT,
   selectMaster,
+  TitleMatcher,
   topByPlatform,
   type GameDetails,
   type MasterEntry,
@@ -16,7 +18,7 @@ import {
   type ShapeSpec,
   type WishlistCandidate,
 } from '@squirrelcade/core';
-import { and, eq, isNull } from 'drizzle-orm';
+import { and, desc, eq, isNull } from 'drizzle-orm';
 import type { FastifyInstance } from 'fastify';
 import { shown } from './access.js';
 import type { Logger } from 'pino';
@@ -24,7 +26,7 @@ import type { CatalogService } from './catalogs.js';
 import type { CollectionService } from './collection.js';
 import type { Db } from './db/index.js';
 import type { IgdbService, Reviews } from './igdb.js';
-import { copies, exclusions, gameDetails, ownerPreferences, platforms } from './db/schema.js';
+import { copies, exclusions, gameDetails, myWishlist, ownerPreferences, platforms } from './db/schema.js';
 import type { SettingsService } from './settings.js';
 import { learnedPoints, learnTastes, type LearnedTastes } from './tastes.js';
 
@@ -41,6 +43,19 @@ export interface WishlistResult {
   all: Map<string, ScoredCandidate>;
   /** Why a missing catalog game isn't on the wishlist, by "platformKey|normalized title" (snoozes aside). */
   offList: Map<string, string>;
+  /** What the wishlist is (D217): Squirrelcade's ranked list, or the games the owner picked (master is then theirs). */
+  source: 'suggested' | 'mine';
+  /** With a wishlist the owner picks: the ranked list to pick from (each entry's rank its place there). */
+  suggestions: MasterEntry[] | null;
+}
+
+/** One game the owner put on My wishlist (D217). */
+export interface MyWish {
+  platformKey: string;
+  platform: string;
+  title: string;
+  source: string;
+  addedAt: string;
 }
 
 /**
@@ -140,10 +155,138 @@ export class WishlistService {
     return map;
   }
 
+  private cacheKey(): string {
+    return `${this.catalogs.stamp()}|${this.revision}|${this.igdb?.stamp() ?? 0}`;
+  }
+
+  /** The wishlist, worked out now if what it depends on changed (in one go: see rebuild for the background). */
   compute(): WishlistResult {
-    const key = `${this.catalogs.stamp()}|${this.revision}|${this.igdb?.stamp() ?? 0}`;
+    const key = this.cacheKey();
     if (this.cache?.key === key) return this.cache.result;
-    const t0 = Date.now();
+    const steps = this.build(key, Date.now());
+    let step = steps.next();
+    while (!step.done) step = steps.next();
+    return step.value;
+  }
+
+  /**
+   * The wishlist worked out in the background (1.4.0, D220: a rebuild in one go held the server 4.4 s after an
+   * update): a console at a time, then the scoring and the lists, letting requests in between. Whatever asks for it
+   * meanwhile gets it worked out at once (and this stops); until then the old one is kept.
+   */
+  async rebuild(): Promise<void> {
+    const key = this.cacheKey();
+    if (this.cache?.key === key) return;
+    const steps = this.build(key, Date.now());
+    let step = steps.next();
+    while (!step.done) {
+      await new Promise((r) => setImmediate(r));
+      if (this.cache?.key === key || this.cacheKey() !== key) return;
+      step = steps.next();
+    }
+  }
+
+  /** The games on My wishlist (D217), newest first. */
+  mine(): MyWish[] {
+    return this.db
+      .select({ platformKey: platforms.key, platform: platforms.name, title: myWishlist.title, source: myWishlist.source, addedAt: myWishlist.addedAt })
+      .from(myWishlist)
+      .innerJoin(platforms, eq(platforms.id, myWishlist.platformId))
+      .orderBy(desc(myWishlist.addedAt))
+      .all();
+  }
+
+  /** Puts a game on My wishlist (from Suggestions, a game's page, Store Mode); false for an unknown console. */
+  addMine(platformKey: string, title: string, source = 'suggestions'): boolean {
+    const platform = this.db.select({ id: platforms.id }).from(platforms).where(eq(platforms.key, platformKey)).get();
+    const t = typeof title === 'string' ? title.trim().slice(0, 300) : '';
+    if (!platform || !t) return false;
+    const src = ['suggestions', 'game', 'store', 'friend', 'import'].includes(source) ? source : 'suggestions';
+    this.db.insert(myWishlist).values({ platformId: platform.id, title: t, titleKey: normalizeTitle(t), source: src, addedAt: new Date().toISOString() }).onConflictDoNothing().run();
+    this.invalidate();
+    return true;
+  }
+
+  /** Takes a game off My wishlist. */
+  removeMine(platformKey: string, title: string): boolean {
+    const platform = this.db.select({ id: platforms.id }).from(platforms).where(eq(platforms.key, platformKey)).get();
+    if (!platform) return false;
+    const removed = this.db.delete(myWishlist).where(and(eq(myWishlist.platformId, platform.id), eq(myWishlist.titleKey, normalizeTitle(title)))).run().changes > 0;
+    if (removed) this.invalidate();
+    return removed;
+  }
+
+  /**
+   * Whether the owner has a game on this console after all (D217: a tester's owned games were suggested): a copy whose
+   * title is the same game (spellings, editions and punctuation aside, at the confidence that counts as the same game),
+   * even when the console's catalog didn't match it to its entry. The copy's title, or null.
+   */
+  private ownedHere(): (platformKey: string, title: string) => string | null {
+    // Kept with its answers until the copies change: the lists shown are mostly the same from one rebuild to the next.
+    return this.ownedAnswers().lookup;
+  }
+
+  /** The games found owned so far (by "platformKey|normalized title"), left out before the lists are picked. */
+  private knownOwned(): Map<string, string> {
+    return this.ownedAnswers().owned;
+  }
+
+  private ownedAnswers(): { revision: string; lookup: (platformKey: string, title: string) => string | null; owned: Map<string, string> } {
+    const revision = this.collection.revision();
+    if (this.ownedCache?.revision === revision) return this.ownedCache;
+    const answers = new Map<string, string | null>();
+    const owned = new Map<string, string>();
+    const look = this.ownedLookup();
+    const lookup = (platformKey: string, title: string) => {
+      const k = `${platformKey}|${title}`;
+      let a = answers.get(k);
+      if (a === undefined) {
+        answers.set(k, (a = look(platformKey, title)));
+        if (a) owned.set(`${platformKey}|${normalizeTitle(title)}`, a);
+      }
+      return a;
+    };
+    this.ownedCache = { revision, lookup, owned };
+    return this.ownedCache;
+  }
+
+  private ownedCache: { revision: string; lookup: (platformKey: string, title: string) => string | null; owned: Map<string, string> } | null = null;
+
+  private ownedLookup(): (platformKey: string, title: string) => string | null {
+    const rows = this.db
+      .select({ title: copies.title, platformKey: platforms.key })
+      .from(copies)
+      .innerJoin(platforms, eq(platforms.id, copies.platformId))
+      .where(isNull(copies.goneAt))
+      .all();
+    const exact = new Map<string, string>();
+    const byPlatform = new Map<string, { title: string }[]>();
+    for (const r of rows) {
+      exact.set(`${r.platformKey}|${matchKey(baseTitle(r.title))}`, r.title);
+      const list = byPlatform.get(r.platformKey);
+      if (list) list.push({ title: r.title });
+      else byPlatform.set(r.platformKey, [{ title: r.title }]);
+    }
+    const matchers = new Map<string, TitleMatcher<{ title: string }>>();
+    return (platformKey, title) => {
+      const hit = exact.get(`${platformKey}|${matchKey(baseTitle(title))}`);
+      if (hit) return hit;
+      const list = byPlatform.get(platformKey);
+      if (!list) return null;
+      let m = matchers.get(platformKey);
+      if (!m) matchers.set(platformKey, (m = new TitleMatcher(list, (x) => [x.title])));
+      return m.find(title, { min: SAME_GAME_AT, limit: 1 })[0]?.item.title ?? null;
+    };
+  }
+
+  private *build(key: string, t0: number): Generator<void, WishlistResult, void> {
+    let busyMs = 0;
+    let since = Date.now();
+    function* pause(): Generator<void, void, void> {
+      busyMs += Date.now() - since;
+      yield;
+      since = Date.now();
+    }
 
     const s = this.settings.all() as SettingsValues;
     const config = scoringConfig(s);
@@ -221,15 +364,48 @@ export class WishlistService {
       }
       remaining.set(p.key, count);
       platformRows.push({ key: p.key, name: p.name, candidates: platformCandidates });
+      yield* pause();
     }
 
-    const scored = scoreCandidates(candidates, remaining, config, { ownedInSeries: this.tastes().series, completion });
-    const master = selectMaster(scored, config);
+    const tastes = this.tastes();
+    yield* pause();
+    let scored = scoreCandidates(candidates, remaining, config, { ownedInSeries: tastes.series, completion });
+    // A game the owner has on the console isn't suggested, even when its catalog didn't see the copy (D217): the lists
+    // shown are checked (every candidate would take seconds), and picked again without what's owned; what an earlier
+    // rebuild found owned (the copies unchanged since) is left out before they're picked.
+    const ownedHere = this.ownedHere();
+    const owned = new Map(this.knownOwned());
+    if (owned.size > 0) scored = scored.filter((c) => !owned.has(`${c.platformKey}|${normalizeTitle(c.title)}`));
+    yield* pause();
+    let master = selectMaster(scored, config);
+    let byPlatform = topByPlatform(scored, config);
+    yield* pause();
+    const checked = new Set<string>(owned.keys());
+    for (let round = 0; round < 4; round++) {
+      let found = 0;
+      for (const c of [...master, ...[...byPlatform.values()].flat()]) {
+        const k = `${c.platformKey}|${normalizeTitle(c.title)}`;
+        if (checked.has(k)) continue;
+        checked.add(k);
+        const copy = ownedHere(c.platformKey, c.title);
+        if (copy) {
+          owned.set(k, copy);
+          found++;
+        }
+      }
+      if (found === 0) break;
+      scored = scored.filter((c) => !owned.has(`${c.platformKey}|${normalizeTitle(c.title)}`));
+      master = selectMaster(scored, config);
+      byPlatform = topByPlatform(scored, config);
+      yield* pause();
+    }
+    for (const [k, copy] of owned) offList.set(k, `You have it on this console ("${copy}"), so it isn't suggested.`);
+    if (owned.size > 0) this.log.info({ context: 'wishlist', owned: owned.size }, `${owned.size} game${owned.size === 1 ? '' : 's'} the catalogs counted as missing ${owned.size === 1 ? 'is' : 'are'} yours by title, so ${owned.size === 1 ? "it isn't" : "they aren't"} suggested`);
     const all = new Map(scored.map((c) => [`${c.platformKey}|${normalizeTitle(c.title)}`, c]));
     // Candidates the rules left out: a preference that keeps a game off, or a release class that isn't a target.
     for (const c of candidates) {
       const k = `${c.platformKey}|${normalizeTitle(c.title)}`;
-      if (all.has(k)) continue;
+      if (all.has(k) || owned.has(k)) continue;
       const rc = c.details?.releaseClass?.trim();
       offList.set(k, c.preference && !Object.keys(config.preferencePoints).some((k) => normalizeTitle(k) === normalizeTitle(c.preference!)) ? `Your preference "${c.preference}" keeps it off the wishlist.` : `Its release class (${rc || 'unknown'}) keeps it off the wishlist.`);
     }
@@ -238,20 +414,42 @@ export class WishlistService {
     // A game's own score (0 to the top of the scale) and its place on the master list; the master list's score,
     // less its variety penalties, only orders that list (and can fall below 0).
     for (const m of master) index.set(`${m.platformKey}|${normalizeTitle(m.title)}`, { score: m.score, priority: m.priority, rank: m.rank });
+    // My wishlist (D217): the games the owner picked, in their acorns' order (one not scored at the end), are the
+    // wishlist; the ranked list stays as Suggestions. A game they now have on the console drops off.
+    const source = s['wishlist.source'] === 'mine' ? 'mine' : 'suggested';
+    let suggestions: MasterEntry[] | null = null;
+    if (source === 'mine') {
+      suggestions = master;
+      for (const v of index.values()) v.rank = null;
+      master = this.mine()
+        .filter((w) => !ownedHere(w.platformKey, w.title))
+        .map((w): MasterEntry => {
+          const c = all.get(`${w.platformKey}|${normalizeTitle(w.title)}`);
+          const base: ScoredCandidate = c ?? { platformKey: w.platformKey, platformName: w.platform, title: w.title, homeRegion: true, score: 0, priority: 'Low', components: [], flags: ['On your wishlist by hand'], franchise: '', tie: [] };
+          return { ...base, rank: 0, masterScore: base.score, consolePenalty: 0, franchisePenalty: 0 };
+        })
+        .sort((a, b) => b.masterScore - a.masterScore || a.title.localeCompare(b.title))
+        .map((m, i) => ({ ...m, rank: i + 1 }));
+      for (const m of master) index.set(`${m.platformKey}|${normalizeTitle(m.title)}`, { score: m.score, priority: m.priority, rank: m.rank });
+    }
     const result: WishlistResult = {
       generatedAt: new Date().toISOString(),
       master,
       index,
-      byPlatform: topByPlatform(scored, config),
+      byPlatform,
       all,
       offList,
       platforms: platformRows.sort((a, b) => a.name.localeCompare(b.name)),
       counts: { candidates: candidates.length, scored: scored.length, hidden: hiddenCount },
+      source,
+      suggestions,
     };
-    this.cache = { key, result };
-    // A slow one is said in the log (2026-11-07: freezes the log couldn't explain): it runs in one go.
+    busyMs += Date.now() - since;
+    // Kept only while it's still the newest (a change while it was worked out in the background makes it old).
+    if (this.cacheKey() === key) this.cache = { key, result };
+    // A slow one is said in the log (2026-11-07: freezes the log couldn't explain), with how long it held the server.
     const ms = Date.now() - t0;
-    if (ms >= 300) this.log.info({ context: 'wishlist', ms }, `The wishlist was worked out again in ${ms} ms`);
+    if (busyMs >= 300) this.log.info({ context: 'wishlist', ms, busyMs }, `The wishlist was worked out again in ${busyMs} ms${ms > busyMs + 50 ? ` (in steps over ${ms} ms)` : ''}`);
     return result;
   }
 
@@ -380,7 +578,25 @@ export function registerWishlistRoutes(app: FastifyInstance, wishlist: WishlistS
       platforms: r.platforms,
       snoozed: wishlist.snoozed(),
       master: r.master.map((m) => ({ ...json(m, wishlist.coverOf(m.platformKey, m.title), wishlist.reviewsOf(m.platformKey, m.title)), rank: m.rank, masterScore: m.masterScore, consolePenalty: m.consolePenalty, franchisePenalty: m.franchisePenalty })),
+      // What the wishlist is (D217): with one the owner picks, master is My wishlist and suggestions the ranked list.
+      source: r.source,
+      suggestions:
+        r.suggestions?.map((m) => ({ ...json(m, wishlist.coverOf(m.platformKey, m.title), wishlist.reviewsOf(m.platformKey, m.title)), rank: m.rank, masterScore: m.masterScore, consolePenalty: m.consolePenalty, franchisePenalty: m.franchisePenalty })) ?? null,
     };
+  });
+
+  // My wishlist (D217): the games the owner picked themselves (used as the wishlist when Settings say so).
+  app.get('/api/v1/wishlist/mine', async () => ({ games: wishlist.mine() }));
+  app.post('/api/v1/wishlist/mine', async (request, reply) => {
+    const b = (request.body ?? {}) as { platformKey?: unknown; title?: unknown; source?: unknown };
+    if (typeof b.platformKey !== 'string' || typeof b.title !== 'string' || !b.title.trim()) return reply.code(400).send({ error: 'invalid', message: 'Say which game (its console and title).' });
+    if (!wishlist.addMine(b.platformKey, b.title, typeof b.source === 'string' ? b.source : undefined)) return reply.code(404).send({ error: 'not-found', message: 'No such console.' });
+    return reply.code(201).send({ added: true });
+  });
+  app.delete('/api/v1/wishlist/mine', async (request, reply) => {
+    const q = request.query as { platform?: string; title?: string };
+    if (!q.platform || !q.title) return reply.code(400).send({ error: 'invalid', message: 'Say which game (its console and title).' });
+    return { removed: wishlist.removeMine(q.platform, q.title) };
   });
 
   // What the collection says about the owner's tastes, and the points lists learned from it.
