@@ -263,6 +263,26 @@ export const ownerPreferences = sqliteTable(
   (t) => [uniqueIndex('owner_preferences_key_idx').on(t.platformId, t.titleKey)],
 );
 
+/**
+ * My wishlist (1.4.0, D217): the games the owner put on their wishlist themselves (from Suggestions, a game's page,
+ * Store Mode), used instead of the ranked list when Settings › Acorns ranking › What your wishlist is says so.
+ */
+export const myWishlist = sqliteTable(
+  'my_wishlist',
+  {
+    id: integer('id').primaryKey({ autoIncrement: true }),
+    platformId: integer('platform_id')
+      .notNull()
+      .references(() => platforms.id, { onDelete: 'cascade' }),
+    title: text('title').notNull(),
+    titleKey: text('title_key').notNull(),
+    /** Where it was added from: suggestions, a game's page, Store Mode. */
+    source: text('source').notNull().default('suggestions'),
+    addedAt: text('added_at').notNull(),
+  },
+  (t) => [uniqueIndex('my_wishlist_key_idx').on(t.platformId, t.titleKey)],
+);
+
 /** The main wishlist as it stood after an import, for reporting what changed next time. */
 export const wishlistSnapshots = sqliteTable('wishlist_snapshots', {
   id: integer('id').primaryKey({ autoIncrement: true }),
@@ -1185,6 +1205,17 @@ export const friends = sqliteTable('friends', {
   createdAt: text('created_at').notNull(),
   /** When your file last went to them (or was downloaded for them). */
   lastSentAt: text('last_sent_at'),
+  /** Live links (1.4.0, D214): a live file is written for them in the live folder, under this name. */
+  liveShare: integer('live_share', { mode: 'boolean' }).notNull().default(false),
+  liveFile: text('live_file'),
+  liveWrittenAt: text('live_written_at'),
+  /** Your live file's shared link (from your cloud folder), which their invite carries. */
+  liveLink: text('live_link'),
+  /** Their live file's link, read again on a schedule; when it last worked, was last tried, and why it failed. */
+  theirLink: text('their_link'),
+  theirLinkReadAt: text('their_link_read_at'),
+  theirLinkCheckedAt: text('their_link_checked_at'),
+  theirLinkError: text('their_link_error'),
 });
 
 /** Each friend's last file, as it came (checked), for comparisons and trades. */

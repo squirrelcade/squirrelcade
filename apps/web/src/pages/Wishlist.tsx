@@ -1,6 +1,6 @@
 import { ActionIcon, Alert, Anchor, Badge, Button, Card, Group, Loader, Menu, Select, SimpleGrid, Stack, Table, Tabs, Text, TextInput, Tooltip } from '@mantine/core';
 import { useMediaQuery } from '@mantine/hooks';
-import { IconChevronDown, IconChevronRight, IconClock, IconDownload, IconSearch } from '@tabler/icons-react';
+import { IconChevronDown, IconChevronRight, IconClock, IconDownload, IconFileDownload, IconSearch } from '@tabler/icons-react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Fragment, useState } from 'react';
 import { Link, useSearchParams } from 'react-router';
@@ -58,6 +58,9 @@ function useSnooze() {
   });
 }
 
+/** The wishlist as a file (D216): the top picks, or the console chosen on the By console tab. */
+export const shareFileUrl = (platform: string) => `/api/v1/wishlist/file${platform ? `?platform=${encodeURIComponent(platform)}` : ''}`;
+
 const PRIORITY_COLORS = { High: 'green', Medium: 'yellow', Low: 'gray' } as const;
 
 /** The wishlist's sorts and which way each goes first (D144): the rank from the top, words A to Z, acorns, reviews and priority most first, preferences most wanted first. */
@@ -90,6 +93,11 @@ export function WishlistPage() {
         actions={
           <Group gap="xs">
             {canEdit && <ShareButton kind="wishlist" />}
+            <Tooltip label="One web page of the wishlist, with covers, to send to anyone: no link, no account, nothing of yours to open up" multiline w={280}>
+              <Button component="a" href={shareFileUrl(tab === 'platform' ? platform : '')} download variant="default" leftSection={<IconFileDownload size={16} />}>
+                Share as a file
+              </Button>
+            </Tooltip>
             <Menu position="bottom-end">
               <Menu.Target>
                 <Button variant="default" leftSection={<IconDownload size={16} />}>

@@ -53,11 +53,11 @@ Playnite's backups, read for your PC games (the PC library and PC wishlist).
 
 ## YouTube
 
-Videos of each game's time and since, from the video channels you choose, and Find its videos.
+Videos of each game's time and since, from the video channels you choose. **Light** (the start) needs no key and gives fewer videos; **Deep** needs a key and gives whole channels and Find its videos.
 
-- **Needs:** a free YouTube Data API key (Settings > Sources > YouTube), and Settings > Roots > Videos on a game's page on.
-- **Leaves your server:** the channels' names and the games searched for.
-- **Yellow?** Today's units are nearly used: they come back at midnight, Pacific time.
+- **Needs:** Settings > Roots > Videos on a game's page on. Light needs nothing more: it reads each channel's newest uploads (about 15) from YouTube's public feed each night, and they're kept as they're found. Deep (Settings > Roots > How much of YouTube to use) also needs a free YouTube Data API key (Settings > Sources > YouTube); Automatic, the start, is Deep when a key is set.
+- **Leaves your server:** Light: the channels' ids (asked of YouTube's public pages and feeds). Deep: the channels' names and the games searched for.
+- **Yellow?** Light: nothing to run out of, so green. Deep: today's units are nearly used (they come back at midnight, Pacific time), or Deep is chosen with no key set.
 
 ## RetroAchievements
 

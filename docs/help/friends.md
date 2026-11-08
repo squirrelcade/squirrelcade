@@ -19,7 +19,7 @@ Settings > Friends > What you share decides it:
 
 - **Your collection:** each game with its console, and each copy's condition.
 - **What your copies are worth:** PriceCharting's value of each copy, so trades can be balanced.
-- **Games from your wishlist:** the top 50, with their acorns.
+- **Games from your wishlist:** the top 50, with their acorns. (For someone who doesn't have a Squirrelcade, **Acorns wishlist > Share as a file** makes a web page of it to send; see [The wishlist](wishlist.md).)
 - **What you'd trade:** copies you marked for sale or trade (see [Your copies](your-copies.md)), with your asking price.
 - **Your spare copies:** second copies of a game (all but the best one) count as for trade too.
 

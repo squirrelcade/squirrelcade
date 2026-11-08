@@ -20,6 +20,8 @@ A link anyone can open, with no account and no sign-in, that shows one list and 
 - **Your wishlist**: **Acorns wishlist > Share**. The page shows your top picks (50 by default: Acorns ranking > Sharing), best first, each with links to where it sells: PriceCharting and your shop links. Handy for birthdays and holidays.
 - **Your games for sale or trade**: **Acorns > For sale > Share**, with your asking prices and notes.
 
+Or send **a file** instead of a link: **Acorns wishlist > Share as a file** downloads your top picks as one web page (50 games by default, with small covers inside it) to attach to an email or drop in a chat. It needs no link and no access to your server, opens in any browser, and its **Print / Save as PDF** button makes a PDF. Between two Squirrelcades, [Friends](friends.md) share the top of the wishlist too.
+
 Make one link per person ("Mom", "the family chat"): the page says who it's shared with, and your list of links shows how often each was opened. **Remove** a link and it stops working at once. A share page never shows your collection, its value, what you paid or your notes.
 
 Each address can open share pages a limited number of times in 10 minutes. The link uses the address you opened Squirrelcade at: for people outside your home, open Squirrelcade at its public address (Settings > General) before copying it.

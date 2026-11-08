@@ -1,4 +1,4 @@
-import { channelRef, gameInVideoTitle, normalizeTitle, parseVideoChannels, videoEra, videoKind, videoTitleIndex, youtubeVideoId, type VideoChannel } from '@squirrelcade/core';
+import { channelRef, gameInVideoTitle, normalizeTitle, parseVideoChannels, videoEra, videoKind, videoTitleIndex, youtubeModeOf, youtubeVideoId, type VideoChannel } from '@squirrelcade/core';
 import { and, eq, inArray, lt } from 'drizzle-orm';
 import type { FastifyInstance } from 'fastify';
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
@@ -15,7 +15,12 @@ import type { SettingsService } from './settings.js';
  * Roots' videos (D165 phase 3, D168): a game's videos played on its page. Without a key: the ones the owner pastes
  * (named by YouTube's oEmbed), its trailers from IGDB, and (in the page) the videos its Wikipedia article cites; with
  * a YouTube key, each video channel's whole list read and the videos about the consoles' games kept (only those: as
- * YouTube asks, they're read again within 30 days or dropped). Channels' public feeds are tried without a key too.
+ * YouTube asks, they're read again within 30 days or dropped).
+ *
+ * YouTube is Light or Deep (D215, roots.youtubeMode). Light needs no key: each channel's newest ~15 uploads from its
+ * public feed, read nightly and kept as found (they build up; the 30-day rule is for the Data API's results, not the
+ * feed). Deep is the Data API with a key. Automatic (the default) is Deep when a key is set, so an install that had a
+ * key before Light existed behaves as it did. In Light the key is never used, even if one is set.
  */
 
 /** A video as a game's page shows it. */
@@ -32,8 +37,10 @@ export interface GameVideosView {
   status: 'off' | 'ready';
   time: GameVideo[];
   later: GameVideo[];
-  /** A YouTube key is set (channels are read whole). */
+  /** Deep: a YouTube key is set and in use (channels are read whole; Find its videos works). */
   keyed: boolean;
+  /** Light or Deep, as resolved (D215). */
+  mode: 'light' | 'deep';
 }
 
 /** A video from a channel's list. */
@@ -51,11 +58,22 @@ const KEEP_DAYS = 30;
 export class YouTubeError extends Error {}
 
 /** YouTube: its oEmbed (no key), its Data API (with the key), a channel's page and feed (no key). */
-/** YouTube's search answers titles with HTML entities ("Zelda&#39;s"). */
-const decodeEntities = (s: string) => s.replace(/&#(\d+);/g, (_m, n: string) => String.fromCharCode(Number(n))).replace(/&quot;/g, '"').replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>');
+/** YouTube's search and feeds answer titles with HTML entities ("Zelda&#39;s"). */
+const decodeEntities = (s: string) => s.replace(/&#(\d+);/g, (_m, n: string) => String.fromCharCode(Number(n))).replace(/&#x([0-9a-f]+);/gi, (_m, n: string) => String.fromCharCode(parseInt(n, 16))).replace(/&apos;/g, "'").replace(/&quot;/g, '"').replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>');
 
 /** YouTube's day for its units: it starts at midnight Pacific time. */
 const youtubeDay = () => new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Los_Angeles' }).format(new Date());
+
+/** The videos in a channel's public feed (Atom XML): id, title and date of each entry. */
+export function parseFeed(xml: string): ListedVideo[] {
+  const out: ListedVideo[] = [];
+  for (const entry of xml.split(/<entry[ >]/).slice(1)) {
+    const id = entry.match(/<yt:videoId>([^<]+)<\/yt:videoId>/)?.[1]?.trim();
+    const title = entry.match(/<title>([\s\S]*?)<\/title>/)?.[1]?.replace(/^<!\[CDATA\[|\]\]>$/g, '').trim();
+    if (id && title) out.push({ videoId: id, title: decodeEntities(title), publishedAt: entry.match(/<published>([^<]+)<\/published>/)?.[1] ?? null });
+  }
+  return out;
+}
 
 export class YouTubeClient {
   constructor(
@@ -63,12 +81,24 @@ export class YouTubeClient {
     private readonly fetchImpl: FetchLike = (url, init) => fetch(url, init),
   ) {}
 
-  key(): string {
+  /** The key as set, whether or not the mode uses it. */
+  rawKey(): string {
     return this.settings.get('sources.youtubeKey').trim();
   }
 
+  /** Light or Deep (D215): Automatic is Deep when a key is set. */
+  mode(): 'light' | 'deep' {
+    return youtubeModeOf(this.settings.get('roots.youtubeMode'), Boolean(this.rawKey()));
+  }
+
+  /** The key to use: the one set in Deep, none in Light (Light never calls the Data API). */
+  key(): string {
+    return this.mode() === 'deep' ? this.rawKey() : '';
+  }
+
   private async get(url: string): Promise<Response> {
-    return this.fetchImpl(url, { headers: { 'user-agent': 'Mozilla/5.0 (Squirrelcade)', 'accept-language': 'en-US' }, signal: AbortSignal.timeout(20_000) });
+    // The consent cookie keeps a channel's page from answering with a consent screen (as Tellyport's reader does).
+    return this.fetchImpl(url, { headers: { 'user-agent': 'Mozilla/5.0 (Squirrelcade)', 'accept-language': 'en-US', cookie: 'CONSENT=YES+1; SOCS=CAI' }, signal: AbortSignal.timeout(20_000) });
   }
 
   /** Told each call's cost in YouTube's units (D193), to keep to the day's budget. */
@@ -139,18 +169,11 @@ export class YouTubeClient {
     return (body.items ?? []).flatMap((i) => (i.id?.videoId && i.snippet?.title ? [{ videoId: i.id.videoId, title: decodeEntities(i.snippet.title), publishedAt: i.snippet.publishedAt ?? null }] : []));
   }
 
-  /** A channel's newest uploads from its public feed (no key); none when YouTube doesn't serve it. */
-  async feed(channelId: string): Promise<ListedVideo[]> {
-    const res = await this.get(`https://www.youtube.com/feeds/videos.xml?channel_id=${channelId}`);
-    if (!res.ok) return [];
-    const xml = await res.text();
-    const out: ListedVideo[] = [];
-    for (const entry of xml.split('<entry>').slice(1)) {
-      const id = entry.match(/<yt:videoId>([^<]+)<\/yt:videoId>/)?.[1];
-      const title = entry.match(/<title>([^<]+)<\/title>/)?.[1];
-      if (id && title) out.push({ videoId: id, title: title.replace(/&amp;/g, '&').replace(/&#39;/g, "'").replace(/&quot;/g, '"'), publishedAt: entry.match(/<published>([^<]+)<\/published>/)?.[1] ?? null });
-    }
-    return out;
+  /** A channel's newest uploads (about 15) from its public feed (no key); null when YouTube doesn't serve it. */
+  async feed(channelId: string): Promise<ListedVideo[] | null> {
+    const res = await this.get(`https://www.youtube.com/feeds/videos.xml?channel_id=${encodeURIComponent(channelId)}`);
+    if (!res.ok) return null;
+    return parseFeed(await res.text());
   }
 }
 
@@ -236,7 +259,7 @@ export class VideosService {
    */
   async findVideos(platformKey: string, title: string): Promise<{ searched: string[]; skipped: string[]; found: number; units: { used: number; budget: number; left: number } }> {
     if (!this.enabled()) throw new YouTubeError("Roots' videos are off (Settings > Roots).");
-    if (!this.youtube.key()) throw new YouTubeError('Find its videos needs a YouTube key (Settings > Sources > YouTube).');
+    if (!this.youtube.key()) throw new YouTubeError(this.youtube.rawKey() ? "Find its videos is for Deep: Settings > Roots > How much of YouTube to use is set to Light, so your YouTube key isn't used." : 'Find its videos needs Deep: a YouTube key (Settings > Sources > YouTube).');
     const keys = this.keysOf(platformKey, title);
     const index = videoTitleIndex([title, ...keys]);
     const searched: string[] = [];
@@ -269,9 +292,9 @@ export class VideosService {
 
   /** A game's videos for its page: At the time (before it came out and its first months), and Looking back. */
   async forGame(platformKey: string, title: string): Promise<GameVideosView> {
-    if (!this.enabled()) return { status: 'off', time: [], later: [], keyed: false };
+    if (!this.enabled()) return { status: 'off', time: [], later: [], keyed: false, mode: this.youtube.mode() };
     const keys = this.keysOf(platformKey, title);
-    if (keys.length === 0) return { status: 'ready', time: [], later: [], keyed: Boolean(this.youtube.key()) };
+    if (keys.length === 0) return { status: 'ready', time: [], later: [], keyed: Boolean(this.youtube.key()), mode: this.youtube.mode() };
     await this.igdbVideos(platformKey, title, keys[0]!);
     const archives = new Set(parseVideoChannels(this.settings.get('roots.videoChannels')).filter((c) => c.archive).map((c) => c.name));
     const released = this.igdb.findByKey(platformKey, title)?.released ?? null;
@@ -289,7 +312,7 @@ export class VideosService {
       const era = r.era ?? (r.source === 'igdb' || (r.channel && archives.has(r.channel)) ? 'time' : (videoEra(r.publishedAt, released, months) ?? 'later'));
       (era === 'time' ? time : later).push(video);
     }
-    return { status: 'ready', time, later, keyed: Boolean(this.youtube.key()) };
+    return { status: 'ready', time, later, keyed: Boolean(this.youtube.key()), mode: this.youtube.mode() };
   }
 
   /** A video pasted onto a game (its address or id): named by YouTube's oEmbed, dated with the key. */
@@ -318,9 +341,9 @@ export class VideosService {
   }
 
   /**
-   * Reads the video channels (the task): with the key, a channel's whole list once and again every 30 days, and its
-   * newest pages each night until a video already seen; without one, its public feed. Videos about the consoles'
-   * games are kept, by the title they name; the rest are not.
+   * Reads the video channels (the task): Deep, a channel's whole list once and again every 30 days, and its newest
+   * pages each night until a video already seen; Light, its public feed's newest uploads, kept as they're found.
+   * Videos about the consoles' games are kept, by the title they name; the rest are not.
    */
   async readChannels(progress?: (text: string) => void): Promise<string> {
     if (!this.enabled()) return 'Videos are off (Settings > Roots).';
@@ -342,10 +365,15 @@ export class VideosService {
         said.push(`${channel.name}: ${message}`);
       }
     }
-    // Without the key, what came from the API isn't refreshed: as YouTube asks, it goes after 30 days.
-    if (!keyed) {
-      const cutoff = new Date(Date.now() - KEEP_DAYS * DAY).toISOString();
-      this.db.delete(gameVideos).where(and(eq(gameVideos.source, 'channel'), lt(gameVideos.seenAt, cutoff))).run();
+    if (keyed) this.remember('youtube-api-used', new Date().toISOString());
+    else {
+      // Light keeps what the feed found. Only what the Data API gave (read in Deep before) isn't refreshed any more:
+      // as YouTube asks, it goes 30 days after Deep's last read (what was seen up to then; the feed's later finds stay).
+      const apiAt = this.lookup('youtube-api-used')?.value as string | null | undefined;
+      if (apiAt && Date.now() - Date.parse(apiAt) > KEEP_DAYS * DAY) {
+        this.db.delete(gameVideos).where(and(eq(gameVideos.source, 'channel'), lt(gameVideos.seenAt, apiAt))).run();
+        this.remember('youtube-api-used', null);
+      }
     }
     return said.join('; ');
   }
@@ -372,9 +400,10 @@ export class VideosService {
     };
     if (!keyed) {
       const feed = await this.youtube.feed(id);
-      for (const v of feed) keep(v);
       this.remember(lookupKey, { ...known, id });
-      return feed.length > 0 ? `${channel.name}: ${read} new videos read, ${kept} about your games` : `${channel.name}: its feed had nothing (YouTube's feeds come and go; a YouTube key reads the whole channel)`;
+      if (feed === null) return `${channel.name}: YouTube's feed for it isn't answering (feeds come and go; Light tries again tomorrow, and Deep with a YouTube key reads the whole channel)`;
+      for (const v of feed) keep(v);
+      return `${channel.name}: ${read} newest uploads read, ${kept} about your games`;
     }
     // The whole list every 30 days (a refresh, as YouTube asks); else the newest pages until a video seen before.
     const full = !known?.fullAt || Date.now() - Date.parse(known.fullAt) > KEEP_DAYS * DAY;

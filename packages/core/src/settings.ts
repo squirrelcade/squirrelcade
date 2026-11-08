@@ -680,15 +680,28 @@ export const settingDefinitions = {
     section: 'Videos',
     label: "Videos on a game's page",
     description:
-      "A game's Roots shows its videos, played right there (YouTube's privacy-enhanced player, full screen too): the ones you paste onto it, its trailers from IGDB, the videos its Wikipedia article cites, and, with a YouTube key (Settings > Sources), the video channels' reviews and histories of it. At the time has the ones from its own time, Looking back the rest. Off, nothing is asked of YouTube.",
+      "A game's Roots shows its videos, played right there (YouTube's privacy-enhanced player, full screen too): the ones you paste onto it, its trailers from IGDB, the videos its Wikipedia article cites, the video channels' reviews and histories of it (How much of YouTube to use), and a YouTube search for it. At the time has the ones from its own time, Looking back the rest. Off, nothing is asked of YouTube.",
     default: false,
+  }),
+  'roots.youtubeMode': select({
+    page: 'roots',
+    section: 'Videos',
+    label: 'How much of YouTube to use',
+    description:
+      "Light needs no key: each video channel's newest uploads are read from its public feed at night (about its latest 15 videos), so a game's videos build up over time. That means fewer videos: a channel's older ones come only with Deep. Deep uses a YouTube key (Settings > Sources) to read each channel's whole list and to Find its videos. Automatic is Deep when a key is set and Light when none is.",
+    default: 'auto',
+    options: [
+      { value: 'auto', label: 'Automatic' },
+      { value: 'light', label: 'Light (no key)' },
+      { value: 'deep', label: 'Deep (with a YouTube key)' },
+    ],
   }),
   'roots.videoChannels': list({
     page: 'roots',
     section: 'Videos',
     label: 'Video channels',
     description:
-      "The YouTube channels whose videos are matched to your consoles' games (with a YouTube key), each a name, a bar, its @handle or address, a bar and on or off (and \"| archive\" for a channel of old commercials or TV shows, whose videos count as their games' own time). A video is matched when its title says what it is (a review, a trailer, a preview, a history, gameplay) and names a game.",
+      "The YouTube channels whose videos are matched to your consoles' games (their newest uploads with no key; their whole lists with a key: How much of YouTube to use), each a name, a bar, its @handle or address, a bar and on or off (and \"| archive\" for a channel of old commercials or TV shows, whose videos count as their games' own time). A video is matched when its title says what it is (a review, a trailer, a preview, a history, gameplay) and names a game.",
     default: [
       'IGN | @IGN | on',
       'GameSpot | @GameSpot | on',
@@ -1834,6 +1847,22 @@ export const settingDefinitions = {
     default: 50,
     min: 5,
     max: 300,
+  }),
+  'wishlist.fileGames': num({
+    page: 'wishlist',
+    section: 'Sharing',
+    label: 'Games in a wishlist file',
+    description: "How many of the wishlist's top picks the file holds (Acorns wishlist > Share as a file), a page to send to anyone by email or chat. More games make a bigger file.",
+    default: 50,
+    min: 5,
+    max: 100,
+  }),
+  'wishlist.fileCovers': bool({
+    page: 'wishlist',
+    section: 'Sharing',
+    label: 'Covers in a wishlist file',
+    description: 'Put a small cover beside each game in the file, kept inside it so it works offline. Off makes a smaller file with titles only.',
+    default: true,
   }),
   'wishlist.platformPoints': points({
     page: 'wishlist',
@@ -3664,6 +3693,25 @@ export const settingDefinitions = {
     unit: 'days',
     advanced: true,
   }),
+  'friends.liveFolder': text({
+    page: 'friends',
+    section: 'Live links',
+    label: 'Folder for live friend files',
+    description:
+      "Where Squirrelcade writes the live file of each friend you share with live, again after every collection update. Have something carry this folder to the cloud (Google Drive for desktop, Synology Cloud Sync, rclone, Dropbox), share each file as Anyone with the link, and paste that link on the friend's card. Empty: the friends-live folder in Squirrelcade's own folder (/config/friends-live in Docker).",
+    default: '',
+    maxLength: 500,
+  }),
+  'friends.liveReadHours': num({
+    page: 'friends',
+    section: 'Live links',
+    label: "Read friends' live links every",
+    description: "How often your friends' live links are read again, so comparisons and trades keep up with their collections.",
+    default: 24,
+    min: 1,
+    max: 168,
+    unit: 'hours',
+  }),
   'ai.enabled': bool({
     page: 'ai',
     section: 'Connector',
@@ -4027,6 +4075,11 @@ export type SettingKey = keyof typeof settingDefinitions;
 export type SettingValue<K extends SettingKey> = (typeof settingDefinitions)[K]['default'];
 /** A value for every setting. */
 export type SettingsValues = { [K in SettingKey]: SettingValue<K> };
+
+/** Whether YouTube is read Light (channel feeds, no key) or Deep (a key): Deep needs a key, so without one it is Light. */
+export function youtubeModeOf(chosen: 'auto' | 'light' | 'deep', hasKey: boolean): 'light' | 'deep' {
+  return chosen !== 'light' && hasKey ? 'deep' : 'light';
+}
 
 /** Every setting key, in the order they are defined. */
 export const settingKeys = Object.keys(settingDefinitions) as SettingKey[];

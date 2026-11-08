@@ -76,6 +76,7 @@ import { registerCollectionExport } from './collectionExport.js';
 import { registerSetRoutes, SetsService } from './sets.js';
 import { registerTaskRoutes, TaskRunner } from './tasks.js';
 import { registerWishlistRoutes, WishlistService } from './wishlist.js';
+import { registerWishlistFileRoutes } from './wishlistFile.js';
 
 /** The API of each optional part (Settings > Features), refused while the part is off. */
 const FEATURE_ROUTES: [RegExp, FeatureKey, string][] = [
@@ -141,6 +142,8 @@ export interface BuildOptions {
   visionFetch?: FetchLike;
   /** Replaces the network for GG.deals (tests use a fake). */
   ggdealsFetch?: FetchLike;
+  /** Friends' live links (D214). */
+  friendsFetch?: FetchLike;
   /** Replace the mailbox and the export download of collection updates from email (tests use fakes). */
   mailbox?: MailboxOpener;
   exportDownload?: ExportDownloader;
@@ -456,7 +459,20 @@ export async function buildApp(options: BuildOptions = {}): Promise<Squirrelcade
   registerSettingsRoutes(app, settings, (value) => auth.isAccountPassword(value));
   registerSystemRoutes(app, { env, settings, backups, logs: logs.buffer, startedAt, pc, tasks, problems: () => achievements.problems(), integrations: () => integrationLines(integrationDeps()) });
   // The integrations' lights (T-202): read from what's recorded, so System > Status opens at once.
-  const integrationDeps = (): IntegrationDeps => ({ db, settings, tasks, youtubeUnits: () => videos.units(), problems: () => achievements.problems(), notified: () => notifications.sent(), helperThere: () => vision.helperThere(), ratesLast: () => orders.ratesLast() });
+  // Friends is made further down; its live links' lines are read through this once it exists (D214).
+  let friendsRef: FriendsService | null = null;
+  const integrationDeps = (): IntegrationDeps => ({
+    db,
+    settings,
+    tasks,
+    youtubeUnits: () => videos.units(),
+    problems: () => achievements.problems(),
+    notified: () => notifications.sent(),
+    helperThere: () => vision.helperThere(),
+    ratesLast: () => orders.ratesLast(),
+    friendLinks: () => friendsRef?.linkLines() ?? [],
+    friendLive: () => friendsRef?.liveSummary() ?? null,
+  });
   registerIntegrationRoutes(app, integrationDeps());
   registerTaskRoutes(app, tasks);
   registerBackupRoutes(app, backups);
@@ -520,6 +536,7 @@ export async function buildApp(options: BuildOptions = {}): Promise<Squirrelcade
   });
   lookup.followed = followed;
   registerWishlistRoutes(app, wishlist, () => notes.index());
+  registerWishlistFileRoutes(app, wishlist, settings, options.igdbFetch);
   registerLookupRoutes(app, lookup);
   registerCheckRoutes(app, lookup, settings);
   const helpers = new HelperQueue();
@@ -738,8 +755,22 @@ export async function buildApp(options: BuildOptions = {}): Promise<Squirrelcade
   await registerAiAuthRoutes(app, aiAuth, auth);
   registerMcpRoute(app, aiAuth, aiTools, { db, settings, log, orders });
   // Friends' collections (0.56.0, D131): share files, the comparison and trades.
-  const friendsService = new FriendsService(db, settings, details, wishlist, log);
+  const friendsService = new FriendsService(db, settings, details, wishlist, log, { configDir: env.configDir, fetch: options.friendsFetch });
+  friendsRef = friendsService;
   registerFriendRoutes(app, friendsService);
+  // Live links (1.4.0, D214): your live files written again a minute after a collection update (several in a row
+  // write once), and on the task's schedule with friends' links read.
+  collection.events.on('changed', () => friendsService.collectionChanged());
+  pc.events.on('changed', () => friendsService.collectionChanged());
+  tasks.register({
+    name: 'friends-live',
+    title: "Friends' live links",
+    description: "Writes your live friend files (Settings > Friends > Live links) when your collection changed, and reads your friends' live links for their newest files.",
+    interval: () => (friendsService.liveSummary().sharing > 0 || friendsService.linkLines().length > 0 ? settings.get('friends.liveReadHours') * 3_600_000 : null),
+    firstRunDelayMs: 10 * 60_000,
+    run: async () => friendsService.liveTask(),
+    quiet: (m) => m === 'No live links',
+  });
 
   tasks.register({
     name: 'roots-read',

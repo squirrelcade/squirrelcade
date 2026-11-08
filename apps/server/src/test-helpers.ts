@@ -129,6 +129,7 @@ export async function testApp(
     gameflyFetch?: FetchLike;
     magazineReader?: PageReader;
     ggdealsFetch?: FetchLike;
+    friendsFetch?: FetchLike;
     visionFetch?: FetchLike;
     mailbox?: MailboxOpener;
     exportDownload?: ExportDownloader;
@@ -180,6 +181,7 @@ export async function testApp(
       gameflyFetch: options.gameflyFetch ?? noNetwork,
       magazineReader: options.magazineReader,
       ggdealsFetch: options.ggdealsFetch ?? noNetwork,
+      friendsFetch: options.friendsFetch ?? noNetwork,
       visionFetch: options.visionFetch ?? noNetwork,
       mailbox: options.mailbox ?? (async () => {
         throw new Error('No mailbox in tests');

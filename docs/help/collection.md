@@ -41,7 +41,7 @@ Then **your collection**, right under the head, whatever else is on (the owner's
 Then three tabs, each with its count; a tab with nothing in it is faded and says why, and the one you opened last opens next time on that device (About to start):
 
 - **About:** IGDB's summary (or Wikipedia's) with Read on Wikipedia; its facts (released on each console, developer, publisher, genres); why it matters and its Top 100 place; its reviews of the time and since, what it came from and led to, its honors; its series ("you have 2 of its 4 games"); its timeline of re-releases and remakes.
-- **Videos:** **Of its time** first (reviews and trailers from around its release), then **Looking back**; **Find its videos** and **Add a YouTube video** at the bottom (its date puts it in one or the other).
+- **Videos:** **Of its time** first (reviews and trailers from around its release), then **Looking back**; **Search YouTube for it**, **Find its videos** (Deep, with a YouTube key) and **Add a YouTube video** at the bottom (its date puts it in one or the other).
 - **Magazines:** every issue and page of your magazines that mentions it, with the chest (yours for what the article is about, or not), its scores, and the reviews its Wikipedia article cites, each opening your scan at its page.
 
 On a phone the tabs' bar stays at the top while the page scrolls.

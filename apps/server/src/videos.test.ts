@@ -1,7 +1,8 @@
 import { eq } from 'drizzle-orm';
 import { afterEach, describe, expect, it } from 'vitest';
-import { igdbGames, platforms } from './db/schema.js';
+import { gameVideos, igdbGames, platforms } from './db/schema.js';
 import type { FetchLike } from './igdb.js';
+import { parseFeed } from './videos.js';
 import { seedCatalogs, setUp, testApp, type TestApp } from './test-helpers.js';
 
 let g: TestApp;
@@ -9,12 +10,23 @@ afterEach(async () => {
   await g.cleanup();
 });
 
+const FEED = `<?xml version="1.0" encoding="UTF-8"?><feed xmlns:yt="http://www.youtube.com/xml/schemas/2015" xmlns:media="http://search.yahoo.com/mrss/" xmlns="http://www.w3.org/2005/Atom"><title>IGN</title>
+<entry><id>yt:video:FEEDREVIEW1</id><yt:videoId>FEEDREVIEW1</yt:videoId><title>Super Metroid Review &amp; more - IGN&#39;s take</title><published>2026-11-01T10:00:00+00:00</published><media:group><media:title>ignored</media:title></media:group></entry>
+<entry><id>yt:video:FEEDOTHER01</id><yt:videoId>FEEDOTHER01</yt:videoId><title>Top 10 cats</title><published>2026-11-02T10:00:00+00:00</published></entry></feed>`;
+
 /** Stand-in for YouTube: oEmbed, the Data API (with the key "test-key"), the channel's page; every call recorded. */
 function fakeYouTube() {
   const calls: string[] = [];
   const fetch: FetchLike = async (url) => {
     calls.push(url);
     const u = new URL(url);
+    // A channel's public feed (Light): two entries, one about a game; the second channel's feed is down.
+    if (u.pathname === '/feeds/videos.xml') {
+      if (u.searchParams.get('channel_id') !== 'UCKy1dAqELo0zrOtPkf0eTMw') return new Response('gone', { status: 404 });
+      return new Response(FEED, { status: 200 });
+    }
+    // A channel's page (its id, no key).
+    if (u.pathname.startsWith('/@')) return new Response(`<html>"externalId":"${u.pathname === '/@IGN' ? 'UCKy1dAqELo0zrOtPkf0eTMw' : 'UCaaaaaaaaaaaaaaaaaaaaaa'}"</html>`, { status: 200 });
     if (u.pathname === '/oembed') return Response.json({ title: 'Super Metroid TV commercial (1994)', author_name: 'Old Ads' });
     if (u.hostname === 'www.googleapis.com') {
       if (u.searchParams.get('key') !== 'test-key') return Response.json({ error: { message: 'API key not valid.' } }, { status: 400 });
@@ -104,5 +116,80 @@ describe("Roots' videos (D168)", () => {
     const searches = yt.calls.filter((c) => c.includes('/search')).length;
     expect((await find()).json()).toMatchObject({ searched: [], skipped: ['IGN'], found: 0, units: { used: 101, left: 49 } });
     expect(yt.calls.filter((c) => c.includes('/search')).length).toBe(searches);
+  });
+});
+
+describe("YouTube's Light mode (D215)", () => {
+  it('parses a channel feed: ids, titles with their entities, dates; the media title is not the video title', () => {
+    expect(parseFeed(FEED)).toEqual([
+      { videoId: 'FEEDREVIEW1', title: "Super Metroid Review & more - IGN's take", publishedAt: '2026-11-01T10:00:00+00:00' },
+      { videoId: 'FEEDOTHER01', title: 'Top 10 cats', publishedAt: '2026-11-02T10:00:00+00:00' },
+    ]);
+    expect(parseFeed('<html>not a feed</html>')).toEqual([]);
+  });
+
+  it('with no key reads each channel\'s feed at night, keeps the ones about a game, and never calls the Data API', async () => {
+    const yt = fakeYouTube();
+    g = await testApp({ youtubeFetch: yt.fetch, igdbFetch });
+    const cookies = await setUp(g);
+    seedCatalogs(g, { owned: [['1', 'Super Metroid', 'Super Nintendo']], catalogs: { 'super-nintendo': ['Super Metroid'] } });
+    g.settings.update({ 'roots.videos': true, 'roots.videoChannels': ['IGN | @IGN | on', 'GameSpot | @GameSpot | on'] });
+    const page = async () => (await g.app.inject({ url: '/api/v1/game/videos?platform=super-nintendo&title=Super%20Metroid', cookies })).json();
+    // The channel's id came from its page (no key); the other channel's feed was down, said plainly, and didn't stop the first.
+    const said = await g.videos.readChannels();
+    expect(said).toMatch(/^IGN: 2 newest uploads read, 1 about your games; GameSpot: /);
+    expect(said).toMatch(/isn't answering/);
+    expect(yt.calls.some((c) => c.includes('googleapis.com'))).toBe(false);
+    let v = await page();
+    expect(v.mode).toBe('light');
+    expect(v.keyed).toBe(false);
+    expect([...v.time, ...v.later].map((x: { videoId: string }) => x.videoId)).toContain('FEEDREVIEW1');
+    // Light keeps what it found: a video from an earlier night stays, however old it is, though the feed no longer lists it.
+    g.db.update(gameVideos).set({ seenAt: '2020-01-01T00:00:00.000Z' }).run();
+    await g.videos.readChannels();
+    expect((await page()).keyed).toBe(false);
+    expect([...v.time, ...v.later].length).toBeGreaterThan(0);
+    g.db.insert(gameVideos).values({ titleKey: 'super metroid', videoId: 'OLDFOUND001', title: 'Super Metroid Review - old', channel: 'IGN', publishedAt: '2020-01-01T00:00:00Z', source: 'channel', era: null, kind: 'review', seenAt: '2020-01-01T00:00:00.000Z' }).onConflictDoNothing().run();
+    await g.videos.readChannels();
+    v = await page();
+    expect([...v.time, ...v.later].map((x: { videoId: string }) => x.videoId)).toContain('OLDFOUND001');
+    // Find its videos is for Deep.
+    const find = await g.app.inject({ method: 'POST', url: '/api/v1/game/videos/find', cookies, payload: { platform: 'super-nintendo', title: 'Super Metroid' } });
+    expect(find.statusCode).toBe(400);
+    expect(find.json().message).toMatch(/Deep/);
+  });
+
+  it('is Deep for an install that already has a key; Light chosen leaves the key unused; Deep chosen without a key works as Light', async () => {
+    const yt = fakeYouTube();
+    g = await testApp({ youtubeFetch: yt.fetch, igdbFetch });
+    const cookies = await setUp(g);
+    seedCatalogs(g, { owned: [['1', 'Super Metroid', 'Super Nintendo']], catalogs: { 'super-nintendo': ['Super Metroid'] } });
+    g.settings.update({ 'roots.videos': true, 'roots.videoChannels': ['IGN | @IGN | on'], 'sources.youtubeKey': 'test-key' });
+    const mode = async () => (await g.app.inject({ url: '/api/v1/game/videos?platform=super-nintendo&title=Super%20Metroid', cookies })).json().mode;
+    expect(g.settings.get('roots.youtubeMode')).toBe('auto');
+    expect(await mode()).toBe('deep');
+    g.settings.update({ 'roots.youtubeMode': 'light' });
+    expect(await mode()).toBe('light');
+    expect(await g.videos.readChannels()).toMatch(/newest uploads read/);
+    expect(yt.calls.some((c) => c.includes('test-key'))).toBe(false);
+    g.settings.update({ 'roots.youtubeMode': 'deep', 'sources.youtubeKey': '' });
+    expect(await mode()).toBe('light');
+  });
+
+  it("the status line: Light is green without a key and says fewer videos; Deep shows today's units; Deep with no key says so", async () => {
+    g = await testApp();
+    const cookies = await setUp(g);
+    const line = async () => ((await g.app.inject({ url: '/api/v1/system/integrations', cookies })).json().lines as { key: string; light: string; says: string }[]).find((l) => l.key === 'youtube')!;
+    expect(await line()).toMatchObject({ light: 'grey' });
+    g.settings.update({ 'roots.videos': true });
+    expect((await line()).says).toMatch(/^Light: no key needed, fewer videos/);
+    expect((await line()).light).not.toBe('red');
+    g.settings.update({ 'sources.youtubeKey': 'k', 'roots.videoChannels': [] });
+    await g.tasks.runNow('videos-read');
+    expect((await line()).says).toMatch(/^Deep: 8,000 of today's 8,000 units left/);
+    g.settings.update({ 'roots.youtubeMode': 'light' });
+    expect((await line()).says).toMatch(/^Light:/);
+    g.settings.update({ 'roots.youtubeMode': 'deep', 'sources.youtubeKey': '' });
+    expect(await line()).toMatchObject({ light: 'yellow' });
   });
 });

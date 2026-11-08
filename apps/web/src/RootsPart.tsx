@@ -195,7 +195,9 @@ export interface GameVideos {
   status: 'off' | 'ready';
   time: GameVideo[];
   later: GameVideo[];
+  /** Deep (a YouTube key in use): Find its videos works. */
   keyed: boolean;
+  mode?: 'light' | 'deep';
 }
 
 /**
@@ -576,7 +578,7 @@ export function RootsPart({
   const videoCount = timeVideos.length + laterVideos.length + citedLinks.length;
   const magazineCount = (mentions.data?.mentions.filter((m) => m.state === 'linked').length ?? 0) + (ready?.time.magazines.length ?? 0);
   // Why a tab is empty, said on it (faded): no YouTube key, no magazines with it.
-  const videosWhy = !videosOn ? 'Videos are off: Settings › Roots › Videos turns them on.' : videoCount === 0 ? (videosQuery.data?.keyed ? 'No video of it yet: the video channels are read at night.' : 'No video of it yet: Search YouTube for it below. With a YouTube key (Settings › Sources), the video channels are matched to your games too.') : null;
+  const videosWhy = !videosOn ? 'Videos are off: Settings › Roots › Videos turns them on.' : videoCount === 0 ? (videosQuery.data?.keyed ? 'No video of it yet: the video channels are read at night.' : 'No video of it yet: the newest uploads of the video channels are matched to your games each night, so it may turn up, and Search YouTube for it below finds more. Deep (Settings › Roots, with a YouTube key) reads whole channels.') : null;
   const magazinesWhy = magazineCount > 0 ? null : leavesOn ? 'None of your magazines mentions it yet (their text is read at night).' : 'Leaves, your magazine scans, is off (Settings › Features).';
   const released = [...new Map((ready?.releases ?? []).filter((r) => r.platform).map((r) => [r.platform!, r.date])).entries()];
   return (

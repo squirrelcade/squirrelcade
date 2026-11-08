@@ -15,6 +15,8 @@ import {
   type TradeOffer,
 } from '@squirrelcade/core';
 import { randomBytes } from 'node:crypto';
+import { mkdirSync, renameSync, writeFileSync } from 'node:fs';
+import { join } from 'node:path';
 import { asc, eq, isNull } from 'drizzle-orm';
 import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
 import type { Logger } from 'pino';
@@ -24,6 +26,7 @@ import { copies, friendFiles, friends, platforms } from './db/schema.js';
 import type { SettingsService } from './settings.js';
 import type { WishlistService } from './wishlist.js';
 import { isZip, readZip, ZipError } from './zip.js';
+import { checkLink, fetchLink, friendshipId, LiveFileError, makeInvite, openLive, readEnvelope, readInvite, sealLive, type FetchFn } from './friendLive.js';
 
 /**
  * Friends' collections (0.56.0, D131): your share file for each friend, theirs brought in (by hand here; by email and
@@ -81,14 +84,45 @@ export interface TradeItem {
 
 const KEEP_FILE_FOR_UNKNOWN = 60;
 const code = () => randomBytes(12).toString('base64url');
+/** A file name's part from a name: letters and digits, dashes between. */
+const slug = (s: string) =>
+  s
+    .normalize('NFKD')
+    .replace(/[̀-ͯ]/g, '')
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+    .slice(0, 30) || 'friend';
+
+/** What reading a friend's live link came to. */
+export interface LinkResult {
+  friendId: number;
+  name: string;
+  ok: boolean;
+  /** A newer file was read (false: nothing new since the last one, or it failed). */
+  read: boolean;
+  message: string;
+  games?: number;
+}
+
+export interface FriendsOptions {
+  /** Squirrelcade's own folder: the live files go in its friends-live folder unless Settings › Friends says another. */
+  configDir?: string;
+  fetch?: FetchFn;
+}
 
 export class FriendsService {
+  /** What each friend's live file last held (without its date), so an unchanged collection isn't written again. */
+  private readonly liveWritten = new Map<number, string>();
+  private liveTimer: NodeJS.Timeout | null = null;
+
   constructor(
     private readonly db: Db,
     private readonly settings: SettingsService,
     private readonly details: CopyDetailsService,
     private readonly wishlist: WishlistService,
     private readonly log: Logger,
+    private readonly options: FriendsOptions = {},
   ) {}
 
   // ---- Friends ----
@@ -115,6 +149,16 @@ export class FriendsService {
           way: f.way,
           createdAt: f.createdAt,
           lastSentAt: f.lastSentAt,
+          live: {
+            share: f.liveShare,
+            file: f.liveFile,
+            writtenAt: f.liveWrittenAt,
+            link: f.liveLink,
+            theirLink: f.theirLink,
+            readAt: f.theirLinkReadAt,
+            checkedAt: f.theirLinkCheckedAt,
+            error: f.theirLinkError,
+          },
           file: file
             ? {
                 from: file.data.from,
@@ -131,7 +175,7 @@ export class FriendsService {
       });
   }
 
-  add(name: unknown, email: unknown, way: 'file' | 'email' | 'direct' = 'file', withCode?: string) {
+  add(name: unknown, email: unknown, way: 'file' | 'email' | 'direct' | 'link' = 'file', withCode?: string) {
     const n = typeof name === 'string' ? name.trim().replace(/\s+/g, ' ') : '';
     if (!n || n.length > 60) throw new FriendsError("Give your friend's name (up to 60 characters).");
     const e = typeof email === 'string' && email.trim() ? email.trim().toLowerCase() : null;
@@ -226,7 +270,7 @@ export class FriendsService {
   }
 
   /** Your share file for a friend: what Settings › Friends shares, with your friendship's code. */
-  myFile(friendId: number): ShareFile {
+  myFile(friendId: number, opts: { sent?: boolean } = {}): ShareFile {
     const f = this.friend(friendId);
     const s = this.settings;
     const values = s.get('friends.shareValues');
@@ -269,7 +313,7 @@ export class FriendsService {
           askingCents: values ? t.askingCents : null,
         }));
     }
-    this.db.update(friends).set({ lastSentAt: file.madeAt }).where(eq(friends.id, friendId)).run();
+    if (opts.sent !== false) this.db.update(friends).set({ lastSentAt: file.madeAt }).where(eq(friends.id, friendId)).run();
     return file;
   }
 
@@ -329,6 +373,197 @@ export class FriendsService {
     this.db.insert(friendFiles).values({ friendId: friend.id, ...row }).onConflictDoUpdate({ target: friendFiles.friendId, set: row }).run();
     this.log.info({ context: 'friends' }, `${friend.name}'s file brought in (${file.collection?.length ?? 0} games)`);
     return { friend: { id: friend.id, name: friend.name }, games: file.collection?.length ?? 0, wishes: file.wishlist?.length ?? 0, forTrade: file.forTrade?.length ?? 0 };
+  }
+
+  // ---- Live links (1.4.0, D214) ----
+
+  /** Where the live files go: Settings › Friends' folder, else the friends-live folder in Squirrelcade's own folder. */
+  liveFolder(): string {
+    const set = this.settings.get('friends.liveFolder').trim();
+    return set || join(this.options.configDir ?? '.', 'friends-live');
+  }
+
+  /** Turns live sharing with a friend on or off, and keeps the links (yours to give, theirs to read). */
+  setLive(id: number, change: { share?: unknown; link?: unknown; theirLink?: unknown }) {
+    const f = this.friend(id);
+    const set: Partial<typeof friends.$inferInsert> = {};
+    try {
+      if (change.share !== undefined) set.liveShare = change.share === true;
+      if (change.link !== undefined) set.liveLink = change.link === null || change.link === '' ? null : checkLink(change.link);
+      if (change.theirLink !== undefined) {
+        set.theirLink = change.theirLink === null || change.theirLink === '' ? null : checkLink(change.theirLink);
+        if (set.theirLink !== f.theirLink) Object.assign(set, { theirLinkError: null, theirLinkCheckedAt: null });
+      }
+    } catch (err) {
+      if (err instanceof LiveFileError) throw new FriendsError(err.message);
+      throw err;
+    }
+    if (Object.keys(set).length > 0) this.db.update(friends).set(set).where(eq(friends.id, id)).run();
+    if (set.liveShare === false) this.liveWritten.delete(id);
+    return { ...f, ...set };
+  }
+
+  /**
+   * Writes the live file of every friend you share with live (or just one), when what it holds changed. Written to a
+   * temporary name and renamed, so whatever carries the folder to the cloud never takes half a file.
+   */
+  writeLive(onlyId?: number): { written: number; unchanged: number; folder: string; files: string[] } {
+    const folder = this.liveFolder();
+    const list = this.db
+      .select()
+      .from(friends)
+      .all()
+      .filter((f) => f.liveShare && (onlyId === undefined || f.id === onlyId));
+    let written = 0;
+    let unchanged = 0;
+    const files: string[] = [];
+    if (list.length === 0) return { written, unchanged, folder, files };
+    mkdirSync(folder, { recursive: true });
+    for (const f of list) {
+      const file = this.myFile(f.id, { sent: false });
+      const fingerprint = JSON.stringify({ ...file, madeAt: '' });
+      const name = f.liveFile ?? `squirrelcade-${slug(file.from)}-for-${slug(f.name)}.json`;
+      files.push(name);
+      if (onlyId === undefined && this.liveWritten.get(f.id) === fingerprint && f.liveFile) {
+        unchanged++;
+        continue;
+      }
+      const path = join(folder, name);
+      writeFileSync(`${path}.tmp`, JSON.stringify(sealLive(file, f.code)));
+      renameSync(`${path}.tmp`, path);
+      this.liveWritten.set(f.id, fingerprint);
+      this.db.update(friends).set({ liveFile: name, liveWrittenAt: file.madeAt }).where(eq(friends.id, f.id)).run();
+      written++;
+    }
+    if (written > 0) this.log.info({ context: 'friends' }, `Live friend files written: ${written} (${folder})`);
+    return { written, unchanged, folder, files };
+  }
+
+  /** After a collection update: the live files are written a little later, once (several changes in a row write once). */
+  collectionChanged(delayMs = 60_000): void {
+    if (this.liveTimer) clearTimeout(this.liveTimer);
+    this.liveTimer = setTimeout(() => {
+      this.liveTimer = null;
+      try {
+        this.writeLive();
+      } catch (err) {
+        this.log.warn({ context: 'friends', err }, `Live friend files couldn't be written: ${err instanceof Error ? err.message : String(err)}`);
+      }
+    }, delayMs);
+    this.liveTimer.unref();
+  }
+
+  /** The invite for a friend: your live file's link and your friendship's code, in one line they paste. */
+  invite(id: number): { invite: string; link: string; file: string | null } {
+    const f = this.friend(id);
+    if (!f.liveShare) throw new FriendsError(`Share live with ${f.name} first: Squirrelcade then writes their file in your live folder.`, 409);
+    if (!f.liveLink) throw new FriendsError(`Paste the link of ${f.name}'s file first (share it from your cloud folder as Anyone with the link).`, 409);
+    const s = this.settings;
+    const from = s.get('friends.myName').trim() || s.get('general.instanceName').trim() || 'A Squirrelcade';
+    return { invite: makeInvite({ from, code: f.code, link: f.liveLink }), link: f.liveLink, file: f.liveFile };
+  }
+
+  /**
+   * Takes a friend's invite: their link is kept and read at once. The friend is the one whose friendship has the
+   * invite's code, else the friend given (who takes the invite's code), else a new friend named as the invite says.
+   */
+  async acceptInvite(text: unknown, opts: { friendId?: number | null; name?: unknown; email?: unknown } = {}) {
+    let inv: ReturnType<typeof readInvite>;
+    try {
+      inv = readInvite(typeof text === 'string' ? text : '');
+    } catch (err) {
+      if (err instanceof LiveFileError) throw new FriendsError(err.message);
+      throw err;
+    }
+    let friend = this.db.select().from(friends).where(eq(friends.code, inv.code)).get() ?? null;
+    if (!friend && opts.friendId) {
+      friend = this.friend(opts.friendId);
+      this.db.update(friends).set({ code: inv.code }).where(eq(friends.id, friend.id)).run();
+      this.liveWritten.delete(friend.id);
+    }
+    friend ??= this.add(typeof opts.name === 'string' && opts.name.trim() ? opts.name : inv.from, opts.email, 'link', inv.code);
+    this.db.update(friends).set({ theirLink: inv.link, theirLinkError: null, theirLinkCheckedAt: null }).where(eq(friends.id, friend.id)).run();
+    const result = await this.readLink(friend.id);
+    return { friend: { id: friend.id, name: friend.name }, result };
+  }
+
+  /**
+   * Reads a friend's live link: refused, with a plain reason (and the last good file kept), unless it's a Squirrelcade
+   * live file of this friendship that checks out and is newer than the file last read.
+   */
+  async readLink(id: number): Promise<LinkResult> {
+    const f = this.friend(id);
+    const now = new Date().toISOString();
+    const done = (r: Omit<LinkResult, 'friendId' | 'name'>): LinkResult => {
+      this.db
+        .update(friends)
+        .set({ theirLinkCheckedAt: now, theirLinkError: r.ok ? null : r.message, ...(r.ok ? { theirLinkReadAt: now } : {}) })
+        .where(eq(friends.id, id))
+        .run();
+      if (!r.ok) this.log.warn({ context: 'friends' }, `${f.name}'s live link: ${r.message}`);
+      return { friendId: id, name: f.name, ...r };
+    };
+    if (!f.theirLink) throw new FriendsError(`There's no live link from ${f.name}: paste their invite first.`, 409);
+    try {
+      const text = await fetchLink(f.theirLink, this.options.fetch ?? ((url, init) => fetch(url, init)));
+      const env = readEnvelope(text);
+      if (env.friendship !== friendshipId(f.code)) {
+        const other = this.db
+          .select({ name: friends.name, code: friends.code })
+          .from(friends)
+          .all()
+          .find((x) => friendshipId(x.code) === env.friendship);
+        throw new LiveFileError(
+          other
+            ? `This is the live file of your friendship with ${other.name}, not with ${f.name}: check the link.`
+            : `This is a Squirrelcade file from another friendship (not yours with ${f.name}): ask ${f.name} for their invite again.`,
+        );
+      }
+      const last = this.db.select({ madeAt: friendFiles.madeAt }).from(friendFiles).where(eq(friendFiles.friendId, id)).get();
+      if (last && Date.parse(env.madeAt) <= Date.parse(last.madeAt)) {
+        return done({ ok: true, read: false, message: `Nothing new: the file was made ${env.madeAt}, and the one you have is as new or newer.` });
+      }
+      const file = openLive(env, f.code, f.name);
+      const row = { receivedAt: now, madeAt: file.madeAt, data: JSON.stringify(file) };
+      this.db.insert(friendFiles).values({ friendId: id, ...row }).onConflictDoUpdate({ target: friendFiles.friendId, set: row }).run();
+      const games = file.collection?.length ?? 0;
+      this.log.info({ context: 'friends' }, `${f.name}'s live file read (${games} games)`);
+      return done({ ok: true, read: true, message: `Read ${f.name}'s file of ${file.madeAt}: ${games} games.`, games });
+    } catch (err) {
+      if (err instanceof LiveFileError) return done({ ok: false, read: false, message: err.message });
+      throw err;
+    }
+  }
+
+  /** The scheduled task: your live files written (when they changed), then every friend's live link read. */
+  async liveTask(): Promise<string> {
+    const w = this.writeLive();
+    const results: LinkResult[] = [];
+    for (const f of this.db.select({ id: friends.id, link: friends.theirLink }).from(friends).all()) if (f.link) results.push(await this.readLink(f.id));
+    const parts: string[] = [];
+    if (w.written + w.unchanged > 0) parts.push(`${w.written} live file${w.written === 1 ? '' : 's'} written${w.unchanged ? `, ${w.unchanged} unchanged` : ''}`);
+    const read = results.filter((r) => r.read).length;
+    const failed = results.filter((r) => !r.ok);
+    if (results.length > 0) parts.push(`${read} of ${results.length} friend${results.length === 1 ? "'s link" : "s' links"} had something new`);
+    for (const r of failed) parts.push(`${r.name}: ${r.message}`);
+    if (failed.length > 0 && failed.length === results.length && w.written + w.unchanged === 0) throw new Error(parts.join('; '));
+    return parts.join('; ') || 'No live links';
+  }
+
+  /** The live links for the status board: one line per friend whose link is read. */
+  linkLines(): { id: number; name: string; link: string; readAt: string | null; checkedAt: string | null; error: string | null }[] {
+    return this.db
+      .select()
+      .from(friends)
+      .all()
+      .filter((f) => f.theirLink)
+      .map((f) => ({ id: f.id, name: f.name, link: f.theirLink as string, readAt: f.theirLinkReadAt, checkedAt: f.theirLinkCheckedAt, error: f.theirLinkError }));
+  }
+
+  /** Your live files for the status board: how many, where, and when one was last written. */
+  liveSummary(): { sharing: number; folder: string; writtenAt: string | null } {
+    const rows = this.db.select({ share: friends.liveShare, at: friends.liveWrittenAt }).from(friends).all().filter((r) => r.share);
+    return { sharing: rows.length, folder: this.liveFolder(), writtenAt: rows.map((r) => r.at).filter((x): x is string => Boolean(x)).sort().at(-1) ?? null };
   }
 
   // ---- Comparing ----
@@ -658,4 +893,46 @@ export function registerFriendRoutes(app: FastifyInstance, friendsService: Frien
       return fail(reply, err);
     }
   });
+
+  // Live links (D214): share live with a friend, your file's link, theirs; write now, read now; the invite.
+  app.put('/api/v1/friends/:id/live', async (request, reply) => {
+    try {
+      const b = (request.body ?? {}) as { share?: unknown; link?: unknown; theirLink?: unknown };
+      const f = friendsService.setLive(id(request), b);
+      const written = b.share === true ? friendsService.writeLive(f.id) : null;
+      return { id: f.id, share: f.liveShare, link: f.liveLink, theirLink: f.theirLink, written };
+    } catch (err) {
+      return fail(reply, err);
+    }
+  });
+  app.post('/api/v1/friends/:id/live/write', async (request, reply) => {
+    try {
+      return friendsService.writeLive(id(request));
+    } catch (err) {
+      return fail(reply, err);
+    }
+  });
+  app.post('/api/v1/friends/:id/live/read', async (request, reply) => {
+    try {
+      return await friendsService.readLink(id(request));
+    } catch (err) {
+      return fail(reply, err);
+    }
+  });
+  app.get('/api/v1/friends/:id/invite', async (request, reply) => {
+    try {
+      return friendsService.invite(id(request));
+    } catch (err) {
+      return fail(reply, err);
+    }
+  });
+  app.post('/api/v1/friends/invite', async (request, reply) => {
+    try {
+      const b = (request.body ?? {}) as { invite?: unknown; friendId?: unknown; name?: unknown; email?: unknown };
+      return reply.code(201).send(await friendsService.acceptInvite(b.invite, { friendId: typeof b.friendId === 'number' ? b.friendId : null, name: b.name, email: b.email }));
+    } catch (err) {
+      return fail(reply, err);
+    }
+  });
+  app.get('/api/v1/friends/live', async () => friendsService.liveSummary());
 }

@@ -1,3 +1,4 @@
+import { youtubeModeOf } from '@squirrelcade/core';
 import type { FastifyInstance } from 'fastify';
 import { isNull } from 'drizzle-orm';
 import type { Db } from './db/index.js';
@@ -57,6 +58,10 @@ export interface Deps {
   helperThere?: () => boolean;
   /** Frankfurter's last answer, when it was asked for an exchange rate. */
   ratesLast?: () => { at: string; ok: boolean } | null;
+  /** Friends' live links (D214): one line each, from when each was last read and what it said. */
+  friendLinks?: () => { id: number; name: string; link: string; readAt: string | null; checkedAt: string | null; error: string | null }[];
+  /** Your live friend files: how many friends you share with live, the folder, the last writing. */
+  friendLive?: () => { sharing: number; folder: string; writtenAt: string | null } | null;
 }
 
 const NOTIFY_CHANNELS = ['email', 'pushover', 'pushbullet', 'ntfy', 'gotify', 'discord', 'telegram', 'slack', 'webhook', 'apprise'] as const;
@@ -86,10 +91,18 @@ const DEFINITIONS: Definition[] = [
     tasks: ['videos-read'],
     settings: '/settings/roots',
     extra: (d) => {
+      // Light (D215): no key, so nothing to run out of; green while videos are on. Deep: the key and today's units.
+      const chosen = d.settings.get('roots.youtubeMode');
+      const hasKey = Boolean(d.settings.get('sources.youtubeKey').trim());
+      if (!d.settings.get('roots.videos')) return { on: false, says: "Off: Settings > Roots > Videos on a game's page turns it on" };
+      if (youtubeModeOf(chosen, hasKey) === 'light') {
+        if (chosen === 'deep') return { on: true, light: 'yellow', says: 'Set to Deep, but no YouTube key is set (Settings > Sources > YouTube): for now it works as Light' };
+        return { on: true, light: 'green', says: 'Light: no key needed, fewer videos (each channel\'s newest uploads, gathered over time; Deep with a YouTube key reads whole channels)' };
+      }
       const u = d.youtubeUnits?.();
-      if (!u || !d.settings.get('sources.youtubeKey')) return null;
+      if (!u) return null;
       if (u.left < u.budget * 0.1) return { light: 'yellow', says: `Today's units nearly used: ${u.left.toLocaleString('en-US')} of ${u.budget.toLocaleString('en-US')} left (they come back at midnight, Pacific time)` };
-      return { says: `${u.left.toLocaleString('en-US')} of today's ${u.budget.toLocaleString('en-US')} units left` };
+      return { says: `Deep: ${u.left.toLocaleString('en-US')} of today's ${u.budget.toLocaleString('en-US')} units left` };
     },
   },
   { key: 'retroachievements', name: 'RetroAchievements', tasks: ['ra-sync'], settings: '/settings/sources' },
@@ -231,7 +244,41 @@ export function integrationLines(d: Deps): IntegrationLine[] {
     if (extra?.says && (extra.light || light === 'green')) says = extra.says;
     return { ...base, light, says, lastOk, lastRun: latest?.at ?? null };
   });
+  lines.push(...friendLinkLines(d));
   return lines.map((l, i) => ({ l, i })).sort((a, b) => ORDER[a.l.light] - ORDER[b.l.light] || a.i - b.i).map((x) => x.l);
+}
+
+/** Your live friend files, and a line for each friend's live link (D214): read lately, failing, or not read yet. */
+function friendLinkLines(d: Deps): IntegrationLine[] {
+  const base = { settings: '/friends', help: 'integrations#friends-live', check: 'friends-live' };
+  const out: IntegrationLine[] = [];
+  const mine = d.friendLive?.() ?? null;
+  if (mine && mine.sharing > 0) {
+    out.push({
+      ...base,
+      key: 'friends-live-files',
+      name: 'Your live friend files',
+      light: mine.writtenAt ? 'green' : 'yellow',
+      says: mine.writtenAt ? `${mine.sharing} friend${mine.sharing === 1 ? '' : 's'}' files in ${mine.folder}, rewritten after each collection update` : `Not written yet (${mine.folder})`,
+      lastOk: mine.writtenAt,
+      lastRun: mine.writtenAt,
+    });
+  }
+  const hours = d.settings.get('friends.liveReadHours');
+  for (const f of d.friendLinks?.() ?? []) {
+    const stale = f.readAt !== null && Date.now() - Date.parse(f.readAt) > Math.max(3 * hours * 3_600_000, 86_400_000);
+    const light: Light = f.error ? 'red' : !f.readAt ? 'yellow' : stale ? 'yellow' : 'green';
+    out.push({
+      ...base,
+      key: `friend-link-${f.id}`,
+      name: `${f.name}'s live link`,
+      light,
+      says: f.error ?? (!f.readAt ? 'Not read yet: it is read on its schedule, or now with Check now' : stale ? 'Not read lately' : `Read ${f.readAt.slice(0, 16).replace('T', ' ')}`),
+      lastOk: f.readAt,
+      lastRun: f.checkedAt,
+    });
+  }
+  return out;
 }
 
 export function registerIntegrationRoutes(app: FastifyInstance, deps: Deps): void {

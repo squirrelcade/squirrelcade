@@ -22,6 +22,7 @@ The wishlist ranks the games you don't have, on the consoles you collect, by rul
 - Your **preference** for a game, from wherever a game you don't have is listed: the wishlist, the game's drawer, a console's page (its missing games), the Top 100 and History tabs, Roots > Timeline, sets, series, Coming soon, Past releases, Store Mode and Check a list. A change shows everywhere at once.
 - **Download** gives the list as a spreadsheet.
 - **Share** makes a link anyone can open without signing in, to see your top picks and where to buy them: for birthdays and holidays. See [Sharing your collection](sharing.md).
+- **Share as a file** downloads your top picks as one web page to send by email or chat: each game's place, acorns, console and priority, with a small cover, dated and named for you (Settings > Friends > Your name in what you share). Nobody needs a link, an account or any access to your server: the page opens in any browser, works offline, has no prices paid or notes, and **Print / Save as PDF** in it makes a PDF. On the By platform tab, the file is that console's list. How many games it holds, and whether it has covers, are in Acorns ranking > Sharing. Between two Squirrelcades, [Friends](friends.md) already share the top of your wishlist in their files; the page is for everyone else.
 - **Priority** (High, Medium, Low) comes from the acorns (the cut-offs are settings).
 
 ## The game of the day

@@ -62,6 +62,12 @@ GET    /api/v1/share/<token>             (no sign-in) the page: {kind, name, ins
 
 `wishes` are the top picks (Wishlist > Scoring > Games on a shared wishlist), each `{rank, title, platform, coverId, priority, links}` with links to PriceCharting and the shop links for its console. `sales` are `{title, platform, condition, quantity, kind: "sale" | "trade", askingCents, note, coverId}`. Nothing else about the collection. An address can open share pages a limited number of times in 10 minutes (Settings > Security), then 429.
 
+```
+GET /api/v1/wishlist/file[?platform=<console key>]
+```
+
+The wishlist as one self-contained web page, sent as an attachment (`wishlist-<date>.html`): the top picks (Acorns ranking > Sharing: games, covers) or one console's list, each with its place, console, acorns and priority and a small cover embedded as a data: URI. Nothing of the owner's beyond what a wishlist shows; no address of the server in it.
+
 ## Is this game owned?
 
 ```

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { SETTINGS_PAGES, defaultSettings, settingDefinitions, settingKeys, validateSettingChanges } from './settings.js';
+import { SETTINGS_PAGES, defaultSettings, settingDefinitions, settingKeys, validateSettingChanges, youtubeModeOf } from './settings.js';
 
 describe('setting definitions', () => {
   it('every setting belongs to a known page and its default is valid', () => {
@@ -16,6 +16,23 @@ describe('setting definitions', () => {
     const a = defaultSettings();
     a['platforms.excludedLabels'].push('Changed');
     expect(defaultSettings()['platforms.excludedLabels']).not.toContain('Changed');
+  });
+});
+
+describe("YouTube's Light and Deep (D215)", () => {
+  it('starts on Automatic: Deep when a key is set, Light when none is; Light never uses a key; Deep without one is Light', () => {
+    expect(defaultSettings()['roots.youtubeMode']).toBe('auto');
+    expect(youtubeModeOf('auto', false)).toBe('light');
+    expect(youtubeModeOf('auto', true)).toBe('deep');
+    expect(youtubeModeOf('light', true)).toBe('light');
+    expect(youtubeModeOf('deep', true)).toBe('deep');
+    expect(youtubeModeOf('deep', false)).toBe('light');
+  });
+
+  it('says plainly that Light means fewer videos', () => {
+    expect(settingDefinitions['roots.youtubeMode'].description).toMatch(/Light needs no key/);
+    expect(settingDefinitions['roots.youtubeMode'].description).toMatch(/latest 15/);
+    expect(validateSettingChanges({ 'roots.youtubeMode': 'deeper' }).issues).toHaveLength(1);
   });
 });
 

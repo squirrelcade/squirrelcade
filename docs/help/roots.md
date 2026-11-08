@@ -60,7 +60,17 @@ Where they come from:
 - **IGDB's trailers** for the game (with IGDB set up).
 - **The videos its Wikipedia article cites**, playable when they're YouTube's.
 - **Search YouTube for it**, at the bottom of every game's Videos tab: a plain YouTube search for the game and its console, opened in your browser. No key or setup, and nothing goes through your server.
-- **Video channels** (Settings › Roots): IGN, GameSpot and Gaming Historian to start, others listed off (Game Informer, Nintendo Life, Push Square, Pure Xbox, Digital Foundry, Classic Game Room, Game Sack, Metal Jesus Rocks, LGR, My Life in Gaming, DidYouKnowGaming, GameTrailers). Each line is a name, the channel's @handle or address, and on or off; add "| archive" for a channel of old commercials or TV shows, whose videos count as their games' own time. **Read video channels** (System › Tasks) reads them at night and keeps each video whose title says what it is (a review, a trailer, a preview, a history, gameplay) and names one of your consoles' games. **It needs a YouTube key**: YouTube's public channel feeds, which need none, weren't answering in October 2026 (Squirrelcade tries them anyway).
+- **Video channels** (Settings › Roots): IGN, GameSpot and Gaming Historian to start, others listed off (Game Informer, Nintendo Life, Push Square, Pure Xbox, Digital Foundry, Classic Game Room, Game Sack, Metal Jesus Rocks, LGR, My Life in Gaming, DidYouKnowGaming, GameTrailers). Each line is a name, the channel's @handle or address, and on or off; add "| archive" for a channel of old commercials or TV shows, whose videos count as their games' own time. **Read video channels** (System › Tasks) reads them at night and keeps each video whose title says what it is (a review, a trailer, a preview, a history, gameplay) and names one of your consoles' games. What it reads depends on **How much of YouTube to use** (below).
+
+### Light or Deep
+
+**Settings › Roots › How much of YouTube to use** has three choices:
+
+- **Light** needs no key and no setup. Videos come from IGDB's trailers, the ones you paste, the ones Wikipedia cites, the **Search YouTube for it** link, and each video channel's **newest uploads**: Squirrelcade reads each channel's public feed at night (about its latest 15 videos) and keeps the ones about your games as it finds them, so a game's videos build up over time. It's **fewer videos**: a channel's older videos (IGN's review of a game from 2010, say) are only there with Deep. YouTube's public feeds come and go for some channels; one that doesn't answer is tried again the next night.
+- **Deep** uses a YouTube key (below): each channel's whole list of videos, the date of a video you paste, and **Find its videos**.
+- **Automatic** (the start) is Deep when a YouTube key is set and Light when none is, so adding a key upgrades it, and an install that already had a key keeps working as before.
+
+With Light chosen, a key you've set isn't used. On System › Status the YouTube line says which one is working.
 
 ### A YouTube key
 
@@ -75,7 +85,7 @@ Free, about five minutes, in your Google account:
 
 With the key, each channel's whole list of videos is read once (a big channel like IGN's takes a few thousand of the day's 10,000 free units, and a while), then its newest videos each night; every 30 days the whole list is read again, as YouTube asks of what's kept from it, and a video gone from the channel goes from Squirrelcade too. Only the videos about your games are kept. A pasted video gets its date with the key too.
 
-**Find its videos** (under a game's Videos of the day, with a YouTube key) searches each video channel that's on for the game with YouTube's own search, and keeps what it finds like a channel's read. It finds the reviews a channel's list of uploads leaves out: YouTube lists only a channel's newest 20,000 videos, so IGN's and GameSpot's reviews from before about 2018 aren't in it. Each channel's search costs 100 of the 10,000 units a YouTube key gets a day; the button shows how many are left today, and Squirrelcade never goes past **YouTube's units Squirrelcade may use a day** (8,000, Settings > Roots), so the channels' nightly reading always has room. YouTube's day starts at midnight Pacific time.
+**Find its videos** (under a game's Videos of the day, in Deep) searches each video channel that's on for the game with YouTube's own search, and keeps what it finds like a channel's read. It finds the reviews a channel's list of uploads leaves out: YouTube lists only a channel's newest 20,000 videos, so IGN's and GameSpot's reviews from before about 2018 aren't in it. Each channel's search costs 100 of the 10,000 units a YouTube key gets a day; the button shows how many are left today, and Squirrelcade never goes past **YouTube's units Squirrelcade may use a day** (8,000, Settings > Roots), so the channels' nightly reading always has room. YouTube's day starts at midnight Pacific time.
 
 ## Settings > Roots
 
