@@ -2,7 +2,7 @@
 
 What changed in each version of Squirrelcade (called Gamefolio before 0.35.0). The decisions behind these (D01, D02...) are in [docs/DECISIONS.md](docs/DECISIONS.md), each with a tag to roll it back.
 
-## 1.5.0 (not yet released): your buying rules, the collection audit, more on Roots' consoles, and what's missing from your magazines
+## 1.5.0 (2026-11-08): your buying rules, the collection audit, more on Roots' consoles, and what's missing from your magazines
 
 ### Added
 
