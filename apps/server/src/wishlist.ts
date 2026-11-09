@@ -6,6 +6,7 @@ import {
   mergeDetails,
   normalizeTitle,
   collectionNameMatches,
+  pcFamilyKey,
   waysToPlayText,
   releaseYear,
   romanNumerals,
@@ -312,11 +313,19 @@ export class WishlistService {
       if (w) w.on = [...new Set([...w.on, ...on])];
       else ways.set(k, { kind, title: name, on: [...new Set(on)] });
     };
+    // One PC game is named once: IGDB's editions of a collection ("Collector's Edition") are the same PC game.
+    const pcNamed = new Set<string>();
     const onFor = (id: number, name: string | undefined) => {
       const on = [...(idx.ownedIds.get(id) ?? [])];
-      if (name) for (const store of this.pcOwnership(name)) on.push(`PC (${store})`);
+      if (name && !pcNamed.has(pcFamilyKey(name))) {
+        const stores = this.pcOwnership(name);
+        if (stores.length > 0) pcNamed.add(pcFamilyKey(name));
+        for (const store of stores) on.push(`PC (${store})`);
+      }
       return on;
     };
+    // The shortest names first, so the collection itself is named rather than one of its editions.
+    const byName = (ids: readonly number[]) => [...ids].sort((a, b) => (idx.byId.get(a)?.name.length ?? 999) - (idx.byId.get(b)?.name.length ?? 999));
     const g = this.igdb?.findByKey(platformKey, title);
     if (g) {
       const via = (kind: WayToPlay['kind'], ids: readonly number[]) => {
@@ -325,15 +334,15 @@ export class WishlistService {
           if (!r) continue;
           add(kind, r.name, onFor(id, r.name));
           // The collections it's in: a collection of collections (Legacy Collection 1 + 2), a remaster in a collection.
-          for (const b of r.bundles ?? []) {
+          for (const b of byName(r.bundles ?? [])) {
             const bundle = idx.byId.get(b);
             if (bundle) add(kind, kind === 'collection' ? bundle.name : `${r.name} in ${bundle.name}`, onFor(b, bundle.name));
           }
         }
       };
-      via('collection', g.bundles ?? []);
-      if (s.get('wishlist.playableRemasters')) via('remaster', g.remasters ?? []);
-      if (s.get('wishlist.playableRemakes')) via('remake', g.remakes ?? []);
+      via('collection', byName(g.bundles ?? []));
+      if (s.get('wishlist.playableRemasters')) via('remaster', byName(g.remasters ?? []));
+      if (s.get('wishlist.playableRemakes')) via('remake', byName(g.remakes ?? []));
     }
     for (const owned of idx.mapped.get(matchKey(baseTitle(title))) ?? []) {
       const on = [...(idx.ownedTitleOn.get(matchKey(baseTitle(owned))) ?? [])];

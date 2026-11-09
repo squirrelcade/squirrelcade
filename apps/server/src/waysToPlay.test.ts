@@ -29,13 +29,14 @@ beforeEach(async () => {
   });
   const id = (key: string) => g.db.select({ id: platforms.id }).from(platforms).where(eq(platforms.key, key)).get()!.id;
   const rows: [string, number, string, Record<string, unknown>?][] = [
-    ['nintendo-entertainment-system', 1715, 'Mega Man 2', { bundles: [19874] }],
+    ['nintendo-entertainment-system', 1715, 'Mega Man 2', { bundles: [89843, 19874] }],
     ['nintendo-entertainment-system', 385, 'Final Fantasy', { remasters: [158980] }],
     ['nintendo-entertainment-system', 999, 'DuckTales'],
     ['super-nintendo', 386, 'Final Fantasy VI', { remasters: [158985] }],
     ['playstation', 427, 'Final Fantasy VII', { remakes: [11169] }],
     ['nintendo-switch', 19874, 'Mega Man Legacy Collection', { gameType: 'Bundle', bundles: [87782] }],
     ['nintendo-switch', 87782, 'Mega Man Legacy Collection 1 + 2', { gameType: 'Bundle' }],
+    ['nintendo-switch', 89843, 'Mega Man Legacy Collection: Special Edition', { gameType: 'Bundle' }],
     ['nintendo-switch', 158980, 'Final Fantasy', { gameType: 'Remaster', bundles: [159253] }],
     ['nintendo-switch', 158985, 'Final Fantasy VI', { gameType: 'Remaster', bundles: [159253] }],
     ['nintendo-switch', 159253, 'Final Fantasy: Pixel Remaster Collection', { gameType: 'Bundle', altNames: ['Final Fantasy I-VI Bundle'] }],
@@ -47,7 +48,8 @@ beforeEach(async () => {
     .run();
   g.igdb.forgetPlatforms();
   // The PC library (owned for good on Steam).
-  g.wishlist.setPcOwnership((title) => (title === 'Mega Man Legacy Collection' ? ['Steam'] : []));
+  // The PC library's family reads an edition as the game, so both names are "owned on Steam".
+  g.wishlist.setPcOwnership((title) => (title.startsWith('Mega Man Legacy Collection') && !title.includes('1 + 2') ? ['Steam'] : []));
   g.wishlist.invalidate();
 });
 afterEach(async () => {
