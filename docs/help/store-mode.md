@@ -15,6 +15,8 @@ A game you don't have has **Price on PriceCharting** (what it sells for, in your
 
 **Many games at once.** Bringing home a pile? Scan each one and tap **Add it**: in its walk-through, **Save and scan the next one** saves what you typed and opens the camera again, and closing it saves too. When you sit down with them, **Fill in their details** (on the **Added here** card) opens Stash > Improve on the copies you added here: **Go through them** opens each one's window in turn, for what you paid, the day, photos, a test or a rip, and **Next copy** saves it and goes on to the next. With [order emails](orders.md) on, **Find their prices in my email** beside it opens Stash > Recently added on the last 7 days, where one click looks up all their prices at once.
 
+For a whole collection at once, rather than a store or a pile, use **Stash > Collection audit**: photograph each shelf and find the games you never logged. See [Your collection](collection.md).
+
 ## Scanning barcodes
 
 The phone's camera reads the barcode: hold it flat, about a hand's width away, and tilt a shiny case so the light doesn't shine on the barcode. Where the phone lets the browser switch its light (Chrome on Android), a **Light** button shows.

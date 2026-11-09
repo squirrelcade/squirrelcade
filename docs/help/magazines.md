@@ -62,6 +62,27 @@ A page needs its text to be found:
 - **Text that came with the scans**: if your scans were read by Tesseract already (its hOCR, one file per page, in `<magazine folder>/ocr/<issue>/001.hocr`...), Squirrelcade takes it as it is from **Text already read** (to start, `_derived` in the magazines folder): the issue a folder is is the number at the end of its name (`NP-010` is #10).
 - **Read the rest of their text at night** (off to start): [Tesseract](https://github.com/tesseract-ocr/tesseract), in Squirrelcade's image, reads the pages that have none, newest issues first, in the **Reading hours** (1 AM to 6 AM to start), on the **Processor cores it may use**, at the lowest priority so everything else comes first. After its first issue, Leaves says how long the rest will take. A big library is weeks of nights: that's expected.
 
+## What's missing
+
+**What's missing** (on Leaves, and the **missing** button on a magazine's page) lists the issues missing from each of your runs, worked out from the numbers and cover dates of the issues you have, with nothing to look up:
+
+- **Between the first and last issue you have**: each missing number, with its month when the issues around it came out one a month (else the months of the issues on each side). Long runs fold into one line (**Show them**).
+- **Before your first issue**, from #1 (**Count from #1**, on to start). Name where a run started and ended (**It ran from # to #**) to count from another first issue, or past your last one to the magazine's last.
+- **A magazine numbered by volume** (GameFan's Vol. 6 #3): each volume's gaps, a volume filled to the usual number of issues.
+- **A magazine without numbers**: the months with no issue, at its usual pace (some magazines skipped months: say **It didn't come out**).
+- **A jump**: when the numbers run ahead of the months between two issues (GamePro's #80 in March 1996, then #91 in April), past one extra issue a year, the magazine skipped numbers or a file's number is off. Say **No issues there**, or **They're missing** to list them.
+
+Numbers and months a magazine never printed aren't counted, and the magazine's card says which: the magazine index knows GamePro's skipped #81 to #90, GameFan's five issues of 1998 (and no Vol. 7 #2), EGM's #237 (finished in 2009 but never printed), and the months Electronic Games came out every other month.
+
+**Not an issue** takes a number off the list (never printed, a numbering quirk); **Your answers** under a magazine takes one back. **Copy the list** copies every missing issue as text, for a shopping list or someone helping you look.
+
+**Look for it** opens each place in **Settings > Magazines > Where to look for an issue**, searched for that issue: to start, the Video Game History Foundation's library, the Internet Archive and eBay. Add your own as `Name | address`, with `{q}` where the search words go.
+
+With Roots on, each night's **Find the games in the magazines** also counts the print magazines Wikipedia's review tables cite for the games you have:
+
+- **The missing issues that review the most of your games**, at the top, and on each missing issue how many of your games it reviews: the ones to look for first.
+- **Magazines your games' reviews are in**: the magazines you don't have that review the most of your games (**Magazines suggested**, 12), each with **Look for it** and **Not for me** (it joins **Magazines not to suggest**, which starts with magazines that aren't about games). **English magazines only** (on) leaves out magazines cited mostly in another language, such as Famitsu: the night's reading reads English.
+
 ## Who sees them
 
-Your magazines are yours alone unless **People you invite can read them too** is on (Settings > Magazines).
+Your magazines are yours alone unless **People you invite can read them too** is on (Settings > Magazines). What's missing is yours only.

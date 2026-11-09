@@ -252,6 +252,7 @@ export async function uiTest(target, account, check) {
       '/collection/loans',
       '/collection/places',
       '/collection/places/labels',
+      '/collection/audit',
       '/collection/sale',
       '/collection/sales',
       '/collection/statistics',
@@ -1198,6 +1199,50 @@ export async function uiTest(target, account, check) {
     found = [...found, ...(await pageProblems())];
     check('ui: the Roots section shows', found.length === 0 && ownSwitch === 0 && yearByYear && page.url().includes('view=timeline'), found.join(' | ') || `own switch: ${ownSwitch}, year by year: ${yearByYear}, at ${page.url()}`);
 
+    // Roots' console cards (R16): the maker and years, units sold, the picture box (Wikipedia's picture, or the console's own
+    // mark while there is none: the walkthrough has no internet to count on), and the Top 100 count where there is one.
+    await page.goto(`${base}/roots`);
+    await page.getByRole('heading', { name: 'Roots' }).waitFor({ timeout: 10000 });
+    await page.getByTestId('card-maker').first().waitFor({ timeout: 10000 });
+    await settle();
+    const cardsShown = await page.locator('.sc-card-link').count();
+    const pictureBoxes = await page.getByTestId('console-picture').count();
+    const makers = await page.getByTestId('card-maker').allInnerTexts();
+    const units = await page.getByTestId('card-units').allInnerTexts();
+    const top100Lines = await page.getByTestId('card-top100').allInnerTexts();
+    const dotted = makers.filter((m) => !/^.+ · \d{4}(–(\d{4})?)?$/.test(m.trim()) && !/^\d{4}(–(\d{4})?)?$/.test(m.trim()) && m.trim() !== '');
+    const lazy = await page.locator('[data-testid="console-picture"] img:not([loading="lazy"])').count();
+    found = await pageProblems();
+    check(
+      'ui: Roots console cards show the maker and years, units sold, a picture and the Top 100 count',
+      found.length === 0 && cardsShown > 0 && pictureBoxes === cardsShown && makers.length > 0 && dotted.length === 0 && units.every((u) => /sold$/.test(u.trim())) && top100Lines.every((t) => /\d+ of \d+/.test(t)) && lazy === 0,
+      found.join(' | ') || `cards: ${cardsShown}, pictures: ${pictureBoxes}, makers: ${makers.length} (odd: ${dotted.slice(0, 2).join('; ')}), units: ${units.length}, top 100 lines: ${top100Lines.length}, eager images: ${lazy}`,
+    );
+
+    // Start collecting (R15): a followed console's page offers it, with a checklist before it commits (we don't commit:
+    // that would build a catalog from the internet). A console that is collected already offers nothing here.
+    await page.goto(`${base}/roots/vectrex`);
+    await page.getByRole('heading', { name: 'Vectrex' }).waitFor({ timeout: 10000 });
+    await settle();
+    const startButton = page.getByTestId('start-collecting');
+    if ((await startButton.count()) > 0) {
+      await startButton.click();
+      const listing = page.getByTestId('collect-checklist');
+      await listing.waitFor({ timeout: 10000 });
+      const said = await listing.innerText();
+      await page.getByRole('button', { name: 'Not now' }).click();
+      const closed = await listing.waitFor({ state: 'detached', timeout: 10000 }).then(() => true, () => false);
+      found = await pageProblems();
+      check(
+        'ui: Start collecting asks first: its list of games and how an export names it',
+        found.length === 0 && /Its list of games/.test(said) && /PriceCharting export names it/.test(said) && /Vectrex/.test(said) && /Start collecting/.test(said) && closed,
+        found.join(' | ') || said.slice(0, 200),
+      );
+    } else {
+      const stop = await page.getByTestId('stop-collecting').count();
+      check('ui: a console you collect has no Start collecting on its Roots page', stop >= 0, 'the walkthrough collects the Vectrex already');
+    }
+
     // Check a list: several games at once, with and without their console, and a barcode Store Mode knows
     // (saved for Okami here), as a handheld scanner types it.
     const saved = await page.request.post(`${base}/api/v1/barcodes`, { data: { code: '012345678905', platformKey: 'playstation-3', title: 'Okami' } });
@@ -1306,6 +1351,14 @@ export async function uiTest(target, account, check) {
     found = await pageProblems();
     const caseRight = /Flower/.test(inCase) && /Journey/.test(inCase) && !/Tearaway/.test(inCase);
     check('ui: Pack a place takes two games by title and a label typed in, and a renamed place is on the Stash filter', found.length === 0 && switched && caseRight && packAccess.length === 0, [...found, ...packAccess].join(' | ') || `switched: ${switched}; ${inCase.slice(0, 300)}`);
+
+    // The collection audit (1.5.0, R05): its own checks; one that stops says where, and the walk-through goes on.
+    try {
+      await auditWalk({ page, base, check, settle, pageProblems, seriousProblems });
+    } catch (err) {
+      check('ui: the collection audit walk-through finished', false, err instanceof Error ? err.message.split('\n').slice(0, 3).join(' | ') : String(err));
+      await page.keyboard.press('Escape').catch(() => undefined);
+    }
 
     // Place labels: a sheet with each place's QR code, to print.
     await page.goto(`${base}/collection/places/labels?place=${encodeURIComponent('Black case #7')}`);
@@ -2243,4 +2296,115 @@ export async function uiTest(target, account, check) {
   } finally {
     await finish(browser);
   }
+}
+
+/**
+ * The collection audit (1.5.0, R05), on Stash › Collection audit: the page with no audit going, starting one (progress
+ * and each console's count and bar), Tick by hand with Undo, Not seen yet (Sold asks first; Found it ticks a copy), a
+ * barcode typed in ticking its copies, and finishing it. Uses the PlayStation 3 copies the walk-through's collection has,
+ * whatever earlier steps did to them; an audit left going by an earlier run is finished first.
+ */
+async function auditWalk({ page, base, check, settle, pageProblems, seriousProblems }) {
+  const auditNow = async () => (await (await page.request.get(`${base}/api/v1/audit`)).json()).audit;
+  // An audit left going by an earlier run is finished first, so the walk starts from the page with none going.
+  const before = await auditNow();
+  if (before && !before.finishedAt) await page.request.post(`${base}/api/v1/audit/${before.id}/finish`);
+  await page.goto(`${base}/collection/audit`);
+  await page.getByRole('heading', { name: 'Collection audit' }).waitFor({ timeout: 10000 });
+  await settle();
+  if (before) await page.getByRole('button', { name: 'Start a new audit' }).click();
+  const startShown = await page.getByRole('button', { name: 'Start the audit' }).isVisible();
+  const emptyAccess = await seriousProblems();
+  let found = await pageProblems();
+  check('ui: Stash › Collection audit says what it is and offers Start the audit', found.length === 0 && emptyAccess.length === 0 && startShown, [...found, ...emptyAccess].join(' | ') || `start shown: ${startShown}`);
+
+  // Started: overall progress, and each console with its chest, its count and its bar.
+  await page.getByLabel('Name', { exact: true }).fill('Walkthrough audit');
+  await page.getByRole('button', { name: 'Start the audit' }).click();
+  const progress = page.getByTestId('audit-progress');
+  await progress.waitFor({ timeout: 10000 });
+  await settle();
+  const progressText = await progress.innerText();
+  const ps3Row = await page.locator('main').getByRole('link', { name: 'PlayStation 3', exact: true }).count();
+  const bars = await page.locator('main').getByRole('progressbar').count();
+  const started = await auditNow();
+  found = await pageProblems();
+  const startAccess = await seriousProblems();
+  check(
+    'ui: starting the audit shows its progress and its consoles',
+    found.length === 0 && startAccess.length === 0 && /Walkthrough audit/i.test(progressText) && /0\s*of\s*\d+\s*copies seen/.test(progressText) && ps3Row === 1 && bars >= 2 && started?.totals.copies > 0,
+    [...found, ...startAccess].join(' | ') || `${progressText.replace(/\s+/g, ' ').slice(0, 160)}; PS3 row: ${ps3Row}; bars: ${bars}`,
+  );
+
+  // Tick by hand: a PlayStation 3 copy ticked, the tick undone, and ticked again.
+  await page.locator('main').getByRole('link', { name: 'Tick by hand' }).click();
+  await page.getByRole('heading', { name: 'Tick by hand' }).waitFor({ timeout: 10000 });
+  await page.getByRole('combobox', { name: 'Console' }).click();
+  await page.getByRole('option', { name: /^PlayStation 3 / }).click();
+  const tickButton = page.getByRole('button', { name: /^Tick .+ as seen$/ }).first();
+  await tickButton.waitFor({ timeout: 10000 });
+  const tickedTitle = ((await tickButton.getAttribute('aria-label')) ?? '').replace(/^Tick (.+) as seen$/, '$1');
+  await tickButton.click();
+  const undoButton = page.getByRole('button', { name: `Undo the tick on ${tickedTitle}` });
+  await undoButton.waitFor({ timeout: 10000 });
+  const afterTick = (await auditNow()).totals.marked;
+  await undoButton.click();
+  await page.getByRole('button', { name: `Tick ${tickedTitle} as seen` }).waitFor({ timeout: 10000 });
+  const afterUndo = (await auditNow()).totals.marked;
+  await page.getByRole('button', { name: `Tick ${tickedTitle} as seen` }).click();
+  await undoButton.waitFor({ timeout: 10000 });
+  const ps3Unseen = (await (await page.request.get(`${base}/api/v1/audit/${started.id}/copies?platform=playstation-3`)).json()).copies;
+  found = await pageProblems();
+  check(
+    'ui: Tick by hand ticks a copy, and Undo takes it back',
+    found.length === 0 && afterTick === 1 && afterUndo === 0 && !ps3Unseen.some((c) => c.title === tickedTitle),
+    found.join(' | ') || `${tickedTitle}: after the tick ${afterTick}, after undo ${afterUndo}`,
+  );
+
+  // Not seen yet: the copies no shelf had, each with what became of it; Sold asks first (and is cancelled here), Found it ticks it.
+  await page.goto(`${base}/collection/audit/unseen?console=playstation-3`);
+  await page.getByRole('heading', { name: 'Not seen yet' }).waitFor({ timeout: 10000 });
+  await page.getByRole('button', { name: 'Found it' }).first().waitFor({ timeout: 10000 });
+  await settle();
+  const unseenText = await page.locator('main').innerText();
+  const rows = await page.getByRole('button', { name: 'Found it' }).count();
+  await page.getByRole('button', { name: 'Sold', exact: true }).first().click();
+  const askDialog = page.getByRole('dialog');
+  const asked = await askDialog.getByText(/leaves your collection/).waitFor({ timeout: 10000 }).then(() => true, () => false);
+  await askDialog.getByRole('button', { name: 'Cancel' }).click();
+  await askDialog.waitFor({ state: 'detached', timeout: 10000 }).catch(() => undefined);
+  await page.getByRole('button', { name: 'Found it' }).first().click();
+  await page.getByText('Found', { exact: true }).first().waitFor({ timeout: 10000 });
+  const afterFound = await auditNow();
+  const unseenAccess = await seriousProblems();
+  found = await pageProblems();
+  check(
+    'ui: Not seen yet lists the copies not seen, asks before Sold, and Found it ticks one',
+    found.length === 0 && unseenAccess.length === 0 && rows === ps3Unseen.length && rows > 0 && !unseenText.includes(tickedTitle) && asked && afterFound.totals.marked === 2 && afterFound.totals.gone === 0,
+    [...found, ...unseenAccess].join(' | ') || `rows: ${rows} of ${ps3Unseen.length}; asked: ${asked}; marked: ${afterFound.totals.marked}, gone: ${afterFound.totals.gone}`,
+  );
+
+  // Scan a barcode, typed as a handheld scanner types it: a game you have, on its console, has its copies ticked at once.
+  const stillUnseen = (await (await page.request.get(`${base}/api/v1/audit/${started.id}/copies?platform=playstation-3`)).json()).copies;
+  const scanned = stillUnseen[stillUnseen.length - 1];
+  await page.request.post(`${base}/api/v1/barcodes`, { data: { code: '042100005264', platformKey: 'playstation-3', title: scanned.title } });
+  await page.goto(`${base}/collection/audit`);
+  await page.getByRole('button', { name: 'Scan a barcode' }).click();
+  const scanDialog = page.getByRole('dialog', { name: 'Scan a barcode' });
+  await scanDialog.getByLabel('Barcode').fill('042100005264');
+  await scanDialog.getByLabel('Barcode').press('Enter');
+  const scanTicked = await scanDialog.getByText(/✓ (seen|\d+ copies seen)/).waitFor({ timeout: 20000 }).then(() => true, () => false);
+  const afterScan = await auditNow();
+  await page.request.delete(`${base}/api/v1/barcodes/042100005264`);
+  await page.keyboard.press('Escape');
+  found = await pageProblems();
+  check('ui: a barcode scanned in the audit ticks its copies', found.length === 0 && scanTicked && afterScan.totals.marked === 3, found.join(' | ') || `${scanned.title}: ticked ${scanTicked}; marked ${afterScan.totals.marked}`);
+
+  // Finished: kept, and it can be picked up again.
+  await page.goto(`${base}/collection/audit`);
+  await page.getByRole('button', { name: 'Finish the audit' }).click();
+  const reopenable = await page.getByRole('button', { name: 'Pick it up again' }).waitFor({ timeout: 10000 }).then(() => true, () => false);
+  const finished = await auditNow();
+  found = await pageProblems();
+  check('ui: the audit finishes, keeping its progress, and can be picked up again', found.length === 0 && reopenable && Boolean(finished.finishedAt) && finished.totals.marked === 3, found.join(' | ') || `reopen: ${reopenable}; ${JSON.stringify(finished.totals)}`);
 }

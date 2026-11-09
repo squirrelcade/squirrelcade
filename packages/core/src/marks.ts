@@ -81,6 +81,11 @@ export const CONSOLE_MARKS: Readonly<Record<string, ConsoleMarkDef>> = {
   'neo-geo': { abbr: 'NEO', color: '#B08D00', company: 'snk', year: 1990 },
   '3do': { abbr: '3DO', color: '#2D2D2D', company: 'other', year: 1993 },
   'n-gage': { abbr: 'NG', color: '#2B7BB9', company: 'other', year: 2003 },
+  vectrex: { abbr: 'VEC', color: '#4A4A4F', company: 'other', year: 1982 },
+  astrocade: { abbr: 'AST', color: '#8E24AA', company: 'other', year: 1977 },
+  'arcadia-2001': { abbr: 'ARC', color: '#E53935', company: 'other', year: 1982 },
+  'epoch-super-cassette-vision': { abbr: 'SCV', color: '#3F6FB5', company: 'other', year: 1984 },
+  'neo-geo-pocket-color': { abbr: 'NGPC', color: '#B08D00', company: 'snk', year: 1999 },
   pc: {
     icon: { rows: ['AAAAAAAA', 'A......A', 'A......A', 'A......A', 'AAAAAAAA', '...AA...', '..AAAA..', '........'], colors: ['#6E6E6E'] },
     color: '#6E6E6E',

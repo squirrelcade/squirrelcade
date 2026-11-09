@@ -9,6 +9,7 @@ import { api } from '../api';
 import { PageHeader } from '../components';
 import { count } from '../format';
 import { IssueGames, PageGames } from './LeavesGames';
+import type { MissingAnswer } from './LeavesMissing';
 import { notifyError, notifySuccess, useCanEdit, useSetting } from '../hooks';
 
 /** A magazine (GET /api/v1/magazines). */
@@ -98,6 +99,9 @@ export function LeavesPage() {
   const queryClient = useQueryClient();
   const list = useQuery({ queryKey: ['magazines'], queryFn: () => api<{ magazines: Magazine[]; status: Status }>('/magazines') });
   const undated = useQuery({ queryKey: ['magazines', 'undated'], queryFn: () => api<{ issues: Issue[] }>('/magazines/undated'), enabled: canEdit });
+  // What's missing (D221): the owner's only.
+  const missing = useQuery({ queryKey: ['magazines', 'missing'], queryFn: () => api<MissingAnswer>('/magazines/missing'), enabled: canEdit });
+  const missingCount = (missing.data?.magazines ?? []).reduce((t, m) => t + m.missing.length + m.months.length, 0);
   const scan = useMutation({
     mutationFn: () => api('/magazines/scan', { method: 'POST' }),
     onSuccess: () => {
@@ -148,6 +152,15 @@ export function LeavesPage() {
             </Anchor>
           </Alert>
         )}
+        {missing.data && (missingCount > 0 || missing.data.suggestions.length > 0) && (
+          <Text size="sm">
+            {missingCount > 0 ? `${count(missingCount)} ${missingCount === 1 ? 'issue is' : 'issues are'} missing from your runs` : 'Your runs are whole'}
+            {missing.data.suggestions.length > 0 ? `, and ${count(missing.data.suggestions.length)} magazines your games' reviews are in could join them` : ''}.{' '}
+            <Anchor component={Link} to="/leaves/missing" fw={600}>
+              What's missing
+            </Anchor>
+          </Text>
+        )}
         {!list.data ? (
           <Loader />
         ) : list.data.magazines.length === 0 ? (
@@ -184,6 +197,10 @@ export function MagazinePage() {
   const id = Number(useParams().id);
   const list = useQuery({ queryKey: ['magazines'], queryFn: () => api<{ magazines: Magazine[]; status: Status }>('/magazines') });
   const issues = useQuery({ queryKey: ['magazines', id], queryFn: () => api<{ issues: Issue[] }>(`/magazines/${id}`) });
+  const canEdit = useCanEdit();
+  const missing = useQuery({ queryKey: ['magazines', 'missing'], queryFn: () => api<MissingAnswer>('/magazines/missing'), enabled: canEdit });
+  const gaps = missing.data?.magazines.find((x) => x.id === id);
+  const missingHere = gaps ? gaps.missing.length + gaps.months.length : 0;
   const m = list.data?.magazines.find((x) => x.id === id);
   const years = new Map<string, Issue[]>();
   for (const i of issues.data?.issues ?? []) {
@@ -195,7 +212,19 @@ export function MagazinePage() {
       <Anchor component={Link} to="/leaves" size="sm" mb={4} style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
         <IconArrowLeft size={14} /> All magazines
       </Anchor>
-      <PageHeader help="magazines" title={m?.name ?? 'Magazine'} description={m ? `${count(m.issues)} issues${m.from ? `, ${m.from} to ${m.to}` : ''}${m.publisher ? `, from ${m.publisher}` : ''}.` : undefined} />
+      <PageHeader
+        help="magazines"
+        title={m?.name ?? 'Magazine'}
+        description={m ? `${count(m.issues)} issues${m.from ? `, ${m.from} to ${m.to}` : ''}${m.publisher ? `, from ${m.publisher}` : ''}.` : undefined}
+        actions={
+          gaps &&
+          (missingHere > 0 || gaps.jumps.length > 0) && (
+            <Button variant="default" component={Link} to={`/leaves/missing?magazine=${id}`}>
+              {missingHere > 0 ? `${count(missingHere)} missing` : "What's missing"}
+            </Button>
+          )
+        }
+      />
       {!issues.data ? (
         <Loader />
       ) : (

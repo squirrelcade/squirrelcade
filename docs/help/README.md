@@ -4,14 +4,14 @@ The same guides are in the app: **Help** in the menu, and the **?** on each page
 
 - [Getting started](getting-started.md): what Squirrelcade does, what you need, and the first visit.
 - [AI-assisted setup](ai-setup.md) (optional; Squirrelcade needs no AI): a prompt for the AI you use (Claude, ChatGPT...), made for your Squirrelcade, so it can take you through setting everything up, one step at a time.
-- [Your collection](collection.md): updating it from PriceCharting (or a spreadsheet of your own), the Stash page, Copies, statistics, the report and the Excel workbook.
+- [Your collection](collection.md): updating it from PriceCharting (or a spreadsheet of your own), the Stash page, the collection audit (photographing your shelves), Copies, statistics, the report and the Excel workbook.
 - [What you played](playing.md): play status, ratings, the backlog and "What to play next".
 - [Your copies](your-copies.md): where each copy is, your tags, lending, photos, and selling or trading.
 - [Order emails](orders.md) (optional): what you paid, found in your order emails and filled in for you to check, and On the way, the games you bought that haven't arrived yet.
 - [Selling your games](selling.md): Ready to sell (a listing for eBay or Mercari, its price and photos), recording a sale, and Acorns > Sales.
 - [Consoles, catalogs and completion](catalogs.md): where catalogs come from, a console's page, when a copy counts.
 - [How matching works](../MATCHING.md): the rules for when a copy counts as a catalog game.
-- [The Acorns wishlist](wishlist.md): acorns and how they're given, Coming soon, Past releases, the PC wishlist, shop links.
+- [The Acorns wishlist](wishlist.md): acorns and how they're given, your buying rules (and a wishlist brought in from a spreadsheet), a game's facts, Coming soon, Past releases, the PC wishlist, shop links.
 - [Store Mode](store-mode.md): your phone in a store, barcodes, no signal, checking a list.
 - [Sets and series](sets.md).
 - [Roots](roots.md): games in their time, and since: the Roots section and each game's Roots.
@@ -24,7 +24,7 @@ The same guides are in the app: **Help** in the menu, and the **?** on each page
 - [RomM](romm.md): links to your own ROM library.
 - [Sharing your collection](sharing.md): viewers, share links for your wishlist or the games for sale, and checking a game without signing in.
 - [Friends](friends.md): your collection next to a friend's, console by console, and trades that come out even, by swapping files.
-- [Claude and AI apps](ai-apps.md): Claude (and other apps that speak MCP) reading your collection: do I have it, what's sealed, what's on my wishlist; guests, limits, and Cloudflare Access.
+- [Claude and AI apps](ai-apps.md): Claude (and other apps that speak MCP) reading your collection: do I have it, what's sealed, what's on my wishlist, how you like to buy; guests, limits, and Cloudflare Access.
 - [Notifications](notifications.md): email (with providers filled in), phone apps (Pushover, Pushbullet, ntfy, Gotify), chats (Discord, Telegram, Slack), a webhook for n8n, and Apprise; release reminders, lent games and PC price drops.
 - [Backups and updates](backups.md).
 - [When something goes wrong](troubleshooting.md).

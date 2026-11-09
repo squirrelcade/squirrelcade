@@ -54,7 +54,8 @@ export type WikiKind = 'retail' | 'special' | 'unlicensed' | 'skip';
 
 /** Classifies a section by its headings ("Unreleased games" is skipped, "Unlicensed games > ..." is unlicensed). */
 export function sectionKind(section: string): WikiKind {
-  const s = section.toLowerCase();
+  // "Software library" is a console's games on its own page (the Astrocade's); other "software" isn't a game.
+  const s = section.toLowerCase().replace(/software library/g, 'games');
   if (/unreleased|cancel+ed|prototype|non-game|software|application|compatib|see also|references|notes|demo|beta/.test(s)) return 'skip';
   if (/unlicen|homebrew|aftermarket|after (its )?lifespan|pirate|bootleg|fan-made|independent/.test(s)) return 'unlicensed';
   if (/promotion|giveaway|championship|competition|limited edition|non-retail|kiosk|prize|bundle|special release|other release/.test(s)) return 'special';
@@ -111,6 +112,11 @@ export const WIKIPEDIA_LISTS: Record<string, string> = {
   'neo-geo': 'List of Neo Geo games',
   '3do': 'List of 3DO Interactive Multiplayer games',
   'n-gage': 'List of N-Gage games',
+  vectrex: 'List of Vectrex games',
+  // One page for both pocket consoles (the color one plays the first's games): kept for the color one, which has all 82.
+  'neo-geo-pocket-color': 'List of Neo Geo Pocket games',
+  // No list page: the games table is in the article's "Software library" section.
+  astrocade: 'Bally Astrocade',
 };
 
 /** A setting's "platform-key: Name; Other name" lines, by platform key. */

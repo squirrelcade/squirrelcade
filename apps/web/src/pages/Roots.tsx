@@ -1,12 +1,13 @@
-import { Anchor, Card, Group, Loader, Progress, SimpleGrid, Stack, Switch, Tabs, Text } from '@mantine/core';
+import { Alert, Anchor, Badge, Box, Button, Card, Group, Loader, Modal, Progress, SimpleGrid, Stack, Switch, Tabs, Text, Tooltip } from '@mantine/core';
 import { useMediaQuery } from '@mantine/hooks';
 import { IconArrowLeft } from '@tabler/icons-react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useState } from 'react';
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router';
 import { RootsMark, StashMark } from '../Acorn';
 import { api } from '../api';
 import { PageHeader } from '../components';
-import { notifyError, useCanEdit, useFeature, usePageTitle, useSetting, useSettings } from '../hooks';
+import { notifyError, notifySuccess, useCanEdit, useFeature, usePageTitle, useSetting, useSettings } from '../hooks';
 import { ConsoleMark } from '../ConsoleMark';
 import { ConsoleHistoryTab, generationName, TimelinePanel, Top100Tab, useAllConsoles } from './History';
 import { NowInPanel, TimeMachinePanel } from './TimeMachine';
@@ -28,7 +29,61 @@ interface Consoles {
     followed: boolean;
     /** Your RomM's ROMs for it, with RomM on. */
     romm: number | null;
+    /** Units sold in short ("87.4 million") with the text it comes from (R16). */
+    unitsSold: string | null;
+    unitsSoldFull: string | null;
+    /** You chose to collect it before owning enough of its games (R15). */
+    collecting: boolean;
+    /** Its picture from Wikipedia, kept on your server, with the Commons page that credits it (R16). */
+    picture?: { url: string; credit: string | null } | null;
   }[];
+}
+
+/** A console's Top 100 count (GET /api/v1/history/progress), as Nutshell > Consoles has it. */
+interface Top100Count {
+  platformKey: string;
+  owned: number;
+  total: number;
+  digital: number;
+  elsewhere: number;
+}
+
+/** The maker and the years on sale ("Sega · 1988–1997", "Sony · 2020–" while on sale). */
+function makerYears(c: Consoles['consoles'][number]): string | null {
+  const years = c.launched ? (c.ended && c.ended !== c.launched ? `${c.launched}–${c.ended}` : c.ended ? String(c.launched) : `${c.launched}–`) : null;
+  return [c.manufacturer, years].filter(Boolean).join(' · ') || null;
+}
+
+/** A console's picture on its card (Wikipedia's, kept on your server), or Squirrelcade's own mark of it while there is none. */
+function CardPicture({ c }: { c: Consoles['consoles'][number] }) {
+  return (
+    <Box h={84} mb={8} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: 4, background: 'var(--mantine-color-default-hover)' }} data-testid="console-picture">
+      {c.picture ? (
+        <img src={c.picture.url} alt="" loading="lazy" title="Picture: Wikimedia Commons" style={{ maxWidth: '100%', maxHeight: 84, objectFit: 'contain' }} />
+      ) : (
+        <ConsoleMark platformKey={c.platformKey} name={c.name} owned={c.tracked} size={36} />
+      )}
+    </Box>
+  );
+}
+
+/** How much of a console's Top 100 you have: the chest, "41 of 93" and a small bar, to its Top 100 tab (as Nutshell's column). */
+function Top100Line({ t, platformKey, name }: { t: Top100Count; platformKey: string; name: string }) {
+  const percent = t.total > 0 ? Math.round((t.owned / t.total) * 100) : 0;
+  const tip = [`${t.owned} of the ${t.total} Top 100 games you can have`, t.digital > 0 ? `${t.digital} digital only` : null, t.elsewhere > 0 ? `${t.elsewhere} you have on another console` : null].filter(Boolean).join(', ');
+  return (
+    <Tooltip label={tip}>
+      <Anchor component={Link} to={`/roots/${platformKey}?tab=top100`} underline="never" mt={6} style={{ display: 'inline-flex' }} onClick={(e) => e.stopPropagation()} data-testid="card-top100">
+        <Group gap={6} wrap="nowrap">
+          <StashMark size={12} />
+          <Progress aria-label={`${name} Top 100`} value={percent} w={50} size="sm" color="yellow" />
+          <Text size="xs" c="var(--mantine-color-text)">
+            {t.owned} of {t.total}
+          </Text>
+        </Group>
+      </Anchor>
+    </Tooltip>
+  );
 }
 
 /** Follow or stop following a console you don't collect (Settings > Consoles > Consoles you follow, D169). */
@@ -45,6 +100,7 @@ function useFollow() {
 
 /** A console you don't collect: whether it's followed (with a button to change it) and what your RomM has of it. */
 function FollowLine({ c, canEdit, followOn }: { c: Consoles['consoles'][number]; canEdit: boolean; followOn: boolean }) {
+  const navigate = useNavigate();
   const follow = useFollow();
   if (c.tracked) return null;
   return (
@@ -60,6 +116,11 @@ function FollowLine({ c, canEdit, followOn }: { c: Consoles['consoles'][number];
       {canEdit && followOn && (
         <Anchor component="button" type="button" size="xs" onClick={() => follow.mutate({ key: c.platformKey, follow: !c.followed })}>
           {c.followed ? 'Stop following' : 'Follow'}
+        </Anchor>
+      )}
+      {canEdit && c.followed && (
+        <Anchor component="button" type="button" size="xs" onClick={() => navigate(`/roots/${c.platformKey}?collect=1`)}>
+          Start collecting
         </Anchor>
       )}
     </Group>
@@ -122,6 +183,9 @@ export function RootsPage() {
   // What you have of each console (the catalogs' stored results and the copies' counts): a viewer kept from them gets none.
   const catalogs = useQuery({ queryKey: ['catalogs', 'summary'], queryFn: () => api<{ key: string; percent: number; owned: number }[]>('/catalogs'), enabled: on && view === 'consoles', retry: false });
   const platformCounts = useQuery({ queryKey: ['platforms'], queryFn: () => api<{ key: string; games: number }[]>('/platforms'), enabled: on && view === 'consoles', retry: false });
+  // One call for every card's Top 100 count (kept on the server).
+  const progress = useQuery({ queryKey: ['history', 'progress'], queryFn: () => api<Top100Count[]>('/history/progress'), enabled: on && view === 'consoles', retry: false });
+  const top100 = new Map(progress.data?.map((t) => [t.platformKey, t]));
   const completion = new Map(catalogs.data?.map((c) => [c.key, c]));
   const gameCounts = new Map(platformCounts.data?.map((p) => [p.key, p.games]));
   return (
@@ -183,17 +247,25 @@ export function RootsPage() {
                           className="sc-card-link"
                           onClick={() => navigate(`/roots/${c.platformKey}?tab=${c.hasHistory ? 'history' : 'top100'}`)}
                         >
+                          <CardPicture c={c} />
                           <Group gap={8} wrap="nowrap">
                             <ConsoleMark platformKey={c.platformKey} name={c.name} owned={c.tracked} size={16} />
                             <Anchor component={Link} to={`/roots/${c.platformKey}?tab=${c.hasHistory ? 'history' : 'top100'}`} fw={600} size="sm" c="inherit" underline="hover" onClick={(e) => e.stopPropagation()}>
                               {c.name}
                             </Anchor>
-                            {c.launched && (
-                              <Text size="xs" c="dimmed">
-                                {c.launched}
-                              </Text>
-                            )}
                           </Group>
+                          {makerYears(c) && (
+                            <Text size="xs" c="dimmed" mt={2} data-testid="card-maker">
+                              {makerYears(c)}
+                            </Text>
+                          )}
+                          {c.unitsSold && (
+                            <Tooltip label={c.unitsSoldFull ?? c.unitsSold} disabled={!c.unitsSoldFull}>
+                              <Text size="xs" c="dimmed" data-testid="card-units">
+                                {c.unitsSold} sold
+                              </Text>
+                            </Tooltip>
+                          )}
                           <Group gap={12} mt={6}>
                             {c.hasHistory && (
                               <Anchor component={Link} to={`/roots/${c.platformKey}?tab=history`} size="sm" onClick={(e) => e.stopPropagation()}>
@@ -207,6 +279,8 @@ export function RootsPage() {
                             )}
                           </Group>
                           <HaveLine platformKey={c.platformKey} completion={completion.get(c.platformKey)} games={gameCounts.get(c.platformKey)} />
+                          {/* A console you only follow shows no count of what you have (D169), unless you do have some. */}
+                          {top100.get(c.platformKey) && (c.tracked || top100.get(c.platformKey)!.owned > 0) && <Top100Line t={top100.get(c.platformKey)!} platformKey={c.platformKey} name={c.name} />}
                           <FollowLine c={c} canEdit={canEdit} followOn={followOn} />
                         </Card>
                       ))}
@@ -218,6 +292,146 @@ export function RootsPage() {
         </Stack>
       )}
     </>
+  );
+}
+
+/** What a console's catalog would be built from (GET /api/v1/catalog-plan/:key). */
+interface CatalogPlan {
+  key: string;
+  name: string;
+  pages: string[];
+  pagesAreDefault: boolean;
+  list: { fileName: string; games: number } | null;
+  igdb: boolean;
+  sources: { id: string; name: string }[];
+  labels: string[];
+  builtAt: string | null;
+}
+
+/** Start or stop collecting a console (Settings > Consoles > Consoles you collect before you own enough games, R15). */
+function useCollecting(key: string) {
+  const queryClient = useQueryClient();
+  const collecting = useSetting('platforms.collecting', [] as string[]);
+  return useMutation({
+    mutationFn: async (start: boolean) => {
+      await api('/settings', { method: 'PUT', json: { changes: { 'platforms.collecting': start ? [...new Set([...collecting, key])] : collecting.filter((k) => k !== key) } } });
+      // Its catalog is built in the background, from the sources the checklist named.
+      if (start) await api('/catalogs/build', { method: 'POST', json: { platforms: [key] } });
+      return start;
+    },
+    onSuccess: (start) => {
+      notifySuccess(start ? 'Collecting it. Its catalog is being built.' : 'No longer collecting it: followed again.');
+      return Promise.all(['settings', 'history', 'platforms', 'catalogs'].map((k) => queryClient.invalidateQueries({ queryKey: [k] })));
+    },
+    onError: (err) => notifyError(err),
+  });
+}
+
+/**
+ * Start collecting a followed console (R15): a short checklist of where its list of games comes from and how your
+ * PriceCharting export names it, then the button that makes it a collected console and starts its catalog.
+ */
+function StartCollecting({ c, opened, onClose, onStarted }: { c: Consoles['consoles'][number]; opened: boolean; onClose: () => void; onStarted: () => void }) {
+  const plan = useQuery({ queryKey: ['catalog-plan', c.platformKey], queryFn: () => api<CatalogPlan>(`/catalog-plan/${c.platformKey}`), enabled: opened, retry: false });
+  const start = useCollecting(c.platformKey);
+  const p = plan.data;
+  const pageLink = (title: string) => `https://en.wikipedia.org/wiki/${encodeURIComponent(title.replace(/ /g, '_'))}`;
+  return (
+    <Modal opened={opened} onClose={onClose} title={`Start collecting ${c.name}`} size="lg">
+      {start.isSuccess ? (
+        <Stack gap="sm" data-testid="collect-done">
+          <Text size="sm">{c.name} is a collected console now. Its catalog is being built in the background.</Text>
+          <Group gap="sm">
+            <Button component={Link} to={`/consoles/${c.platformKey}`} size="sm">
+              Its page in the Nutshell
+            </Button>
+            <Button component={Link} to="/collection/add" size="sm" variant="default">
+              Add a game
+            </Button>
+          </Group>
+          <Text size="xs" c="dimmed">
+            On its Nutshell page you can give it a list of your own (a CSV) too.
+          </Text>
+        </Stack>
+      ) : plan.isLoading ? (
+        <Loader size="sm" />
+      ) : !p ? (
+        <Text size="sm" c="dimmed">
+          Squirrelcade has no record of this console yet.
+        </Text>
+      ) : (
+        <Stack gap="md" data-testid="collect-checklist">
+          <Text size="sm" c="dimmed">
+            Collecting it gives {c.name} a catalog, a checklist and a place in your totals. Two things to look at first.
+          </Text>
+          <Stack gap={4}>
+            <Text fw={600} size="sm">
+              1. Its list of games
+            </Text>
+            {p.list && (
+              <Text size="sm">
+                Your own list, {p.list.fileName} ({p.list.games} games), comes first.
+              </Text>
+            )}
+            {p.pages.length > 0 ? (
+              <Text size="sm">
+                Its catalog is built from Wikipedia's{' '}
+                {p.pages.map((t, i) => (
+                  <span key={t}>
+                    {i > 0 && ', '}
+                    <Anchor href={pageLink(t)} target="_blank" rel="noreferrer" size="sm">
+                      {t}
+                    </Anchor>
+                  </span>
+                ))}
+                {p.pagesAreDefault ? '.' : ' (the pages you chose).'}
+              </Text>
+            ) : (
+              <Text size="sm">No Wikipedia list is set up for it.{p.igdb ? " IGDB's list of its games fills its catalog instead: each game counts once you own it." : ''}</Text>
+            )}
+            <Text size="xs" c="dimmed">
+              To use your own: its Nutshell page takes a list of your own (a CSV) once you start. For another Wikipedia page,{' '}
+              <Anchor component={Link} to="/settings/catalogs" size="xs">
+                Settings › Catalogs and matching
+              </Anchor>{' '}
+              (Wikipedia lists to use).
+            </Text>
+          </Stack>
+          <Stack gap={4}>
+            <Text fw={600} size="sm">
+              2. How your PriceCharting export names it
+            </Text>
+            {p.labels.length > 0 ? (
+              <>
+                <Group gap={6}>
+                  {p.labels.map((l) => (
+                    <Badge key={l} size="sm" variant="outline" color="gray" tt="none">
+                      {l}
+                    </Badge>
+                  ))}
+                </Group>
+                <Text size="xs" c="dimmed">
+                  An import with these console names lands on {c.name}.
+                </Text>
+              </>
+            ) : (
+              <Text size="sm">
+                Squirrelcade doesn't know a PriceCharting name for it. An import that names it makes a console of its own: check Nutshell › Consoles after your first one.
+              </Text>
+            )}
+          </Stack>
+          {start.isError && <Alert color="red">It didn't start. Try again.</Alert>}
+          <Group justify="flex-end" gap="sm">
+            <Button variant="default" onClick={onClose}>
+              Not now
+            </Button>
+            <Button loading={start.isPending} onClick={() => start.mutate(true, { onSuccess: onStarted })}>
+              Start collecting
+            </Button>
+          </Group>
+        </Stack>
+      )}
+    </Modal>
   );
 }
 
@@ -234,6 +448,19 @@ export function RootsConsolePage() {
   const timeline = useQuery({ queryKey: ['history', 'timeline'], queryFn: () => api<Consoles>('/history/timeline'), enabled: on });
   const c = timeline.data?.consoles.find((x) => x.platformKey === key);
   usePageTitle(c?.name ?? 'Roots', settings?.['general.instanceName'] || 'Squirrelcade');
+  const canEdit = useCanEdit();
+  const platformCounts = useQuery({ queryKey: ['platforms'], queryFn: () => api<{ key: string; copies: number }[]>('/platforms'), enabled: on && canEdit, retry: false });
+  const copies = platformCounts.data?.find((x) => x.key === key)?.copies ?? 0;
+  const collect = useCollecting(key);
+  // It stays open after it starts (the console isn't followed any more) to say where to go next.
+  const [started, setStarted] = useState(false);
+  const collectOpen = params.get('collect') === '1' && (Boolean(c?.followed) || started);
+  const closeCollect = () => {
+    setStarted(false);
+    const next = new URLSearchParams(params);
+    next.delete('collect');
+    setParams(next, { replace: true });
+  };
   const asked = params.get('tab');
   const tab = asked === 'top100' || asked === 'history' ? asked : c && !c.hasHistory && c.hasTop100 ? 'top100' : 'history';
   return (
@@ -248,6 +475,19 @@ export function RootsConsolePage() {
             <ConsoleMark platformKey={key} name={c?.name ?? key} owned={Boolean(c?.tracked)} size={22} />
             {c?.name ?? key}
           </Group>
+        }
+        actions={
+          canEdit && c?.followed ? (
+            <Button size="sm" onClick={() => setParams({ ...(asked ? { tab: asked } : {}), collect: '1' }, { replace: true })} data-testid="start-collecting">
+              Start collecting
+            </Button>
+          ) : canEdit && c?.collecting && copies === 0 ? (
+            <Tooltip label="Back to following it: its catalog is taken away (your own list and answers stay)">
+              <Button size="sm" variant="default" loading={collect.isPending} onClick={() => collect.mutate(false)} data-testid="stop-collecting">
+                Stop collecting
+              </Button>
+            </Tooltip>
+          ) : null
         }
         description={
           <>
@@ -270,6 +510,21 @@ export function RootsConsolePage() {
         <Loader />
       ) : (
         <>
+          {c?.picture && (
+            <Group gap="sm" mb="sm" wrap="nowrap" align="flex-end" data-testid="console-page-picture">
+              <img src={c.picture.url} alt={`${c.name}`} style={{ maxHeight: 120, maxWidth: 220, objectFit: 'contain', borderRadius: 4 }} />
+              <Text size="xs" c="dimmed">
+                {c.picture.credit ? (
+                  <Anchor href={c.picture.credit} target="_blank" rel="noreferrer" size="xs">
+                    Picture: Wikimedia Commons
+                  </Anchor>
+                ) : (
+                  'Picture: Wikimedia Commons'
+                )}
+              </Text>
+            </Group>
+          )}
+          {c && <StartCollecting c={c} opened={collectOpen} onClose={closeCollect} onStarted={() => setStarted(true)} />}
           <Tabs
             value={tab}
             onChange={(v) => {

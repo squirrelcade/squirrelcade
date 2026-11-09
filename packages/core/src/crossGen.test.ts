@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { CatalogMatch, TargetResult } from './catalog.js';
-import { applyCrossGen, crossGenNeighbors, releaseYear, type CrossGenPartner } from './crossGen.js';
+import { applyCrossGen, crossGenNeighbors, releaseYear, sameGameAcross, type CrossGenPartner } from './crossGen.js';
 import { matchKey } from './text.js';
 
 const missing = (id: number, title: string, altTitles: string[] = []): TargetResult => ({ target: { id, title, status: 'required', altTitles }, status: 'missing', matches: [], suggestions: [] });
@@ -68,3 +68,28 @@ describe('cross-generation games', () => {
     expect(applyCrossGen(before, [], 2, () => null)).toBe(before);
   });
 });
+
+describe('the same game on another console (R12)', () => {
+  const mw2 = { title: 'Call of Duty Modern Warfare 2', year: 2009 };
+  const mwII = { title: 'Call of Duty: Modern Warfare II', year: 2022 };
+  it('tells a reboot from its namesake by its years and its numerals', () => {
+    expect(sameGameAcross(mwII, mw2, 2)).toBe(false);
+    expect(sameGameAcross({ title: 'Call of Duty: Modern Warfare III', year: 2023 }, { title: 'Call of Duty: Modern Warfare 3', year: 2011 }, 2)).toBe(false);
+  });
+  it('keeps one game when the years are close, unknown, or the setting is off', () => {
+    expect(sameGameAcross({ ...mwII, year: 2010 }, mw2, 2)).toBe(true);
+    expect(sameGameAcross({ ...mwII, year: null }, mw2, 2)).toBe(true);
+    expect(sameGameAcross(mwII, mw2, 0)).toBe(true);
+    // Written the same way: a late port is still the game you have (Final Fantasy VII, 1997 and 2019).
+    expect(sameGameAcross({ title: 'Final Fantasy VII', year: 2019 }, { title: 'Final Fantasy VII', year: 1997 }, 2)).toBe(true);
+    expect(sameGameAcross({ title: 'Dragon Age II', year: 2011 }, { title: 'Dragon Age 2', year: 2011 }, 2)).toBe(true);
+  });
+  it("follows IGDB's game when it knows both", () => {
+    expect(sameGameAcross({ title: 'Final Fantasy VII', year: 2019, igdbId: 427 }, { title: 'Final Fantasy VII', year: 1997, igdbId: 427 }, 2)).toBe(true);
+    expect(sameGameAcross({ title: 'Shadow of the Colossus', year: 2018, igdbId: 37016 }, { title: 'Shadow of the Colossus', year: 2005, igdbId: 1386 }, 2)).toBe(false);
+    expect(sameGameAcross({ ...mwII, igdbId: 1 }, { ...mw2, igdbId: 2 }, 2)).toBe(false);
+    // Two IGDB entries from the same years (a port listed apart) are still one game.
+    expect(sameGameAcross({ title: 'Doom', year: 2019, igdbId: 5 }, { title: 'Doom', year: 2020, igdbId: 6 }, 2)).toBe(true);
+  });
+});
+

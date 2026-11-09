@@ -5,6 +5,9 @@ import {
   toCsv,
   mergeDetails,
   normalizeTitle,
+  releaseYear,
+  romanNumerals,
+  sameGameAcross,
   scoreCandidates,
   scoringConfig,
   SAME_GAME_AT,
@@ -12,6 +15,7 @@ import {
   TitleMatcher,
   topByPlatform,
   type GameDetails,
+  type GameOnConsole,
   type MasterEntry,
   type ScoredCandidate,
   type SettingsValues,
@@ -26,7 +30,7 @@ import type { CatalogService } from './catalogs.js';
 import type { CollectionService } from './collection.js';
 import type { Db } from './db/index.js';
 import type { IgdbService, Reviews } from './igdb.js';
-import { copies, exclusions, gameDetails, myWishlist, ownerPreferences, platforms } from './db/schema.js';
+import { catalogEntries, copies, exclusions, gameDetails, myWishlist, ownerPreferences, platforms } from './db/schema.js';
 import type { SettingsService } from './settings.js';
 import { learnedPoints, learnTastes, type LearnedTastes } from './tastes.js';
 
@@ -62,6 +66,9 @@ export interface MyWish {
  * The wishlist: scores every missing catalog game from its details and the settings, then picks the master list
  * and each console's list; cached until the collection, catalogs, details or settings change.
  */
+/** The facts of a game the owner may set for its acorns (the rest of GameDetails is IGDB's or worked out). */
+const OWN_DETAIL_FIELDS = new Set(['genre', 'style', 'personalInterest', 'significance', 'marketUrgency', 'releaseClass', 'tieIn', 'japaneseDeveloped', 'offbeat', 'naPhysical', 'seriesRemaining', 'seriesCompletes', 'franchise', 'physicalProof', 'notes']);
+
 export class WishlistService {
   private revision = 0;
   private cache: { key: string; result: WishlistResult } | null = null;
@@ -138,10 +145,39 @@ export class WishlistService {
     );
   }
 
-  private ownedElsewhere(): Map<string, Set<string>> {
-    const map = new Map<string, Set<string>>();
+  /** The owner's copies by title key, with their console and the year each came out there, for elsewhereOf. */
+  private acrossCache: {
+    key: string;
+    byTitle: Map<string, { platformKey: string; platform: string; title: string; year: number | null }[]>;
+    entryYears: Map<number, number | null>;
+    /** Catalog games' years by their exact name (normalized), on any console. */
+    namedYears: Map<string, number[]>;
+  } | null = null;
+
+  private across(): NonNullable<WishlistService['acrossCache']> {
+    const key = `${this.collection.revision()}|${this.catalogs.stamp()}`;
+    if (this.acrossCache?.key === key) return this.acrossCache;
+    const entryRows = this.db.select({ id: catalogEntries.id, title: catalogEntries.title, releaseDate: catalogEntries.releaseDate }).from(catalogEntries).all();
+    const entryYears = new Map(entryRows.map((r) => [r.id, releaseYear(r.releaseDate)] as const));
+    const namedYears = new Map<string, number[]>();
+    for (const r of entryRows) {
+      const y = releaseYear(r.releaseDate);
+      if (y === null) continue;
+      const k = normalizeTitle(r.title);
+      const list = namedYears.get(k);
+      if (!list) namedYears.set(k, [y]);
+      else if (!list.includes(y)) list.push(y);
+    }
+    // A copy's year is its catalog game's on that console (IGDB's, at the time of asking, when no catalog knows it).
+    const ownedYear = new Map<string, number | null>();
+    for (const p of this.catalogs.allMatches()) {
+      for (const t of p.match.targets) {
+        for (const m of t.matches) if (m.method !== 'crossgen') ownedYear.set(`${p.key}|${normalizeTitle(m.title)}`, entryYears.get(t.target.id) ?? null);
+      }
+    }
+    const byTitle: NonNullable<WishlistService['acrossCache']>['byTitle'] = new Map();
     const rows = this.db
-      .select({ title: copies.title, platform: platforms.name })
+      .select({ title: copies.title, platformKey: platforms.key, platform: platforms.name })
       .from(copies)
       .innerJoin(platforms, eq(platforms.id, copies.platformId))
       .where(isNull(copies.goneAt))
@@ -149,10 +185,69 @@ export class WishlistService {
     // WR-038 penalizes only the same title (spelling differences aside): named editions such as
     // "Dredge: Deluxe Edition" are not treated as the same game across consoles.
     for (const r of rows) {
-      const key = matchKey(baseTitle(r.title));
-      map.set(key, (map.get(key) ?? new Set()).add(r.platform));
+      const k = matchKey(baseTitle(r.title));
+      const entry = { ...r, year: ownedYear.get(`${r.platformKey}|${normalizeTitle(r.title)}`) ?? null };
+      const list = byTitle.get(k);
+      if (list) list.push(entry);
+      else byTitle.set(k, [entry]);
     }
-    return map;
+    // A copy no catalog knows takes the year of a copy spelled the same on another console (an Xbox 360 copy beside the
+    // PlayStation 3's).
+    for (const list of byTitle.values()) {
+      for (const c of list) {
+        if (c.year !== null) continue;
+        const spelled = normalizeTitle(baseTitle(c.title));
+        c.year = list.find((o) => o.year !== null && normalizeTitle(baseTitle(o.title)) === spelled)?.year ?? null;
+      }
+    }
+    this.acrossCache = { key, byTitle, entryYears, namedYears };
+    return this.acrossCache;
+  }
+
+  /**
+   * The other consoles the owner has this game on: the same title (spelling aside), and the same game by
+   * sameGameAcross (R12: 2022's "Modern Warfare II" isn't 2009's "Modern Warfare 2"). `entryId` is the catalog
+   * game asked about, for its year.
+   */
+  /** A copy as sameGameAcross sees it: its title, the year it came out on its console, IGDB's game. */
+  copyOnConsole(platformKey: string, title: string): GameOnConsole {
+    const k = matchKey(baseTitle(title));
+    const own = this.across().byTitle.get(k)?.find((c) => c.platformKey === platformKey && c.title === title);
+    const igdb = this.igdb?.findByKey(platformKey, title);
+    return { title, year: own?.year ?? releaseYear(igdb?.released), igdbId: igdb?.id ?? null };
+  }
+
+  /**
+   * Whether a title asked about (by Claude's check_ownership, with no console or year) is the owner's copy, when the two
+   * read the same but spell the number differently: a catalog game named exactly as asked, from other years, is
+   * another game (R12: "Call of Duty: Modern Warfare II", 2022, isn't the owner's 2009 "Modern Warfare 2").
+   */
+  askedIsCopy(asked: string, platformKey: string, copyTitle: string): boolean {
+    if (romanNumerals(asked).join(',') === romanNumerals(copyTitle).join(',')) return true;
+    const years = this.across().namedYears.get(normalizeTitle(asked));
+    if (!years?.length) return true;
+    const copy = this.copyOnConsole(platformKey, copyTitle);
+    const window = this.settings.get('catalogs.crossGenYears');
+    return years.some((year) => sameGameAcross({ title: asked, year }, { ...copy, igdbId: null }, window));
+  }
+
+  elsewhereOf(platformKey: string, platformName: string, title: string, entryId?: number): string[] {
+    const { byTitle, entryYears } = this.across();
+    const list = byTitle.get(matchKey(baseTitle(title)));
+    if (!list) return [];
+    const years = this.settings.get('catalogs.crossGenYears');
+    let here: { title: string; year: number | null; igdbId: number | null } | null = null;
+    const names = new Set<string>();
+    for (const c of list) {
+      if (c.platform === platformName || names.has(c.platform)) continue;
+      if (!here) {
+        const igdb = this.igdb?.findByKey(platformKey, title);
+        here = { title, year: (entryId !== undefined ? entryYears.get(entryId) : null) ?? releaseYear(igdb?.released), igdbId: igdb?.id ?? null };
+      }
+      const igdb = this.igdb?.findByKey(c.platformKey, c.title);
+      if (sameGameAcross(here, { title: c.title, year: c.year ?? releaseYear(igdb?.released), igdbId: igdb?.id ?? null }, years)) names.add(c.platform);
+    }
+    return [...names];
   }
 
   private cacheKey(): string {
@@ -304,7 +399,6 @@ export class WishlistService {
       const k = `${e.platformId}|${normalizeTitle(e.title)}`;
       hidden.set(k, [...(hidden.get(k) ?? []), e]);
     }
-    const elsewhere = this.ownedElsewhere();
     const offList = new Map<string, string>();
     const price = (cents: number) => new Intl.NumberFormat('en-US', { style: 'currency', currency: s['general.currency'] || 'USD' }).format(cents / 100);
 
@@ -346,7 +440,7 @@ export class WishlistService {
           }
           continue;
         }
-        const owned = [...(elsewhere.get(matchKey(baseTitle(t.target.title))) ?? [])].filter((n) => n !== p.name);
+        const owned = this.elsewhereOf(p.key, p.name, t.target.title, t.target.id);
         // On another region's own console (the Super Famicom), that region's releases are the console's own, not imports.
         const ownRegion = consoleRegion(p.key, homeRegion);
         candidates.push({
@@ -478,6 +572,36 @@ export class WishlistService {
     );
   }
 
+  /** The facts the owner (or a spreadsheet they brought in) gave a game for its acorns (T-278). */
+  ownDetails(platformKey: string, title: string): GameDetails | null {
+    const platform = this.db.select().from(platforms).where(eq(platforms.key, platformKey)).get();
+    if (!platform) return null;
+    const row = this.db.select().from(gameDetails).where(and(eq(gameDetails.platformId, platform.id), eq(gameDetails.titleKey, normalizeTitle(title)))).get();
+    return row ? (JSON.parse(row.details) as GameDetails) : {};
+  }
+
+  /**
+   * Sets a game's facts for its acorns (1.5.0, T-278: your interest, its significance, market urgency, tie-in, offbeat,
+   * release class, games left in its series): the fields given replace those kept, null removes one, others stay.
+   */
+  setOwnDetails(platformKey: string, title: string, change: Record<string, unknown>): GameDetails | null {
+    const platform = this.db.select().from(platforms).where(eq(platforms.key, platformKey)).get();
+    if (!platform) return null;
+    const titleKey = normalizeTitle(title);
+    const row = this.db.select().from(gameDetails).where(and(eq(gameDetails.platformId, platform.id), eq(gameDetails.titleKey, titleKey))).get();
+    const kept = row ? (JSON.parse(row.details) as Record<string, unknown>) : {};
+    for (const [k, v] of Object.entries(change)) {
+      if (!OWN_DETAIL_FIELDS.has(k)) continue;
+      if (v === null || v === '') delete kept[k];
+      else if (typeof v === 'string' || typeof v === 'boolean' || (typeof v === 'number' && Number.isFinite(v))) kept[k] = typeof v === 'string' ? v.slice(0, 500) : v;
+    }
+    const now = new Date().toISOString();
+    if (row) this.db.update(gameDetails).set({ details: JSON.stringify(kept), source: 'user', updatedAt: now }).where(eq(gameDetails.id, row.id)).run();
+    else this.db.insert(gameDetails).values({ platformId: platform.id, title, titleKey, details: JSON.stringify(kept), source: 'user', updatedAt: now }).run();
+    this.invalidate();
+    return kept as GameDetails;
+  }
+
   setPreference(platformKey: string, title: string, preference: string | null, note: string | null): boolean {
     const platform = this.db.select().from(platforms).where(eq(platforms.key, platformKey)).get();
     if (!platform) return false;
@@ -583,6 +707,20 @@ export function registerWishlistRoutes(app: FastifyInstance, wishlist: WishlistS
       suggestions:
         r.suggestions?.map((m) => ({ ...json(m, wishlist.coverOf(m.platformKey, m.title), wishlist.reviewsOf(m.platformKey, m.title)), rank: m.rank, masterScore: m.masterScore, consolePenalty: m.consolePenalty, franchisePenalty: m.franchisePenalty })) ?? null,
     };
+  });
+
+  // A game's facts for its acorns (T-278), the owner's own.
+  app.get('/api/v1/wishlist/details', async (request, reply) => {
+    const q = request.query as { platform?: string; title?: string };
+    if (!q.platform || !q.title) return reply.code(400).send({ error: 'invalid', message: 'Say which game (its console and title).' });
+    const details = wishlist.ownDetails(q.platform, q.title);
+    return details ? { details } : reply.code(404).send({ error: 'not-found', message: 'No such console.' });
+  });
+  app.put('/api/v1/wishlist/details', async (request, reply) => {
+    const b = (request.body ?? {}) as { platformKey?: unknown; title?: unknown; details?: unknown };
+    if (typeof b.platformKey !== 'string' || typeof b.title !== 'string' || !b.details || typeof b.details !== 'object') return reply.code(400).send({ error: 'invalid', message: 'Say which game and what to set.' });
+    const details = wishlist.setOwnDetails(b.platformKey, b.title, b.details as Record<string, unknown>);
+    return details ? { details } : reply.code(404).send({ error: 'not-found', message: 'No such console.' });
   });
 
   // My wishlist (D217): the games the owner picked themselves (used as the wishlist when Settings say so).

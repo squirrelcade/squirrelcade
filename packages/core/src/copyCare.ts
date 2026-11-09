@@ -169,6 +169,11 @@ export const NEW_GAME_PRICES = [
   'Neo Geo: 199.99',
   '3DO: 49.99',
   'N-Gage: 39.99',
+  'Vectrex: 29.99',
+  'Bally Astrocade: 29.99',
+  'Arcadia 2001: 29.99',
+  'Super Cassette Vision: 29.99',
+  'Neo Geo Pocket Color: 34.99',
 ];
 
 /** "PlayStation 2: 49.99" lines as cents by the console's name or key, lowercased; lines that aren't a price are left out. */

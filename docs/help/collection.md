@@ -176,6 +176,40 @@ Values come from your sheet, so they're only as current as you keep them.
 
 Click a title or a cover to open the **game drawer**: your copies with their value over time, where else you have the game, its catalog status, its acorns on the wishlist, your note on it, and links to its prices.
 
+## The collection audit
+
+**Stash > Collection audit** checks your shelves against Squirrelcade, shelf by shelf. You photograph a shelf. Squirrelcade reads the spines, ticks off the copies you've logged, and lists the games on the shelf that aren't in Squirrelcade yet. Your progress is kept, so it can take a weekend or a month.
+
+1. **Start the audit.** Give it a name if you like, and choose all your consoles or only some. Only physical games count: no hardware, no PC.
+2. **Photograph a shelf.** Pick the shelf's console (the last one is remembered). Name the shelf if you like ("Office, case 3"). Then take a photo, or several for a long shelf. The phone reads the spines as [Check a shelf](store-mode.md#check-a-shelf) does, against that console's games, so each photo is of one console's games. With a vision model on (Settings > Features), it reads more.
+3. **Look over what it found, then log the shelf.**
+   - **Logged**: games you have on this console. Logging the shelf ticks their copies as seen. **Undo** takes a tick back.
+   - **Not logged**: games on the shelf you have no copy of. **Add it** adds the game as Store Mode does, and its walk-through opens. It counts as seen.
+   - **Unsure**: spines read only partly. Say which game it is (**It's ...**, or **Pick**), or **None**.
+   - **You have it on another console**: shown apart, and never ticked. If the copy on the shelf is this console's, add it.
+   - **Not it?** beside a game, or a tap on its box on the photo, says which game a spine really is. The fix is remembered for the next photo.
+4. **Next shelf**, or **Done**.
+
+For the spines a photo couldn't read:
+
+- **Tick by hand** lists a console's copies not seen yet. Tap one you're holding to tick it, and tap it again to undo.
+- **Scan a barcode** ticks a game's copies on its console, or offers **Add it** when you haven't logged it. Use the camera, or type the code (a handheld scanner types it for you).
+
+The audit's page shows how far you've got: the copies seen of all of them, each console with its own bar, the shelves done (with their photos), and the games you added along the way.
+
+**Not seen yet** lists the copies you've logged that no shelf had, by console. Once every shelf is done, these are the ones to look for. For each one, say what happened:
+
+- **Found it** ticks it as seen.
+- **Lent** asks who has it, and puts it on Stash > Loans.
+- **Sold**, **Gave away** and **Lost** take it out of your collection, as Remove does. Squirrelcade asks first.
+
+**Finish the audit** when you're done. Finishing keeps everything, and **Pick it up again** opens it again if more shelves turn up. After that you can start a new one.
+
+Two settings, in Settings > Collection > Collection audit:
+
+- **Keep the audit's shelf photos**: each shelf's photos are kept, made smaller, so you can look back at a shelf. Off: they're read and not kept.
+- **A shelf's name becomes its copies' place**: the copies found on a named shelf get its name as their place ([Places](your-copies.md#places)), so the audit also fills in where each game lives. You can change it for each shelf.
+
 ## Statistics and the report
 
 Statistics' **Paid** says what you recorded paying, and beside it your [estimates](your-copies.md#estimated-prices) for the copies whose price you don't know (never part of what you paid).

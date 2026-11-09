@@ -75,6 +75,13 @@ describe('Roots (D165)', () => {
     await roots(cookies, 'Super Metroid');
     expect(asked.length).toBe(before);
 
+    // What's missing (D221): the print magazines the review tables of the games you have cite, and the issues.
+    const cited = await g.roots.citedMagazines();
+    const egm = cited.find((c) => c.name === 'Electronic Gaming Monthly');
+    expect(egm).toMatchObject({ games: 1, otherLanguage: 0, examples: ['Super Metroid'] });
+    expect(egm!.issues).toMatchObject({ '#6': 1, '1994-06': 1 });
+    expect(cited.every((c) => c.games >= 1 && !/\[\[|''/.test(c.name))).toBe(true);
+
     // The header: the award as a star, and its best-selling place once the night's reading has the list.
     await g.roots.readBestSelling('super-nintendo');
     const game = (await g.app.inject({ url: `/api/v1/game?platform=super-nintendo&title=${encodeURIComponent('Super Metroid')}`, cookies })).json();

@@ -28,6 +28,10 @@ A copy counts when it is the same game, by one of these, from the surest to the 
 | **You confirmed** it: "Same game" on a Review question | | "undo" |
 | **Just bought**: "I bought it" in Store Mode or the drawer, until your next export includes the game | | "Undo" |
 
+**Two games in one box** are named with their series twice, "Final Fantasy VII & Final Fantasy VIII Remastered Twin Pack". After an "and", the series name said again is set aside, so it counts as the box that says it once, "Final Fantasy VII & VIII Remastered Twin Pack". "Mario and Mario" stays as it is.
+
+**A reboot isn't its namesake.** Roman numerals read as numbers, so 2022's "Call of Duty: Modern Warfare II" would look like 2009's "Modern Warfare 2" on another console. They count as the same game across consoles only when they are one game: IGDB's game decides when it knows both. Without it, a title that spells the number in Roman numerals and one that doesn't are two games when their years are further apart than Settings > Catalogs and matching > "Cross-generation: released within". Two titles said the same way stay one game. Claude's check_ownership then says "Another game of that name" instead of counting it.
+
 A copy never counts for two games by name alone: if its own title is a catalog game, other games' alternative names don't claim it.
 
 ## When Squirrelcade isn't sure

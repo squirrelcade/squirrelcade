@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { latinTitle, matchKey, normalizeTitle, romajiKey, slugify, JUMP_LETTERS, jumpFirsts, jumpLetterOf } from './text.js';
+import { latinTitle, matchKey, normalizeTitle, romajiKey, romanNumerals, slugify, JUMP_LETTERS, jumpFirsts, jumpLetterOf } from './text.js';
 
 describe('normalizeTitle', () => {
   it('ignores case, accents, apostrophes and punctuation', () => {
@@ -118,3 +118,23 @@ describe('the A–Z bar', () => {
     expect(JUMP_LETTERS).toHaveLength(27);
   });
 });
+
+describe('two games in one box named with the series twice (R12)', () => {
+  it('reads "A & A B" as "A & B"', () => {
+    // The owner's Switch copy and the catalog's name for it.
+    expect(matchKey('Final Fantasy VII & Final Fantasy VIII Remastered Twin Pack')).toBe(matchKey('Final Fantasy VII & VIII Remastered Twin Pack'));
+    expect(matchKey('Banjo-Kazooie & Banjo-Tooie')).toBe(matchKey('Banjo-Kazooie & Tooie'));
+  });
+  it('keeps other titles with "and" as they were', () => {
+    expect(matchKey('Ratchet & Clank')).toBe('ratchetandclank');
+    expect(matchKey('Mario and Mario')).toBe('marioandmario');
+    expect(matchKey('Kirby and the Rainbow Curse')).toBe('kirbyandtherainbowcurse');
+    expect(matchKey('Final Fantasy VII & VIII Remastered Twin Pack')).not.toBe(matchKey('Final Fantasy VII Remastered'));
+  });
+  it('lists the Roman numerals a title spells', () => {
+    expect(romanNumerals('Call of Duty: Modern Warfare II')).toEqual([2]);
+    expect(romanNumerals('Call of Duty: Modern Warfare 2')).toEqual([]);
+    expect(romanNumerals('Mega Man X')).toEqual([]);
+  });
+});
+

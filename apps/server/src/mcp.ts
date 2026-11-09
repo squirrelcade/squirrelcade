@@ -5,7 +5,7 @@ import type { CallToolResult, JSONRPCMessage } from '@modelcontextprotocol/sdk/t
 import type { FastifyInstance } from 'fastify';
 import type { Logger } from 'pino';
 import { ON_THE_WAY_SCOPE, personLabel, type AiAuthService, type AiCaller } from './aiAuth.js';
-import { aiViewOf, AiToolError, askedOf, CHECK_INPUT, CHECK_OUTPUT, GAME_INPUT, GAME_OUTPUT, ON_THE_WAY_INPUT, ON_THE_WAY_OUTPUT, PLATFORMS_OUTPUT, SEARCH_INPUT, SEARCH_OUTPUT, WISHLIST_INPUT, WISHLIST_OUTPUT, type AiTools } from './aiTools.js';
+import { aiViewOf, AiToolError, askedOf, BUYING_RULES_OUTPUT, CHECK_INPUT, CHECK_OUTPUT, GAME_INPUT, GAME_OUTPUT, ON_THE_WAY_INPUT, ON_THE_WAY_OUTPUT, PLATFORMS_OUTPUT, SEARCH_INPUT, SEARCH_OUTPUT, WISHLIST_INPUT, WISHLIST_OUTPUT, type AiTools } from './aiTools.js';
 import type { Db } from './db/index.js';
 import { aiCalls } from './db/schema.js';
 import { APP_VERSION } from './env.js';
@@ -56,7 +56,7 @@ function buildServer(caller: AiCaller, tools: AiTools, deps: McpDeps, limits: Ca
   const server = new McpServer(
     { name: 'squirrelcade', title: instance, version: APP_VERSION },
     {
-      instructions: `${instance}: one person's video game collection in Squirrelcade (consoles, and the PC library), read-only. check_ownership answers "do I have it?" for up to 50 titles at once: it reads editions, subtitles, franchise names and spellings, gives each match a confidence (0.85 and up counts as the same game) and lists near misses. search_games browses and filters (console, physical or digital, storefront, condition); get_game gives one game's copies; list_platforms gives the consoles and their keys. get_wishlist gives the Acorns wishlist: acorns are how much the owner wants a game they don't have yet (0 to 100, from their own rules; games they have have none), with the rules behind them; a title gives one game's acorns, and the main list is ordered by list_acorns (acorns minus the variety in the top picks). Money is in cents (${currency}).${writes ? ' record_on_the_way, the one tool that writes, puts a game bought on On the way, where the owner checks it and adds it when it arrives; it never changes the collection itself.' : ''}`,
+      instructions: `${instance}: one person's video game collection in Squirrelcade (consoles, and the PC library), read-only. check_ownership answers "do I have it?" for up to 50 titles at once: it reads editions, subtitles, franchise names and spellings, gives each match a confidence (0.85 and up counts as the same game) and lists near misses. search_games browses and filters (console, physical or digital, storefront, condition); get_game gives one game's copies; list_platforms gives the consoles and their keys. get_wishlist gives the Acorns wishlist: acorns are how much the owner wants a game they don't have yet (0 to 100, from their own rules; games they have have none), with the rules behind them; a title gives one game's acorns, and the main list is ordered by list_acorns (acorns minus the variety in the top picks). get_buying_rules gives the owner's own buying rules in their words (what a copy must have, which consoles for which games, how a deal is judged): follow them when recommending a purchase. Money is in cents (${currency}).${writes ? ' record_on_the_way, the one tool that writes, puts a game bought on On the way, where the owner checks it and adds it when it arrives; it never changes the collection itself.' : ''}`,
     },
   );
   const view = aiViewOf(caller.person, settings);
@@ -173,6 +173,24 @@ function buildServer(caller: AiCaller, tools: AiTools, deps: McpDeps, limits: Ca
         [input.query ? askedOf(input.query) : null, input.platform, input.priority].filter(Boolean).join(', ') || null,
         () => tools.wishlist(input),
         (r) => r.total,
+      ),
+  );
+
+  server.registerTool(
+    'get_buying_rules',
+    {
+      title: 'Your buying rules',
+      description:
+        "The owner's own buying rules, numbered, in their words (Acorns > Your buying rules in Squirrelcade): what a copy must have (a manual, a region), which consoles they buy which kinds of games on, how a deal, a shop and shipping are judged. Each is a rule (must hold) or a preference (leans one way). Read them before recommending or judging a purchase, and follow them; get_wishlist says how much they want each game.",
+      outputSchema: BUYING_RULES_OUTPUT,
+      annotations: { title: 'Get buying rules', ...readOnly },
+    },
+    async () =>
+      run(
+        'get_buying_rules',
+        null,
+        () => tools.buyingRules(view),
+        (r) => r.count,
       ),
   );
 

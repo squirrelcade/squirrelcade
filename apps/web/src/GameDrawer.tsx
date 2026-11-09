@@ -18,6 +18,7 @@ import { overGoalNote } from './Goal';
 import { notifyError, notifySuccess, useCanEdit, useSetting } from './hooks';
 import { NOTE_MAX, useGameNotes } from './notes';
 import { PreferencePicker } from './Preference';
+import { WishlistFacts } from './WishlistFacts';
 import { RegionBadge } from './Region';
 import { type RommLink } from './Romm';
 import { Acorn, Acorns, Reviews, StashMark } from './Acorn';
@@ -932,6 +933,7 @@ export function GameDrawer() {
                     </Button>
                   )}
                   <PreferencePicker platformKey={g.platformKey} title={g.title} value={g.preference} width={190} disabled={busy} />
+                  <WishlistFacts platformKey={g.platformKey} title={g.title} />
                 </>
               }
               versions={

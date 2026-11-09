@@ -123,7 +123,7 @@ Store Mode names a barcode it hasn't seen by asking a barcode service: **Setting
 
 ## Claude
 
-**Settings > Claude and AI apps:** turn on **Let AI apps read your collection**, check **Squirrelcade's address on your home network**, and **Download the plugin**; in the Claude app, **Customize > Plugins > Add > Upload plugin**. It works in Cowork and Claude Code on your computers at home (it needs Node.js) and only reads, unless you tick **This plugin may also put games on On the way** before downloading: then Claude, or a task of yours, can note a game you bought; it waits on On the way. See [Claude and AI apps](../help/ai-apps.md).
+**Settings > Claude and AI apps:** turn on **Let AI apps read your collection**, check **Squirrelcade's address on your home network**, and **Download the plugin**; in the Claude app, **Customize > Plugins > Add > Upload plugin**. It works in Cowork and Claude Code on your computers at home (it needs Node.js) and only reads, unless you tick **This plugin may also put games on On the way** before downloading: then Claude, or a task of yours, can note a game you bought; it waits on On the way. Claude can also read your own buying rules, which you write on **Acorns > Your buying rules**. See [Claude and AI apps](../help/ai-apps.md).
 
 ## Selling, a goal, tests and rips
 

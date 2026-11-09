@@ -194,6 +194,14 @@ GET /api/v1/wishlist                     top picks with every point explained
 GET /api/v1/wishlist/platforms/<key>     one platform's list
 GET /api/v1/wishlist/export              top picks as CSV (?list=platforms for every platform's list), with your note on each game
 GET /api/v1/wishlist/tastes              what the collection says: consoles by games added lately, genres by how much more of them you own than the catalogs hold, games owned per series, and the points lists learned from them
+GET    /api/v1/wishlist/rules            your buying rules: {rules: [{id, number (its place among the rules that are on), title, text, kind: "rule" | "preference", area, ref, notes, active, source, updatedAt}]}
+POST   /api/v1/wishlist/rules            {title, text, kind, area, notes, active}: adds a rule (201)
+PUT    /api/v1/wishlist/rules/order      {"ids": [rule ids in their new order]}
+PUT    /api/v1/wishlist/rules/<id>       changes the fields given
+DELETE /api/v1/wishlist/rules/<id>       removes a rule
+POST   /api/v1/wishlist/bring-in         {"files": [{"name", "text"}], "apply"?: {rules?: [refs], exclusions?, preferences?, details?, proofPending?}}: a wishlist spreadsheet's tabs, each saved as CSV and read by its column headings. Without "apply" it only answers with a preview (what each row would do: add, skip or unknown); with it, it adds what was chosen and never over what you set
+GET    /api/v1/wishlist/details          ?platform=<key>&title=<title>: a game's own facts for its acorns {details: {personalInterest, significance, marketUrgency, releaseClass, tieIn, japaneseDeveloped, offbeat, naPhysical, seriesRemaining}}
+PUT    /api/v1/wishlist/details          {"platformKey", "title", "details": {...}}: sets them (what you set wins over IGDB's and a sheet's)
 ```
 
 Scores run from 0 to 100 by default (Wishlist > Scoring). Each game's `components` add up to its score: platform, region, genre (IGDB's genres averaged), style, reviews ("Reviews: 91 on IGDB (76 ratings)"), a series you collect, completion and the rest; a game with more points than the top shows a "Capped at 100" line.
@@ -295,6 +303,7 @@ GET    /api/v1/catalogs/upcoming.ics     the same as a calendar file (iCalendar)
 GET    /api/v1/catalogs                  completion per platform
 GET    /api/v1/catalogs/<key>            a platform's catalog (?status=missing|review|owned|excluded|unconfirmed|upcoming, ?sort=title|genre|released|score&dir=asc|desc); each game has its IGDB genres
 GET    /api/v1/catalogs/<key>/export     the same as CSV
+GET    /api/v1/catalog-plan/<key>        Start collecting's checklist for a followed console: where its catalog would come from (its Wikipedia pages, your own list, IGDB) and how a PriceCharting export names it
 GET    /api/v1/catalogs/sources          where each console's catalog comes from (your list, Wikipedia pages) and its last build, with what each source gave it and where they disagreed
 GET    /api/v1/catalogs/source-status    each catalog source's state: your lists, Nintendo Life's last reading, Wikipedia's builds, each source you added
 POST   /api/v1/catalogs/build            rebuild now: {"platforms": ["nintendo-switch"]}, or {} for every tracked console
@@ -352,6 +361,7 @@ With Top 100 lists and history on (Settings > Features; off, these answer 404 wi
 GET /api/v1/history                          the consoles with a Top 100 list ("top100") and with a history ("history"), and the lists' version
 GET /api/v1/history/top100/<key>             a console's Top 100 in rank order: each game's year, cover, developers and publishers, why it matters, and what the collection has of it (owned, review, maybe or missing; its copies with their condition; other consoles and PC storefronts; wishlist rank and preference; RomM link), with a summary ("owned", "inRomm"...)
 GET /api/v1/history/consoles/<key>           a console's history: its profile (maker, generation, launches, units sold, hardware, how it did, firsts), Start here games with what the collection has of them, sources and status
+GET /api/v1/history/picture/<key>          a console's picture (WebP, a Wikimedia Commons photo kept on your server; 404 when none is kept)
 GET /api/v1/history/timeline                 consoles by the year they came out, and landmark games by year
 PUT /api/v1/history/games                    {"platformKey", "title", "text" (null: back to Squirrelcade's), "sources": [...], "status": "draft" | "verified"}: your version of why a game matters
 PUT /api/v1/history/consoles/<key>           {"profile", "startHere", "sources", "status", "asOf"} or {"reset": true}: your version of a console's history
@@ -387,6 +397,24 @@ PUT /api/v1/play                           {"platformKey", "title", "status": "p
 ```
 
 A status given without days sets them: Playing the day started, Beaten or Completed the day finished, Not played yet (`backlog`) clears both. Games not marked count as the backlog while Settings > Collection > "Games you haven't marked count as not played" is on. Viewers see these unless Settings > Security > Viewers says otherwise (then 403 `not-shared`).
+
+## Collection audit
+
+Stash > Collection audit: going through the shelves, a console at a time. One audit goes at a time (409 otherwise); its progress is kept until you finish it.
+
+```
+GET    /api/v1/audit                      the audit that's going: {audit} (null when none)
+POST   /api/v1/audit                      {"name"?, "platforms"?: [console keys]}: starts one (201)
+POST   /api/v1/audit/<id>/finish          finishes it (and /reopen opens it again)
+POST   /api/v1/audit/<id>/shelves         {"platformKey", "name", "reads", "seen", "notLogged", "place"}: a shelf photographed: what was read, the logged copies seen, the games on it not logged (201)
+POST   /api/v1/audit/shelves/<id>/photos  multipart form with a "file" field: a shelf's photo, kept smaller (Settings > Collection > Keep the audit's shelf photos)
+GET    /api/v1/audit/<id>/photos/<file>   a kept photo (JPEG)
+POST   /api/v1/audit/<id>/seen            {"copyKeys": [...]} or {"platformKey", "titles": [...]}, and "how" ("photo", "barcode", "hand"), "shelfId": ticks copies as seen
+DELETE /api/v1/audit/<id>/seen?key=<copy> takes a tick back
+POST   /api/v1/audit/<id>/added           a game on the shelf that wasn't logged, added as a copy
+GET    /api/v1/audit/<id>/copies          ?platform=<key>&state=unseen|seen|all: the audit's copies (Not seen yet is "unseen")
+POST   /api/v1/audit/<id>/settle          {"copyKey", "outcome": "found" | "sold" | "given" | "lost" | "lent", "lentTo"?}: what became of a copy not seen
+```
 
 ## Looking after copies
 
@@ -480,7 +508,7 @@ DELETE /api/v1/ai/guests/<id>                       takes a guest off the list; 
 GET    /api/v1/ai/calls                             the newest 100 calls: {at, who, client, tool, asked, results, ms, outcome, grantId, keyId}
 ```
 
-The tools: `check_ownership` ({titles: [up to 50], platforms?}), `search_games` ({query?, platform?, format?, storefront?, condition?, limit?, cursor?}), `get_game` ({id}), `get_wishlist` ({query?, platform?, priority?, limit?, cursor?}: the wishlist with each game's acorns, priority, rank and why; query finds one game's) and `list_platforms` ({}), and, for a key made with `canWrite` (POST `/api/v1/ai/keys` {name, canWrite: true}, the owner's only; D179), `record_on_the_way` ({title, store, platform?, order_date?, price_cents?, currency?, order_number?, item_id?, expected_delivery?, link?}: onto On the way, once by order number and item id; any item may be sent, only a game is added: answers {status: added, named, known, not_a_game or digital_code, id, title, platform, listing, expected_delivery}, the last four null when nothing was added), each with an input and an output schema in JSON Schema 2020-12 (MCP's default dialect, so no `$schema`), answering with structuredContent (and the same JSON as text).
+The tools: `check_ownership` ({titles: [up to 50], platforms?}), `search_games` ({query?, platform?, format?, storefront?, condition?, limit?, cursor?}), `get_game` ({id}), `get_wishlist` ({query?, platform?, priority?, limit?, cursor?}: the wishlist with each game's acorns, priority, rank and why; query finds one game's), `get_buying_rules` ({}: the owner's own buying rules that are on, numbered, each {number, title, text, kind: rule | preference, applies_to?, notes?, ref?}; read-only, and only for a key or person whose answers include notes) and `list_platforms` ({}), and, for a key made with `canWrite` (POST `/api/v1/ai/keys` {name, canWrite: true}, the owner's only; D179), `record_on_the_way` ({title, store, platform?, order_date?, price_cents?, currency?, order_number?, item_id?, expected_delivery?, link?}: onto On the way, once by order number and item id; any item may be sent, only a game is added: answers {status: added, named, known, not_a_game or digital_code, id, title, platform, listing, expected_delivery}, the last four null when nothing was added), each with an input and an output schema in JSON Schema 2020-12 (MCP's default dialect, so no `$schema`), answering with structuredContent (and the same JSON as text).
 
 ## Friends
 

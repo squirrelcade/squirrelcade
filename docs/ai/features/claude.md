@@ -15,7 +15,7 @@ I already have **Squirrelcade** (version 1.4.0 or later), a free, self-hosted we
 
 ## What it is
 
-Squirrelcade can let **Claude** (or another AI app that speaks MCP) look up my collection and answer "do I have this game?", read-only. Two ways in: **the plugin** for the Claude app (Cowork and Claude Code on my computers at home; it carries its own key), or a key for **Claude Code** alone with a command. Claude's own apps (claude.ai, the desktop and phone apps) from the internet also need the sign-in for apps on the internet, which is a larger step (see Help > Claude and AI apps). Nothing in Squirrelcade needs any of this.
+Squirrelcade can let **Claude** (or another AI app that speaks MCP) look up my collection and answer "do I have this game?", read-only. It can also read my own **buying rules** (what a copy must have, how I judge a deal), which I write on Acorns > Your buying rules, through its tool get_buying_rules. Two ways in: **the plugin** for the Claude app (Cowork and Claude Code on my computers at home; it carries its own key), or a key for **Claude Code** alone with a command. Claude's own apps (claude.ai, the desktop and phone apps) from the internet also need the sign-in for apps on the internet, which is a larger step (see Help > Claude and AI apps). Nothing in Squirrelcade needs any of this.
 
 ## Have ready
 

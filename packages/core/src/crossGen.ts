@@ -1,5 +1,5 @@
 import type { CatalogMatch, CatalogTarget, TargetResult } from './catalog.js';
-import { matchKey } from './text.js';
+import { matchKey, romanNumerals } from './text.js';
 
 /**
  * Console families, one generation after another. Neighbors share cross-generation releases: the same game made for
@@ -76,3 +76,28 @@ export function releaseYear(date: string | null | undefined): number | null {
   const m = /^(\d{4})/.exec(date ?? '');
   return m ? Number(m[1]) : null;
 }
+
+/** One copy or catalog game as seen across consoles: its title, the year it came out there, and IGDB's game when known. */
+export interface GameOnConsole {
+  title: string;
+  year: number | null;
+  igdbId?: number | null;
+}
+
+/**
+ * Whether two games with the same title key on different consoles are the same game (1.5.0, R12: "Call of Duty:
+ * Modern Warfare II", 2022, isn't 2009's "Modern Warfare 2", though D21 reads II as 2). When IGDB knows both, its game
+ * decides, except that two of its entries from the same years still count as one (a port it lists apart). Without
+ * IGDB, they're two games only when one spells the number in Roman numerals and the other doesn't and their years are
+ * more than `years` apart (Settings > Catalogs > Cross-generation: released within); a title said the same way stays
+ * one game, as before. `years` 0 or less never splits them.
+ */
+export function sameGameAcross(a: GameOnConsole, b: GameOnConsole, years: number): boolean {
+  const apart = years > 0 && a.year !== null && b.year !== null && Math.abs(a.year - b.year) > years;
+  if (!apart) return true;
+  if (a.igdbId && b.igdbId) return a.igdbId === b.igdbId;
+  const ra = romanNumerals(a.title).join(',');
+  const rb = romanNumerals(b.title).join(',');
+  return ra === rb;
+}
+

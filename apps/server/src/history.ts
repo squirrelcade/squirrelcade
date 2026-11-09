@@ -3,6 +3,7 @@ import {
   crossGenNeighbors,
   releaseYear,
   firstLaunchYear,
+  unitsSoldShort,
   KNOWN_PLATFORMS,
   lastYear,
   matchKey,
@@ -37,6 +38,7 @@ import type { RommLinker } from './catalogs.js';
 import type { Db } from './db/index.js';
 import { historyNotes, platforms } from './db/schema.js';
 import type { IgdbService } from './igdb.js';
+import type { ConsolePictures } from './consolePictures.js';
 import type { PcService } from './pc.js';
 import type { RommLink } from './romm.js';
 import type { SettingsService } from './settings.js';
@@ -158,6 +160,14 @@ export interface TimelineView {
     followed: boolean;
     /** Your RomM's ROMs for it, with RomM on. */
     romm: number | null;
+    /** Units sold in short ("87.4 million"), from its history (yours wins); null when unknown. */
+    unitsSold: string | null;
+    /** The full text it comes from ("About 87.4 million worldwide (Sony's final figure)"). */
+    unitsSoldFull: string | null;
+    /** You chose to collect it (Settings > Consoles, Start collecting; R15). */
+    collecting: boolean;
+    /** Its picture from Wikipedia, kept here (R16); null while none is kept. Added by the route. */
+    picture?: { url: string; credit: string | null } | null;
   }[];
   games: {
     platformKey: string;
@@ -660,12 +670,13 @@ export class HistoryService {
     const inDb = new Set(this.platformNames().keys());
     const keys = [...new Set([...this.shippedConsoles.keys(), ...this.lists.keys(), ...this.db.select({ key: historyNotes.platformKey }).from(historyNotes).where(eq(historyNotes.kind, 'console')).all().map((r) => r.key)])];
     const perConsole = this.settings.get('interface.timelineGames');
+    const collecting = new Set(this.settings.get('platforms.collecting'));
     const consoles: TimelineView['consoles'] = [];
     const games: TimelineView['games'] = [];
     for (const key of keys) {
       const found = this.consoleHistory(key);
       const list = this.lists.get(key);
-      const tracked = inDb.has(key) && (owned.has(key) || Boolean(this.titles.catalog([key]).get(key)));
+      const tracked = inDb.has(key) && (owned.has(key) || Boolean(this.titles.catalog([key]).get(key)) || collecting.has(key));
       const profile = found?.history.profile;
       consoles.push({
         platformKey: key,
@@ -679,6 +690,9 @@ export class HistoryService {
         hasTop100: Boolean(list),
         followed: !tracked && this.settings.get('platforms.followRoots') && !this.settings.get('platforms.unfollowed').includes(key),
         romm: this.deps.rommEnabled() ? (this.deps.rommCount?.(key) ?? null) : null,
+        unitsSold: unitsSoldShort(profile?.unitsSold),
+        unitsSoldFull: profile?.unitsSold ?? null,
+        collecting: collecting.has(key),
       });
       if (perConsole === 0) continue;
       const family = this.family(key);
@@ -783,7 +797,7 @@ export class HistoryService {
 }
 
 /** Top 100 lists, console history and the timeline; the owner's versions of history texts. */
-export function registerHistoryRoutes(app: FastifyInstance, history: HistoryService): void {
+export function registerHistoryRoutes(app: FastifyInstance, history: HistoryService, pictures?: ConsolePictures): void {
   const off = { error: 'feature-off', message: 'Roots (the Top 100 lists and console history) is off (Settings > Features).' };
 
   app.get('/api/v1/history', async (_request, reply) => {
@@ -816,7 +830,19 @@ export function registerHistoryRoutes(app: FastifyInstance, history: HistoryServ
 
   app.get('/api/v1/history/timeline', async (_request, reply) => {
     if (!history.enabled()) return reply.code(404).send(off);
-    return history.timeline();
+    const view = history.timeline();
+    if (!pictures?.enabled()) return view;
+    // The consoles' pictures (R16): what's kept now; the rest are fetched in the background for the next visit.
+    pictures.ensure(view.consoles.map((c) => ({ key: c.platformKey, name: c.name })));
+    return { ...view, consoles: view.consoles.map((c) => ({ ...c, picture: pictures.info(c.platformKey) })) };
+  });
+
+  // A console's picture, kept on this server (long cache: the address carries the day it was kept).
+  app.get('/api/v1/history/picture/:key', async (request, reply) => {
+    if (!history.enabled()) return reply.code(404).send(off);
+    const data = pictures?.file((request.params as { key: string }).key);
+    if (!data) return reply.code(404).send({ error: 'not-found', message: 'No picture of this console is kept.' });
+    return reply.header('content-type', 'image/webp').header('cache-control', 'private, max-age=2592000').send(data);
   });
 
   // It's physical / Digital only for a Top 100 game (D198): physical true, false, or null (back to the list's word).

@@ -64,6 +64,10 @@ const MAIN_PAGES: Record<string, string> = {
   '/collection/backlog': 'Backlog',
   '/collection/loans': 'Loans',
   '/collection/places': 'Places',
+  '/collection/audit': 'Collection audit',
+  '/collection/audit/shelf': 'Photograph a shelf',
+  '/collection/audit/tick': 'Tick by hand',
+  '/collection/audit/unseen': 'Not seen yet',
   '/collection/sale': 'For sale',
   '/collection/statistics': 'Statistics',
   '/collection/report': 'Collection report',
@@ -75,6 +79,7 @@ const MAIN_PAGES: Record<string, string> = {
   '/review': 'Review',
   '/wishlist': 'Acorns wishlist',
   '/acorns': 'Acorns ranking',
+  '/wishlist/rules': 'Your buying rules',
   '/wishlist/coming-soon': 'Coming soon',
   '/wishlist/past': 'Past releases',
   '/wishlist/deals': 'Deals',
@@ -271,6 +276,8 @@ export function Layout({ children }: { children: ReactNode }) {
             {playShown && link('/collection/backlog', 'Backlog')}
             {detailsShown && link('/collection/loans', 'Loans')}
             {detailsShown && link('/collection/places', 'Places')}
+            {/* The collection audit (1.5.0, R05): shelf by shelf, what's logged and what isn't. */}
+            {owner && link('/collection/audit', 'Collection audit')}
             {pcOn && link('/pc', 'PC library')}
           </NavLink>
           {/* Acorns: games coming in (the Acorns wishlist and its pages, On the way, Stash updates' exports) and going out
@@ -287,6 +294,7 @@ export function Layout({ children }: { children: ReactNode }) {
             {detailsShown && link('/collection/sale', 'For sale')}
             {owner && link('/collection/sales', 'Sales')}
             {owner && link('/acorns', 'Acorns ranking')}
+            {owner && link('/wishlist/rules', 'Your buying rules')}
             {pcOn && <NavLink component={Link} to="/pc/wishlist" label="PC wishlist" active={path === '/pc/wishlist' && pcView !== 'deals'} onClick={close} />}
             {pcOn && pricesOn && <NavLink component={Link} to="/pc/wishlist?view=deals" label="PC deals" active={path === '/pc/wishlist' && pcView === 'deals'} onClick={close} />}
           </NavLink>

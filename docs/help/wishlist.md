@@ -13,7 +13,7 @@ You choose what your wishlist is: **Acorns > Acorns ranking > Your wishlist > Wh
 - **Picked by you** (My wishlist): nothing is added for you. The Wishlist page has two tabs, **My wishlist** (the games you chose, ranked by their acorns) and **Suggestions** (the ranked list to go down). Press **Add** on a suggestion to put it on your wishlist; a game already there says "On your wishlist", with a way to take it off. **Take off** on My wishlist removes a game (it goes back to Suggestions).
 - **Want it** appears on a game's page, beside its shops, when you don't have the game on that console, and in [Store Mode](store-mode.md) beside Add it. It adds the game to My wishlist; **On your wishlist** takes it off again.
 
-A game you have on a console is never suggested for it, even when a catalog didn't match your copy: Squirrelcade also checks by title.
+A game you have on a console is never suggested for it, even when a catalog didn't match your copy: Squirrelcade also checks by title. It reads a twin pack named with its series twice ("Final Fantasy VII & Final Fantasy VIII Remastered Twin Pack") as the box that says it once, and it tells a reboot from its namesake: 2022's "Call of Duty: Modern Warfare II" isn't 2009's "Modern Warfare 2" on another console (see [How matching works](../MATCHING.md)).
 
 ## Where the acorns come from
 
@@ -34,6 +34,44 @@ A game you have on a console is never suggested for it, even when a catalog didn
 - **Share** makes a link anyone can open without signing in, to see your top picks and where to buy them: for birthdays and holidays. See [Sharing your collection](sharing.md).
 - **Share as a file** downloads your top picks as one web page to send by email or chat: each game's place, acorns, console and priority, with a small cover, dated and named for you (Settings > Friends > Your name in what you share). Nobody needs a link, an account or any access to your server: the page opens in any browser, works offline, has no prices paid or notes, and **Print / Save as PDF** in it makes a PDF. On the By platform tab, the file is that console's list. How many games it holds, and whether it has covers, are in Acorns ranking > Sharing. Between two Squirrelcades, [Friends](friends.md) already share the top of your wishlist in their files; the page is for everyone else.
 - **Priority** (High, Medium, Low) comes from the acorns (the cut-offs are settings).
+
+## Your buying rules
+
+**Acorns > Your buying rules** is where you write down how you buy, in your own words, so Claude can follow it when it looks for deals or tells you what to get. Acorns say how much you want a game. Your rules say how you want to buy it.
+
+Each rule has:
+
+- **A name:** a few words ("Condition", "Sports games", "Shipping").
+- **The rule,** in your words: "Only copies with the manual, seen in the seller's own photos." "Sports games on the Switch only." How you judge a deal, a shop or the shipping.
+- **A rule or a preference.** A **rule** must hold. A **preference** leans one way.
+- **What it's for** and **notes and exceptions** (both optional).
+- **On or off.** Off, Claude doesn't see it, and the rest renumber.
+
+Rules are numbered in the order you keep them: move one up or down with its arrows, change it with the pencil, or remove it. Claude reads the ones that are on through the connector's **get_buying_rules** (see [Claude and AI apps](ai-apps.md)), and so does **Talk** in the app. It only reads: it never changes a rule. Nothing here changes a game's acorns: those come from **Acorns ranking**.
+
+### Bring in from a spreadsheet
+
+If you keep your wishlist in a spreadsheet, **Bring in from a spreadsheet** (on the same page) reads it. Save each tab as CSV, then choose them all at once. Squirrelcade reads each tab by its column headings:
+
+- **Rules:** Rule ID, Category, Rule (and Applies to, Rule type, Status, Notes if you have them). They become buying rules.
+- **Games not to recommend:** Title, Console, Action. The action keeps a game out of the collection target, hides it, defers it until a date, or hides it only below a price.
+- **Your say on games:** Owner Preference, Owner Note, Review After and Recommendation Exclusion?. They become your preference and note on each game.
+- **Games' facts:** Personal Interest, Release Class, Platform Significance, Market Urgency, Licensed Tie-in, Japanese Developed, Offbeat, NA Physical, Primary Genre, Subgenre / Style, Franchise, Series Completion, Series Gap Remaining and more. They become a game's facts (below).
+
+Before anything is saved, a preview says what each row would do: add, skip (something is already set, or the sheet switched it off) or unknown (a console you don't have). You pick which parts to bring in. It only adds: a game you've already set something for keeps what you set.
+
+Games marked **Physical proof pending** keep a game off the wishlist until its physical release is shown. They have a tick of their own in the preview. Leave it unticked and those games stay on the wishlist as they are.
+
+## A game's facts
+
+On a game you don't have, beside your preference, a small button opens **Its facts for the wishlist**:
+
+- how much you want it (your interest) and how much it matters to its console;
+- market urgency and its release class;
+- how many games are left in its series;
+- whether it's a licensed tie-in, or an offbeat Japanese game.
+
+What you set here wins over IGDB's and over a spreadsheet you brought in. How many acorns each fact gives is set on Acorns ranking. Two release classes, "Physical proof pending" and "Exclude", keep a game off the wishlist.
 
 ## The game of the day
 

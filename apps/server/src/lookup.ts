@@ -511,7 +511,7 @@ export class LookupService {
    * Set while the ownership API answers a list of games: what every search of the list reads from the collection,
    * read once.
    */
-  private batch: { owned: Map<string, Set<string>>; rows: { productId: string; title: string; key: string; name: string }[]; preferences: Map<string, string> } | null = null;
+  private batch: { rows: { productId: string; title: string; key: string; name: string }[]; preferences: Map<string, string> } | null = null;
 
   search(query: string, options: { platformKey?: string; exact?: boolean; sameTitle?: boolean; limit?: number; brief?: boolean; every?: boolean; followed?: boolean } = {}): LookupResult[] {
     const q = normalizeTitle(query);
@@ -534,7 +534,6 @@ export class LookupService {
     const limit = options.limit ?? 30;
     const wishlist = this.wishlist.compute();
     const preferences = this.batch?.preferences ?? this.wishlist.preferences();
-    const owned = this.batch?.owned ?? this.ownedByTitle();
     const results: LookupResult[] = [];
     const covered = new Set<string>();
     // What's looked up for each answer (its PC storefronts, its sets) waits until the matches are cut to the answers
@@ -550,8 +549,7 @@ export class LookupService {
       for (const t of p.match.targets) {
         const relevance = rankOf([t.target.title, ...(t.target.altTitles ?? [])]);
         if (relevance === 0 || (options.exact && relevance < 3)) continue;
-        const titleKey = matchKey(baseTitle(t.target.title));
-        const elsewhere = [...(owned.get(titleKey) ?? [])].filter((name) => name !== p.name);
+        const elsewhere = this.wishlist.elsewhereOf(p.key, p.name, t.target.title, t.target.id);
         const answer: Answer =
           t.status === 'owned'
             ? 'own'
@@ -592,7 +590,7 @@ export class LookupService {
         for (const g of list.games) {
           const relevance = rankOf(g.names);
           if (relevance === 0 || (options.exact && relevance < 3)) continue;
-          const elsewhere = [...(owned.get(matchKey(baseTitle(g.names[0]!))) ?? [])];
+          const elsewhere = this.wishlist.elsewhereOf(list.key, list.name, g.names[0]!);
           push({ platformKey: list.key, platform: list.name, title: g.names[0]!, answer: 'not-tracked', ownedAs: [], ownedOn: elsewhere, ownedOnPc: [], maybe: [], wishlist: null, relevance }, g.names[0]!);
         }
       }
@@ -603,7 +601,7 @@ export class LookupService {
       if (options.platformKey && g.platformKey !== options.platformKey) continue;
       const relevance = rankOf([g.title]);
       if (relevance === 0 || (options.exact && relevance < 3)) continue;
-      const elsewhere = [...(owned.get(matchKey(baseTitle(g.title))) ?? [])].filter((name) => name !== g.platform);
+      const elsewhere = this.wishlist.elsewhereOf(g.platformKey, g.platform, g.title);
       push({
         platformKey: g.platformKey,
         platform: g.platform,
@@ -767,7 +765,7 @@ export class LookupService {
   }
 
   /** Kept until a copy is added, changed or gone (its count, newest id or last change): each search read them all. */
-  private copiesCache: { stamp: string; byTitle?: Map<string, Set<string>>; values?: { values: Map<string, number>; releases: Map<string, { region: string; consoleLabel: string }> } } | null = null;
+  private copiesCache: { stamp: string; values?: { values: Map<string, number>; releases: Map<string, { region: string; consoleLabel: string }> } } | null = null;
 
   /** Copies moved to another console (their console changes, not their last change): read again. */
   forgetCopies(): void {
@@ -804,24 +802,6 @@ export class LookupService {
     }
     kept.values = { values, releases };
     return kept.values;
-  }
-
-  private ownedByTitle(): Map<string, Set<string>> {
-    const kept = this.copiesKept();
-    if (kept.byTitle) return kept.byTitle;
-    const map = new Map<string, Set<string>>();
-    const rows = this.db
-      .select({ title: copies.title, name: platforms.name })
-      .from(copies)
-      .innerJoin(platforms, eq(platforms.id, copies.platformId))
-      .where(isNull(copies.goneAt))
-      .all();
-    for (const r of rows) {
-      const key = matchKey(baseTitle(r.title));
-      map.set(key, (map.get(key) ?? new Set()).add(r.name));
-    }
-    kept.byTitle = map;
-    return map;
   }
 
   async byBarcode(raw: string): Promise<BarcodeLookup> {
@@ -1032,7 +1012,7 @@ export class LookupService {
    * compare titles), on the console asked about or on all of them.
    */
   owned(queries: { title: string; platform?: string | null }[]): OwnedAnswer[] {
-    this.batch = { owned: this.ownedByTitle(), rows: this.ownedRows(), preferences: this.wishlist.preferences() };
+    this.batch = { rows: this.ownedRows(), preferences: this.wishlist.preferences() };
     try {
       return queries.map((q) => this.ownedOne(q));
     } finally {

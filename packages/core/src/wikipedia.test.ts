@@ -156,6 +156,8 @@ describe('Wikipedia game lists', () => {
     expect(sectionKind('Unlicensed games > NES\'s lifespan')).toBe('unlicensed');
     expect(sectionKind('Unreleased games')).toBe('skip');
     expect(sectionKind('Applications')).toBe('skip');
+    expect(sectionKind('Software library > Cartridges')).toBe('retail');
+    expect(sectionKind('Sega CAI Software (for SC-3000)')).toBe('skip');
     expect(sectionKind('List of Off-TV Play compatible games')).toBe('skip');
     expect(sectionKind('Championship games')).toBe('special');
     expect(sectionKind('')).toBe('retail');

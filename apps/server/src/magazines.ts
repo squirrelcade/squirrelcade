@@ -1,4 +1,4 @@
-import { baseTitle, citationMonth, citedIssueNumber, matchKey, platformsIn, scoresOn, SPOT_VERSION, spotIndex, spotTitles, spotWord, type SpotCandidate, coverLeadFor, guessDates, magazineOf, printedPage, issueFromFileName, issueLabel, pageNames, parseComicInfo, parseHocr, skippedName, writeHocr, type IssueInfo, type IssueToDate, type PageWord } from '@squirrelcade/core';
+import { baseTitle, citationMonth, citedIssueNumber, matchKey, platformsIn, scoresOn, SPOT_VERSION, spotIndex, spotTitles, spotWord, type SpotCandidate, coverLeadFor, guessDates, magazineGaps, magazineOf, neverPrinted, printedPage, type MissingIssue, type MissingMonth, type NumberJump, issueFromFileName, issueLabel, pageNames, parseComicInfo, parseHocr, skippedName, writeHocr, type IssueInfo, type IssueToDate, type PageWord } from '@squirrelcade/core';
 import Database from 'better-sqlite3';
 import { spawn } from 'node:child_process';
 import { accessSync, constants, existsSync, mkdirSync, readdirSync, renameSync, rmSync, statSync, type Dirent } from 'node:fs';
@@ -194,6 +194,7 @@ CREATE TABLE IF NOT EXISTS mentions (
 CREATE UNIQUE INDEX IF NOT EXISTS mentions_one ON mentions(issue_id, page, title_key, source);
 CREATE INDEX IF NOT EXISTS mentions_title ON mentions(title_key);
 CREATE TABLE IF NOT EXISTS mention_rules (printed_key TEXT NOT NULL, magazine TEXT NOT NULL, answer TEXT NOT NULL, PRIMARY KEY (printed_key, magazine));
+CREATE TABLE IF NOT EXISTS gap_answers (magazine TEXT NOT NULL, key TEXT NOT NULL, answer TEXT NOT NULL, PRIMARY KEY (magazine, key));
 `;
 
 /** A game on a magazine's page (D191): from a review's citation, the page's text, or the owner's own mark. */
@@ -279,6 +280,60 @@ export interface IssueView {
   problem: string | null;
   version: number;
 }
+
+/** A print magazine your games' review tables cite (D221; RootsService.citedMagazines), kept for What's missing. */
+export interface CitedWork {
+  name: string;
+  games: number;
+  otherLanguage: number;
+  examples: string[];
+  issues: Record<string, number>;
+}
+
+/** A magazine's missing issues (D221), as What's missing shows them. */
+export interface MissingView {
+  id: number;
+  name: string;
+  /** The issues you have. */
+  issues: number;
+  first: { number: number; volume: number | null } | null;
+  last: { number: number; volume: number | null } | null;
+  unnumbered: number;
+  byVolume: boolean;
+  /** The run's first and last issue, as the owner named them. */
+  runFirst: number | null;
+  runLast: number | null;
+  /** Each with how many of your games it reviews (Wikipedia's citations), when known. */
+  missing: (MissingIssue & { cited: number })[];
+  jumps: NumberJump[];
+  months: (MissingMonth & { cited: number })[];
+  /** The owner's answers on its gaps (not, none, missing), to take one back. */
+  answers: { key: string; answer: string }[];
+  /** The numbers or months it never printed, from the magazine index ("#81", "v6#1", "1982-01"): not counted. */
+  neverPrinted: string[];
+}
+
+/** A magazine you don't have that your games' reviews are in (D221). */
+export interface SuggestedMagazine {
+  name: string;
+  games: number;
+  examples: string[];
+}
+
+/** A place to look for an issue (Settings > Magazines > Where to look for an issue): its name and address, with {q}... */
+export interface FindLink {
+  name: string;
+  url: string;
+}
+
+/** A name to compare magazines by: lower case, letters and digits, no "the" or "magazine". */
+const magazineKey = (s: string) =>
+  s
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, ' ')
+    .replace(/^the /, '')
+    .replace(/ magazine$/, '')
+    .trim();
 
 /** A search's answer: a page, with the words found marked (between [ and ]). */
 export interface PageHit {
@@ -1352,6 +1407,134 @@ export class MagazineService {
     return rows.map((r) => ({ ...r, label: this.issue(r.issueId)?.label ?? '' }));
   }
 
+  // What's missing (D221).
+
+  /** The magazines your games' reviews cite, worked out each night (RootsService.citedMagazines), kept until the next. */
+  setCited(works: readonly CitedWork[]): void {
+    if (!this.enabled()) return;
+    this.setState('cited', JSON.stringify(works));
+    this.setState('citedAt', new Date().toISOString());
+  }
+
+  private cited(): CitedWork[] {
+    if (!this.settings.get('magazines.suggest')) return [];
+    const raw = this.readState('cited');
+    try {
+      return raw ? (JSON.parse(raw) as CitedWork[]) : [];
+    } catch {
+      return [];
+    }
+  }
+
+  private gapAnswers(): Map<string, Map<string, string>> {
+    const out = new Map<string, Map<string, string>>();
+    for (const r of this.store().prepare('SELECT magazine, key, answer FROM gap_answers').all() as { magazine: string; key: string; answer: string }[]) {
+      out.set(r.magazine, (out.get(r.magazine) ?? new Map<string, string>()).set(r.key, r.answer));
+    }
+    return out;
+  }
+
+  /** Each magazine's missing issues, number jumps and months with no issue, worked out from the issues you have. */
+  missing(): MissingView[] {
+    if (!this.enabled()) return [];
+    const db = this.store();
+    const rows = db
+      .prepare('SELECT m.id, m.name, i.number, i.volume, COALESCE(i.owner_year, i.year) AS year, CASE WHEN i.owner_year IS NOT NULL THEN i.owner_month ELSE i.month END AS month FROM issues i JOIN magazines m ON m.id = i.magazine_id ORDER BY m.name COLLATE NOCASE')
+      .all() as { id: number; name: string; number: string | null; volume: string | null; year: number | null; month: number | null }[];
+    const byMagazine = new Map<number, { name: string; held: typeof rows }>();
+    for (const r of rows) {
+      const m = byMagazine.get(r.id) ?? { name: r.name, held: [] };
+      m.held.push(r);
+      byMagazine.set(r.id, m);
+    }
+    const answers = this.gapAnswers();
+    const fromOne = this.settings.get('magazines.missingFromOne');
+    const cited = this.cited();
+    return [...byMagazine].map(([id, { name, held }]) => {
+      const mine = answers.get(name) ?? new Map<string, string>();
+      const whole = (k: string) => (/^\d+$/.test(mine.get(k) ?? '') ? Number(mine.get(k)) : null);
+      const runFirst = whole('first');
+      const runLast = whole('last');
+      // The numbers and months the magazine never printed (the magazine index), under the owner's own answers.
+      const never = neverPrinted(name);
+      const gaps = magazineGaps(held, { first: runFirst, last: runLast, fromOne, answers: new Map([...never.map((k): [string, string] => [k, 'not']), ...mine]) });
+      // How many of your games each issue reviews: the citations of this magazine, by its number or its month.
+      const issues: Record<string, number> = {};
+      for (const w of cited) {
+        if (magazineOf(w.name, [name]) !== name && magazineKey(w.name) !== magazineKey(name)) continue;
+        for (const [k, n] of Object.entries(w.issues)) issues[k] = (issues[k] ?? 0) + n;
+      }
+      const ym = (y: number | null, m: number | null) => (y && m ? `${y}-${String(m).padStart(2, '0')}` : '');
+      return {
+        id,
+        name,
+        issues: held.length,
+        first: gaps.first,
+        last: gaps.last,
+        unnumbered: gaps.unnumbered,
+        byVolume: gaps.byVolume,
+        runFirst,
+        runLast,
+        missing: gaps.missing.map((m) => ({ ...m, cited: (gaps.byVolume ? 0 : (issues[`#${m.number}`] ?? 0)) || (issues[ym(m.year, m.month)] ?? 0) })),
+        jumps: gaps.jumps,
+        months: gaps.months.map((m) => ({ ...m, cited: issues[m.key] ?? 0 })),
+        answers: [...mine].filter(([k]) => k !== 'first' && k !== 'last').map(([key, answer]) => ({ key, answer })),
+        neverPrinted: never,
+      };
+    });
+  }
+
+  /** The owner's answer on a missing issue or a jump ("not", "none", "missing"), or the run's first or last issue (a number); null forgets it. */
+  answerGap(magazineId: number, key: string, answer: string | null): boolean {
+    const db = this.store();
+    const m = db.prepare('SELECT name FROM magazines WHERE id = ?').get(magazineId) as { name: string } | undefined;
+    if (!m) return false;
+    if (answer === null) db.prepare('DELETE FROM gap_answers WHERE magazine = ? AND key = ?').run(m.name, key);
+    else db.prepare('INSERT INTO gap_answers (magazine, key, answer) VALUES (?, ?, ?) ON CONFLICT(magazine, key) DO UPDATE SET answer = excluded.answer').run(m.name, key, answer);
+    return true;
+  }
+
+  /** The magazines you don't have that your games' review tables cite most (Settings > Magazines > What's missing). */
+  suggestions(): SuggestedMagazine[] {
+    if (!this.enabled()) return [];
+    const cited = this.cited();
+    if (cited.length === 0) return [];
+    const owned = (this.store().prepare('SELECT DISTINCT m.name FROM magazines m JOIN issues i ON i.magazine_id = m.id').all() as { name: string }[]).map((r) => r.name);
+    const ownedKeys = new Set(owned.map(magazineKey));
+    const skip = new Set(this.settings.get('magazines.suggestSkip').map(magazineKey));
+    const english = this.settings.get('magazines.suggestEnglish');
+    const groups = new Map<string, SuggestedMagazine>();
+    for (const w of cited) {
+      const key = magazineKey(w.name);
+      if (!key || ownedKeys.has(key) || magazineOf(w.name, owned) || skip.has(key)) continue;
+      if (english && w.otherLanguage * 2 > w.games) continue;
+      const g = groups.get(key);
+      if (g) {
+        g.games += w.games;
+        for (const e of w.examples) if (g.examples.length < 3 && !g.examples.includes(e)) g.examples.push(e);
+      } else groups.set(key, { name: w.name, games: w.games, examples: [...w.examples] });
+    }
+    return [...groups.values()].sort((a, b) => b.games - a.games || a.name.localeCompare(b.name)).slice(0, this.settings.get('magazines.suggestCount'));
+  }
+
+  /** "Not for me": a suggested magazine joins Settings > Magazines > Magazines not to suggest. */
+  skipSuggestion(name: string): void {
+    const skip = this.settings.get('magazines.suggestSkip');
+    if (skip.some((s) => magazineKey(s) === magazineKey(name))) return;
+    this.settings.update({ 'magazines.suggestSkip': [...skip, name].slice(-200) });
+  }
+
+  /** The places to look for an issue, from Settings > Magazines (lines that aren't "Name | http..." are left out). */
+  findLinks(): FindLink[] {
+    return this.settings
+      .get('magazines.findLinks')
+      .map((line) => {
+        const at = line.indexOf('|');
+        return at > 0 ? { name: line.slice(0, at).trim(), url: line.slice(at + 1).trim() } : null;
+      })
+      .filter((l): l is FindLink => l !== null && l.name.length > 0 && /^https?:\/\//i.test(l.url));
+  }
+
   /** What Settings > Magazines and Leaves say of the library and its reading. */
   status(): { folder: string | null; found: boolean; issues: number; withText: number; failed: number; estimate: { perIssueSeconds: number; issuesLeft: number; hoursLeft: number } | null } {
     const folder = this.folder();
@@ -1413,6 +1596,30 @@ export function registerMagazineRoutes(
   });
   app.get('/api/v1/magazines', async (_request, reply) => (magazines.enabled() ? { magazines: magazines.magazines(), status: magazines.status() } : off(reply)));
   app.get('/api/v1/magazines/undated', async (_request, reply) => (magazines.enabled() ? { issues: magazines.undated(), guessed: magazines.guessed() } : off(reply)));
+  // What's missing (D221): each magazine's missing issues, where to look for them, and magazines to add.
+  app.get('/api/v1/magazines/missing', async (_request, reply) => (magazines.enabled() ? { magazines: magazines.missing(), suggestions: magazines.suggestions(), links: magazines.findLinks() } : off(reply)));
+  // "Not an issue", "No issues there", "They're missing", or the run's first or last issue ({ key: 'first', answer: '1' }); null forgets the answer.
+  app.put('/api/v1/magazines/:id/gaps', async (request, reply) => {
+    if (!magazines.enabled()) return off(reply);
+    const b = (request.body ?? {}) as { key?: unknown; answer?: unknown };
+    const key = typeof b.key === 'string' ? b.key.trim() : '';
+    const run = key === 'first' || key === 'last';
+    const answer = b.answer === null ? null : typeof b.answer === 'string' || typeof b.answer === 'number' ? String(b.answer).trim() : undefined;
+    const valid =
+      /^(#\d{1,5}|v\d{1,4}#\d{1,5}|\d{4}-\d{2}|jump:(v\d{1,4})?#\d{1,5}-\d{1,5}|first|last)$/.test(key) &&
+      answer !== undefined &&
+      (answer === null || (run ? /^\d{1,5}$/.test(answer) : key.startsWith('jump:') ? answer === 'none' || answer === 'missing' : answer === 'not'));
+    if (!valid) return reply.code(400).send({ error: 'invalid', message: 'Give the key (#237, v6#1, 1984-02, a jump, first or last) and the answer (not; none or missing for a jump; a number for first or last; null to forget).' });
+    return magazines.answerGap(Number((request.params as { id: string }).id), key, answer) ? { ok: true } : reply.code(404).send({ error: 'not-found', message: 'No such magazine.' });
+  });
+  // "Not for me" on a suggested magazine: it joins Settings > Magazines > Magazines not to suggest.
+  app.post('/api/v1/magazines/suggestions/skip', async (request, reply) => {
+    if (!magazines.enabled()) return off(reply);
+    const name = String((request.body as { name?: unknown } | null)?.name ?? '').trim();
+    if (!name || name.length > 200) return reply.code(400).send({ error: 'invalid', message: 'Give the magazine.' });
+    magazines.skipSuggestion(name);
+    return { suggestions: magazines.suggestions() };
+  });
   app.get('/api/v1/magazines/search', async (request, reply) => {
     if (!magazines.enabled()) return off(reply);
     const q = request.query as { q?: string; magazine?: string; from?: string; to?: string };

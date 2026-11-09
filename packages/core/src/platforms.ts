@@ -92,6 +92,12 @@ export const KNOWN_PLATFORMS: KnownPlatform[] = [
   { key: 'neo-geo', name: 'Neo Geo', labels: ['Neo Geo AES', 'Neo Geo'] },
   { key: '3do', name: '3DO', labels: ['3DO'] },
   { key: 'n-gage', name: 'N-Gage', labels: ['N-Gage'] },
+  // The consoles Roots follows that PriceCharting lists (R15): a console you start collecting gets its export lines.
+  { key: 'vectrex', name: 'Vectrex', labels: ['Vectrex'] },
+  { key: 'neo-geo-pocket-color', name: 'Neo Geo Pocket Color', labels: ['Neo Geo Pocket Color'] },
+  { key: 'astrocade', name: 'Bally Astrocade', labels: ['Bally Astrocade'] },
+  { key: 'arcadia-2001', name: 'Arcadia 2001', labels: ['Arcadia 2001'] },
+  { key: 'epoch-super-cassette-vision', name: 'Super Cassette Vision', labels: ['Super Cassette Vision'] },
 ];
 
 /** A PriceCharting console name, split into the platform and region it stands for. */

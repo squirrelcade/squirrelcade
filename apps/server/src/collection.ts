@@ -1594,6 +1594,7 @@ export class CollectionService {
   summary() {
     const current = this.currentImportId();
     const minUnique = this.settings.get('platforms.minUniqueGames');
+    const collecting = this.settings.get('platforms.collecting');
     const hardwareInTotals = this.settings.get('collection.hardwareInTotals');
     const hardware = new Map<number, { products: Set<string>; valueCents: number }>();
     for (const r of this.db.select({ platformId: copies.platformId, productId: copies.productId, title: copies.title, quantity: copies.quantity, valueCents: copies.valueCents }).from(copies).where(isNull(copies.goneAt)).all()) {
@@ -1626,7 +1627,7 @@ export class CollectionService {
         const h = hardware.get(p.platformId);
         const games = p.games - (h?.products.size ?? 0);
         const hardwareCents = h?.valueCents ?? 0;
-        return { ...p, games, valueCents: hardwareInTotals ? p.valueCents : p.valueCents - hardwareCents, hardware: h?.products.size ?? 0, hardwareCents, eligible: games >= minUnique };
+        return { ...p, games, valueCents: hardwareInTotals ? p.valueCents : p.valueCents - hardwareCents, hardware: h?.products.size ?? 0, hardwareCents, eligible: games >= minUnique || collecting.includes(p.key) };
       });
     const totals = perPlatform.reduce(
       (t, p) => ({ games: t.games + p.games, copies: t.copies + p.copies, valueCents: t.valueCents + p.valueCents, costCents: t.costCents + p.costCents, sealed: t.sealed + p.sealed }),
@@ -1872,6 +1873,7 @@ export class CollectionService {
     const labels = this.db.select().from(platformLabels).all();
     const stats = new Map(this.summary().platforms.map((p) => [p.platformId, p]));
     const minUnique = this.settings.get('platforms.minUniqueGames');
+    const collecting = this.settings.get('platforms.collecting');
     const before = this.previousPlatformValues();
     return all.map((p) => {
       const s = stats.get(p.id);
@@ -1886,7 +1888,8 @@ export class CollectionService {
         // Its value at the previous update (0 when it had no copies then), and that update's date; null without one.
         valueBeforeCents: before ? (before.values.get(p.id) ?? 0) : null,
         valueSince: before?.date ?? null,
-        eligible: (s?.games ?? 0) >= minUnique,
+        // Enough different games, or a console you chose to collect before then (Settings > Consoles, Start collecting; R15).
+        eligible: (s?.games ?? 0) >= minUnique || collecting.includes(p.key),
         labels: labels.filter((l) => l.platformId === p.id).map((l) => ({ label: l.label, region: l.region })),
       };
     });

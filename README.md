@@ -12,8 +12,9 @@ Squirrelcade is a free web app for video game collectors. You run it yourself, i
 
 - **Your collection, console by console:** every copy with its condition, what you paid and what it's worth, as a list or a wall of covers, with statistics, a printable report and a spreadsheet download.
 - **Every console's checklist:** what you have, what's missing and how complete you are, from Wikipedia's lists of each console's games (or a list of your own). Your consoles and controllers from PriceCharting show apart, as your hardware.
-- **What to get next:** your Acorns wishlist ranks the games you don't have by your own rules (the consoles, genres and series you like, reviews, your own picks, or a wishlist you choose yourself), with games coming soon and deals.
+- **What to get next:** your Acorns wishlist ranks the games you don't have by your own rules (the consoles, genres and series you like, reviews, your own picks, or a wishlist you choose yourself), with games coming soon and deals. Write your own **buying rules** in your words (a manual must be in the photos) for Claude to follow, or bring in a wishlist you keep in a spreadsheet.
 - **Store Mode on your phone:** scan a game's barcode in a shop and see at once whether you have it, or photograph a whole shelf and get a checklist of what you need. It works with no signal. **Add it** puts a game in your collection on the spot, with what you paid, photos and where it's kept in one window, now or after the whole haul.
+- **Collection audit:** photograph each shelf and the phone reads the spines: logged copies are ticked as seen, games on the shelf you never logged are added, and the copies logged but not found are listed to settle.
 - **Where everything is:** each copy's storage location, filled in by scanning a bag's or a case's QR label and then its games.
 - **On the way (optional):** the games you bought, waiting to be checked and added when they arrive: from your purchase emails (eBay, Mercari, Amazon, GameFly, Super Rare Games and other shops), a shop's order page pasted or screenshotted, Amazon's order history download, or a purchases CSV of your own. What you paid can be found in your order emails too.
 - **Selling and trading:** a ready listing for eBay or Mercari, a record of what you sold, and trades that come out even with friends who run Squirrelcade too.
@@ -79,7 +80,7 @@ Your AI can write it up for you: paste **[the request prompt](docs/ai/request-pr
 
 ## Optional: ask Claude about your collection
 
-With **Settings > Claude and AI apps** turned on, Claude can read your collection: "Which of these 30 garage-sale games do I already have?", "What's sealed on my PS3 shelf?", "What's at the top of my wishlist, and why?". On your home network, **Download the plugin** there and upload it in the Claude app (Customize > Plugins), for Cowork and Claude Code; nothing is opened to the internet. Tick **This plugin may also put games on On the way** before downloading it, and Claude can also note a game you bought (it waits on On the way; your collection itself never changes). [Claude and AI apps](docs/help/ai-apps.md) has the steps and the other ways in.
+With **Settings > Claude and AI apps** turned on, Claude can read your collection: "Which of these 30 garage-sale games do I already have?", "What's sealed on my PS3 shelf?", "What's at the top of my wishlist, and why?", and it follows your own buying rules (Acorns > Your buying rules) when it looks for deals. On your home network, **Download the plugin** there and upload it in the Claude app (Customize > Plugins), for Cowork and Claude Code; nothing is opened to the internet. Tick **This plugin may also put games on On the way** before downloading it, and Claude can also note a game you bought (it waits on On the way; your collection itself never changes). [Claude and AI apps](docs/help/ai-apps.md) has the steps and the other ways in.
 
 ## Privacy
 

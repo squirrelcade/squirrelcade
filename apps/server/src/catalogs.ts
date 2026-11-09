@@ -30,7 +30,7 @@ import {
   type OwnershipMapping,
   type TargetStatus,
 } from '@squirrelcade/core';
-import { and, asc, eq, gte, inArray, isNotNull, isNull, lte, sql } from 'drizzle-orm';
+import { and, asc, eq, gte, inArray, isNotNull, isNull, lte, ne, sql } from 'drizzle-orm';
 import type { FastifyInstance } from 'fastify';
 import { shown } from './access.js';
 import type { Logger } from 'pino';
@@ -38,7 +38,7 @@ import type { CollectionService } from './collection.js';
 import type { Db } from './db/index.js';
 import type { RommLink } from './romm.js';
 import { reviewsOf, type IgdbService, type Reviews } from './igdb.js';
-import { catalogDecisions, catalogEntries, copies, exclusions, ignoredProducts, ownershipMappings, pendingPurchases, platforms } from './db/schema.js';
+import { catalogBuilds, catalogDecisions, catalogEntries, copies, exclusions, ignoredProducts, ownershipMappings, pendingPurchases, platforms } from './db/schema.js';
 import type { SettingsService } from './settings.js';
 
 /** The RomM link for a game on a platform, by the names it goes by (see romm.ts). */
@@ -921,6 +921,25 @@ export class CatalogService {
     this.invalidate(platform.id);
     this.log.info({ context: 'catalogs' }, `Added "${title}" to the ${platform.name} catalog`);
     return { id: row.id };
+  }
+
+  /**
+   * Forgets a console's catalog (its games and the record of its last build), for a console you stopped collecting
+   * before owning any of its games (Roots, Stop collecting): it is followed again, not collected by having a catalog.
+   * Your own list for it stays, and so do the games you answered about or added by hand (then it keeps those, and
+   * stays collected by them). Returns how many games went.
+   */
+  clearCatalog(platformKey: string): number {
+    const platform = this.db.select().from(platforms).where(eq(platforms.key, platformKey)).get();
+    if (!platform) return 0;
+    const removed = this.db
+      .delete(catalogEntries)
+      .where(and(eq(catalogEntries.platformId, platform.id), isNull(catalogEntries.userStatus), ne(catalogEntries.source, 'user')))
+      .run().changes;
+    const left = this.db.select({ id: catalogEntries.id }).from(catalogEntries).where(eq(catalogEntries.platformId, platform.id)).get();
+    if (!left) this.db.delete(catalogBuilds).where(eq(catalogBuilds.platformId, platform.id)).run();
+    this.invalidate(platform.id);
+    return removed;
   }
 
   /** Removes a game the user added. A catalog source's games are excluded instead: the next refresh would bring them back. */

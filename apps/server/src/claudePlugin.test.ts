@@ -79,7 +79,7 @@ describe('the plugin for Claude Code and Cowork', () => {
     expect(init.result).toMatchObject({ protocolVersion: '2025-06-18', serverInfo: { name: expect.stringMatching(/squirrelcade/i) } });
     relay.tell('notifications/initialized');
     const tools = await relay.ask(2, 'tools/list');
-    expect(tools.result.tools.map((t: { name: string }) => t.name).sort()).toEqual(['check_ownership', 'get_game', 'get_wishlist', 'list_platforms', 'search_games']);
+    expect(tools.result.tools.map((t: { name: string }) => t.name).sort()).toEqual(['check_ownership', 'get_buying_rules', 'get_game', 'get_wishlist', 'list_platforms', 'search_games']);
     const check = await relay.ask(3, 'tools/call', { name: 'check_ownership', arguments: { titles: ['Cars 2'] } });
     expect(check.result.structuredContent.results[0]).toMatchObject({ status: 'owned' });
     expect(files.get('squirrelcade/skills/game-collection/SKILL.md')).toContain("this plugin's key only reads");

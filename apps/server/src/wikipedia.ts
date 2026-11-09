@@ -32,7 +32,7 @@ import type { AddedSources } from './addedSources.js';
 import type { CatalogService, SourceEntry, SyncResult } from './catalogs.js';
 import type { CollectionService } from './collection.js';
 import type { Db } from './db/index.js';
-import { catalogBuilds, catalogEntries, catalogLists, copies, platforms } from './db/schema.js';
+import { catalogBuilds, catalogEntries, catalogLists, copies, platformLabels, platforms } from './db/schema.js';
 import { APP_VERSION } from './env.js';
 import type { FetchLike, IgdbService } from './igdb.js';
 import type { NintendoLifeSource } from './nintendolife.js';
@@ -230,6 +230,25 @@ export interface BuildResult {
   conflicts: SourceConflict[];
   /** A source couldn't be read, so the others were applied (its games stay as they were). */
   error: string | null;
+}
+
+/** What starting to collect a console would build its catalog from (GET /api/v1/catalog-plan/:key). */
+export interface CatalogPlan {
+  key: string;
+  name: string;
+  /** The Wikipedia list pages its catalog is built from (none: IGDB's list, or your own). */
+  pages: string[];
+  /** The pages are Squirrelcade's own pick, not the ones named in Settings > Catalogs and matching. */
+  pagesAreDefault: boolean;
+  /** The list of your own the console has, when there is one. */
+  list: { fileName: string; games: number } | null;
+  /** IGDB's list of its games adds the games that came out on it (they count once you own one). */
+  igdb: boolean;
+  /** The sources that are on and cover it, most trusted first. */
+  sources: { id: string; name: string }[];
+  /** How PriceCharting's export names it, so an import lands on this console. */
+  labels: string[];
+  builtAt: string | null;
 }
 
 /** Where a console's catalog comes from and how its last build went, for the console page and the welcome guide. */
@@ -705,6 +724,33 @@ export class CatalogBuilder {
     return `Catalogs built: ${done.join(', ') || 'none'}${failed.length > 0 ? `. Failed: ${failed.join(', ')}` : ''}`;
   }
 
+  /**
+   * What starting to collect a console would build its catalog from (Roots' Start collecting checklist, R15): the sources
+   * that are on and cover it, the Wikipedia pages (and whether they are Squirrelcade's own pick), the list you gave it,
+   * and the names PriceCharting's export uses for it. Null for a console Squirrelcade has no record of.
+   */
+  plan(platformKey: string): CatalogPlan | null {
+    const platform = this.catalogs.platform(platformKey);
+    if (!platform) return null;
+    const sources = this.sourcesFor(platformKey);
+    const list = sources.some((s) => s.id === 'list') ? this.listOf(platformKey) : null;
+    const known = KNOWN_PLATFORMS.find((p) => p.key === platformKey);
+    const stored = this.db.select({ label: platformLabels.label }).from(platformLabels).where(eq(platformLabels.platformId, platform.id)).all().map((l) => l.label);
+    const built = this.db.select({ builtAt: catalogBuilds.builtAt }).from(catalogBuilds).where(eq(catalogBuilds.platformId, platform.id)).get();
+    const pages = sources.some((s) => s.id === 'wikipedia') ? this.pagesFor(platformKey) : [];
+    return {
+      key: platformKey,
+      name: platform.name,
+      pages,
+      pagesAreDefault: pages.length > 0 && JSON.stringify(forPlatform(wikipediaPages([]), platformKey)) === JSON.stringify(pages),
+      list: list ? { fileName: list.fileName, games: list.games } : null,
+      igdb: sources.some((s) => s.id === 'igdb-regions'),
+      sources: sources.map((s) => ({ id: s.id, name: this.sourceName(s.id) })),
+      labels: [...new Set([...(known?.labels ?? []), ...(known?.regionalLabels ?? []).map((r) => r.label), ...stored])],
+      builtAt: built?.builtAt ?? null,
+    };
+  }
+
   /** Each tracked platform (and each with a catalog) with its Wikipedia pages and last build. */
   status(): CatalogSourceStatus[] {
     const pages = wikipediaPages(this.settings.get('catalogs.wikipediaPages'));
@@ -750,6 +796,12 @@ export class CatalogBuilder {
 /** Catalog sources: their status, building now, and the user's own list for a console. */
 export function registerCatalogSourceRoutes(app: FastifyInstance, builder: CatalogBuilder, tasks: TaskRunner): void {
   app.get('/api/v1/catalogs/sources', async () => builder.status());
+
+  /** Start collecting's checklist (Roots, R15): what a console's catalog would be built from. */
+  app.get('/api/v1/catalog-plan/:key', async (request, reply) => {
+    const plan = builder.plan((request.params as { key: string }).key);
+    return plan ?? reply.code(404).send({ error: 'not-found', message: 'No such console.' });
+  });
 
   /** The catalog sources' state (Settings > Sources): lists given, Nintendo Life's last reading, Wikipedia's builds. */
   app.get('/api/v1/catalogs/source-status', async () => builder.sourceStatus());

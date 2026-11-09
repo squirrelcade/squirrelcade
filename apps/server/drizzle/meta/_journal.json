@@ -379,6 +379,13 @@
       "when": 1794150109756,
       "tag": "0053_mail_accounts",
       "breakpoints": true
+    },
+    {
+      "idx": 54,
+      "version": "6",
+      "when": 1794195523374,
+      "tag": "0054_rules_and_audit",
+      "breakpoints": true
     }
   ]
 }

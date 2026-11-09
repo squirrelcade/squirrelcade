@@ -228,10 +228,10 @@ describe('AI apps: the tools', () => {
     token = (await connect()).access;
   });
 
-  it('lists five read-only tools with schemas', async () => {
+  it('lists six read-only tools with schemas', async () => {
     const res = await mcp(token, 'tools/list');
     const tools = res.json().result.tools as { name: string; annotations: { readOnlyHint: boolean }; outputSchema?: unknown }[];
-    expect(tools.map((t) => t.name).sort()).toEqual(['check_ownership', 'get_game', 'get_wishlist', 'list_platforms', 'search_games']);
+    expect(tools.map((t) => t.name).sort()).toEqual(['check_ownership', 'get_buying_rules', 'get_game', 'get_wishlist', 'list_platforms', 'search_games']);
     expect(tools.every((t) => t.annotations.readOnlyHint && t.outputSchema)).toBe(true);
   });
 

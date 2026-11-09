@@ -123,3 +123,11 @@ describe('wordsScore', () => {
     expect(wordsScore('halo', 'Halo')).toBeGreaterThan(wordsScore('halo', 'Halo: The Master Chief Collection'));
   });
 });
+
+describe('a twin pack named with the series twice (R12)', () => {
+  it('is the same game as the box that says it once', () => {
+    same('Final Fantasy VII & Final Fantasy VIII Remastered Twin Pack', 'Final Fantasy VII & VIII Remastered Twin Pack');
+    expect(new TitleMatcher([{ title: 'Final Fantasy VII & VIII Remastered Twin Pack' }], (x) => [x.title]).find('Final Fantasy VII & Final Fantasy VIII Remastered Twin Pack', { min: SAME_GAME_AT, limit: 1 })).toHaveLength(1);
+  });
+});
+

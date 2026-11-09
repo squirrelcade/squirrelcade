@@ -103,6 +103,7 @@ function matchTokensOnce(title: string): string[] {
   // the first game keeps its whole name.
   if (tokens[0] === 'legend' && tokens[1] === 'of' && tokens[2] === 'zelda' && tokens.length > 3) tokens.splice(0, 2);
   if (tokens[0] === 'zelda' && (tokens[1] === 'the' || tokens[1] === 'a') && tokens.length > 2) tokens.splice(1, 1);
+  dropRepeatedName(tokens);
   const out = tokens.map((t, i) => {
     if (ROMAN[t]) return String(ROMAN[t]);
     const lone = t === 'i' ? 1 : t === 'v' ? 5 : t === 'x' ? 10 : 0;
@@ -111,6 +112,28 @@ function matchTokensOnce(title: string): string[] {
     return t;
   });
   return out;
+}
+
+/**
+ * Two games in one box named with the series twice, "Final Fantasy VII & Final Fantasy VIII Remastered Twin Pack", are
+ * the same as "Final Fantasy VII & VIII Remastered Twin Pack" (1.5.0, R12): after an "and", the title's own first words
+ * said again are dropped, as long as something follows them ("Mario and Mario" stays as it is).
+ */
+function dropRepeatedName(tokens: string[]): void {
+  for (let i = 1; i < tokens.length - 1; i++) {
+    if (tokens[i] !== 'and') continue;
+    let n = 0;
+    while (n < i && i + 1 + n < tokens.length - 1 && tokens[n] === tokens[i + 1 + n]) n++;
+    if (n > 0) tokens.splice(i + 1, n);
+  }
+}
+
+/** The Roman numerals a title spells ("Modern Warfare II": 2), for telling a reboot from its namesake (see crossGen.ts). */
+export function romanNumerals(title: string): number[] {
+  return normalizeTitle(title)
+    .split(' ')
+    .filter((t) => ROMAN[t])
+    .map((t) => ROMAN[t]!);
 }
 
 /**

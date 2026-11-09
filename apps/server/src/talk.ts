@@ -62,6 +62,7 @@ export interface TalkJob {
 const TOOLS = `check_ownership {"titles": ["..."], "platforms": ["..."]?}: whether each title is in the collection (owned, possible, not_owned), on which consoles, and its wishlist places if not owned.
 search_games {"query": "..."?, "platform": "..."?, "condition": "sealed"|"complete"|"loose"|"graded"?, "limit": 20?}: games in the collection by words of the title, or by console or condition.
 get_wishlist {"query": "..."?, "platform": "..."?, "priority": "High"|"Medium"|"Low"?, "limit": 25?}: the wishlist (games not owned yet), best first, with acorns (0 to 100: how much they want it).
+get_buying_rules {}: the owner's own buying rules, numbered, in their words (what a copy must have, which consoles for which games, how a deal is judged); follow them when asked what to buy.
 get_game {"id": "..."}: one game's copies (condition, value), PC storefronts, reviews; the id comes from search_games or check_ownership.
 list_platforms {}: each console with its games, copies and value, and the totals.`;
 
@@ -211,6 +212,8 @@ export class TalkService {
           const priority = ['High', 'Medium', 'Low'].includes(input.priority as string) ? (input.priority as string) : undefined;
           return JSON.stringify(this.d.tools.wishlist({ query: str(input.query), platform: str(input.platform), priority, limit: num(input.limit, 40) ?? 25 }));
         }
+        case 'get_buying_rules':
+          return JSON.stringify(this.d.tools.buyingRules(view));
         case 'get_game':
           return JSON.stringify(this.d.tools.game({ id: str(input.id) ?? '' }, view));
         case 'list_platforms':

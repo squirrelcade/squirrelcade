@@ -11,6 +11,7 @@ import {
   PLATFORM_SHORT_NAMES,
   REGION_LABELS,
   SAME_GAME_AT,
+  sameGameAcross,
   TitleMatcher,
   titleShape,
   type Completeness,
@@ -24,6 +25,7 @@ import type { AiPerson } from './aiAuth.js';
 import type { ClaimedLicense, CopyDetailsService } from './copyDetails.js';
 import type { Db } from './db/index.js';
 import { copies, copyGroups, platforms } from './db/schema.js';
+import type { BuyingRulesService } from './buyingRules.js';
 import type { HistoryService } from './history.js';
 import type { IgdbService } from './igdb.js';
 import type { NotesService } from './notes.js';
@@ -145,6 +147,8 @@ export interface AiToolDeps {
   igdb: IgdbService;
   history: HistoryService;
   notes: NotesService;
+  /** Your buying rules (1.5.0, T-278), for get_buying_rules. */
+  rules?: BuyingRulesService;
 }
 
 /** Why a tool's call can't be answered: said to the app as the tool's error. */
@@ -210,6 +214,27 @@ export class AiTools {
     };
     for (const r of rows) consoleEntry(r.platformKey, r.platform, r.productId, r.title).copies.push(r);
     for (const c of this.d.details.claims()) if (c.platformKey && c.platform) consoleEntry(c.platformKey, c.platform, c.productId, c.title).claims.push(c);
+    // One title on two consoles is one game, unless the copies are a reboot and its namesake (R12: Modern Warfare III,
+    // 2023, and 2009's Modern Warfare 3): those get a game each. A game the owner moved by hand stays where it was put.
+    const byGroup = new Map<string, ConsoleEntry[]>();
+    for (const e of consoles.values()) {
+      if (moved.has(`console|${e.platformKey}|${e.title}`)) continue;
+      const list = byGroup.get(e.groupKey);
+      if (list) list.push(e);
+      else byGroup.set(e.groupKey, [e]);
+    }
+    const window = this.d.settings.get('catalogs.crossGenYears');
+    for (const list of byGroup.values()) {
+      if (new Set(list.map((e) => e.platformKey)).size < 2) continue;
+      const seen = list.map((e) => ({ e, game: this.d.wishlist.copyOnConsole(e.platformKey, e.title) }));
+      const clusters: (typeof seen)[] = [];
+      for (const x of seen) {
+        const home = clusters.find((c) => sameGameAcross(c[0]!.game, x.game, window));
+        if (home) home.push(x);
+        else clusters.push([x]);
+      }
+      for (const c of clusters.slice(1)) for (const x of c) x.e.groupKey = `${x.e.groupKey}~${c[0]!.game.year ?? ''}`;
+    }
     const entries: Entry[] = [...consoles.values()];
     if (withPc && this.d.pc.enabled()) {
       for (const f of this.d.pc.families()) entries.push({ kind: 'pc', key: `pc|${f.key}`, groupKey: moved.get(`pc|${f.key}`) ?? f.key, title: f.title, family: f });
@@ -349,7 +374,13 @@ export class AiTools {
     const onAsked = (e: Entry) => filters.length === 0 || filters.some((f) => f(e));
     return {
       results: input.titles.map((title) => {
-        const found = snap.matcher.find(title, { min: NEAR_MISS_AT, limit: 15 });
+        // A copy that reads the same but is another game of that name (R12) is a near miss, said why.
+        const found = snap.matcher.find(title, { min: NEAR_MISS_AT, limit: 15 }).map((f) => {
+          const e = f.item;
+          if (e.kind !== 'console' || f.match.confidence < SAME_GAME_AT || this.d.wishlist.askedIsCopy(title, e.platformKey, e.title)) return f;
+          const year = this.d.wishlist.copyOnConsole(e.platformKey, e.title).year;
+          return { ...f, match: { ...f.match, confidence: 0.7, kind: 'similar' as const, why: `Another game of that name${year ? ` (yours came out in ${year})` : ''}` } };
+        });
         const describe = (f: (typeof found)[number]) => {
           const e = f.item;
           const how =
@@ -381,6 +412,30 @@ export class AiTools {
           ...(status !== 'owned' ? { wishlist: this.wishes(title) } : {}),
         };
       }),
+    };
+  }
+
+  /**
+   * get_buying_rules: the owner's own buying rules, numbered, in their words (Acorns > Your buying rules): what a copy
+   * must have, which consoles for which games, how a deal is judged. Only for someone who sees the owner's notes.
+   */
+  buyingRules(view: AiView) {
+    if (!view.notes) return { shared: false, count: 0, rules: [], about: "The owner's buying rules aren't shared with you." };
+    const rules = (this.d.rules?.list() ?? []).filter((r) => r.active);
+    return {
+      shared: true,
+      count: rules.length,
+      rules: rules.map((r) => ({
+        number: r.number!,
+        title: r.title,
+        text: r.text,
+        kind: r.kind,
+        ...(r.area ? { applies_to: r.area } : {}),
+        ...(r.notes ? { notes: r.notes } : {}),
+        ...(r.ref ? { ref: r.ref } : {}),
+      })),
+      about:
+        "Follow every rule when recommending or judging a purchase; a 'rule' must hold, a 'preference' leans one way. How much the owner wants each game (acorns) is worked out from their Acorns ranking settings: get_wishlist gives each game's acorns and the reasons behind them.",
     };
   }
 
@@ -640,6 +695,23 @@ export const PLATFORMS_OUTPUT = {
   platforms: z.array(z.object({ key: z.string(), name: z.string(), family: z.string(), short_names: z.array(z.string()), games: z.number(), copies: z.number(), sealed: z.number(), complete: z.number(), value_cents: z.number() })),
   pc: z.object({ storefronts: z.array(z.object({ storefront: z.string(), games: z.number(), owned: z.number(), subscription: z.number() })) }).nullable(),
   totals: z.object({ games: z.number(), copies: z.number(), value_cents: z.number() }),
+};
+
+export const BUYING_RULES_OUTPUT = {
+  shared: z.boolean().describe('False when the owner keeps their rules from this caller.'),
+  count: z.number(),
+  rules: z.array(
+    z.object({
+      number: z.number().describe("Its number on the owner's list."),
+      title: z.string(),
+      text: z.string().describe("The rule in the owner's words."),
+      kind: z.enum(['rule', 'preference']).describe('rule: must hold; preference: leans one way.'),
+      applies_to: z.string().optional(),
+      notes: z.string().optional().describe('Exceptions and history.'),
+      ref: z.string().optional().describe("Where it came from, such as an old spreadsheet's rule id."),
+    }),
+  ),
+  about: z.string(),
 };
 
 export const WISHLIST_INPUT = {

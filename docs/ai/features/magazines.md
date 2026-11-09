@@ -27,12 +27,13 @@ I already have **Squirrelcade** (version 1.4.0 or later), a free, self-hosted we
 
 1. **Ask before editing:** add the magazines' folder under `volumes:` in the compose file, read-only: `- /path/to/Magazines:/magazines:ro`. Recreate the container.
 2. In Squirrelcade: **Settings > Features:** turn on **Leaves: your magazine scans**. In Docker it reads `/magazines` by itself (**Settings > Magazines > Magazines folder** stays empty).
-3. Only if I ask, on **Settings > Magazines:** **Text already read** (if the scans came with it), **Read the rest of their text at night** (off to start; on a light machine, leave it off and import a friend's text instead), the confidence at which games found on the pages are linked, and **People you invite can read them too**.
+3. Only if I ask, on **Settings > Magazines:** **Text already read** (if the scans came with it), **Read the rest of their text at night** (off to start; on a light machine, leave it off and import a friend's text instead), the confidence at which games found on the pages are linked, **People you invite can read them too**, and under **What's missing**: **Where to look for an issue** (a place of my own as `Name | address`, with `{q}` for the search words) and the suggested magazines.
 
 ## Check that it works
 
 - **Leaves** is in the menu and shows my magazines within a few minutes (**Read the folder now** does it at once). **Search** finds a page by its words once its text is read.
 - **System > Status > Integrations:** the magazines folder light is green.
+- **Leaves > What's missing** lists the issues missing from each run (the gaps between my first and last issue, and from #1).
 
 ## How long it takes
 

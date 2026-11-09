@@ -1,6 +1,7 @@
 import {
   BEST_SELLING_LISTS,
   bestSellingList,
+  citationMonth,
   eraOf,
   matchKey,
   metacriticFor,
@@ -149,6 +150,20 @@ const sourceOf = (c: WikiCitation): RootsSource => ({
   archiveUrl: c.archiveUrl,
   language: c.language,
 });
+
+/** A print magazine the review tables of your games cite (D221). */
+export interface CitedMagazine {
+  /** Its name as the citations give it. */
+  name: string;
+  /** How many of your games' articles cite it. */
+  games: number;
+  /** How many of those cite it in another language than English. */
+  otherLanguage: number;
+  /** A few of the games. */
+  examples: string[];
+  /** The issues cited, by number ("#237") and by month ("2010-04"): how many of your games each reviews. */
+  issues: Record<string, number>;
+}
 
 /**
  * Roots (D165): each game's Wikipedia article, read for its own time and since. The article a game is comes from its
@@ -367,6 +382,55 @@ export class RootsService {
       }
     }
     return out;
+  }
+
+  /**
+   * The print magazines the review tables of the games you have cite (D221): for each, how many of your games, how
+   * many of those citations name another language, a few of the games, and the issues cited (by number and by month),
+   * for What's missing. Read in steps, so requests are answered in between.
+   */
+  async citedMagazines(): Promise<CitedMagazine[]> {
+    const articles = new Map<string, string>();
+    for (const c of this.db.select({ title: copies.title, key: platforms.key }).from(copies).innerJoin(platforms, eq(platforms.id, copies.platformId)).where(isNull(copies.goneAt)).all()) {
+      const title = catalogTarget(this.catalogs, c.key, c.title)?.target.title ?? c.title;
+      const article = this.articleOf(c.key, title);
+      if (article && !articles.has(article)) articles.set(article, title);
+    }
+    const works = new Map<string, CitedMagazine & { seen: Set<string> }>();
+    let k = 0;
+    for (const [article, title] of articles) {
+      if (++k % 200 === 0) await new Promise((r) => setImmediate(r));
+      const row = this.db.select({ data: gameArticles.data }).from(gameArticles).where(eq(gameArticles.article, article)).get();
+      if (!row?.data) continue;
+      const reading = JSON.parse(row.data) as RootsReading;
+      for (const r of reading.reviews ?? []) {
+        const c = r.citation;
+        if (!c || r.aggregate || kindOf(c) !== 'magazine') continue;
+        const name = (c.work ?? r.outlet).replace(/\[\[(?:[^|\]]*\|)?([^\]]*)\]\]/g, '$1').replace(/''+/g, '').trim();
+        if (!name) continue;
+        const key = name.toLowerCase();
+        const w = works.get(key) ?? { name, games: 0, otherLanguage: 0, examples: [], issues: {}, seen: new Set<string>() };
+        works.set(key, w);
+        if (!w.seen.has(article)) {
+          w.seen.add(article);
+          w.games++;
+          if (c.language && !/^(en|eng|english)\b/i.test(c.language)) w.otherLanguage++;
+          if (w.examples.length < 3) w.examples.push(title);
+        }
+        // The issue it's in, by its number and by its month, each game counted once per issue.
+        const marks = new Set<string>();
+        const n = /^\s*0*(\d{1,5})(?!\d)/.exec(c.issue ?? '');
+        if (n) marks.add(`#${n[1]}`);
+        const month = citationMonth(c.date);
+        if (month?.month) marks.add(`${month.year}-${String(month.month).padStart(2, '0')}`);
+        for (const m of marks) {
+          if (w.seen.has(`${article}|${m}`)) continue;
+          w.seen.add(`${article}|${m}`);
+          w.issues[m] = (w.issues[m] ?? 0) + 1;
+        }
+      }
+    }
+    return [...works.values()].map(({ seen: _seen, ...w }) => w).sort((a, b) => b.games - a.games);
   }
 
   /** The stored reading of a game's article, without asking Wikipedia. */

@@ -283,6 +283,81 @@ export const myWishlist = sqliteTable(
   (t) => [uniqueIndex('my_wishlist_key_idx').on(t.platformId, t.titleKey)],
 );
 
+/**
+ * Your buying rules (1.5.0, T-278): the owner's own numbered rules in plain words, for buying rather than scoring (a
+ * manual must be there, which consoles for sports games, how a deal is judged), kept and edited on Acorns › Your buying
+ * rules and handed to an AI by the connector's get_buying_rules. The scoring rules are settings (Acorns ranking).
+ */
+export const buyingRules = sqliteTable('buying_rules', {
+  id: integer('id').primaryKey({ autoIncrement: true }),
+  /** Its place in the list (its number is its place among the rules that are on). */
+  position: integer('position').notNull(),
+  title: text('title').notNull(),
+  text: text('text').notNull(),
+  /** "rule" (must hold) or "preference" (leans one way). */
+  kind: text('kind').notNull().default('rule'),
+  /** A heading the rules are grouped under ("Buying", "Finding deals"), or empty. */
+  area: text('area').notNull().default(''),
+  /** Where it came from, such as the old spreadsheet's rule id ("WR-039"), or empty. */
+  ref: text('ref').notNull().default(''),
+  notes: text('notes').notNull().default(''),
+  active: integer('active', { mode: 'boolean' }).notNull().default(true),
+  /** you, or import (a spreadsheet's rules brought in). */
+  source: text('source').notNull().default('you'),
+  createdAt: text('created_at').notNull(),
+  updatedAt: text('updated_at').notNull(),
+});
+
+/**
+ * The collection audit (1.5.0, R05): shelf by shelf, photographed, each copy seen ticked off, what's on a shelf but
+ * not logged added, and what's logged but never seen marked at the end. Kept for weeks; one open at a time.
+ */
+export const audits = sqliteTable('audits', {
+  id: integer('id').primaryKey({ autoIncrement: true }),
+  name: text('name').notNull(),
+  /** JSON array of the console keys it covers; null: every console with copies. */
+  platforms: text('platforms'),
+  startedAt: text('started_at').notNull(),
+  finishedAt: text('finished_at'),
+});
+
+/** One shelf (or one console's part of it) photographed during an audit. */
+export const auditShelves = sqliteTable('audit_shelves', {
+  id: integer('id').primaryKey({ autoIncrement: true }),
+  auditId: integer('audit_id')
+    .notNull()
+    .references(() => audits.id, { onDelete: 'cascade' }),
+  /** The shelf's name, as the owner gives it ("Office, case 3"), or empty. */
+  name: text('name').notNull().default(''),
+  platformKey: text('platform_key').notNull(),
+  /** JSON array of the kept photos' file names (under config/audit/<audit id>/). */
+  photos: text('photos').notNull().default('[]'),
+  /** Spines read on its photos. */
+  reads: integer('reads').notNull().default(0),
+  /** JSON array of the titles read that aren't in the collection, as the shelf found them (with what became of each). */
+  notLogged: text('not_logged').notNull().default('[]'),
+  createdAt: text('created_at').notNull(),
+});
+
+/** What the audit says about a copy: seen (and how), added on the spot, or, not seen, what the owner said about it. */
+export const auditCopies = sqliteTable(
+  'audit_copies',
+  {
+    id: integer('id').primaryKey({ autoIncrement: true }),
+    auditId: integer('audit_id')
+      .notNull()
+      .references(() => audits.id, { onDelete: 'cascade' }),
+    copyKey: text('copy_key').notNull(),
+    /** seen, added (on a shelf, not logged: added during the audit), or for one not seen: gone (sold, given, lost), lent. */
+    state: text('state').notNull(),
+    /** photo, barcode, hand, or for gone and lent the reason (sold, given, lost, lent). */
+    how: text('how').notNull(),
+    shelfId: integer('shelf_id'),
+    at: text('at').notNull(),
+  },
+  (t) => [uniqueIndex('audit_copies_key_idx').on(t.auditId, t.copyKey)],
+);
+
 /** The main wishlist as it stood after an import, for reporting what changed next time. */
 export const wishlistSnapshots = sqliteTable('wishlist_snapshots', {
   id: integer('id').primaryKey({ autoIncrement: true }),

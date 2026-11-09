@@ -313,5 +313,75 @@ describe('Leaves: the magazine scans (D177)', () => {
     const { magazines } = (await g.app.inject({ url: '/api/v1/magazines', cookies })).json();
     expect(await time(`/api/v1/magazines/${magazines[0].id}`)).toBeLessThan(300);
     expect(await time('/api/v1/magazines/search?q=sonic%20hedgehog')).toBeLessThan(300);
+    expect(await time('/api/v1/magazines/missing')).toBeLessThan(300);
   }, 120_000);
+
+  it("says what's missing from each run, keeps the owner's answers, and suggests magazines your games' reviews are in (D221)", async () => {
+    dir = mkdtempSync(join(tmpdir(), 'squirrelcade-magazines-'));
+    mkdirSync(join(dir, 'Electronic Gaming Monthly'));
+    mkdirSync(join(dir, 'Game Zone'));
+    const issue = (m: string, n: number, year: number, month: number) => cbz(join(dir, m, `${m} #${String(n).padStart(3, '0')} (${year}-${String(month).padStart(2, '0')}).cbz`), 1, { Series: m, Number: n, Year: year, Month: month });
+    issue('Electronic Gaming Monthly', 3, 1989, 9);
+    issue('Electronic Gaming Monthly', 6, 1989, 12);
+    issue('Game Zone', 1, 1989, 5);
+    issue('Game Zone', 80, 1996, 3);
+    issue('Game Zone', 91, 1996, 4);
+    g = await testApp();
+    const cookies = await setUp(g);
+    g.settings.update({ 'features.magazines': true, 'magazines.folder': dir });
+    await g.magazines.scan();
+    // Wikipedia's review tables of the owner's games: EGM #5 reviews two of them; Edge isn't theirs.
+    g.magazines.setCited([
+      { name: 'Edge', games: 40, otherLanguage: 0, examples: ['Super Metroid'], issues: {} },
+      { name: 'EGM', games: 9, otherLanguage: 0, examples: ['Tecmo Bowl'], issues: { '#5': 2 } },
+      { name: 'Famitsu', games: 60, otherLanguage: 55, examples: ['Chrono Trigger'], issues: {} },
+      { name: 'Wired', games: 30, otherLanguage: 0, examples: ['Doom'], issues: {} },
+      { name: 'Official Xbox Magazine', games: 12, otherLanguage: 0, examples: ['Halo'], issues: {} },
+    ]);
+    const missing = async () => (await g.app.inject({ url: '/api/v1/magazines/missing', cookies })).json();
+    const first = await missing();
+    const egm = first.magazines.find((m: { name: string }) => m.name === 'Electronic Gaming Monthly');
+    const gp = first.magazines.find((m: { name: string }) => m.name === 'Game Zone');
+    // From #1 (Count from #1), and between: #4 and #5 came one a month, so their months are known.
+    expect(egm.missing.map((m: { key: string; where: string; year: number | null; month: number | null; cited: number }) => [m.key, m.where, m.year, m.month, m.cited])).toEqual([
+      ['#1', 'before', null, null, 0],
+      ['#2', 'before', null, null, 0],
+      ['#4', 'between', 1989, 10, 0],
+      ['#5', 'between', 1989, 11, 2],
+    ]);
+    // A made-up magazine's #80 to #91 in a month is a jump, not ten missing issues.
+    expect(gp.jumps).toEqual([{ key: 'jump:#80-91', volume: null, from: 80, to: 91, fromDate: [1996, 3], toDate: [1996, 4], months: 0 }]);
+    expect(gp.missing).toHaveLength(78);
+    expect(gp.neverPrinted).toEqual([]);
+    // Suggestions: not the ones you have (EGM), not in another language (Famitsu), not one that isn't about games (Wired).
+    expect(first.suggestions).toEqual([
+      { name: 'Edge', games: 40, examples: ['Super Metroid'] },
+      { name: 'Official Xbox Magazine', games: 12, examples: ['Halo'] },
+    ]);
+    expect(first.links.map((l: { name: string }) => l.name)).toEqual(['VGHF Library', 'Internet Archive', 'eBay']);
+
+    // The owner's answers: #2 was never printed; no issues in Game Zone's jump; EGM started at #2... then forgotten.
+    const answer = (id: number, key: string, a: string | null) => g.app.inject({ method: 'PUT', url: `/api/v1/magazines/${id}/gaps`, cookies, payload: { key, answer: a } });
+    expect((await answer(egm.id, '#2', 'not')).statusCode).toBe(200);
+    expect((await answer(gp.id, 'jump:#80-91', 'none')).statusCode).toBe(200);
+    expect((await answer(egm.id, 'first', '2')).statusCode).toBe(200);
+    expect((await answer(egm.id, '#2', 'yes')).statusCode).toBe(400);
+    expect((await answer(egm.id, 'drop table', 'not')).statusCode).toBe(400);
+    expect((await answer(9999, '#2', 'not')).statusCode).toBe(404);
+    const second = await missing();
+    const egm2 = second.magazines.find((m: { name: string }) => m.name === 'Electronic Gaming Monthly');
+    expect(egm2.missing.map((m: { key: string }) => m.key)).toEqual(['#4', '#5']);
+    expect(egm2.runFirst).toBe(2);
+    expect(second.magazines.find((m: { name: string }) => m.name === 'Game Zone').jumps).toEqual([]);
+    await answer(egm.id, 'first', null);
+    expect((await missing()).magazines.find((m: { name: string }) => m.name === 'Electronic Gaming Monthly').missing.map((m: { key: string }) => m.key)).toEqual(['#1', '#4', '#5']);
+
+    // Not for me: it joins Magazines not to suggest.
+    const skipped = await g.app.inject({ method: 'POST', url: '/api/v1/magazines/suggestions/skip', cookies, payload: { name: 'Edge' } });
+    expect(skipped.json().suggestions.map((s: { name: string }) => s.name)).toEqual(['Official Xbox Magazine']);
+    expect(g.settings.get('magazines.suggestSkip')).toContain('Edge');
+    // Count from #1 off: only the gaps between.
+    g.settings.update({ 'magazines.missingFromOne': false });
+    expect((await missing()).magazines.find((m: { name: string }) => m.name === 'Electronic Gaming Monthly').missing.map((m: { key: string }) => m.key)).toEqual(['#4', '#5']);
+  });
 });

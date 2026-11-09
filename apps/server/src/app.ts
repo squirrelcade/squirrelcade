@@ -68,6 +68,7 @@ import { registerTodayRoutes } from './today.js';
 import { PlayService, registerPlayRoutes } from './play.js';
 import { registerReportRoutes } from './reports.js';
 import { registerShareRoutes, ShareService } from './share.js';
+import { ConsolePictures } from './consolePictures.js';
 import { HistoryService, registerHistoryRoutes } from './history.js';
 import { TitleIndex } from './titleIndex.js';
 import { NotesService } from './notes.js';
@@ -77,6 +78,8 @@ import { registerCollectionExport } from './collectionExport.js';
 import { registerSetRoutes, SetsService } from './sets.js';
 import { registerTaskRoutes, TaskRunner } from './tasks.js';
 import { registerWishlistRoutes, WishlistService } from './wishlist.js';
+import { BuyingRulesService, registerBuyingRulesRoutes } from './buyingRules.js';
+import { AuditService, registerAuditRoutes } from './audit.js';
 import { registerWishlistFileRoutes } from './wishlistFile.js';
 
 /** The API of each optional part (Settings > Features), refused while the part is off. */
@@ -168,6 +171,7 @@ export interface SquirrelcadeApp {
   collection: CollectionService;
   catalogs: CatalogService;
   wishlist: WishlistService;
+  buyingRules: BuyingRulesService;
   lookup: LookupService;
   notifications: NotificationService;
   igdb: IgdbService;
@@ -251,6 +255,7 @@ export async function buildApp(options: BuildOptions = {}): Promise<Squirrelcade
   const igdb = new IgdbService(db, settings, new IgdbClient(settings, options.igdbFetch, options.igdbFetch ? 0 : undefined), log);
   const catalogs = new CatalogService(db, settings, collection, log, igdb);
   const wishlist = new WishlistService(db, settings, catalogs, collection, log, igdb);
+  const buyingRules = new BuyingRulesService(db, wishlist, log);
   const romm = new RommService(db, settings, new RommClient(settings, options.rommFetch), log);
   /** The RomM link for a game by the names it goes by: the IGDB game any of them is, on the platform's RomM platforms. */
   const rommLink = (platformKey: string, titles: string[]) => {
@@ -327,7 +332,8 @@ export async function buildApp(options: BuildOptions = {}): Promise<Squirrelcade
     return true;
   };
   const followRows = () => {
-    for (const k of followed()) rootsPlatform(k);
+    // A console you chose to collect (Start collecting, R15) has its record too, followed or not.
+    for (const k of [...followed(), ...settings.get('platforms.collecting')]) rootsPlatform(k);
   };
   igdb.followed = followed;
   followRows();
@@ -527,8 +533,19 @@ export async function buildApp(options: BuildOptions = {}): Promise<Squirrelcade
     tasks.soon('catalog-build');
   };
   collection.events.on('changed', catalogsSoon);
+  let collectingBefore = [...settings.get('platforms.collecting')];
   settings.events.on('changed', (keys) => {
-    if (keys.includes('platforms.minUniqueGames')) catalogsSoon();
+    if (keys.includes('platforms.collecting')) {
+      followRows();
+      // A console taken off while you own none of its games goes back to followed: its catalog goes too (it was
+      // built for collecting it, and a catalog is what makes a console collected).
+      const now = settings.get('platforms.collecting');
+      for (const k of collectingBefore.filter((x) => !now.includes(x))) {
+        if (!(collection.platformsWithLabels().find((p) => p.key === k)?.copies ?? 0)) catalogs.clearCatalog(k);
+      }
+      collectingBefore = [...now];
+    }
+    if (keys.includes('platforms.minUniqueGames') || keys.includes('platforms.collecting')) catalogsSoon();
     // Following changed: the consoles' records now, their IGDB lists and RomM's games soon.
     if (keys.includes('platforms.followRoots') || keys.includes('platforms.unfollowed')) {
       followRows();
@@ -538,6 +555,7 @@ export async function buildApp(options: BuildOptions = {}): Promise<Squirrelcade
   });
   lookup.followed = followed;
   registerWishlistRoutes(app, wishlist, () => notes.index());
+  registerBuyingRulesRoutes(app, buyingRules);
   registerWishlistFileRoutes(app, wishlist, settings, options.igdbFetch);
   registerLookupRoutes(app, lookup);
   registerCheckRoutes(app, lookup, settings);
@@ -705,6 +723,8 @@ export async function buildApp(options: BuildOptions = {}): Promise<Squirrelcade
     firstRunDelayMs: 20 * 60_000,
     run: async (_log, progress) => {
       const cited = magazines.seedCitations(roots.printedReviews());
+      // What's missing (D221): the magazines your games' reviews cite, and the issues they're in.
+      if (settings.get('magazines.suggest')) magazines.setCited(await roots.citedMagazines());
       const [before, after] = settings
         .get('magazines.spotYears')
         .split(/[,\s]+/)
@@ -735,7 +755,9 @@ export async function buildApp(options: BuildOptions = {}): Promise<Squirrelcade
   registerPlayRoutes(app, play, (platformKey, title) => catalogTarget(catalogs, platformKey, title)?.target.title ?? null);
   registerCopyDetailRoutes(app, details, settings);
   // Storage locations made quick (D157): Pack a place, a shelf photo's games in one place, the Places page.
-  registerPlaceRoutes(app, new PlacesService(db, details, lookup, catalogs, log));
+  const places = new PlacesService(db, details, lookup, catalogs, log);
+  registerPlaceRoutes(app, places);
+  registerAuditRoutes(app, new AuditService(db, settings, collection, details, places, env.configDir, log));
   registerOwnCopyRoutes(app, { collection, catalogs, details, settings, db, igdb });
   registerCopyCareRoutes(app, care);
   // Selling (0.22.0): listing kits for eBay and Mercari, the sales, and what to sell next.
@@ -744,14 +766,14 @@ export async function buildApp(options: BuildOptions = {}): Promise<Squirrelcade
   // Help > AI-assisted setup (0.29.0): what the setup prompt says about this install, and its links.
   registerAiSetupRoutes(app, { env, settings, collection, catalogs, backups, tasks, pc, auth, shares, writeKeys: () => aiAuth.keys().filter((k) => k.canWrite).length, mailAccounts: () => mail.accounts.list().map((a) => ({ reads: a.imapHost.trim() !== '', sends: a.smtpHost.trim() !== '' })), health: () => computeHealth({ env, settings, backups, pc, problems: () => achievements.problems() }).health });
   registerReportRoutes(app, { db, settings, collection, catalogs, wishlist, igdb, notes, play, details, pc, history, care });
-  registerHistoryRoutes(app, history);
+  registerHistoryRoutes(app, history, new ConsolePictures(settings, join(env.configDir, 'console-pictures'), log, options.wikipediaFetch, options.wikipediaFetch ? 0 : undefined));
   registerCopiesRoutes(app, copies, (platformKey, title) => igdb.coverOf(platformKey, title));
   registerSeriesRoutes(app, new SeriesService(catalogs, igdb, settings, () => wishlist.preferences(), (title) => pc.ownedOnPc(title).length > 0));
   registerCollectionExport(app, { collection, catalogs, igdb, settings, notes: () => notes.index(), extras: itemExtras });
   // Claude and other AI apps (0.55.0, D127): their sign-in (with guests) and the connector's read-only tools at /mcp.
   const aiAuth = new AiAuthService(db, settings, auth, notifications, log, options.aiFetch);
   auth.passwordChanged.add((userId) => aiAuth.endAccount(userId));
-  const aiTools = new AiTools({ db, settings, pc, details, wishlist, igdb, history, notes });
+  const aiTools = new AiTools({ db, settings, pc, details, wishlist, igdb, history, notes, rules: buyingRules });
   // Talk to Squirrelcade (D148): the connector's read-only tools, with the AI model set up for Check a shelf.
   registerTalkRoutes(app, new TalkService({ settings, vision, helpers, tools: aiTools, lookup, notes }));
   collection.events.on('changed', () => aiTools.invalidate());
@@ -1183,6 +1205,7 @@ export async function buildApp(options: BuildOptions = {}): Promise<Squirrelcade
     collection,
     catalogs,
     wishlist,
+    buyingRules,
     lookup,
     notifications,
     igdb,

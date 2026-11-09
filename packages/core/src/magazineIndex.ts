@@ -53,6 +53,28 @@ export function indexedCoverDate(magazine: string, volume: string | null, number
   return null;
 }
 
+const range = (from: number, to: number, key: (n: number) => string) => Array.from({ length: to - from + 1 }, (_, i) => key(from + i));
+
+/**
+ * Numbers and months a magazine never printed (D221), so What's missing doesn't count them, in its keys ("#81",
+ * "v6#1", "1982-01"). From the Video Game History Foundation library's catalog and Retromags:
+ * - GamePro skipped #81 to #90 on purpose (for ten special issues of 1990-93): #80 is March 1996, #91 April 1996.
+ * - GameFan's Volume 6 (1998) had only five issues, numbered by their month (#2, #4, #5, #6, #8), and Volume 7 #2
+ *   (February 1999) wasn't produced.
+ * - Electronic Games' first run came out every other month in early 1982 and much of 1984: no January, February or
+ *   April 1982, nor February, April, June or August 1984.
+ * - Electronic Gaming Monthly's #237 (February 2009) was finished but never printed (put online for free in 2010); the
+ *   relaunch began at #238.
+ */
+export function neverPrinted(magazine: string): string[] {
+  const name = magazine.toLowerCase().replace(/[^a-z]/g, '');
+  if (name === 'gamepro') return range(81, 90, (n) => `#${n}`);
+  if (/(^|diehard)gamefan$/.test(name)) return [...[1, 3, 7, 9, 10, 11, 12].map((n) => `v6#${n}`), 'v7#2'];
+  if (name === 'electronicgames') return ['1982-01', '1982-02', '1982-04', '1984-02', '1984-04', '1984-06', '1984-08'];
+  if (name === 'electronicgamingmonthly' || name === 'egm') return ['#237'];
+  return [];
+}
+
 /** The dates the index and the numbering give the issues without one; an issue with a date is never changed. */
 export function guessDates(issues: readonly IssueToDate[]): GuessedDate[] {
   const out: GuessedDate[] = [];

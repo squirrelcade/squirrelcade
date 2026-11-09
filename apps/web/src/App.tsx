@@ -78,8 +78,11 @@ const IssueReaderPage = page(() => import('./pages/Leaves').then((m) => m.IssueR
 const MagazineSearchPage = page(() => import('./pages/Leaves').then((m) => m.MagazineSearchPage));
 const UndatedIssuesPage = page(() => import('./pages/Leaves').then((m) => m.UndatedIssuesPage));
 const MagazineReviewPage = page(() => import('./pages/LeavesGames').then((m) => m.MagazineReviewPage));
+const MissingIssuesPage = page(() => import('./pages/LeavesMissing').then((m) => m.MissingIssuesPage));
 const PcLibraryPage = page(() => import('./pages/PcLibrary').then((m) => m.PcLibraryPage));
 const PcWishlistPage = page(() => import('./pages/PcWishlist').then((m) => m.PcWishlistPage));
+const BuyingRulesPage = page(() => import('./pages/BuyingRules').then((m) => m.BuyingRulesPage));
+const AuditPage = page(() => import('./pages/Audit').then((m) => m.AuditPage));
 const ComingSoonPage = page(() => import('./pages/ComingSoon').then((m) => m.ComingSoonPage));
 const SettingsPage = page(() => import('./pages/Settings').then((m) => m.SettingsPage));
 const StorePage = page(() => import('./pages/Store').then((m) => m.StorePage));
@@ -336,6 +339,8 @@ function Shell({ noConnection = false }: { noConnection?: boolean }) {
             <Route path="/collection/loans" element={<SharedWithViewers setting="security.viewersSeeCopyDetails"><LoansPage /></SharedWithViewers>} />
             <Route path="/collection/places" element={<SharedWithViewers setting="security.viewersSeeCopyDetails"><PlacesPage /></SharedWithViewers>} />
             <Route path="/collection/places/labels" element={<OwnerOnly><PlaceLabelsPage /></OwnerOnly>} />
+            <Route path="/collection/audit" element={<OwnerOnly><AuditPage /></OwnerOnly>} />
+            <Route path="/collection/audit/:view" element={<OwnerOnly><AuditPage /></OwnerOnly>} />
             <Route path="/collection/sale" element={<SharedWithViewers setting="security.viewersSeeCopyDetails"><ForSalePage /></SharedWithViewers>} />
             <Route path="/collection/statistics" element={<StatisticsPage />} />
             <Route path="/collection/report" element={<ReportPage />} />
@@ -346,6 +351,7 @@ function Shell({ noConnection = false }: { noConnection?: boolean }) {
             <Route path="/leaves/search" element={<MagazineSearchPage />} />
             <Route path="/leaves/undated" element={<OwnerOnly><UndatedIssuesPage /></OwnerOnly>} />
             <Route path="/leaves/review" element={<OwnerOnly><MagazineReviewPage /></OwnerOnly>} />
+            <Route path="/leaves/missing" element={<OwnerOnly><MissingIssuesPage /></OwnerOnly>} />
             <Route path="/leaves/issue/:id" element={<IssueReaderPage />} />
             <Route path="/leaves/:id" element={<MagazinePage />} />
             <Route path="/consoles" element={<PlatformsPage />} />
@@ -360,6 +366,7 @@ function Shell({ noConnection = false }: { noConnection?: boolean }) {
             <Route path="/wishlist" element={<WishlistPage />} />
             <Route path="/acorns" element={<OwnerOnly><SettingsPage pageId="wishlist" /></OwnerOnly>} />
             <Route path="/wishlist/scoring" element={<KeepHash to="/acorns" />} />
+            <Route path="/wishlist/rules" element={<OwnerOnly><BuyingRulesPage /></OwnerOnly>} />
             <Route path="/pc/wishlist" element={<FeatureOn feature="pc" name="The PC library"><PcWishlistPage /></FeatureOn>} />
             {/* The PC wishlist's address before it moved under the PC library (0.45.0). */}
             <Route path="/wishlist/pc" element={<Navigate to="/pc/wishlist" replace />} />

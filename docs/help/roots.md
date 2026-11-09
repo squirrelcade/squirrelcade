@@ -28,6 +28,11 @@ A game's **stars** beside its name come partly from Roots: **#2 best-selling** o
 **Roots** in the menu has:
 
 - **Consoles:** each console's history (with a few games to start with) and its **Top 100** list, by generation. Click a console's card for its page (its history first, else its Top 100), or its **History** or **Top 100** link. Each opens the console's page in Roots, with its **History** and **Top 100** tabs (see [Top 100 and history](top100-history.md)); its checklist stays in the Nutshell (Consoles), linked from there.
+  A card shows:
+  - **A picture of the console:** the photo at the top of its Wikipedia article. Squirrelcade fetches each one once, in the background, shrinks it and keeps it on your server (about 12 KB each), and looks again every three months. It is a Wikimedia Commons photo, never a company logo, and the console's own page credits it (**Picture: Wikimedia Commons**). A console whose article has no such photo, or with no internet, shows Squirrelcade's own console mark.
+  - **Who made it and when:** "Sega · 1988–1997", or "Sony · 2020–" while it's on sale.
+  - **Units sold,** short ("87.4 million sold"); hover for the full text. Nothing when it isn't known. Your own version of a console's history (its page's **Edit**) wins.
+  - **Its Top 100:** the Stash's chest, a small bar and "41 of 93", opening the console's Top 100. A console you only follow shows it once you have any of its games.
 - **Timeline:** year by year, the consoles that came out and the landmark games of each (the best of its Top 100 and its "Start here" games). Nutshell > Consoles has it too.
 
 Both show the consoles you collect; **Consoles you don't collect too**, on Roots › Consoles, adds the others, and is remembered on that device (the timeline follows it).
@@ -38,7 +43,14 @@ Both show the consoles you collect; **Consoles you don't collect too**, on Roots
 
 ### Consoles you follow
 
-A console Roots knows that you don't collect (the Vectrex, the Game Boy, the Saturn, the arcade...) is **followed**: it gets what helps you know it, never what counts it. IGDB's list of its games (box art on its Top 100, details and ratings), your RomM's games for it (**In RomM**, **Play on RomM**, and its count on its card here), a page for each of its games (its Roots, videos, series and shops), and its games in the header's search and Store Mode, marked **Not tracked**. Never a checklist, a percentage, the Stash's numbers or acorns. Each card says **Followed** with **Stop following** (and **Follow** back); **Settings › Consoles › Consoles you follow** turns following off for all of them, for whoever minds the disk space (IGDB's list takes a few megabytes a console; the pictures aren't kept). A console becomes collected as before: own a few different games of it (Settings › Consoles › Unique games to track a console).
+A console Roots knows that you don't collect (the Vectrex, the Game Boy, the Saturn, the arcade...) is **followed**: it gets what helps you know it, never what counts it. IGDB's list of its games (box art on its Top 100, details and ratings), your RomM's games for it (**In RomM**, **Play on RomM**, and its count on its card here), a page for each of its games (its Roots, videos, series and shops), and its games in the header's search and Store Mode, marked **Not tracked**. Never a checklist, a percentage, the Stash's numbers or acorns. Each card says **Followed** with **Stop following** (and **Follow** back); **Settings › Consoles › Consoles you follow** turns following off for all of them, for whoever minds the disk space (IGDB's list takes a few megabytes a console; the pictures aren't kept). A console becomes collected as before: own a few different games of it (Settings › Consoles › Unique games to track a console), or start collecting it now:
+
+**Start collecting.** On a followed console's Roots page (and on its card, beside **Stop following**) **Start collecting** opens a short checklist before it does anything:
+
+1. **Its list of games:** where its catalog will come from. A Wikipedia list where Squirrelcade knows one (the Vectrex, the Neo Geo Pocket Color and the Astrocade have one), else IGDB's list of its games, where each game counts once you own it. To use your own list, its Nutshell page takes a CSV once you start; for another Wikipedia page, use Settings › Catalogs and matching (Wikipedia lists to use).
+2. **How your PriceCharting export names it:** the console names an import will put on this console ("Vectrex"). Where Squirrelcade doesn't know one, an import that names the console makes a console of its own.
+
+Then **Start collecting** adds it to **Settings › Consoles › Consoles you collect before you own enough games**, starts its catalog in the background, and says where to go next: its page in the Nutshell, or Add a game. While you own none of its games, its Roots page says **Stop collecting**: the console is followed again, and the catalog made for it goes (your own list for it and your answers stay). Once you own enough games of it, it stays collected either way.
 
 ## Now in and the Time machine
 
@@ -90,6 +102,7 @@ With the key, each channel's whole list of videos is read once (a big channel li
 ## Settings > Roots
 
 - **Read each game's Wikipedia article** (on): off, a game's Roots has only what comes with Squirrelcade, and Wikipedia isn't asked about games.
+- **Pictures of the consoles** (on): the picture on each console's card, from its Wikipedia article, kept on your server. Off, or with no internet, the cards show Squirrelcade's own console marks, and nothing is fetched.
 - **Look up the articles the catalogs don't link** (on): a game whose catalog doesn't link its article (one you added, or from your own list) is looked up on Wikipedia by its title, once.
 - **At the time lasts** (18 months).
 - **Videos on a game's page** (off), **Video channels**, and **Videos shown at first** (6): see [Videos](roots.md#videos).

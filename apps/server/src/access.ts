@@ -73,6 +73,7 @@ const VIEWER_READS: RegExp[] = [
   /^\/api\/v1\/history$/,
   /^\/api\/v1\/history\/(top100|consoles)\/[a-z0-9-]+$/,
   /^\/api\/v1\/history\/timeline$/,
+  /^\/api\/v1\/history\/picture\/[a-z0-9-]+$/,
   /^\/api\/v1\/gotd$/,
   /^\/api\/v1\/today$/,
   /^\/api\/v1\/deals$/,
