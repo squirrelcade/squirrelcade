@@ -2,7 +2,7 @@
 
 What changed in each version of Squirrelcade (called Gamefolio before 0.35.0). The decisions behind these (D01, D02...) are in [docs/DECISIONS.md](docs/DECISIONS.md), each with a tag to roll it back.
 
-## 1.5.1 (not yet released): a way to play it you have, a quicker game of the day, and the cover's own console
+## 1.5.1 (2026-11-08): a way to play it you have, the game of the day at once, and the cover's own console
 
 ### Added
 
