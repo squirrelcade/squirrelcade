@@ -1,4 +1,4 @@
-import { ActionIcon, Alert, Anchor, Button, Group, Loader, SegmentedControl, Select, Stack, Text } from '@mantine/core';
+import { ActionIcon, Alert, Anchor, Button, Group, Loader, SegmentedControl, Select, Skeleton, Stack, Text } from '@mantine/core';
 import { normalizeTitle } from '@squirrelcade/core';
 import { IconChevronLeft, IconChevronRight, IconExternalLink } from '@tabler/icons-react';
 import { useQuery } from '@tanstack/react-query';
@@ -13,7 +13,7 @@ import { GameTitle, useOpenGame } from '../GameDrawer';
 import { GoalProgress } from '../Goal';
 import { FAMILY_COLOR, FAMILY_NAME, platformColor, platformFamily } from '../look';
 import { consoleOf, dealConsoles, dealOrder, isNewListing, offPercent, type DealOrder } from '../dealTools';
-import { GameOfTheDayCard } from './GameOfTheDay';
+import { GameOfTheDayCard, type DayGame } from './GameOfTheDay';
 import type { MissingCopy } from './Review';
 import { SetupChecklist } from './system/SetupChecklist';
 import { Acorns, Have, Reviews, StashMark, type ReviewsOf } from '../Acorn';
@@ -74,7 +74,8 @@ interface CompletionLine {
 /** GET /api/v1/today. */
 interface Today {
   date: string;
-  gotd: unknown | null;
+  /** The game of the day, kept on the server (1.5.1): the card shows it with the page. */
+  gotd: DayGame | null;
   deals: Deal[];
   dealsOn: boolean;
   releases: Release[];
@@ -231,7 +232,7 @@ export function TodayPage() {
       </div>
       {canEdit && <SetupChecklist unfinishedOnly />}
       <div className="sc-row">
-        <GameOfTheDayCard className="sc-wide" />
+        <GameOfTheDayCard className="sc-wide" initial={t.gotd} />
         <Movers currency={currency} dateFormat={dateFormat} className="sc-narrow" />
       </div>
       <WeekStrip today={t.date} releases={t.releases} />
@@ -833,6 +834,18 @@ function Pulse({ currency }: { currency: string }) {
 function Movers({ currency, dateFormat, className }: { currency: string; dateFormat: Parameters<typeof date>[1]; className?: string }) {
   const movers = useQuery({ queryKey: ['collection', 'movers'], queryFn: () => api<{ since: { date: string } | null; up: Move[]; down: Move[] }>('/collection/movers'), retry: false });
   const m = movers.data;
+  // While it loads, a card of its size holds its place, so what's under it (the week, on a phone) doesn't jump (1.5.1).
+  if (movers.isLoading) {
+    return (
+      <section className={`sc-card sc-pad ${className ?? ''}`} aria-hidden="true" style={{ display: 'flex', flexDirection: 'column', gap: 8 }} data-testid="movers-skeleton">
+        <Skeleton height={26} width="60%" radius="sm" />
+        {[0, 1, 2, 3, 4].map((i) => (
+          <Skeleton key={i} height={40} radius="sm" />
+        ))}
+        <Skeleton height={18} width="40%" radius="sm" />
+      </section>
+    );
+  }
   if (!m?.since || m.up.length + m.down.length === 0) return null;
   const rows = [...m.up.slice(0, 3), ...m.down.slice(0, 2)];
   return (

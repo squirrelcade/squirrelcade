@@ -1,12 +1,14 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { seedCatalogs, setUp, testApp } from './test-helpers.js';
 
+let cookies: Record<string, string>;
+
 // R12 (1.5.0): the wishlist's false gaps the owner saw, a twin pack named with its series twice and a reboot that
 // shares its namesake's number.
 let g: Awaited<ReturnType<typeof testApp>>;
 beforeEach(async () => {
   g = await testApp();
-  await setUp(g);
+  cookies = await setUp(g);
   seedCatalogs(g, {
     owned: [
       ['1', 'Final Fantasy VII & VIII Remastered Twin Pack', 'Nintendo Switch'],
@@ -68,5 +70,11 @@ describe('the wishlist\'s false gaps (R12)', () => {
     expect(mw3!.status).toBe('owned');
     expect(mwIII!.status).toBe('owned');
     expect(mw3!.matches[0]!.game_id).not.toBe(mwIII!.matches[0]!.game_id);
+  });
+
+  it("says the same on a game's page (1.5.1)", async () => {
+    const page = async (platform: string, title: string) => (await g.app.inject({ url: `/api/v1/game?platform=${platform}&title=${encodeURIComponent(title)}`, cookies })).json();
+    expect((await page('playstation-5', 'Call of Duty: Modern Warfare II')).ownedOn).toEqual([]);
+    expect((await page('xbox-one', 'Call of Duty: Ghosts')).ownedOn).toEqual(['PlayStation 3']);
   });
 });

@@ -56,7 +56,8 @@ Two symbols say what the owner has (D142, D175, D185; the owner's rule, 2026-11-
   2. two console marks, one per company: the newest consoles they have it on, then the newest other consoles it came out on, grey;
   3. PC, at the right end.
 
-  A game they don't have shows all of it in grey.
+  A game they don't have shows all of it in grey. When a cover belongs to one console's version (the game of the day, a console's list, a game's page for one console, a copy), that console takes the first mark, in color if the owner has it there, grey if not; the second goes to the next-newest other console it came out on (the owner's, in color, first), then PC (the owner's rule, 2026-11-08). Covers that aren't about one console's version (a series, a year's Top 20) keep the rule above.
+- **Hover text:** a mark that says whether the owner has the game there says "<console> (owned)" or "<console> (unowned)", in its tooltip and its label; the cover's chest says "Stash (owned)" or "Stash (unowned)". A mark that only names a console (a filter chip) says its name.
 
 ## Words
 

@@ -1,4 +1,4 @@
-import { Box, Button, Group, Stack, Text, UnstyledButton, type MantineSpacing } from '@mantine/core';
+import { Box, Button, Group, Skeleton, Stack, Text, UnstyledButton, type MantineSpacing } from '@mantine/core';
 import { IconArrowsShuffle, IconCurrencyDollar, IconExternalLink } from '@tabler/icons-react';
 import { useMediaQuery } from '@mantine/hooks';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
@@ -8,13 +8,13 @@ import { money, timeAgo } from '../format';
 import { Acorns } from '../Acorn';
 import { GameStars, ReviewsRing, RommChip, ScoreRing, type GameStar } from '../GameHeader';
 import type { RommLink } from '../Romm';
-import { notifyError, useCanEdit, useSetting } from '../hooks';
+import { notifyError, useCanEdit, useSetting, useSettings } from '../hooks';
 import { DEEP_BUTTON } from '../look';
 import { ConsoleMark } from '../ConsoleMark';
 import { PreferencePicker } from '../Preference';
 
-/** Today's game (GET /api/v1/gotd). */
-interface DayGame {
+/** Today's game (GET /api/v1/gotd, and Today's own answer). */
+export interface DayGame {
   date: string;
   /** Which of the day's draws it is (1 for the first). */
   pick: number;
@@ -52,27 +52,109 @@ function tagOf(g: DayGame, years: number): string {
 }
 
 /**
+ * The card's place while its game comes (1.5.1, the owner: the calendar under it jumped down when it came): the same
+ * strip, box, name, chips, circle and buttons, as Mantine skeletons of their sizes.
+ */
+function DaySkeleton({ mb, className, wide }: { mb?: MantineSpacing; className?: string; wide: boolean }) {
+  const bar = (w: number | string, h = 14) => <Skeleton h={h} w={w} radius={4} />;
+  return (
+    <Box mb={mb} className={`sc-card ${className ?? ''}`} role="status" aria-label="Loading the game of the day" aria-busy="true" style={{ overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
+      <div className="sc-strip">
+        <Group gap={12} wrap="wrap">
+          <span className="sc-pixel" style={{ fontSize: 15 }}>
+            Game of the Day
+          </span>
+          <Skeleton h={22} w={150} radius={4} />
+        </Group>
+      </div>
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 24, padding: 24 }}>
+        <Skeleton w={wide ? 150 : 96} h={Math.round(((wide ? 150 : 96) * 4) / 3)} radius={3} style={{ flex: 'none' }} />
+        <Stack gap={12} style={{ flex: '1 1 320px', minWidth: 0 }}>
+          {/* Its name: one line on a computer, mostly two on a phone. */}
+          {wide ? (
+            bar('70%', 37)
+          ) : (
+            <Stack gap={0}>
+              <div style={{ height: 29, display: 'flex', alignItems: 'center' }}>{bar('85%', 24)}</div>
+              <div style={{ height: 29, display: 'flex', alignItems: 'center' }}>{bar('60%', 24)}</div>
+            </Stack>
+          )}
+          <Group gap={8}>
+            <Skeleton h={28} w={130} radius="xl" />
+            <Skeleton h={28} w={150} radius="xl" />
+            <Skeleton h={28} w={100} radius="xl" />
+          </Group>
+          {/* The stars beside its name. */}
+          <Skeleton h={24} w={110} radius="xl" />
+          <Group gap={24} align="center" wrap="wrap" mt={4}>
+            <Skeleton h={104} w={104} circle style={{ flex: 'none' }} />
+            {/* Where its acorns come from: a heading and four lines. */}
+            <Stack gap={8} style={{ flex: '1 1 240px', minWidth: 0 }}>
+              <div style={{ height: 20, display: 'flex', alignItems: 'center' }}>{bar(180, 12)}</div>
+              {[0, 1, 2, 3].map((i) => (
+                <div key={i} style={{ height: 22, display: 'flex', alignItems: 'center' }}>
+                  {bar('100%', 12)}
+                </div>
+              ))}
+            </Stack>
+          </Group>
+          {/* Why it matters: two lines on a computer, three on a phone. */}
+          <Stack gap={0}>
+            {(wide ? ['95%', '55%'] : ['95%', '95%', '55%']).map((w, i) => (
+              <div key={i} style={{ height: 20.5, display: 'flex', alignItems: 'center' }}>
+                {bar(w, 12)}
+              </div>
+            ))}
+          </Stack>
+        </Stack>
+      </div>
+      <div className="sc-foot" style={{ marginTop: 'auto' }}>
+        <Skeleton h={36} w={190} radius={8} />
+        <Skeleton h={36} w={70} radius={8} />
+        <Skeleton h={36} w={85} radius={8} />
+        <Skeleton h={36} w={135} radius={8} />
+        <span style={{ flex: '1 1 0' }} />
+        <Skeleton h={36} w={36} radius={8} />
+        <Skeleton h={36} w={140} radius={8} />
+      </div>
+    </Box>
+  );
+}
+
+/**
  * The game of the day, on Today and at the top of the Wishlist page (Settings > Notifications > Game of the day): one
  * game you don't have, picked from the top of the wishlist by its own rules, as the redesign draws it (0.48.0): a green
  * strip with why it's today's, its box, its score as a ring with the points that count most, the price and shop
- * buttons, your preference and "Another one".
+ * buttons, your preference and "Another one". `initial` is the game a page's own answer brought (Today's), so the card
+ * comes with the page; without it, a skeleton of the card holds its place while it comes, so nothing under it moves.
+ * No game today (nothing to pick): no card.
  */
-export function GameOfTheDayCard({ mb, className }: { mb?: MantineSpacing; className?: string }) {
-  const on = useSetting('gotd.enabled', false);
+export function GameOfTheDayCard({ mb, className, initial }: { mb?: MantineSpacing; className?: string; initial?: DayGame | null }) {
+  const { data: settings } = useSettings();
+  // Settings still on their way: Today's answer says whether there's a game.
+  const on = settings ? settings['gotd.enabled'] === true : initial != null;
   const currency = useSetting('general.currency', 'USD');
   const canEdit = useCanEdit();
   const open = useOpenGame();
   // The box a little smaller on a phone, so the name and the score come sooner.
   const wide = useMediaQuery('(min-width: 40em)') ?? true;
   const queryClient = useQueryClient();
-  const day = useQuery({ queryKey: ['gotd'], queryFn: () => api<{ game: DayGame | null }>('/gotd'), enabled: on === true, staleTime: 5 * 60_000 });
+  const day = useQuery({
+    queryKey: ['gotd'],
+    queryFn: () => api<{ game: DayGame | null }>('/gotd'),
+    enabled: on,
+    staleTime: 5 * 60_000,
+    initialData: initial === undefined ? undefined : { game: initial },
+  });
   const another = useMutation({
     mutationFn: () => api<{ game: DayGame | null }>('/gotd/another', { method: 'POST' }),
     onSuccess: (data) => queryClient.setQueryData(['gotd'], data),
     onError: (err) => notifyError(err),
   });
+  if (!on) return null;
+  if (day.isPending) return <DaySkeleton mb={mb} className={className} wide={wide} />;
   const g = day.data?.game;
-  if (!on || !g) return null;
+  if (!g) return null;
   const years = g.released ? Number(g.date.slice(0, 4)) - Number(g.released.slice(0, 4)) : 0;
   const [price, ...shops] = g.links;
   // Its biggest points, and its other points together ("Everything else"), each as long as its share of the largest.

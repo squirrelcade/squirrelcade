@@ -50,7 +50,8 @@ function Tile({ g, mine }: { g: Top20Game; mine: boolean }) {
         <span className="sc-square-rank" style={{ position: 'absolute', bottom: 4, left: 6, fontFamily: 'Silkscreen, ui-monospace, monospace', fontSize: 13, color: '#fff', textShadow: '0 1px 2px #000, 0 0 3px #000' }}>
           {g.rank}
         </span>
-        <CoverMarks title={g.title} coverWidth={110} platformKey={on} />
+        {/* The game across its consoles, not one console's version: the banner's usual rule (1.5.1). */}
+        <CoverMarks title={g.title} coverWidth={110} />
       </Box>
       <Text size="xs" lineClamp={2}>
         {on ? (

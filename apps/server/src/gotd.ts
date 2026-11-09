@@ -7,6 +7,7 @@ import type { GameStar, HeaderReviews } from './gameHeader.js';
 import type { RommLink } from './romm.js';
 import type { DealsService, DealView } from './deals.js';
 import { appState } from './db/schema.js';
+import type { CatalogService } from './catalogs.js';
 import type { HistoryService } from './history.js';
 import type { IgdbService } from './igdb.js';
 import type { NotificationService } from './notifications.js';
@@ -18,6 +19,13 @@ import type { WishlistService } from './wishlist.js';
  * have from the top of the wishlist (core's pickOfTheDay: a draw weighted by score, with anniversary points, and
  * no repeats for a while), shown on the Wishlist page and, if you like, sent as a message at an hour you choose.
  * "Another one" passes it over and draws again. No AI and no outside service: the wishlist's own points decide.
+ *
+ * The day's game is worked out once and kept (1.5.1, the owner: Today waited 1.6 s for it after a start, the wishlist
+ * worked out again for it each time): the first ask of the day, the half-hourly task or the start's warm-up works it out,
+ * with all the card shows, and keeps it in app_state ("gotd.today"); asking again reads that, with your preference
+ * read fresh. It's worked out again on a new day, after "Another one", and once the wishlist has been worked out
+ * again after a change (in the background); a change that may have made it a game you have (bought, or marked Do Not
+ * Recommend) is checked at once, cheaply, and a game that is no longer one to get is drawn again, as before.
  */
 
 /** What Game of the Day shares with the game page's header (D165): its stars, and RomM's link to play it. */
@@ -61,10 +69,28 @@ export interface GotdView {
 
 const HISTORY_KEY = 'gotd.history';
 const SENT_KEY = 'gotd.sent';
+/** The day's game as the card shows it, worked out once (1.5.1). */
+const TODAY_KEY = 'gotd.today';
 /** How many days of picks are kept (the repeat rules look back at most a year). */
 const KEEP_PICKS = 400;
+/** The preference that keeps a game off the wishlist. */
+const DO_NOT_RECOMMEND = 'Do Not Recommend';
+
+/** The day's game kept in app_state: the day, and what the card shows. */
+interface KeptDay {
+  date: string;
+  view: GotdView;
+}
 
 export class GameOfTheDayService {
+  /**
+   * The wishlist's stamp when this run last worked out the kept game (null: not yet since the start). While the
+   * wishlist keeps that stamp nothing it depends on changed, so the kept game stands as it is.
+   */
+  private confirmed: string | null = null;
+  /** The background refresh under way, if one is. */
+  private refreshing: Promise<void> | null = null;
+
   constructor(
     private readonly db: Db,
     private readonly settings: SettingsService,
@@ -74,6 +100,7 @@ export class GameOfTheDayService {
     private readonly notifications: Pick<NotificationService, 'notice'> | null,
     private readonly deals: DealsService | null = null,
     private readonly look: GotdLook | null = null,
+    private readonly catalogs: Pick<CatalogService, 'titles'> | null = null,
   ) {}
 
   enabled(): boolean {
@@ -84,16 +111,33 @@ export class GameOfTheDayService {
     return dayIn(this.settings.get('general.timeZone'));
   }
 
-  /** Today's game: the one picked earlier today, or a new pick (remembered). Null when off or nothing can be picked. */
+  /**
+   * Today's game: the one kept for today, or a new pick (kept). Null when off or nothing can be picked. Reading the
+   * kept one is a couple of small reads; working it out (the first ask of a day, or after a change once the wishlist
+   * is worked out again) takes the wishlist.
+   */
   current(): GotdView | null {
     if (!this.enabled()) return null;
     const date = this.today();
     const picks = this.picks();
-    const kept = picks.find((p) => p.date === date && !p.skipped);
+    const pick = picks.find((p) => p.date === date && !p.skipped);
+    const kept = pick ? this.keptFor(date, pick) : null;
     if (kept) {
-      const view = this.view(kept, date);
+      const stamp = this.wishlist.workedOut();
+      // Nothing changed since it was worked out (or, just after a start, nothing known to have: the start's warm-up
+      // works it out again once the wishlist is ready): as it was kept, with your preference read now.
+      if (stamp === null ? this.confirmed === null : stamp === this.confirmed) return this.withPreference(kept.view);
+      // Something changed and the wishlist isn't worked out again yet: still a game to get (not bought, not Do Not
+      // Recommend)? Then it's shown as kept, and worked out again in the background.
+      if (stamp === null && this.stillToGet(kept.view)) {
+        void this.refresh();
+        return this.withPreference(kept.view);
+      }
+    }
+    if (pick) {
+      const view = this.view(pick, date);
       // Still a game you don't have (not bought since this morning, still on the wishlist): keep it.
-      if (view) return view;
+      if (view) return this.keep(view);
     }
     return this.draw(date, picks);
   }
@@ -105,6 +149,26 @@ export class GameOfTheDayService {
     const picks = this.picks().map((p) => (p.date === date && !p.skipped ? { ...p, skipped: true } : p));
     this.save(picks);
     return this.draw(date, picks);
+  }
+
+  /**
+   * Works out today's game in the background and keeps it: the wishlist first, a step at a time (requests go on
+   * meanwhile), then the day's pick. The start's warm-up, the half-hourly task (so a new day's game is ready before the
+   * first page asks) and a change since it was kept call it. One at a time: a call while one runs waits for that one.
+   */
+  refresh(): Promise<void> {
+    this.refreshing ??= (async () => {
+      try {
+        await this.wishlist.rebuild();
+        // Worked out (or changed again meanwhile: then the next ask or refresh does it).
+        if (this.enabled() && this.wishlist.workedOut() !== null) this.current();
+      } catch {
+        // The next ask works it out.
+      } finally {
+        this.refreshing = null;
+      }
+    })();
+    return this.refreshing;
   }
 
   /** The picks so far, newest first. */
@@ -123,6 +187,8 @@ export class GameOfTheDayService {
    */
   async send(now = new Date()): Promise<string> {
     if (!this.enabled()) return 'The game of the day is off.';
+    // The day's game worked out here, in the background, so a new day's is ready before the first page asks for it.
+    await this.refresh();
     const date = dayIn(this.settings.get('general.timeZone'), now);
     const sent = this.db.select().from(appState).where(eq(appState.key, SENT_KEY)).get()?.value;
     if (sent === date) return `Sent today already.`;
@@ -178,7 +244,46 @@ export class GameOfTheDayService {
     const pick = pickOfTheDay(candidates, picks, date, rules, tries);
     if (!pick) return null;
     this.save([{ date, platformKey: pick.platformKey, title: pick.title, franchise: pick.franchise }, ...picks]);
-    return this.view({ date, platformKey: pick.platformKey, title: pick.title, franchise: pick.franchise }, date);
+    const view = this.view({ date, platformKey: pick.platformKey, title: pick.title, franchise: pick.franchise }, date);
+    return view ? this.keep(view) : null;
+  }
+
+  /** The game kept for today, when it's the day's pick now. */
+  private keptFor(date: string, pick: DayPick): KeptDay | null {
+    const row = this.db.select().from(appState).where(eq(appState.key, TODAY_KEY)).get();
+    if (!row) return null;
+    try {
+      const kept = JSON.parse(row.value) as KeptDay;
+      const same = kept.date === date && kept.view?.date === date && kept.view.platformKey === pick.platformKey && normalizeTitle(kept.view.title) === normalizeTitle(pick.title);
+      return same ? kept : null;
+    } catch {
+      return null;
+    }
+  }
+
+  /** Keeps the day's game as worked out now, with the wishlist's stamp it was worked out from. */
+  private keep(view: GotdView): GotdView {
+    this.writeState(TODAY_KEY, JSON.stringify({ date: view.date, view } satisfies KeptDay));
+    this.confirmed = this.wishlist.workedOut();
+    return view;
+  }
+
+  /** A kept game with your preference as it is now (set on the card a moment ago, say). */
+  private withPreference(view: GotdView): GotdView {
+    return { ...view, preference: this.wishlist.preferenceOf(view.platformKey, view.title) };
+  }
+
+  /**
+   * Whether a kept game is still one to get, cheaply, while the wishlist is worked out again after a change: not marked
+   * Do Not Recommend, and its console's catalog still has it missing (not bought, not marked just bought). The rest
+   * (hidden, its points) waits for the background refresh.
+   */
+  private stillToGet(view: GotdView): boolean {
+    if (this.wishlist.preferenceOf(view.platformKey, view.title) === DO_NOT_RECOMMEND) return false;
+    const titles = this.catalogs?.titles(view.platformKey);
+    if (!titles) return this.catalogs === null;
+    const key = normalizeTitle(view.title);
+    return titles.find((t) => normalizeTitle(t.title) === key)?.status === 'missing';
   }
 
   /** What a pick shows, from the wishlist as it is now; null when it isn't on the wishlist any more. */
@@ -231,16 +336,20 @@ function pickDeal(d: DealView | null): GotdView['deal'] {
   return d ? { date: d.date, priceCents: d.priceCents, saveCents: d.saveCents, listingTitle: d.listingTitle, listingUrl: d.listingUrl } : null;
 }
 
+/** The day's game as one person may see it: RomM's link only when the owner shares it with viewers (Settings > Security > Viewers). */
+export function forViewer(game: GotdView | null, romm: boolean): GotdView | null {
+  return game && !romm ? { ...game, romm: null } : game;
+}
+
 export function registerGotdRoutes(app: FastifyInstance, gotd: GameOfTheDayService): void {
   const off = { error: 'off', message: 'The game of the day is off (Settings > Notifications > Game of the day).' };
-  // A viewer sees RomM's link only when the owner shares it (Settings > Security > Viewers).
-  const forViewer = (request: FastifyRequest, game: GotdView | null) => (game && !shown(request).romm ? { ...game, romm: null } : game);
+  const seen = (request: FastifyRequest, game: GotdView | null) => forViewer(game, shown(request).romm);
   app.get('/api/v1/gotd', async (request, reply) => {
     if (!gotd.enabled()) return reply.code(404).send(off);
-    return { game: forViewer(request, gotd.current()) };
+    return { game: seen(request, gotd.current()) };
   });
   app.post('/api/v1/gotd/another', async (request, reply) => {
     if (!gotd.enabled()) return reply.code(404).send(off);
-    return { game: forViewer(request, gotd.another()) };
+    return { game: seen(request, gotd.another()) };
   });
 }

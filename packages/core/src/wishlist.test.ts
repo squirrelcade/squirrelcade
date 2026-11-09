@@ -28,6 +28,7 @@ const config: ScoringConfig = {
   tieInPoints: -8,
   ownedElsewherePoints: -20,
   ownedOnPcPoints: -10,
+  playablePoints: -20,
   setPoints: 0,
   preferencePoints: { 'Must Have': 20, 'Strong Interest': 10, 'No Adjustment': 0, 'Low Interest': -5 },
   priorityHigh: 85,
@@ -352,5 +353,17 @@ describe('topByPlatform', () => {
     );
     const top = topByPlatform(scored, config, 2);
     expect(top.get('playstation-3')!.map((c) => c.title)).toEqual(['G1', 'G3']);
+  });
+});
+
+describe('a game you can play another way (1.5.1)', () => {
+  it('takes the acorns for a collection or remaster you have, once, and not on top of owning it elsewhere', () => {
+    const base = { platformKey: 'nintendo-entertainment-system', platformName: 'NES', title: 'Mega Man 2', homeRegion: true };
+    const ways = [{ kind: 'collection' as const, title: 'Mega Man Legacy Collection 1 + 2', on: ['Nintendo Switch'] }, { kind: 'collection' as const, title: 'Mega Man Legacy Collection', on: ['PC (Steam)'] }];
+    const [plain, playable, both] = scoreCandidates([base, { ...base, playable: ways }, { ...base, playable: ways, ownedOn: ['Wii U'] }], new Map(), config);
+    const line = playable!.components.find((c) => c.label.startsWith('You can play it'));
+    expect(line).toEqual({ label: 'You can play it in Mega Man Legacy Collection 1 + 2 (Nintendo Switch) and in Mega Man Legacy Collection (PC (Steam))', points: -20 });
+    expect(plain!.components.some((c) => c.label.startsWith('You can play it'))).toBe(false);
+    expect(both!.components.some((c) => c.label.startsWith('You can play it'))).toBe(false);
   });
 });

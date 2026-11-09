@@ -49,9 +49,9 @@ export function StashMark({ size = 14, owned = true, label }: { size?: number; o
   );
 }
 
-/** The chest for whether you have it: filled with "You have it", grey with "You don't have it" (D197). */
+/** The chest for whether you have it: filled with "Stash (owned)", grey with "Stash (unowned)" (D197; 1.5.1, as the marks say it). */
 export function Chest({ owned, size = 14, label }: { owned: boolean; size?: number; label?: string }) {
-  return <StashMark size={size} owned={owned} label={label ?? (owned ? 'You have it' : "You don't have it")} />;
+  return <StashMark size={size} owned={owned} label={label ?? `Stash (${owned ? 'owned' : 'unowned'})`} />;
 }
 
 /**

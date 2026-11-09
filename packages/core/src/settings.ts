@@ -2225,6 +2225,43 @@ export const settingDefinitions = {
     max: 1000,
     unit: 'acorns',
   }),
+  'wishlist.playableAction': select({
+    page: 'wishlist',
+    section: 'Region and ownership',
+    label: 'A game you can play in a collection or remaster you have',
+    description:
+      "A game you don't have on its console, but can play another way you have: a collection that contains it (Mega Man 2 in a Mega Man Legacy Collection), or a remaster of it (Final Fantasy in the Pixel Remasters), on any console or on PC (owned for good). Fewer acorns: the acorns below. Leave it off: it isn't suggested. Collections are known from IGDB and from your compilation mappings; the game's page says which one.",
+    default: 'points',
+    options: [
+      { value: 'points', label: 'Fewer acorns' },
+      { value: 'off-list', label: 'Leave it off the wishlist' },
+      { value: 'ignore', label: 'No difference' },
+    ],
+  }),
+  'wishlist.playablePoints': num({
+    page: 'wishlist',
+    section: 'Region and ownership',
+    label: 'Acorns for a game you can play another way',
+    description: 'Acorns (usually negative) for a game you can play in a collection or remaster you have, when the choice above is Fewer acorns. Not added on top of owning the game itself on another console.',
+    default: -20,
+    min: -1000,
+    max: 1000,
+    unit: 'acorns',
+  }),
+  'wishlist.playableRemasters': bool({
+    page: 'wishlist',
+    section: 'Region and ownership',
+    label: 'Remasters count as a way to play it',
+    description: "A remaster you have (the Pixel Remasters for the NES and SNES Final Fantasies) counts as a way to play the original. IGDB says what's a remaster of what.",
+    default: true,
+  }),
+  'wishlist.playableRemakes': bool({
+    page: 'wishlist',
+    section: 'Region and ownership',
+    label: 'Remakes count as a way to play it',
+    description: 'A remake you have counts as a way to play the original. Off to start: a remake (Final Fantasy VII Remake) is usually a different game.',
+    default: false,
+  }),
   'wishlist.preferencePoints': points({
     page: 'wishlist',
     section: 'Your overrides',

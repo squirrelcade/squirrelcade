@@ -5,6 +5,8 @@ import {
   toCsv,
   mergeDetails,
   normalizeTitle,
+  collectionNameMatches,
+  waysToPlayText,
   releaseYear,
   romanNumerals,
   sameGameAcross,
@@ -16,6 +18,8 @@ import {
   topByPlatform,
   type GameDetails,
   type GameOnConsole,
+  type IgdbGame,
+  type WayToPlay,
   type MasterEntry,
   type ScoredCandidate,
   type SettingsValues,
@@ -30,7 +34,7 @@ import type { CatalogService } from './catalogs.js';
 import type { CollectionService } from './collection.js';
 import type { Db } from './db/index.js';
 import type { IgdbService, Reviews } from './igdb.js';
-import { catalogEntries, copies, exclusions, gameDetails, myWishlist, ownerPreferences, platforms } from './db/schema.js';
+import { catalogEntries, copies, exclusions, gameDetails, myWishlist, ownerPreferences, ownershipMappings, platforms } from './db/schema.js';
 import type { SettingsService } from './settings.js';
 import { learnedPoints, learnTastes, type LearnedTastes } from './tastes.js';
 
@@ -231,6 +235,114 @@ export class WishlistService {
     return years.some((year) => sameGameAcross({ title: asked, year }, { ...copy, igdbId: null }, window));
   }
 
+  /** Whether a copy on another console is the same game as one asked about here (sameGameAcross, R12). */
+  sameGameAs(here: { platformKey: string; title: string; entryId?: number }, there: { platformKey: string; title: string }): boolean {
+    const { entryYears } = this.across();
+    const igdb = this.igdb?.findByKey(here.platformKey, here.title);
+    const a = { title: here.title, year: (here.entryId !== undefined ? entryYears.get(here.entryId) : null) ?? releaseYear(igdb?.released), igdbId: igdb?.id ?? null };
+    return sameGameAcross(a, this.copyOnConsole(there.platformKey, there.title), this.settings.get('catalogs.crossGenYears'));
+  }
+
+  /**
+   * What ways to play a game the owner has, kept until the copies or IGDB's lists change (1.5.1): the IGDB games their
+   * copies are (by name, or for a collection or remaster by collectionNameMatches), the IGDB games of the consoles they
+   * have by id, and their compilation mappings.
+   */
+  private waysCache: {
+    key: string;
+    ownedIds: Map<number, Set<string>>;
+    byId: Map<number, IgdbGame>;
+    ownedTitleOn: Map<string, Set<string>>;
+    mapped: Map<string, string[]>;
+  } | null = null;
+
+  private waysIndex(): NonNullable<WishlistService['waysCache']> {
+    const key = `${this.collection.revision()}|${this.igdb?.stamp() ?? 0}|${this.catalogs.stamp()}`;
+    if (this.waysCache?.key === key) return this.waysCache;
+    const rows = this.db
+      .select({ title: copies.title, platformId: platforms.id, platform: platforms.name })
+      .from(copies)
+      .innerJoin(platforms, eq(platforms.id, copies.platformId))
+      .where(isNull(copies.goneAt))
+      .all();
+    const ownedIds = new Map<number, Set<string>>();
+    const ownedTitleOn = new Map<string, Set<string>>();
+    const byId = new Map<number, IgdbGame>();
+    const packages = new Map<number, IgdbGame[]>();
+    const igdb = this.igdb;
+    const packaged = (g: IgdbGame | undefined) => g?.gameType === 'Bundle' || g?.gameType === 'Remaster' || g?.gameType === 'Remake';
+    for (const pid of new Set(rows.map((r) => r.platformId))) {
+      const list = igdb?.games(pid) ?? [];
+      for (const g of list) if (!byId.has(g.id)) byId.set(g.id, g);
+      packages.set(pid, list.filter((g) => packaged(g)));
+    }
+    const PACKAGED = /collection|bundle|pack|remaster|trilogy|anthology|classics|anniversary|[+&]/i;
+    for (const r of rows) {
+      const k = matchKey(baseTitle(r.title));
+      ownedTitleOn.set(k, (ownedTitleOn.get(k) ?? new Set()).add(r.platform));
+      if (!igdb) continue;
+      let g = igdb.find(r.platformId, r.title);
+      // A collection's or remaster's box rarely says its name as IGDB does ("Final Fantasy I-VI Collection Pixel Remaster").
+      if (!packaged(g) && PACKAGED.test(r.title)) g = packages.get(r.platformId)?.find((x) => collectionNameMatches(r.title, [x.name, ...x.altNames])) ?? g;
+      if (g) ownedIds.set(g.id, (ownedIds.get(g.id) ?? new Set()).add(r.platform));
+    }
+    const mapped = new Map<string, string[]>();
+    for (const m of this.db.select({ owned: ownershipMappings.ownedTitle, satisfies: ownershipMappings.satisfiesTitle, counts: ownershipMappings.counts }).from(ownershipMappings).all()) {
+      if (m.counts === 'no') continue;
+      const k = matchKey(baseTitle(m.satisfies));
+      mapped.set(k, [...new Set([...(mapped.get(k) ?? []), m.owned])]);
+    }
+    this.waysCache = { key, ownedIds, byId, ownedTitleOn, mapped };
+    return this.waysCache;
+  }
+
+  /**
+   * The collections, remasters and remakes the owner has that a game can be played in, on any console or on PC (1.5.1):
+   * IGDB's bundles of the game (and the bundles those are in), its remasters and remakes (Settings > Acorns ranking says
+   * which count) and the bundles of those, and the owner's compilation mappings. PC counts what's owned for good.
+   */
+  waysToPlay(platformKey: string, title: string): WayToPlay[] {
+    const idx = this.waysIndex();
+    const s = this.settings;
+    const ways = new Map<string, WayToPlay>();
+    const add = (kind: WayToPlay['kind'], name: string, on: string[]) => {
+      if (on.length === 0 || !name) return;
+      const k = `${kind}|${name}`;
+      const w = ways.get(k);
+      if (w) w.on = [...new Set([...w.on, ...on])];
+      else ways.set(k, { kind, title: name, on: [...new Set(on)] });
+    };
+    const onFor = (id: number, name: string | undefined) => {
+      const on = [...(idx.ownedIds.get(id) ?? [])];
+      if (name) for (const store of this.pcOwnership(name)) on.push(`PC (${store})`);
+      return on;
+    };
+    const g = this.igdb?.findByKey(platformKey, title);
+    if (g) {
+      const via = (kind: WayToPlay['kind'], ids: readonly number[]) => {
+        for (const id of ids) {
+          const r = idx.byId.get(id);
+          if (!r) continue;
+          add(kind, r.name, onFor(id, r.name));
+          // The collections it's in: a collection of collections (Legacy Collection 1 + 2), a remaster in a collection.
+          for (const b of r.bundles ?? []) {
+            const bundle = idx.byId.get(b);
+            if (bundle) add(kind, kind === 'collection' ? bundle.name : `${r.name} in ${bundle.name}`, onFor(b, bundle.name));
+          }
+        }
+      };
+      via('collection', g.bundles ?? []);
+      if (s.get('wishlist.playableRemasters')) via('remaster', g.remasters ?? []);
+      if (s.get('wishlist.playableRemakes')) via('remake', g.remakes ?? []);
+    }
+    for (const owned of idx.mapped.get(matchKey(baseTitle(title))) ?? []) {
+      const on = [...(idx.ownedTitleOn.get(matchKey(baseTitle(owned))) ?? [])];
+      for (const store of this.pcOwnership(owned)) on.push(`PC (${store})`);
+      add('collection', owned, on);
+    }
+    return [...ways.values()];
+  }
+
   elsewhereOf(platformKey: string, platformName: string, title: string, entryId?: number): string[] {
     const { byTitle, entryYears } = this.across();
     const list = byTitle.get(matchKey(baseTitle(title)));
@@ -252,6 +364,15 @@ export class WishlistService {
 
   private cacheKey(): string {
     return `${this.catalogs.stamp()}|${this.revision}|${this.igdb?.stamp() ?? 0}`;
+  }
+
+  /**
+   * The wishlist's stamp when it's worked out for what it depends on now (compute() then answers at once), null while
+   * it needs working out again: Game of the Day keeps its pick until it changes (1.5.1).
+   */
+  workedOut(): string | null {
+    const key = this.cacheKey();
+    return this.cache?.key === key ? key : null;
   }
 
   /** The wishlist, worked out now if what it depends on changed (in one go: see rebuild for the background). */
@@ -400,6 +521,7 @@ export class WishlistService {
       hidden.set(k, [...(hidden.get(k) ?? []), e]);
     }
     const offList = new Map<string, string>();
+    const playableAction = s['wishlist.playableAction'];
     const price = (cents: number) => new Intl.NumberFormat('en-US', { style: 'currency', currency: s['general.currency'] || 'USD' }).format(cents / 100);
 
     const candidates: WishlistCandidate[] = [];
@@ -441,6 +563,13 @@ export class WishlistService {
           continue;
         }
         const owned = this.elsewhereOf(p.key, p.name, t.target.title, t.target.id);
+        // A way to play it the owner has (a collection, a remaster: 1.5.1), unless Settings say it makes no difference.
+        const playable = playableAction === 'ignore' ? [] : this.waysToPlay(p.key, t.target.title);
+        if (playable.length > 0 && playableAction === 'off-list' && owned.length === 0) {
+          hiddenCount++;
+          offList.set(`${p.key}|${normalizeTitle(t.target.title)}`, `${waysToPlayText(playable)}, so it's left off the wishlist (Settings > Acorns ranking).`);
+          continue;
+        }
         // On another region's own console (the Super Famicom), that region's releases are the console's own, not imports.
         const ownRegion = consoleRegion(p.key, homeRegion);
         candidates.push({
@@ -451,6 +580,7 @@ export class WishlistService {
           details: mergeDetails(d, this.igdb?.details(p.platformId, t.target.title)),
           ownedOn: owned,
           ownedOnPc: this.pcOwnership(t.target.title),
+          ...(playable.length > 0 ? { playable } : {}),
           inSets: this.setsOf(p.key, [t.target.title, ...(t.target.altTitles ?? [])]),
           preference: prefs.get(k),
         });

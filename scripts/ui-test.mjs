@@ -1736,12 +1736,14 @@ export async function uiTest(target, account, check) {
     check("ui: a preference picked on a console's missing games", found.length === 0, found.join(' | '));
 
     // The game of the day, turned on: a card on the Wishlist page, and "Another one" draws again (its second pick
-    // of the day, the strip says); Today shows the same card.
+    // of the day, the strip says); Today shows the same card. Its console's mark says it isn't yours: "(unowned)" (1.5.1).
     await page.request.put(`${base}/api/v1/settings`, { data: { changes: { 'gotd.enabled': true } } });
     await page.goto(`${base}/wishlist`);
     const dayCard = page.locator('article[aria-label="Game of the day"]');
     await dayCard.waitFor({ timeout: 10000 });
     const dayBefore = await dayCard.innerText();
+    const unownedMark = await dayCard.getByRole('img', { name: / \(unowned\)$/ }).count();
+    const oldMarkWords = await page.getByRole('img', { name: /\(not yours\)/ }).count();
     await dayCard.getByRole('button', { name: 'Another one' }).click();
     const secondPick = await dayCard.getByText('Pick 2 today').waitFor({ timeout: 10000 }).then(() => true, () => false);
     found = await pageProblems();
@@ -1751,8 +1753,8 @@ export async function uiTest(target, account, check) {
     await page.request.put(`${base}/api/v1/settings`, { data: { changes: { 'gotd.enabled': false } } });
     check(
       'ui: the game of the day shows on the Wishlist page and Today, and draws another',
-      found.length === 0 && /Price on PriceCharting/.test(dayBefore) && secondPick && onToday,
-      found.join(' | ') || `second pick ${secondPick}, on Today ${onToday}: ${dayBefore.slice(0, 200)}`,
+      found.length === 0 && /Price on PriceCharting/.test(dayBefore) && secondPick && onToday && unownedMark > 0 && oldMarkWords === 0,
+      found.join(' | ') || `second pick ${secondPick}, on Today ${onToday}, "(unowned)" marks ${unownedMark}, "(not yours)" marks ${oldMarkWords}: ${dayBefore.slice(0, 200)}`,
     );
 
     // Add a game (0.60.0): typing a title on a console suggests the games you have and the catalog's; a game on a console

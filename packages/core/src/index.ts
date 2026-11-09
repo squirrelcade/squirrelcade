@@ -8,6 +8,7 @@ export * from './crossGen.js';
 export * from './inference.js';
 export * from './wishlist.js';
 export * from './wishlistSheet.js';
+export * from './waysToPlay.js';
 export * from './deals.js';
 export * from './gameOfTheDay.js';
 export * from './lookup.js';

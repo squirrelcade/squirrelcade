@@ -1,4 +1,4 @@
-import { baseTitle, editionBase, matchKey, normalizeTitle, type ScoreComponent } from '@squirrelcade/core';
+import { baseTitle, editionBase, matchKey, normalizeTitle, type ScoreComponent, type WayToPlay } from '@squirrelcade/core';
 import { asc, eq, inArray, isNull } from 'drizzle-orm';
 import type { FastifyInstance } from 'fastify';
 import { shown } from './access.js';
@@ -111,6 +111,8 @@ export interface GameView {
   play: Play | null;
   /** Other consoles the same title is owned on. */
   ownedOn: string[];
+  /** The collections, remasters and remakes the owner has that it can be played in, when they don't have it here (1.5.1). */
+  playable: WayToPlay[];
   /** The same game in the PC library: each storefront, how it counts, and playtime. */
   pc: { storefront: string; ownership: string; playtimeHours: number }[];
   /** The owner's sets the game is in, with the key of each set's page. */
@@ -208,9 +210,20 @@ export function registerGameRoutes(
     // The copies here: the ones the catalog counts, or the same title.
     const counted = new Set(target?.matches.map((m) => m.productId) ?? []);
     const items = db.select().from(copies).where(isNull(copies.goneAt)).orderBy(asc(copies.id)).all();
-    const byPlatform = new Map(db.select({ id: platforms.id, name: platforms.name }).from(platforms).all().map((x) => [x.id, x.name]));
+    const platformRows = db.select({ id: platforms.id, key: platforms.key, name: platforms.name }).from(platforms).all();
+    const byPlatform = new Map(platformRows.map((x) => [x.id, x.name]));
+    const keyOf = new Map(platformRows.map((x) => [x.id, x.key]));
     const here = items.filter((i) => i.platformId === p.id && (counted.has(i.productId) || same(i.title)));
-    const ownedOn = [...new Set(items.filter((i) => i.platformId !== p.id && same(i.title)).map((i) => (i.platformId === null ? '' : (byPlatform.get(i.platformId) ?? ''))))].filter(Boolean);
+    // Owned on another console: the same title, and the same game (R12: 2022's Modern Warfare II isn't 2009's MW2).
+    const ownedOn = [
+      ...new Set(
+        items
+          .filter((i) => i.platformId !== null && i.platformId !== p.id && same(i.title) && deps.wishlist.sameGameAs({ platformKey: key, title: name, entryId: target?.target.id }, { platformKey: keyOf.get(i.platformId) ?? '', title: i.title }))
+          .map((i) => byPlatform.get(i.platformId!) ?? ''),
+      ),
+    ].filter(Boolean);
+    // A way to play it the owner has when they don't have it here: a collection that contains it, a remaster (1.5.1).
+    const playable = here.length === 0 ? deps.wishlist.waysToPlay(key, name) : [];
 
     const g = deps.igdb.find(p.id, name);
     const scored = deps.wishlist.compute();
@@ -289,6 +302,7 @@ export function registerGameRoutes(
         estimatedCents: may.paid ? i.estimatedCents : null,
       })),
       ownedOn,
+      playable,
       pc: (family?.records ?? []).map((r) => ({ storefront: r.storefront, ownership: r.ownership, playtimeHours: Math.round((r.playtimeSeconds / 3600) * 10) / 10 })),
       sets: deps.sets.setsOf(key, [name, ...(target?.target.altTitles ?? [])]).map((n) => ({ key: setKeys.get(n) ?? '', name: n })),
       wishlist: candidate ? { score: candidate.score, rank, priority: candidate.priority, components: candidate.components } : null,
@@ -411,6 +425,7 @@ export function registerGameRoutes(
       copies: [],
       play: null,
       ownedOn: consoles.filter((r) => r.copies.length > 0).map((r) => r.platform),
+      playable: [],
       pc: family.records.map((r) => ({ storefront: r.storefront, ownership: r.ownership, playtimeHours: Math.round((r.playtimeSeconds / 3600) * 10) / 10 })),
       sets: [],
       wishlist: null,

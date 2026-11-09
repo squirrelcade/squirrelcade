@@ -211,7 +211,7 @@ export function HeaderSearch() {
                             }}
                           />
                         ))}
-                        {l.onPc && <ConsoleMark platformKey="pc" name="PC" size={14} />}
+                        {l.onPc && <ConsoleMark platformKey="pc" name="PC" owned size={14} />}
                         {/* One console (a console chosen, or a game on one only): its name too. */}
                         {l.consoles.length === 1 && (
                           <Text size="xs" c="dimmed">

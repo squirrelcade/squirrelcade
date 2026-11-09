@@ -2,6 +2,22 @@
 
 What changed in each version of Squirrelcade (called Gamefolio before 0.35.0). The decisions behind these (D01, D02...) are in [docs/DECISIONS.md](docs/DECISIONS.md), each with a tag to roll it back.
 
+## 1.5.1 (not yet released): a way to play it you have, a quicker game of the day, and the cover's own console
+
+### Added
+
+- **A way to play it you have** (D229, the owner: "I actually do own a way to play Mega Man 2, because it appears in a Mega Man collection"): a game you don't have on its console, but can play in a collection you have (Mega Man 2 in Mega Man Legacy Collection 1 + 2 on Switch, or Mega Man Legacy Collection on Steam) or as a remaster you have (the NES and SNES Final Fantasies in the Pixel Remaster collection), on any console or on PC (owned for good). Its page says "You can play it in ... (Nintendo Switch, PC (Steam))", and the wishlist gives it 20 fewer acorns to start: **Acorns ranking > A game you can play in a collection or remaster you have** can leave it off the wishlist instead, or make no difference; remasters count to start, remakes don't (a remake is usually another game), each with its own switch. Squirrelcade learns what's in a collection from IGDB (its bundles, read with the next IGDB update) and from your compilation mappings, and finds your collection by the name on its box ("Final Fantasy I-VI Collection Pixel Remaster" is IGDB's "Final Fantasy I-VI Bundle"). The cover's chest on its page says so too ("Stash (unowned; playable in a collection you have)").
+
+### Changed
+
+- **The game of the day at once** (D230, the owner: "it takes like 2 or 3 seconds for the game of the day to appear above it"): the day's game is worked out once and kept, checked again in the background after a start, a collection change and every half hour, and at once when you buy it or mark it Do Not Recommend; asking for it took 1.6 s after a start on the owner's server, a few milliseconds now. Today shows it with the page, and the Wishlist page holds its place with a card-sized placeholder, so the calendar under it no longer jumps; the Biggest movers card holds its place the same way.
+- **A cover shows its own console first** (D231, the owner, on Mega Man 2 for the NES showing the Wii, the Wii U and PC but not the NES): a cover of one console's version (the game of the day, a console's lists, a game's page, a copy) has that console first on its banner, in color if you have it there and grey if not, then its newest other console, then PC.
+- **"(owned)" or "(unowned)"** (D232, the owner): the console marks' hover text says "Wii U (owned)" or "Wii U (unowned)" (it said "(not yours)"), and a cover's chest says "Stash (owned)" or "Stash (unowned)".
+
+### Fixed
+
+- **A game's page said "owned on" for a reboot's namesake** (D225's rule, now on the game's page too): 2022's Modern Warfare II no longer shows as owned on PlayStation 3 and Xbox 360 for 2009's Modern Warfare 2.
+
 ## 1.5.0 (2026-11-08): your buying rules, the collection audit, more on Roots' consoles, and what's missing from your magazines
 
 ### Added

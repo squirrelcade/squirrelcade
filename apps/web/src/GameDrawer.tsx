@@ -1,6 +1,6 @@
 import { type HistoryText } from './pages/History';
 import { RootsPart } from './RootsPart';
-import { COMPLETENESS_LABELS, missingParts, partsSearch, priceChartingUrl, shopLinksFor, shopUrl, type Completeness, type SettingsValues, type ShopLink, SHOPS_IN_LISTS } from '@squirrelcade/core';
+import { COMPLETENESS_LABELS, missingParts, partsSearch, priceChartingUrl, shopLinksFor, shopUrl, type Completeness, type SettingsValues, type ShopLink, SHOPS_IN_LISTS, waysToPlayText, type WayToPlay } from '@squirrelcade/core';
 import { Anchor, Badge, Box, Button, Divider, Drawer, Group, Loader, Menu, Modal, SimpleGrid, Stack, Text, Textarea, Tooltip, VisuallyHidden } from '@mantine/core';
 import { useMediaQuery } from '@mantine/hooks';
 import { IconCheck, IconClock, IconEyeOff, IconNotes, IconPencil, IconPlus, IconRestore, IconShoppingCart, IconX } from '@tabler/icons-react';
@@ -24,7 +24,7 @@ import { type RommLink } from './Romm';
 import { Acorn, Acorns, Reviews, StashMark } from './Acorn';
 import { HardwareToggle } from './Hardware';
 import { gameFlyLabel, useGameFly } from './GameFly';
-import { ConsoleMark } from './ConsoleMark';
+import { ConsoleMark, playablePhrase } from './ConsoleMark';
 import { GameHeader, ReviewsRing, RommChip, ScoreRing, type GameStar, type HeaderReviews } from './GameHeader';
 import { ConsoleRowChips, CopiesFrame, Fact, GetItCard, KeptIn, OnPc, OtherConsoles, Thumbs, WorthGraph, WorthValue, type ConsoleCopy, type ConsoleRow } from './CopiesCard';
 
@@ -87,6 +87,8 @@ export interface GameView {
   /** What the owner played of it (null when it isn't shown to this viewer). */
   play: Play | null;
   ownedOn: string[];
+  /** The collections, remasters and remakes you have that it can be played in (1.5.1). */
+  playable?: WayToPlay[];
   pc: { storefront: string; ownership: string; playtimeHours: number }[];
   sets: { key: string; name: string }[];
   wishlist: { score: number; rank: number | null; priority: string; components: { label: string; points: number }[] } | null;
@@ -612,6 +614,8 @@ export function GameDrawer() {
           <GameHeader
             coverId={g.coverId}
             title={g.title}
+            platformKey={g.platformKey}
+            playable={playablePhrase(g.playable)}
             stars={g.stars}
             chips={
               <>
@@ -629,7 +633,7 @@ export function GameDrawer() {
                       style={r.current ? { outline: '2px solid var(--sc-cade)', outlineOffset: 2, borderRadius: 2 } : undefined}
                     />
                   ))}
-                  {g.pc.length > 0 && <ConsoleMark platformKey="pc" name={`PC · ${[...new Set(g.pc.map((x) => x.storefront))].join(', ')}`} size={20} onClick={g.platformKey === 'pc' ? undefined : () => openGame('pc', g.title)} />}
+                  {g.pc.length > 0 && <ConsoleMark platformKey="pc" name={`PC · ${[...new Set(g.pc.map((x) => x.storefront))].join(', ')}`} owned={g.pc.some((x) => x.ownership === 'permanent')} size={20} onClick={g.platformKey === 'pc' ? undefined : () => openGame('pc', g.title)} />}
                 </span>
                 {owned === 0 && g.wishlist?.rank ? (
                   <span className="sc-chip" data-tone="want">
@@ -938,6 +942,11 @@ export function GameDrawer() {
               }
               versions={
                 <Stack gap={6}>
+                  {(g.playable?.length ?? 0) > 0 && (
+                    <Text size="sm" data-testid="ways-to-play">
+                      {waysToPlayText(g.playable!)}.
+                    </Text>
+                  )}
                   {c?.purchase && (
                     <Text size="xs" c="dimmed">
                       You marked it bought on {date(c.purchase.createdAt, dateFormat)}: it counts until an export has it.

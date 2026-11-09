@@ -619,7 +619,7 @@ function Top100Board({ d, platformKey, show, onlyRomm }: { d: Top100View; platfo
               {/* The console it's yours on, in the corner (D199). */}
               {own === 'elsewhere' && r.elsewhere && (
                 <span className="sc-square-where" aria-hidden="true">
-                  <ConsoleMark platformKey={r.elsewhere.platformKey} name={r.elsewhere.platform} size={10} />
+                  <ConsoleMark platformKey={r.elsewhere.platformKey} name={r.elsewhere.platform} owned size={10} />
                 </span>
               )}
               {own === 'digital' && !narrowArt && (

@@ -642,7 +642,7 @@ export function StorePage() {
                       style={c.platformKey === r.platformKey ? { outline: '2px solid var(--mantine-color-text)', outlineOffset: 2, borderRadius: 2 } : undefined}
                     />
                   ))}
-                  {g.onPc && <ConsoleMark platformKey="pc" name="PC" size={18} />}
+                  {g.onPc && <ConsoleMark platformKey="pc" name="PC" owned size={18} />}
                 </Group>
               )}
               <Group gap={6}>

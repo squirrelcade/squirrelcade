@@ -217,13 +217,23 @@ export interface BannerMark {
  * A cover's two console places (the owner's rules, 2026-11-06): the newest consoles you have the game on, in color, one
  * per company; the places left go to the newest other consoles it came out on, grey, a company not shown yet first. A
  * game you don't have shows the two newest consoles it came out on, both grey. PC isn't one of them (its own place).
+ *
+ * A cover of one console's version (`first`: the game of the day, a console's list, a game's page on one console) puts
+ * that console in the first place, in color when you have it there and grey when you don't (1.5.1, the owner: Mega Man 2
+ * on the NES showed the Wii, the Wii U and PC, but not the NES); the places left go as above to its other consoles.
  */
-export function bannerMarks(owned: readonly string[], released: readonly string[], most = 2): BannerMark[] {
-  const mine = coverMarks(owned, most);
-  const others = coverMarks(
-    released.filter((k) => !owned.includes(k)),
-    most - mine.length,
-    mine,
+export function bannerMarks(owned: readonly string[], released: readonly string[], most = 2, first: string | null = null): BannerMark[] {
+  const lead: BannerMark[] = first && first !== 'pc' && most > 0 ? [{ key: first, owned: owned.includes(first) }] : [];
+  const taken = lead.map((m) => m.key);
+  const mine = coverMarks(
+    owned.filter((k) => !taken.includes(k)),
+    most - lead.length,
+    taken,
   );
-  return [...mine.map((key) => ({ key, owned: true })), ...others.map((key) => ({ key, owned: false }))];
+  const others = coverMarks(
+    released.filter((k) => !owned.includes(k) && !taken.includes(k)),
+    most - lead.length - mine.length,
+    [...taken, ...mine],
+  );
+  return [...lead, ...mine.map((key) => ({ key, owned: true })), ...others.map((key) => ({ key, owned: false }))];
 }

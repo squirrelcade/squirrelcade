@@ -51,7 +51,7 @@ export function MentionChest({ m, size = 12 }: { m: Mention; size?: number }) {
   const owned = useOwnedMarks()(m.title);
   const released = useReleasedOn(m.title);
   const mine = mentionMine(m, owned, released);
-  return <StashMark size={size} owned={mine} label={mine ? 'You have it for this' : "You don't have it for this"} />;
+  return <StashMark size={size} owned={mine} label={mine ? 'Stash (owned for this)' : 'Stash (unowned for this)'} />;
 }
 
 /** A page made small on the server (D182). */

@@ -1,3 +1,4 @@
+import { waysToPlayText, type WayToPlay } from './waysToPlay.js';
 import { inferFranchise, inferGenre, inferStyle } from './inference.js';
 import type { PercentTiers, SettingsValues } from './settings.js';
 import { shapeAt, type PointShape } from './shapes.js';
@@ -40,6 +41,8 @@ export interface ScoringConfig {
   /** Applied when the same game is owned physically on another platform (WR-038). */
   ownedElsewherePoints: number;
   ownedOnPcPoints: number;
+  /** Applied when the owner can play the game in a collection, a remaster or a remake they have (1.5.1). */
+  playablePoints: number;
   /** Applied when the game is in one of the owner's sets (Sets). */
   setPoints: number;
   /** Owner preference modifiers; a preference missing here excludes the game. */
@@ -123,6 +126,8 @@ export interface WishlistCandidate {
   ownedOn?: string[];
   /** PC storefronts where the same game is owned for good (the PC library). */
   ownedOnPc?: string[];
+  /** Collections, remasters and remakes the owner has that it can be played in (1.5.1). */
+  playable?: WayToPlay[];
   /** The owner's sets the game is in ("Limited Run Games"). */
   inSets?: string[];
   preference?: string;
@@ -174,6 +179,7 @@ export function scoringConfig(s: SettingsValues): ScoringConfig {
     tieInPoints: s['wishlist.tieInPoints'],
     ownedElsewherePoints: s['wishlist.ownedElsewherePoints'],
     ownedOnPcPoints: s['wishlist.ownedOnPcPoints'],
+    playablePoints: s['wishlist.playablePoints'],
     setPoints: s['wishlist.setPoints'],
     preferencePoints: s['wishlist.preferencePoints'],
     priorityHigh: s['wishlist.priorityHigh'],
@@ -348,6 +354,8 @@ export function scoreCandidates(candidates: WishlistCandidate[], remaining: Map<
     const sig = add(`Platform significance: ${d?.significance ?? ''}`, d?.significance ? (significance.get(normalizeTitle(d.significance)) ?? 0) : 0);
     if (c.ownedOn && c.ownedOn.length > 0) add(`Owned on ${c.ownedOn.join(', ')}`, config.ownedElsewherePoints);
     if (c.ownedOnPc && c.ownedOnPc.length > 0) add(`Owned on PC (${c.ownedOnPc.join(', ')})`, config.ownedOnPcPoints);
+    // A way to play it you have (a collection, a remaster): counted once, and not on top of owning the game elsewhere.
+    if (c.playable && c.playable.length > 0 && !(c.ownedOn && c.ownedOn.length > 0) && !(c.ownedOnPc && c.ownedOnPc.length > 0)) add(waysToPlayText(c.playable), config.playablePoints);
     if (c.inSets && c.inSets.length > 0 && config.setPoints !== 0) add(`In your ${c.inSets.length === 1 ? 'set' : 'sets'} ${c.inSets.join(', ')}`, config.setPoints);
     if (preference) add(`Your preference: ${preference}`, preferences.get(normalizeTitle(preference)) ?? 0);
 

@@ -638,7 +638,7 @@ export async function buildApp(options: BuildOptions = {}): Promise<Squirrelcade
   const gotd = new GameOfTheDayService(db, settings, wishlist, igdb, history, notifications, deals, {
     romm: (platformKey, title) => (settings.get('sources.rommLinkUnowned') ? rommLink(platformKey, [title]) : null),
     stars: starsFor,
-  });
+  }, catalogs);
   registerGotdRoutes(app, gotd);
   registerTodayRoutes(app, { settings, gotd, deals, catalogs, details, collection, history, sets });
   registerSetRoutes(app, sets, (platformKey, title) => igdb.coverOf(platformKey, title));
@@ -1171,6 +1171,8 @@ export async function buildApp(options: BuildOptions = {}): Promise<Squirrelcade
         catalogs.summary();
         await new Promise((r) => setImmediate(r));
         await wishlist.rebuild();
+        // Then the day's game, kept for Today and the Wishlist page (1.5.1: a start made the first page wait for it).
+        if (gotd.enabled()) await gotd.refresh();
       } catch (err) {
         log.warn({ err, context }, context === 'startup' ? 'Warming up the catalogs failed' : 'Working out the wishlist after a change failed');
       }

@@ -26,6 +26,41 @@ describe("a cover's banner (the owner's rules, 2026-11-06)", () => {
     ]);
     expect(bannerMarks([], [])).toEqual([]);
   });
+
+  it("puts the cover's own console first on a cover of one console's version, then its other consoles (1.5.1)", () => {
+    const megaMan2 = ['nintendo-entertainment-system', 'wii', 'wii-u', 'pc'];
+    // The owner's Mega Man 2 (NES) on the game of the day: the NES first, grey, then the newest other console, grey.
+    expect(bannerMarks([], megaMan2, 2, 'nintendo-entertainment-system')).toEqual([
+      { key: 'nintendo-entertainment-system', owned: false },
+      { key: 'wii-u', owned: false },
+    ]);
+    // Without a console of its own, as before: the two newest it came out on.
+    expect(bannerMarks([], megaMan2)).toEqual([
+      { key: 'wii-u', owned: false },
+      { key: 'wii', owned: false },
+    ]);
+    // Yours there: in color.
+    expect(bannerMarks(['nintendo-entertainment-system'], megaMan2, 2, 'nintendo-entertainment-system')).toEqual([
+      { key: 'nintendo-entertainment-system', owned: true },
+      { key: 'wii-u', owned: false },
+    ]);
+    // Yours on another console: that one next, in color, before the newest you don't have.
+    expect(bannerMarks(['wii'], megaMan2, 2, 'nintendo-entertainment-system')).toEqual([
+      { key: 'nintendo-entertainment-system', owned: false },
+      { key: 'wii', owned: true },
+    ]);
+    // The next place goes to a company not shown yet, as before.
+    expect(bannerMarks([], ['nintendo-gamecube', 'playstation-2', 'xbox'], 2, 'nintendo-gamecube')).toEqual([
+      { key: 'nintendo-gamecube', owned: false },
+      { key: 'xbox', owned: false },
+    ]);
+    // A console it isn't known to have come out on still comes first; PC never takes a console's place.
+    expect(bannerMarks([], [], 2, 'super-famicom')).toEqual([{ key: 'super-famicom', owned: false }]);
+    expect(bannerMarks(['pc'], megaMan2, 2, 'pc')).toEqual([
+      { key: 'wii-u', owned: false },
+      { key: 'wii', owned: false },
+    ]);
+  });
 });
 
 describe('console marks (D175)', () => {

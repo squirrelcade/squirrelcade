@@ -151,13 +151,33 @@ export function GameStars({ stars }: { stars: GameStar[] }) {
 
 /**
  * The game page's head: its cover, its chips, its name with the stars, a line of what it is, and the two circles
- * (beside it on a computer, under it on a phone).
+ * (beside it on a computer, under it on a phone). `platformKey` is the console the page is about: its mark comes first
+ * on the cover's banner (1.5.1).
  */
-export function GameHeader({ coverId, title, chips, stars, sub, rings }: { coverId: string | null; title: string; chips: ReactNode; stars: GameStar[]; sub?: ReactNode; rings?: ReactNode }) {
+export function GameHeader({
+  coverId,
+  title,
+  platformKey,
+  playable,
+  chips,
+  stars,
+  sub,
+  rings,
+}: {
+  coverId: string | null;
+  title: string;
+  platformKey?: string | null;
+  /** A way to play it the owner has, in a few words for the cover's chest (1.5.1). */
+  playable?: string | null;
+  chips: ReactNode;
+  stars: GameStar[];
+  sub?: ReactNode;
+  rings?: ReactNode;
+}) {
   return (
     <div className="sc-game-head">
       <div className="sc-game-head-main">
-        <Cover id={coverId} width={90} placeholder title={title} />
+        <Cover id={coverId} width={90} placeholder title={title} platformKey={platformKey} playable={playable} />
         <Stack gap={6} style={{ minWidth: 0 }}>
           <span style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>{chips}</span>
           <h2 className="sc-game-name">{title}</h2>

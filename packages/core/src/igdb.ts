@@ -112,6 +112,8 @@ export interface IgdbGame {
   /** IGDB's remakes and remasters of this game (their IGDB ids); missing in lists downloaded before they were read. */
   remakes?: number[];
   remasters?: number[];
+  /** The collections (IGDB's bundles) this game is in, by their IGDB ids; missing in lists downloaded before 1.5.1. */
+  bundles?: number[];
   /**
    * For series: IGDB's main franchise, every franchise it names (the main one first) and its collections ("Super
    * Mario", "Mario Kart"); missing in lists downloaded before 1.3.0, which keep only `franchise`.
@@ -175,6 +177,7 @@ export const IGDB_GAME_FIELDS = [
   'total_rating_count',
   'remakes',
   'remasters',
+  'bundles',
 ].join(',');
 
 const JAPAN = 392;
@@ -198,6 +201,7 @@ interface ApiGame {
   involved_companies?: { developer?: boolean; publisher?: boolean; company?: { country?: number; name?: string } }[];
   remakes?: number[];
   remasters?: number[];
+  bundles?: number[];
 }
 
 const names = (list: Named[] | undefined) => (list ?? []).map((x) => x.name?.trim() ?? '').filter(Boolean);
@@ -231,6 +235,7 @@ export function igdbGameFromApi(raw: unknown, igdbPlatformId: number): IgdbGame 
     publishers: companyNames('publisher'),
     remakes: (g.remakes ?? []).filter((id) => typeof id === 'number'),
     remasters: (g.remasters ?? []).filter((id) => typeof id === 'number'),
+    bundles: (g.bundles ?? []).filter((id) => typeof id === 'number'),
     mainFranchise: g.franchise?.name?.trim() || null,
     franchises: [...new Set([g.franchise?.name?.trim() ?? '', ...names(g.franchises)].filter(Boolean))],
     collections: names(g.collections),

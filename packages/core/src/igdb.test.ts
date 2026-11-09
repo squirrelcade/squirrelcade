@@ -29,6 +29,7 @@ const apiGame = {
   total_rating_count: 57,
   remakes: [11111],
   remasters: [22222],
+  bundles: [33333],
 };
 
 const game = (over: Partial<IgdbGame>): IgdbGame => ({
@@ -83,6 +84,7 @@ describe('igdbGameFromApi', () => {
       publishers: ['Namco Bandai Games America'],
       remakes: [11111],
       remasters: [22222],
+      bundles: [33333],
       mainFranchise: null,
       franchises: [],
       collections: ['Tales'],
@@ -90,7 +92,7 @@ describe('igdbGameFromApi', () => {
   });
 
   it('copes with missing fields and rejects nameless records', () => {
-    expect(igdbGameFromApi({ id: 2, name: 'Bare' }, PS3)).toEqual(game({ id: 2, name: 'Bare', gameType: null, rating: null, ratingCount: 0, developers: [], publishers: [], remakes: [], remasters: [], mainFranchise: null, franchises: [], collections: [] }));
+    expect(igdbGameFromApi({ id: 2, name: 'Bare' }, PS3)).toEqual(game({ id: 2, name: 'Bare', gameType: null, rating: null, ratingCount: 0, developers: [], publishers: [], remakes: [], remasters: [], bundles: [], mainFranchise: null, franchises: [], collections: [] }));
     expect(igdbGameFromApi({ id: 3 }, PS3)).toBeNull();
     expect(igdbGameFromApi(null, PS3)).toBeNull();
   });

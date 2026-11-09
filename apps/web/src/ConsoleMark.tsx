@@ -23,15 +23,34 @@ function fadedBody(key: string, d: MarkDrawing): string {
   return body;
 }
 
+/** A console mark's hover text and label: the console, and whether you have the game there ("Wii U (owned)", "Wii U (unowned)"). */
+export function markLabel(name: string, owned?: boolean): string {
+  return owned === undefined ? name : `${name} (${owned ? 'owned' : 'unowned'})`;
+}
+
+/** The Stash's chest's hover text and label on a cover: whether you have the game anywhere (1.5.1, as the marks say it). */
+export function chestLabel(owned: boolean, playable?: string | null): string {
+  // A game you can play another way you have (a collection, a remaster: 1.5.1) says so.
+  return `Stash (${owned ? 'owned' : playable ? `unowned; ${playable}` : 'unowned'})`;
+}
+
+/** A way to play it, in a few words for the chest: "playable in a collection you have". */
+export function playablePhrase(ways: readonly { kind: 'collection' | 'remaster' | 'remake' }[] | undefined): string | null {
+  if (!ways || ways.length === 0) return null;
+  return ways.some((w) => w.kind === 'collection') ? 'playable in a collection you have' : ways.some((w) => w.kind === 'remaster') ? 'playable as a remaster you have' : 'playable as a remake you have';
+}
+
 /**
  * A console's mark: Squirrelcade's drawing of it (D185, after its hardware and symbols) in its color where you have the
  * game (or the console's games), faded grey where you don't; a console without a drawing keeps its pixel mark (D175).
- * Every place a console is named uses this one. `size` is its height in pixels.
+ * Every place a console is named uses this one. `size` is its height in pixels. Where it says whether you have the
+ * game there (`owned` given), its hover text says so: "Wii U (owned)", "Wii U (unowned)" (1.5.1); a mark that only
+ * names a console (a filter chip, a list of consoles) says its name.
  */
 export function ConsoleMark({
   platformKey,
   name,
-  owned = true,
+  owned: ownedGiven,
   size = 16,
   onClick,
   style,
@@ -39,6 +58,7 @@ export function ConsoleMark({
   platformKey: string;
   /** The console's name, for its label (and the mark of a console the table has none for). */
   name: string;
+  /** Whether you have the game there: in color and "(owned)", or grey and "(unowned)". Left out: in color, its name alone. */
   owned?: boolean;
   size?: number;
   onClick?: (ev: MouseEvent) => void;
@@ -46,7 +66,8 @@ export function ConsoleMark({
 }) {
   const id = useId().replace(/[^a-zA-Z0-9_-]/g, '');
   const drawing = drawingOf(platformKey);
-  const label = `${name}${owned ? '' : ' (not yours)'}`;
+  const owned = ownedGiven ?? true;
+  const label = markLabel(name, ownedGiven);
   if (drawing) {
     const body = (owned ? drawing.svg : fadedBody(platformKey, drawing)).replaceAll('__ID__', `m${id}`);
     return (
@@ -151,16 +172,17 @@ export function useReleasedOn(title: string, enabled = true): string[] {
  * (filled when you have the game on any console or PC, grey when you don't), the two newest consoles you have it on,
  * one per company, the places left going to the newest other consoles it came out on, grey, and PC at the right end
  * (grey when you don't have it on PC, or none: Settings > Interface). A game you don't have shows it all in grey.
- * `platformKey` is the console the cover stands for, when it's known to have come out there.
+ * `platformKey` is the console whose version the cover is (the game of the day, a console's list, a game's page on one
+ * console): that console takes the first place, in color when you have it there, grey when you don't (1.5.1); leave it
+ * out for a cover of the game across its consoles (a series, a year's Top 20).
  */
-export function CoverMarks({ title, coverWidth, platformKey }: { title: string; coverWidth: number; platformKey?: string | null }) {
+export function CoverMarks({ title, coverWidth, platformKey, playable }: { title: string; coverWidth: number; platformKey?: string | null; playable?: string | null }) {
   const on = useSetting('interface.coverMarks', true);
   const pcStyle = useSetting('interface.coverMarksPc', 'dotted');
   const owned = useOwnedMarks()(title);
-  const out = useReleasedOn(title, on);
+  const released = useReleasedOn(title, on);
   if (!on) return null;
-  const released = platformKey && platformKey !== 'pc' && !out.includes(platformKey) ? [platformKey, ...out] : out;
-  const consoles = bannerMarks(owned, released);
+  const consoles = bannerMarks(owned, released, 2, platformKey ?? null);
   const onPc = owned.includes('pc');
   const yours = owned.length > 0;
   // Big enough to read at a glance on the smallest tiles, small enough to leave the art be.
@@ -174,7 +196,7 @@ export function CoverMarks({ title, coverWidth, platformKey }: { title: string; 
       aria-label={yours ? 'Yours, and the consoles you have it on' : "You don't have it"}
       style={{ position: 'absolute', top: 5, right: 5, padding: small ? '3px 4px' : '4px 6px', borderRadius: 6, background: 'rgba(255, 255, 255, 0.93)', boxShadow: '0 1px 3px rgba(0, 0, 0, 0.3)', pointerEvents: 'auto' }}
     >
-      <StashMark size={size} owned={yours} label={yours ? 'You have it' : "You don't have it"} />
+      <StashMark size={size} owned={yours} label={chestLabel(yours, playable)} />
       {consoles.map((m) => (
         <ConsoleMark key={m.key} platformKey={m.key} name={consoleName(m.key)} owned={m.owned} size={size} />
       ))}

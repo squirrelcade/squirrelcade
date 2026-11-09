@@ -5,7 +5,7 @@ import type { CatalogService } from './catalogs.js';
 import { exportDate, type CollectionService } from './collection.js';
 import type { CopyDetailsService, Loan } from './copyDetails.js';
 import type { DealsService, DealView } from './deals.js';
-import type { GameOfTheDayService, GotdView } from './gotd.js';
+import { forViewer, type GameOfTheDayService, type GotdView } from './gotd.js';
 import type { HistoryService } from './history.js';
 import type { Reviews } from './igdb.js';
 import type { SetsService } from './sets.js';
@@ -107,7 +107,8 @@ export function registerTodayRoutes(
     }
     return {
       date,
-      gotd: gotd.enabled() ? gotd.current() : null,
+      // The card shows this one at once (1.5.1); a viewer sees RomM's link only when the owner shares it, as on /gotd.
+      gotd: gotd.enabled() ? forViewer(gotd.current(), shown(request).romm) : null,
       deals: dealList,
       dealsOn: deals.enabled(),
       releases,
