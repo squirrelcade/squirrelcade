@@ -267,7 +267,7 @@ function wordsOf(name: string, date: string | null | undefined): Words | null {
  * that names another game: a subtitle the shorter lacks counts only as an edition or as "The Video Game" ("Resident
  * Evil" is not "Resident Evil: Revelations", nor "Far Cry 3: Classic Edition" "Far Cry 3: Blood Dragon: Classic
  * Edition"). The shorter has two words or more, and the two came out within a year of each other (with a date missing,
- * the shorter needs four words). "FIFA 09" is "FIFA Soccer 09", "007 Quantum of Solace" is "James Bond 007: Quantum of
+ * the words the longer adds have to name an edition). "FIFA 09" is "FIFA Soccer 09", "007 Quantum of Solace" is "James Bond 007: Quantum of
  * Solace", "PES 2014: Pro Evolution Soccer" is "Pro Evolution Soccer 2014", "Star Trek (2013 video game)" is "Star
  * Trek: The Video Game".
  */
@@ -281,7 +281,9 @@ function sameWords(a: Words, b: Words): boolean {
     if (![...part].some((w) => EDITION_WORDS.has(w)) && ![...part].every((w) => GAME_WORDS.has(w))) return false;
   }
   if (a.year !== null && b.year !== null) return Math.abs(a.year - b.year) <= 1;
-  return small.words.size >= 4;
+  // With a date missing, only an edition: the words the longer adds name one ("Silver Shield Combo Pack", never "Dead
+  // or Alive 5 Last Round" for "Dead or Alive 5").
+  return [...big.words].some((w) => !small.words.has(w) && EDITION_WORDS.has(w));
 }
 
 export function mergeSources(
@@ -331,6 +333,14 @@ export function mergeSources(
     if (id !== undefined && !byIgdb.has(id)) byIgdb.set(id, g);
   };
 
+  /**
+   * A game's year as the sources read so far give it: your list may have no date for a game Wikipedia dates, and a
+   * game's facts are only settled at the end.
+   */
+  const yearOf = (m: MergedGame): number | null => {
+    const d = [m.releaseDate, ...(claims.get(m)?.releaseDate.map((c) => c.value) ?? [])].find((v) => v && /^\d{4}/.test(v.trim()));
+    return d ? Number(d.trim().slice(0, 4)) : null;
+  };
   /** A higher source's game whose name has every word of one of this game's names, or the other way round (sameWords). */
   const contained = (g: LayerGame, higher: (m: MergedGame | undefined) => MergedGame | undefined): MergedGame | undefined => {
     for (const name of [g.title, ...(g.altTitles ?? [])]) {
@@ -340,7 +350,10 @@ export function mergeSources(
       for (const word of mine.words) {
         for (const other of byWord.get(word) ?? []) if (higher(other.game)) shared.set(other, (shared.get(other) ?? 0) + 1);
       }
-      for (const [other, n] of shared) if ((n === other.words.size || n === mine.words.size) && sameWords(mine, other)) return other.game;
+      for (const [other, n] of shared) {
+        if (n !== other.words.size && n !== mine.words.size) continue;
+        if (sameWords(mine, other.year === null ? { ...other, year: yearOf(other.game) } : other)) return other.game;
+      }
     }
     return undefined;
   };

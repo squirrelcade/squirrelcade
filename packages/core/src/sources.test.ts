@@ -245,6 +245,29 @@ describe('a source that only adds games, one name inside another (1.5.2)', () =>
     expect(games.filter((g) => g.source === 'igdb-regions').map((g) => g.title)).toEqual(other.games.map((g) => g.title));
   });
 
+  it("reads a game's year from any source above, and with no date only takes an edition", () => {
+    const list: SourceLayer = {
+      id: 'list',
+      adds: 'all',
+      games: [{ title: 'FIFA 09' }, { title: 'Dead or Alive 5', altTitles: ['Dead or Alive 5 Ultimate'] }, { title: 'Mortal Kombat vs. DC Universe' }],
+    };
+    // Wikipedia dates your list's games, but a game's facts are only settled at the end.
+    const wiki: SourceLayer = { id: 'wikipedia', adds: 'none', games: [{ title: 'FIFA 09', releaseDate: '2008-10-14' }, { title: 'Dead or Alive 5', releaseDate: '2012-09-25' }] };
+    const igdb: SourceLayer = {
+      id: 'igdb-regions',
+      adds: 'all',
+      fills: false,
+      games: [
+        { title: 'FIFA Soccer 09', releaseDate: '2008-10-02' },
+        { title: 'Dead or Alive 5 Last Round', releaseDate: '2015-02-17' },
+        { title: 'Mortal Kombat vs DC Universe: Silver Shield Combo Pack' },
+        { title: 'Mortal Kombat vs DC Universe Arena' },
+      ],
+    };
+    const { games } = mergeSources([list, wiki, igdb]);
+    expect(games.filter((g) => g.source === 'igdb-regions').map((g) => g.title)).toEqual(['Dead or Alive 5 Last Round', 'Mortal Kombat vs DC Universe Arena']);
+  });
+
   it('only for a source that only adds games', () => {
     const { games } = mergeSources([
       { id: 'list', adds: 'all', games: [{ title: 'FIFA 09', releaseDate: '2008-10-14' }] },
