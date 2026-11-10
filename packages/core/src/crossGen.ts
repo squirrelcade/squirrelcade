@@ -1,4 +1,4 @@
-import type { CatalogMatch, CatalogTarget, TargetResult } from './catalog.js';
+import { completionPercent, type CatalogMatch, type CatalogTarget, type TargetResult } from './catalog.js';
 import { matchKey, romanNumerals } from './text.js';
 
 /**
@@ -67,8 +67,7 @@ export function applyCrossGen(
   });
   if (found === 0) return match;
   const counts = { ...match.counts, owned: match.counts.owned + found, missing: match.counts.missing - found };
-  const counting = counts.targets - counts.excluded - counts.unconfirmed - counts.upcoming;
-  return { ...match, targets, counts, percent: counting === 0 ? 0 : Math.round((counts.owned / counting) * 1000) / 10 };
+  return { ...match, targets, counts, percent: completionPercent(counts) };
 }
 
 /** The year a catalog's release date starts with ("2017-03-03", "2017"), or null ("TBA", none). */

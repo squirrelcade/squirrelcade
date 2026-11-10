@@ -1,4 +1,4 @@
-import { addDays, dayIn } from '@squirrelcade/core';
+import { addDays, countedTargets, dayIn } from '@squirrelcade/core';
 import type { FastifyInstance } from 'fastify';
 import { shown } from './access.js';
 import type { CatalogService } from './catalogs.js';
@@ -55,10 +55,7 @@ export function completion(catalogs: CatalogService, history: HistoryService | n
   const percent = (owned: number, total: number) => (total === 0 ? 0 : Math.round((owned / total) * 1000) / 10);
   const tracked = catalogs.summary().filter((c) => c.owned > 0);
   const lines: CompletionLine[] = [
-    ...tracked.map((c) => {
-      const total = c.owned + c.missing + c.review;
-      return { kind: 'catalog' as const, key: c.key, name: c.name, owned: c.owned, total, percent: percent(c.owned, total) };
-    }),
+    ...tracked.map((c) => ({ kind: 'catalog' as const, key: c.key, name: c.name, owned: c.owned, total: countedTargets(c), percent: c.percent })),
     ...(history?.top100Progress(tracked.map((c) => c.key)) ?? []).map((t) => ({ kind: 'top100' as const, key: t.platformKey, name: t.platform, owned: t.owned, total: t.total, percent: percent(t.owned, t.total) })),
     ...(sets?.list() ?? []).map((s) => ({ kind: 'set' as const, key: s.key, name: s.name, owned: s.owned, total: s.games, percent: percent(s.owned, s.games) })),
   ].filter((l) => l.owned > 0 && l.total >= COMPLETION_MIN_GAMES);

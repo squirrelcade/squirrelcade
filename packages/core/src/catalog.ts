@@ -97,7 +97,7 @@ export interface CatalogMatch {
   /** Owned products that satisfy no target (not in the catalog, or only suggested). */
   unmatched: OwnedProduct[];
   counts: { targets: number; owned: number; missing: number; review: number; excluded: number; unconfirmed: number; upcoming: number; extra: number };
-  /** Owned share of the targets that count (required and optional, not unconfirmed or upcoming), 0 to 100. */
+  /** Owned share of the targets that count (completionPercent: not excluded, unconfirmed, upcoming, or another region's unless owned), 0 to 100. */
   percent: number;
 }
 
@@ -459,6 +459,20 @@ export function matchCatalog(
 
   const counts = { targets: results.length, owned: 0, missing: 0, review: 0, excluded: 0, unconfirmed: 0, upcoming: 0, extra: 0 };
   for (const r of results) counts[r.status]++;
-  const counting = counts.targets - counts.excluded - counts.unconfirmed - counts.upcoming - counts.extra;
-  return { targets: results, unmatched, counts, percent: counting === 0 ? 0 : Math.round((counts.owned / counting) * 1000) / 10 };
+  return { targets: results, unmatched, counts, percent: completionPercent(counts) };
+}
+
+/**
+ * The catalog games that count toward completion: all of them but the excluded, the not confirmed physical
+ * (unconfirmed), the upcoming, and other regions' releases not owned (extra; one you own is counted as owned). The
+ * one rule behind every completion figure, so catalog matching, cross-generation games and Today agree.
+ */
+export function countedTargets(counts: CatalogMatch['counts']): number {
+  return counts.targets - counts.excluded - counts.unconfirmed - counts.upcoming - counts.extra;
+}
+
+/** Completion: the owned share of the catalog games that count (countedTargets), 0 to 100 to one decimal. */
+export function completionPercent(counts: CatalogMatch['counts']): number {
+  const counting = countedTargets(counts);
+  return counting === 0 ? 0 : Math.round((counts.owned / counting) * 1000) / 10;
 }

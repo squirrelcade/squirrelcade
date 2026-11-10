@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import type { CatalogMatch, TargetResult } from './catalog.js';
+import { completionPercent, countedTargets, type CatalogMatch, type TargetResult } from './catalog.js';
 import { applyCrossGen, crossGenNeighbors, releaseYear, sameGameAcross, type CrossGenPartner } from './crossGen.js';
 import { matchKey } from './text.js';
 
@@ -66,6 +66,22 @@ describe('cross-generation games', () => {
     // Any years apart (0), the port counts too; with no partner, nothing changes.
     expect(applyCrossGen(before, [partner], 0, (t) => years[t.id] ?? null).counts.owned).toBe(3);
     expect(applyCrossGen(before, [], 2, () => null)).toBe(before);
+  });
+
+  it("keeps catalog matching's completion rule: other regions' releases not owned don't count (1.5.2)", () => {
+    // On the owner's install every console with a cross-generation game read low (Switch 34.3% for 42.1%): the
+    // percent was worked out again with the extras left in.
+    const extra = (id: number, title: string): TargetResult => ({ target: { id, title, status: 'extra' }, status: 'extra', matches: [], suggestions: [] });
+    const other = (id: number, status: 'excluded' | 'unconfirmed' | 'upcoming'): TargetResult => ({ target: { id, title: `T${id}`, status }, status, matches: [], suggestions: [] });
+    const owned: TargetResult = { target: { id: 1, title: 'Owned Here', status: 'required' }, status: 'owned', matches: [{ productId: '9', title: 'Owned Here', method: 'exact' }], suggestions: [] };
+    const before = match([owned, missing(2, 'Hollow Knight: Silksong'), missing(3, 'Only Here'), missing(4, 'Not Yet'), extra(5, 'Japan Only'), extra(6, 'Europe Only'), extra(7, 'Asia Only'), other(8, 'excluded'), other(9, 'unconfirmed'), other(10, 'upcoming')]);
+    // match() above leaves the percent at 0; catalog matching's rule gives 1 of the 4 that count.
+    expect(completionPercent(before.counts)).toBe(25);
+    const after = applyCrossGen(before, [switch2([['Hollow Knight: Silksong', 2025]])], 0, () => null);
+    expect(after.counts).toMatchObject({ owned: 2, missing: 2, extra: 3 });
+    expect(countedTargets(after.counts)).toBe(4);
+    expect(after.percent).toBe(50); // 2 of 4; the old sum kept the 3 extras in: 2 of 7 = 28.6
+    expect(after.percent).toBe(completionPercent(after.counts));
   });
 });
 

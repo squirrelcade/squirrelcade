@@ -7,6 +7,7 @@ What changed in each version of Squirrelcade (called Gamefolio before 0.35.0). T
 ### Fixed
 
 - **A collection named once** (D229): a game's ways to play it named one Steam collection three times, as IGDB's collection, its Collector's Edition and its Special Edition; each PC game is now named once, by the collection's own name.
+- **Completion read low on consoles with cross-generation games** (D233): a console with a game counted through its neighbor (a Switch game you have on Switch 2, a PS4 game you have on PS5) worked its percent out again with other regions' releases you don't have still counted, so the Switch read 34% where its counts make 42%. Every console's completion is now its owned games out of its titles, less the excluded, the not confirmed physical, other regions' releases you don't have and the upcoming ones, as its page's counts say. The wishlist's "Near complete (N% owned)" line uses the right percent too.
 
 ## 1.5.1 (2026-11-08): a way to play it you have, the game of the day at once, and the cover's own console
 
