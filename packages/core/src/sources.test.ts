@@ -183,6 +183,77 @@ describe('a source that only adds games, matching loosely', () => {
   });
 });
 
+describe('a source that only adds games, one name inside another (1.5.2)', () => {
+  it('leaves out a game the catalog names with a word or a part more or less, from the same year', () => {
+    const list: SourceLayer = {
+      id: 'list',
+      adds: 'all',
+      games: [
+        { title: 'FIFA 09', releaseDate: '2008-10-14' },
+        { title: '007 Quantum of Solace', releaseDate: '2008-11-04' },
+        { title: 'Hasbro Family Game Night 4: The Game Show', releaseDate: '2011-11-01' },
+        { title: 'PES 2014: Pro Evolution Soccer', releaseDate: '2013-09-24' },
+        { title: 'Star Trek (2013 video game)' },
+        { title: 'Mortal Kombat vs. DC Universe', releaseDate: '2008-11-16' },
+        { title: 'Tales of Graces ƒ', releaseDate: '2012-03-13' },
+      ],
+    };
+    const other: SourceLayer = {
+      id: 'igdb-regions',
+      adds: 'all',
+      fills: false,
+      games: [
+        { title: 'FIFA Soccer 09', releaseDate: '2008-10-02' },
+        { title: 'James Bond 007: Quantum of Solace', releaseDate: '2008-10-31' },
+        { title: 'Family Game Night 4: The Game Show', releaseDate: '2011-11-01' },
+        { title: 'Pro Evolution Soccer 2014', releaseDate: '2013-09-19' },
+        { title: 'Star Trek: The Video Game', releaseDate: '2013-04-23' },
+        { title: 'Mortal Kombat vs DC Universe: Silver Shield Combo Pack' },
+        { title: 'Tales of Graces f', releaseDate: '2010-12-02' },
+      ],
+    };
+    const { games, contributions } = mergeSources([list, other]);
+    expect(games.map((g) => g.title)).toEqual(list.games.map((g) => g.title));
+    expect(contributions[1]).toMatchObject({ added: 0, matched: 7 });
+  });
+
+  it('keeps another game whose name holds the first one: a sequel, a subtitle of its own, or years apart', () => {
+    const list: SourceLayer = {
+      id: 'list',
+      adds: 'all',
+      games: [
+        { title: 'Resident Evil: Revelations', releaseDate: '2013-05-21' },
+        { title: 'Rock Band', releaseDate: '2007-11-20' },
+        { title: 'Far Cry 3: Blood Dragon: Classic Edition' },
+        { title: 'One Piece: Pirate Warriors', releaseDate: '2012-09-25' },
+        { title: 'Heavy Rain', releaseDate: '2010-02-23' },
+      ],
+    };
+    const other: SourceLayer = {
+      id: 'igdb-regions',
+      adds: 'all',
+      fills: false,
+      games: [
+        { title: 'Resident Evil', releaseDate: '2014-11-27' },
+        { title: 'Rock Band 2', releaseDate: '2008-09-14' },
+        { title: 'Far Cry 3: Classic Edition' },
+        { title: 'One Piece: Pirate Warriors Collection', releaseDate: '2015-03-26' },
+        { title: 'Rain', releaseDate: '2013-10-01' },
+      ],
+    };
+    const { games } = mergeSources([list, other]);
+    expect(games.filter((g) => g.source === 'igdb-regions').map((g) => g.title)).toEqual(other.games.map((g) => g.title));
+  });
+
+  it('only for a source that only adds games', () => {
+    const { games } = mergeSources([
+      { id: 'list', adds: 'all', games: [{ title: 'FIFA 09', releaseDate: '2008-10-14' }] },
+      { id: 'wikipedia', adds: 'all', games: [{ title: 'FIFA Soccer 09', releaseDate: '2008-10-02' }] },
+    ]);
+    expect(games.map((g) => g.title)).toEqual(['FIFA 09', 'FIFA Soccer 09']);
+  });
+});
+
 describe('a source that only adds games', () => {
   it("gives a game a higher source has none of its names or evidence, and still adds its new games", () => {
     const list = { id: 'list', adds: 'all' as const, games: [{ title: 'Sonic Frontiers' }] };

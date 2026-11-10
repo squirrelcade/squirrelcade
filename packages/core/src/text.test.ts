@@ -39,6 +39,11 @@ describe('matchKey', () => {
   const same = (a: string, b: string) => expect(matchKey(a), `${a} / ${b}`).toBe(matchKey(b));
   const different = (a: string, b: string) => expect(matchKey(a), `${a} / ${b}`).not.toBe(matchKey(b));
 
+  it('reads the hooked f of "Tales of Graces ƒ" as an f, not as nothing (1.5.2)', () => {
+    same('Tales of Graces ƒ', 'Tales of Graces f');
+    different('Tales of Graces ƒ', 'Tales of Graces');
+  });
+
   it("keeps names in other scripts apart: each by its own letters, never an empty key or a stray digit (D159)", () => {
     // IGDB's other names: Zombie Army Trilogy's Korean one, Indiana Jones and the Great Circle's Chinese one.
     different('좀비 아미 트릴로지', '夺宝奇兵：古老之圈');

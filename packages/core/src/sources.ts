@@ -1,5 +1,5 @@
 import { editionBase, type TargetStatus } from './catalog.js';
-import { matchKey, matchTokens } from './text.js';
+import { latinTitle, matchKey, matchTokens } from './text.js';
 
 /**
  * Catalog sources: where each console's catalog games, and the facts about them, come from, in the
@@ -219,6 +219,71 @@ function looseKeys(name: string): string[] {
   return [...new Set([key(base), key(plain)])].filter(Boolean);
 }
 
+/** Small words left out when one title's words are looked for in another's. */
+const SMALL = new Set(['the', 'a', 'an', 'of', 'and']);
+
+/** A part of a name that says it's an edition of the game, not another game ("Silver Shield Combo Pack", "Z Version"). */
+const EDITION_WORDS = new Set(['edition', 'version', 'box', 'pack', 'bundle', 'set', 'collection', 'remastered', 'remaster', 'definitive', 'deluxe', 'complete', 'goty', 'anniversary', 'limited', 'premium', 'collector', 'collectors']);
+/** A part of a name that only says it's a video game ("Star Trek: The Video Game"). */
+const GAME_WORDS = new Set(['video', 'game', 'videogame', 'official']);
+
+/** A name's words, for finding one name inside another (wordsOf). */
+interface Words {
+  words: Set<string>;
+  /** The words of each part of the name between colons and dashes ("James Bond 007", "Quantum of Solace"). */
+  parts: Set<string>[];
+  year: number | null;
+}
+
+/** One name of a game in the catalog, as words. */
+interface Worded extends Words {
+  game: MergedGame;
+}
+
+const wordSet = (text: string) => new Set(matchTokens(text).filter((t) => !SMALL.has(t)));
+
+/**
+ * A name's words and year, for a source that only adds games: without small words or a note in brackets, and the year
+ * from the game's date, or from a Wikipedia article's "(2013 video game)" when it has none. Null for a name in another
+ * script, whose words can't be compared.
+ */
+function wordsOf(name: string, date: string | null | undefined): Words | null {
+  if (!latinTitle(name)) return null;
+  const note = /\((\d{4})\s+video game\)/i.exec(name);
+  const plain = name.replace(/\s*\([^)]*\)/g, '');
+  const words = wordSet(plain);
+  if (words.size === 0) return null;
+  const parts = plain
+    .split(/\s*:\s*|\s+[-–—]\s+/)
+    .map(wordSet)
+    .filter((p) => p.size > 0);
+  const d = /^(\d{4})/.exec(date?.trim() ?? '');
+  return { words, parts, year: d ? Number(d[1]) : note ? Number(note[1]) : null };
+}
+
+/**
+ * Whether two names are one game written longer and shorter (1.5.2): every word of one is in the other, the words only
+ * the longer has carry no number (so "Rock Band" never meets "Rock Band 2"), and none of them make a part of their own
+ * that names another game: a subtitle the shorter lacks counts only as an edition or as "The Video Game" ("Resident
+ * Evil" is not "Resident Evil: Revelations", nor "Far Cry 3: Classic Edition" "Far Cry 3: Blood Dragon: Classic
+ * Edition"). The shorter has two words or more, and the two came out within a year of each other (with a date missing,
+ * the shorter needs four words). "FIFA 09" is "FIFA Soccer 09", "007 Quantum of Solace" is "James Bond 007: Quantum of
+ * Solace", "PES 2014: Pro Evolution Soccer" is "Pro Evolution Soccer 2014", "Star Trek (2013 video game)" is "Star
+ * Trek: The Video Game".
+ */
+function sameWords(a: Words, b: Words): boolean {
+  const [small, big] = a.words.size <= b.words.size ? [a, b] : [b, a];
+  if (small.words.size < 2) return false;
+  for (const w of small.words) if (!big.words.has(w)) return false;
+  for (const w of big.words) if (!small.words.has(w) && /\d/.test(w)) return false;
+  for (const part of big.parts) {
+    if ([...part].some((w) => small.words.has(w))) continue;
+    if (![...part].some((w) => EDITION_WORDS.has(w)) && ![...part].every((w) => GAME_WORDS.has(w))) return false;
+  }
+  if (a.year !== null && b.year !== null) return Math.abs(a.year - b.year) <= 1;
+  return small.words.size >= 4;
+}
+
 export function mergeSources(
   layers: SourceLayer[],
   idOf?: (title: string) => number | undefined,
@@ -242,6 +307,9 @@ export function mergeSources(
   const byEdition = new Map<string, MergedGame>();
   const byLoose = new Map<string, MergedGame>();
   const byIgdb = new Map<number, MergedGame>();
+  // Each name's words, for a source that only adds games: a game's name inside another's (sameWords).
+  const wordy = layers.some((l) => l.fills === false);
+  const byWord = new Map<string, Worded[]>();
   const index = (g: MergedGame) => {
     for (const name of [g.title, ...(g.altTitles ?? [])]) {
       const k = matchKey(name);
@@ -249,9 +317,32 @@ export function mergeSources(
       const e = matchKey(editionBase(name));
       if (e && !byEdition.has(e)) byEdition.set(e, g);
       for (const l of looseKeys(name)) if (!byLoose.has(l)) byLoose.set(l, g);
+      const w = wordy ? wordsOf(name, g.releaseDate) : null;
+      if (w) {
+        const named: Worded = { game: g, ...w };
+        for (const word of w.words) {
+          const list = byWord.get(word);
+          if (list) list.push(named);
+          else byWord.set(word, [named]);
+        }
+      }
     }
     const id = idOf?.(g.title);
     if (id !== undefined && !byIgdb.has(id)) byIgdb.set(id, g);
+  };
+
+  /** A higher source's game whose name has every word of one of this game's names, or the other way round (sameWords). */
+  const contained = (g: LayerGame, higher: (m: MergedGame | undefined) => MergedGame | undefined): MergedGame | undefined => {
+    for (const name of [g.title, ...(g.altTitles ?? [])]) {
+      const mine = wordsOf(name, g.releaseDate);
+      if (!mine) continue;
+      const shared = new Map<Worded, number>();
+      for (const word of mine.words) {
+        for (const other of byWord.get(word) ?? []) if (higher(other.game)) shared.set(other, (shared.get(other) ?? 0) + 1);
+      }
+      for (const [other, n] of shared) if ((n === other.words.size || n === mine.words.size) && sameWords(mine, other)) return other.game;
+    }
+    return undefined;
   };
 
   layers.forEach((layer, at) => {
@@ -270,7 +361,9 @@ export function mergeSources(
         (id !== undefined ? higher(byIgdb.get(id)) : undefined) ??
         // A source that only adds games (another region's releases) leaves out one the catalog has with a few small
         // words, punctuation or an edition apart (0.45.0).
-        (layer.fills === false ? names.flatMap((n) => looseKeys(n)).map((k) => higher(byLoose.get(k))).find(Boolean) : undefined);
+        (layer.fills === false ? names.flatMap((n) => looseKeys(n)).map((k) => higher(byLoose.get(k))).find(Boolean) : undefined) ??
+        // ...or one whose name holds this one's every word, or this one holds its (1.5.2: "FIFA 09" / "FIFA Soccer 09").
+        (layer.fills === false ? contained(g, higher) : undefined);
       if (hit && layer.fills === false) {
         if (layerOf.get(hit) !== at) c.matched++;
         continue;

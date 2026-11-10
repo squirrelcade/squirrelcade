@@ -91,6 +91,8 @@ export function matchTokens(title: string): string[] {
 
 function matchTokensOnce(title: string): string[] {
   const prepared = title
+    // The hooked f of "Tales of Graces ƒ" is an f (normalizing would drop it, and the game would be Tales of Graces).
+    .replace(/ƒ/g, 'f')
     .replace(/['’`]s\b/gi, '')
     .replace(/(\d),(\d{3})\b/g, '$1$2')
     .replace(/\((?:game only|the)\)\s*$/i, '');
