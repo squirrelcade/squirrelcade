@@ -628,6 +628,8 @@ export async function buildApp(options: BuildOptions = {}): Promise<Squirrelcade
   // Prices from your order emails and On the way (D155, D156): the same mailbox, read-only, with the AI model if set up.
   const orders = new OrderService({ db, settings, mail, collection, lookup, helpers, vision, log, notifications, open: options.mailbox ?? imapMailbox, ratesFetch: options.ratesFetch });
   registerOrderRoutes(app, orders, tasks);
+  // Once (D236): the games listed twice on On the way before one purchase was listed once are made one.
+  orders.sameOnce();
   lookup.setComing(() => orders.index());
   const deals = new DealsService(settings, mail, catalogs, wishlist, igdb, notifications);
   mail.onNewDeals(async (added) => {

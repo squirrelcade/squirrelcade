@@ -1,6 +1,6 @@
 import { eq } from 'drizzle-orm';
 import { afterEach, describe, expect, it } from 'vitest';
-import { copies } from './db/schema.js';
+import { appState, comingItems, copies } from './db/schema.js';
 import type { FoundMail, MailboxOpener, MailSearch } from './mailImport.js';
 import { fakeTransports, multipart, seedCatalogs, setUp, testApp, type TestApp } from './test-helpers.js';
 
@@ -362,8 +362,9 @@ describe('Amazon (D176)', () => {
     expect(named.statusCode).toBe(201);
     expect(named.json().items).toEqual([expect.objectContaining({ store: 'Amazon', platformKey: 'playstation-2', title: 'Okami', itemCents: 2999, orderDate: '2026-10-24' })]);
     expect((await list()).some((i) => i.id === unnamed.id)).toBe(false);
-    // The same page again adds nothing; something that isn't an order page says so.
-    expect((await g!.app.inject({ method: 'POST', url: '/api/v1/coming/page', cookies, payload: { text: page } })).json().items).toHaveLength(1);
+    // The same page again, on its own this time, adds nothing (D236: its game is there); something that isn't an order page says so.
+    expect((await g!.app.inject({ method: 'POST', url: '/api/v1/coming/page', cookies, payload: { text: page } })).json().items).toHaveLength(0);
+    expect((await list()).filter((i) => i.title === 'Okami')).toHaveLength(1);
     expect((await g!.app.inject({ method: 'POST', url: '/api/v1/coming/page', cookies, payload: { text: 'hello' } })).statusCode).toBe(400);
 
     // The order history: a game you have is left out, a cable isn't a game, a game is on the way with its price.
@@ -408,5 +409,95 @@ describe('On the way with two email accounts', () => {
     g.settings.update({ 'orders.watchAccounts': [String(work.id)] });
     await g.orders.watch();
     expect(opened).toEqual(['work@example.com']);
+  });
+});
+
+describe('On the way: one purchase, listed once (D236)', () => {
+  const daysAgo = (n: number) => new Date(Date.now() - n * 86_400_000).toISOString().slice(0, 10);
+  const waiting = async (cookies: Record<string, string>) => (await g!.app.inject({ url: '/api/v1/coming', cookies })).json().items as Record<string, unknown>[];
+
+  it("doesn't add an order's email for a game Claude's connector put there, and takes its tax and shipping", async () => {
+    const mercari = orderMail('mercari1@mercari', 1, 'no-reply@mercari.com', 'You purchased Kingdom Hearts PS2 Greatest Hits', [['Item price', '$12.00'], ['Sales tax', '$1.00'], ['Total', '$13.00']]);
+    const { box, cookies } = await owner([EBAY_OKAMI, mercari]);
+    // The connector first, as a daily task of Claude's says it hours before the email is read.
+    const said = g!.orders.recordOnTheWay({ title: 'Okami PS2 Complete CIB Tested', store: 'eBay', orderDate: daysAgo(3), priceCents: 2499, orderNumber: '12-34567-89012', itemId: '407000000001', expectedOn: '2026-12-01' });
+    expect(said.status).toBe('added');
+    // With no order number to go by: the same game from the same store within days.
+    expect(g!.orders.recordOnTheWay({ title: 'Kingdom Hearts PS2 Greatest Hits', store: 'mercari', orderDate: daysAgo(2), priceCents: 1200 }).status).toBe('added');
+    g!.settings.update({ 'orders.watch': true });
+    expect(await g!.orders.watch()).toBe('Nothing new on the way (2 purchase emails read).');
+    let items = await waiting(cookies);
+    expect(items).toHaveLength(2);
+    // The one there keeps what it had and takes what the email adds.
+    expect(items.find((i) => i.title === 'Okami')).toMatchObject({ id: said.item!.id, itemCents: 2499, taxCents: 216, shippingCents: 499, expectedOn: '2026-12-01', orderNumber: '12-34567-89012' });
+    expect(items.find((i) => i.title === 'Kingdom Hearts')).toMatchObject({ itemCents: 1200, taxCents: 100 });
+
+    // Another order of the same game is another copy on its way; so is another item of the same order.
+    expect(g!.orders.recordOnTheWay({ title: 'Okami PS2 Complete CIB Tested', store: 'eBay', orderDate: daysAgo(1), priceCents: 2000, orderNumber: '99-00000-00001', itemId: '407000000002' }).status).toBe('added');
+    expect(g!.orders.recordOnTheWay({ title: 'Kingdom Hearts PS2 Black Label', store: 'eBay', orderDate: daysAgo(3), orderNumber: '12-34567-89012', itemId: '407000000003' }).status).toBe('added');
+    expect(await waiting(cookies)).toHaveLength(4);
+
+    // Said again in other words, with no item id: known, not added.
+    expect(g!.orders.recordOnTheWay({ title: 'Okami PS2 Complete CIB Tested', platform: 'PlayStation 2', store: 'eBay', orderNumber: '12-34567-89012' })).toMatchObject({ status: 'known', item: { id: said.item!.id } });
+    // Once it's here, neither the connector nor another email of the order puts it back.
+    await g!.app.inject({ method: 'POST', url: `/api/v1/coming/${said.item!.id}/arrived`, cookies });
+    expect(g!.orders.recordOnTheWay({ title: 'Okami (PS2) complete, tested', platform: 'PlayStation 2', store: 'eBay', orderNumber: '12-34567-89012' }).status).toBe('known');
+    box.mails.push(orderMail('ebay9@ebay', 0, 'ebay@ebay.com', 'Order confirmed: Okami PS2 Complete CIB Tested', [['Order number:', '12-34567-89012'], ['Item price', '$24.99']]));
+    expect(await g!.orders.watch()).toMatch(/^Nothing new on the way/);
+    items = await waiting(cookies);
+    expect(items).toHaveLength(3);
+    expect(items.some((i) => i.orderNumber === '12-34567-89012' && i.title === 'Okami')).toBe(false);
+  });
+
+  it("takes an order's one item for the one game an app put there for it, when their words differ", async () => {
+    const ebay = orderMail('ebay5@ebay', 1, 'ebay@ebay.com', 'Order confirmed: Rare dungeon crawler import, tested', [['Order number:', '55-55555-55555'], ['Item price', '$40.00'], ['Shipping', '$5.00']]);
+    const two = orderMail('ebay6@ebay', 1, 'ebay@ebay.com', 'Order confirmed: Okami PS2 Complete', [['Order number:', '66-66666-66666'], ['Item price', '$20.00']]);
+    const { cookies } = await owner([ebay, two]);
+    // A game Squirrelcade can't name, on a console the app said.
+    expect(g!.orders.recordOnTheWay({ title: 'Dungeon thing (JP)', platform: 'PlayStation 2', store: 'eBay', orderNumber: '55-55555-55555', itemId: '407000000010', priceCents: 4000 }).status).toBe('added');
+    // Two known games aren't one for sharing an order: Kingdom Hearts from the app, Okami in the email.
+    expect(g!.orders.recordOnTheWay({ title: 'Kingdom Hearts PS2', store: 'eBay', orderNumber: '66-66666-66666', itemId: '407000000011' }).status).toBe('added');
+    g!.settings.update({ 'orders.watch': true });
+    expect(await g!.orders.watch()).toBe('1 new on the way (2 purchase emails read).');
+    const items = await waiting(cookies);
+    expect(items.filter((i) => i.orderNumber === '55-55555-55555')).toEqual([expect.objectContaining({ listingTitle: 'Dungeon thing (JP) - PlayStation 2', itemCents: 4000, shippingCents: 500 })]);
+    expect(items.filter((i) => i.orderNumber === '66-66666-66666').map((i) => i.title).sort()).toEqual(['Kingdom Hearts', 'Okami']);
+  });
+
+  it('makes one, once, of the games listed twice before', async () => {
+    const { cookies } = await owner([]);
+    const row = { itemIndex: 0, store: 'eBay', orderDate: '2026-11-07', quantity: 1, currency: 'USD', readBy: 'ai', status: 'waiting', createdAt: '2026-11-07T16:00:00.000Z' };
+    const okami = { listingTitle: 'Okami PS2 Complete', itemCents: 1999, platformKey: 'playstation-2', title: 'Okami' };
+    const hearts = { listingTitle: 'Kingdom Hearts PS2', itemCents: 900, platformKey: 'playstation-2', title: 'Kingdom Hearts' };
+    const unnamed = 'Amazon order 111-0000001-0000001: a video game, its name not in the email';
+    g!.db
+      .insert(comingItems)
+      .values([
+        // The connector's, then its email's: both waiting.
+        { ...row, ...okami, mailRef: 'connector:08-1|407000000021', orderNumber: '08-1', expectedOn: '2026-11-18' },
+        { ...row, ...okami, mailRef: 'mail-a', orderNumber: '08-1', taxCents: 122, shippingCents: 708 },
+        // One that arrived, and its email's still waiting.
+        { ...row, ...hearts, mailRef: 'connector:08-2|407000000022', orderNumber: '08-2', status: 'arrived' },
+        { ...row, ...hearts, mailRef: 'mail-b', orderNumber: '08-2' },
+        // An Amazon order's game its email didn't name, that an app named and that arrived.
+        { ...row, mailRef: 'connector:111-0000001-0000001|B000000001', store: 'Amazon', orderNumber: '111-0000001-0000001', listingTitle: 'Journey - PlayStation 3', platformKey: 'playstation-3', title: 'Journey', status: 'arrived' },
+        { ...row, mailRef: 'mail-c', store: 'Amazon', orderNumber: '111-0000001-0000001', listingTitle: unnamed },
+        // Each its own: an email's two items, and the same game on another order.
+        { ...row, mailRef: 'mail-d', orderNumber: '08-3', listingTitle: 'Journey (PS3)', platformKey: 'playstation-3', title: 'Journey' },
+        { ...row, mailRef: 'mail-d', itemIndex: 1, orderNumber: '08-3', listingTitle: 'Shantae (Game Boy Color)', platformKey: 'game-boy-color', title: 'Shantae' },
+        { ...row, ...okami, mailRef: 'mail-e', orderNumber: '08-4' },
+      ])
+      .run();
+    expect(await waiting(cookies)).toHaveLength(7);
+    // A start does it once (this install's start, before these rows, found nothing and noted it).
+    g!.db.delete(appState).where(eq(appState.key, 'orders.sameOnce')).run();
+    expect(g!.orders.sameOnce()).toBe(3);
+    const items = await waiting(cookies);
+    expect(items.map((i) => `${i.orderNumber} ${i.title}`).sort()).toEqual(['08-1 Okami', '08-3 Journey', '08-3 Shantae', '08-4 Okami']);
+    // The earlier one stays, with the day it's expected, and takes the email's tax and shipping.
+    expect(items.find((i) => i.orderNumber === '08-1')).toMatchObject({ expectedOn: '2026-11-18', itemCents: 1999, taxCents: 122, shippingCents: 708 });
+    // Put away, not shown as dismissed or arrived.
+    expect(((await g!.app.inject({ url: '/api/v1/coming?all=1', cookies })).json().items as { status: string }[]).filter((i) => i.status !== 'waiting').map((i) => i.status).sort()).toEqual(['arrived', 'arrived']);
+    expect(g!.orders.sameOnce()).toBe(0);
   });
 });

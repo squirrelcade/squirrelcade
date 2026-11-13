@@ -39,7 +39,7 @@ import {
   type PaidCounts,
   type StoreSeen,
 } from '@squirrelcade/core';
-import { and, desc, eq, gte, isNull, lte, or } from 'drizzle-orm';
+import { and, desc, eq, gte, isNotNull, isNull, lte, or, sql } from 'drizzle-orm';
 import type { FastifyInstance } from 'fastify';
 import { createHash, randomUUID } from 'node:crypto';
 import { simpleParser } from 'mailparser';
@@ -82,6 +82,33 @@ const AI_DAY_KEY = 'orders.aiDay';
 const KEEP_READ = 1000;
 const KEEP_SEEN = 1000;
 const KEEP_FOUND = 500;
+/** Set once the games listed twice before 1.5.2 have been made one (D236). */
+const SAME_ONCE_KEY = 'orders.sameOnce';
+/** With no order number to go by, two sources say one purchase when the store is the same and their days are this close. */
+const SAME_PURCHASE_DAYS = 3;
+
+type ComingRow = typeof comingItems.$inferSelect;
+
+/**
+ * A listing's title for comparing two sources' words for one item (D236): without a shop's trademark signs, as it is
+ * and without what follows its last " - " (the console an app adds: "Okami - PlayStation 2").
+ */
+function listingKeys(title: string): string[] {
+  const clean = title.replace(/[™®©]/g, '');
+  return [...new Set([clean, clean.replace(/\s+-\s+[^-]+$/, '')].map((t) => matchKey(baseTitle(t))))].filter((k) => k !== '');
+}
+
+/**
+ * The shop's own id for an item (an ASIN, eBay's item number), which a connector's or a sheet's row ends its ref with.
+ * Null for an email's or a page's item, for a game split from a lot, and for one an app sent without an id (its ref
+ * then ends with its title).
+ */
+function itemIdOf(row: { mailRef: string; listingTitle: string; lotOf?: number | null }): string | null {
+  if (!/^(?:connector|sheet):/.test(row.mailRef) || (row.lotOf ?? null) !== null) return null;
+  const id = row.mailRef.slice(row.mailRef.indexOf('|') + 1);
+  const titles = [row.listingTitle, row.listingTitle.replace(/\s+-\s+[^-]+$/, '')].map((t) => normalizeTitle(t));
+  return id && !titles.includes(id) ? id : null;
+}
 
 /** One order found for a copy: where and when, the item as the email names it, and what it cost (its share of the order). */
 export interface FoundPrice {
@@ -704,7 +731,7 @@ export class OrderService {
     const added: ComingView[] = [];
     fresh.forEach((mail, i) => {
       const order = orders[i];
-      if (order) added.push(...this.addComing(refOf(mail.id), order));
+      if (order) added.push(...this.addComing(refOf(mail.id), order, { whole: true }));
     });
     this.writeState(SEEN_KEY, [...fresh.map((m) => refOf(m.id)), ...seen].slice(0, KEEP_SEEN));
     await this.fillRates();
@@ -779,6 +806,14 @@ export class OrderService {
       const earlier = this.d.db.select().from(comingItems).where(eq(comingItems.mailRef, `sheet:${rowKey}`)).get();
       if (earlier) return { status: 'known', item: this.view(earlier) };
     }
+    // There already some other way (D236): arrived or dismissed on that order, said before in other words, or, with no
+    // order number to go by, the same game from that store within days. It's known; what this adds fills what's missing.
+    const there = this.already(ref, { store: r.store, orderNumber, date: r.orderDate ?? null }, { listing, game, itemId });
+    if (there) {
+      this.complete(there, { itemCents: r.priceCents ?? null, taxCents: null, shippingCents: null, discountCents: null, currency: r.currency ?? null, link: r.link ?? null, orderNumber, orderDate: r.orderDate ?? null, expectedOn: r.expectedOn ?? null, game }, now);
+      if (rowKey) this.d.db.insert(purchaseRows).values({ key: rowKey, kind: 'coming', copyId: null, appliedAt: now }).onConflictDoNothing().run();
+      return { status: 'known', item: this.view(this.d.db.select().from(comingItems).where(eq(comingItems.id, there.id)).get() ?? there) };
+    }
     this.addComing(ref, {
       store: r.store,
       date: r.orderDate ?? null,
@@ -791,7 +826,7 @@ export class OrderService {
       totalCents: null,
       link: r.link ?? (orderNumber && /^\d{3}-\d{7}-\d{7}$/.test(orderNumber) ? `https://www.amazon.com/your-orders/order-details?orderID=${orderNumber}` : null),
       readBy: 'ai',
-    });
+    }, { checked: true });
     const row = this.d.db.select().from(comingItems).where(eq(comingItems.mailRef, ref)).get()!;
     // A console said that the title's words didn't settle: the owner then picks the game on it.
     const platformKey = row.platformKey ?? game?.platformKey ?? kind.platformKey ?? (r.platform ? findPlatforms(r.platform, this.d.db.select({ key: platforms.key, name: platforms.name }).from(platforms).all())[0]?.key ?? null : null);
@@ -801,16 +836,31 @@ export class OrderService {
     return { status: 'added', item: this.view({ ...row, ...set }) };
   }
 
-  /** An order's items as games on the way (each once: an email's item is never added twice); the new ones. */
-  private addComing(ref: string, order: FoundOrder): ComingView[] {
+  /**
+   * An order's items as games on the way; the new ones. Each once: an email's item is never added twice, and an item
+   * another source put there already (D236: Claude's connector, then the order's email) isn't added again: what this
+   * one knows fills what's missing on it. `whole`: the order is all here (an email, a pasted page), not a row of it.
+   * `checked`: the caller looked for it already. `not`: rows this order takes the place of, never taken for its items.
+   */
+  private addComing(ref: string, order: FoundOrder, opts: { whole?: boolean; checked?: boolean; not?: Set<number> } = {}): ComingView[] {
     const now = new Date().toISOString();
     const out: ComingView[] = [];
+    // Two of a game on one order are two: each row there stands for one of this order's items.
+    const taken = new Set<number>(opts.not ?? []);
     order.items.forEach((item, index) => {
       const known = this.d.db.select({ id: comingItems.id }).from(comingItems).where(and(eq(comingItems.mailRef, ref), eq(comingItems.itemIndex, index))).get();
       if (known) return;
       // Each share for one copy: the price paid is worked out from them as Settings > Email counts it, then.
       const cost = itemCost(order, index, 'all');
       const game = isAmazonUnknown(item.title) ? null : this.matchListing(item.title);
+      const there = opts.checked
+        ? undefined
+        : this.already(ref, order, { listing: item.title, game, itemId: itemIdOf({ mailRef: ref, listingTitle: item.title }) }, { whole: opts.whole === true && order.items.length === 1, taken });
+      if (there) {
+        taken.add(there.id);
+        this.complete(there, { ...cost, currency: order.currency, link: order.link, orderNumber: order.orderNumber, orderDate: order.date, expectedOn: order.expectedOn ?? null, game }, now);
+        return;
+      }
       const row = this.d.db
         .insert(comingItems)
         .values({
@@ -840,6 +890,124 @@ export class OrderService {
       out.push(this.view(row));
     });
     return out;
+  }
+
+  /**
+   * The game already on On the way that an item from another source is (D236), so one purchase is listed once however
+   * many sources say it (its email, Claude's connector, a pasted page, a purchases sheet). The same purchase: the same
+   * order number, or, when either source has none, the same store within SAME_PURCHASE_DAYS. Then the same item: the
+   * game it's matched to, or its listing's words. On the same order number, also: an Amazon game its email doesn't name
+   * is one of that order's; and a whole order of one item is the one game a connector or a sheet put there for it, when
+   * either's game isn't known (their words for it differ). Two items with shop ids of their own that differ are never
+   * one. Whatever its status: a game that arrived or was dismissed isn't put back. Amazon's history is compared with
+   * the other sources only (its rows have no ids to tell two of a game on one order apart).
+   */
+  private already(
+    ref: string,
+    order: { store: string; orderNumber: string | null; date: string | null },
+    item: { listing: string; game: { platformKey: string; title: string } | null; itemId?: string | null },
+    opts: { whole?: boolean; taken?: Set<number> } = {},
+  ): ComingRow | undefined {
+    const number = order.orderNumber?.trim() || null;
+    const store = order.store.trim().toLowerCase();
+    const day = (d: string) => Date.parse(d.slice(0, 10));
+    const mine = day(order.date ?? new Date().toISOString());
+    const near = (r: ComingRow) => Math.abs(day(r.orderDate ?? r.createdAt) - mine) <= SAME_PURCHASE_DAYS * 86_400_000;
+    const sameStore = sql`lower(trim(${comingItems.store})) = ${store}`;
+    const history = ref.startsWith('amazon-history:');
+    const unknown = isAmazonUnknown(item.listing);
+    const sameOrder = (r: ComingRow) => number !== null && r.orderNumber === number;
+    const rows = this.d.db
+      .select()
+      .from(comingItems)
+      .where(number ? or(eq(comingItems.orderNumber, number), and(isNull(comingItems.orderNumber), sameStore)) : sameStore)
+      .orderBy(comingItems.id)
+      .all()
+      .filter((r) => {
+        if (r.mailRef === ref || opts.taken?.has(r.id) || (history && r.mailRef.startsWith('amazon-history:'))) return false;
+        if (!sameOrder(r) && !near(r)) return false;
+        // An order's game not named yet gives way to its page (fromPage), never to another item's name.
+        if (!unknown && isAmazonUnknown(r.listingTitle)) return false;
+        const theirs = itemIdOf(r);
+        return !(item.itemId && theirs && theirs !== item.itemId);
+      })
+      // One still waiting first: it's the one that takes what this source adds.
+      .sort((a, b) => Number(b.status === 'waiting') - Number(a.status === 'waiting') || a.id - b.id);
+    if (unknown) return rows.find(sameOrder);
+    const keys = listingKeys(item.listing);
+    const onOrder = rows.filter(sameOrder);
+    return (
+      rows.find((r) => item.game !== null && r.platformKey === item.game.platformKey && r.title === item.game.title) ??
+      rows.find((r) => listingKeys(r.listingTitle).some((k) => keys.includes(k))) ??
+      (opts.whole && onOrder.length === 1 && /^(?:connector|sheet):/.test(onOrder[0]!.mailRef) && (item.game === null || !onOrder[0]!.title) ? onOrder[0] : undefined)
+    );
+  }
+
+  /**
+   * What another source knows of a game already waiting fills what's missing on it (D236): its price; its tax, shipping
+   * and discount when it has none and the price is the same; the day it's expected; its order's number, day and link;
+   * the game it is. Nothing it has is changed, and one that arrived or was dismissed is left as it is.
+   */
+  private complete(
+    row: ComingRow,
+    more: { itemCents: number | null; taxCents: number | null; shippingCents: number | null; discountCents: number | null; currency: string | null; link: string | null; orderNumber: string | null; orderDate: string | null; expectedOn: string | null; game: { platformKey: string; title: string } | null },
+    now: string,
+  ): void {
+    if (row.status !== 'waiting') return;
+    const set: Partial<ComingRow> = {};
+    const sameCurrency = !row.currency || !more.currency || row.currency === more.currency;
+    if (sameCurrency && more.itemCents !== null) {
+      if (row.itemCents === null) set.itemCents = more.itemCents;
+      if ((row.itemCents ?? more.itemCents) === more.itemCents && row.taxCents === null && row.shippingCents === null && row.discountCents === null) {
+        if (more.taxCents !== null) set.taxCents = more.taxCents;
+        if (more.shippingCents !== null) set.shippingCents = more.shippingCents;
+        if (more.discountCents !== null) set.discountCents = more.discountCents;
+      }
+      if (!row.currency && more.currency) set.currency = more.currency;
+    }
+    if (!row.expectedOn && more.expectedOn) set.expectedOn = more.expectedOn;
+    if (!row.orderNumber && more.orderNumber) set.orderNumber = more.orderNumber;
+    if (!row.orderDate && more.orderDate) set.orderDate = more.orderDate;
+    if (!row.link && more.link) set.link = more.link;
+    // On the console it's known to be on, if one is.
+    if (!row.title && more.game && !isAmazonUnknown(row.listingTitle) && (!row.platformKey || row.platformKey === more.game.platformKey)) {
+      set.platformKey = more.game.platformKey;
+      set.title = more.game.title;
+    }
+    if (Object.keys(set).length > 0) this.d.db.update(comingItems).set({ ...set, updatedAt: now }).where(eq(comingItems.id, row.id)).run();
+  }
+
+  /**
+   * Once (D236): the games listed twice before one purchase was listed once (an order Claude's connector said, then
+   * its email) are made one. Each waiting game that another row of its order already is: the earlier one stays and
+   * takes what it lacked (its tax and shipping, the day it's expected); the other is put away as a lot that was split
+   * is, kept so its email never adds it again, and off every list. One whose twin arrived or was dismissed is put away
+   * too. Only for an order with a number. How many were put away.
+   */
+  sameOnce(): number {
+    if (this.readState<{ at: string }>(SAME_ONCE_KEY)) return 0;
+    const now = new Date().toISOString();
+    const away = new Set<number>();
+    const waiting = this.d.db.select().from(comingItems).where(and(eq(comingItems.status, 'waiting'), isNotNull(comingItems.orderNumber))).orderBy(comingItems.id).all();
+    const refs = new Map<string, number>();
+    for (const r of this.d.db.select({ mailRef: comingItems.mailRef }).from(comingItems).all()) refs.set(r.mailRef, (refs.get(r.mailRef) ?? 0) + 1);
+    const facts = (r: ComingRow) => ({ itemCents: r.itemCents, taxCents: r.taxCents, shippingCents: r.shippingCents, discountCents: r.discountCents, currency: r.currency, link: r.link, orderNumber: r.orderNumber, orderDate: r.orderDate, expectedOn: r.expectedOn, game: r.platformKey && r.title ? { platformKey: r.platformKey, title: r.title } : null });
+    for (const first of waiting) {
+      // Until no other row is the same: an order said three times is still one.
+      for (let w = first; !away.has(w.id); ) {
+        const whole = !/^(?:connector|sheet|amazon-history):/.test(w.mailRef) && refs.get(w.mailRef) === 1;
+        const twin = this.already(w.mailRef, { store: w.store, orderNumber: w.orderNumber, date: w.orderDate ?? w.createdAt }, { listing: w.listingTitle, game: facts(w).game, itemId: itemIdOf(w) }, { whole, taken: away });
+        if (!twin) break;
+        const [keep, gone] = twin.status === 'waiting' && w.id < twin.id ? [w, twin] : [twin, w];
+        this.complete(keep, facts(gone), now);
+        this.d.db.update(comingItems).set({ status: 'split', updatedAt: now }).where(eq(comingItems.id, gone.id)).run();
+        away.add(gone.id);
+        w = keep.id === w.id ? (this.d.db.select().from(comingItems).where(eq(comingItems.id, w.id)).get() ?? w) : w;
+      }
+    }
+    this.writeState(SAME_ONCE_KEY, { at: now, made: away.size });
+    if (away.size > 0) this.d.log.info({ context: 'orders' }, `On the way: ${away.size} listed twice made one`);
+    return away.size;
   }
 
   /** The game a listing's title is, when Squirrelcade is sure (for other sources, D178). */
@@ -998,12 +1166,17 @@ export class OrderService {
     }
     const ref = `page:${createHash('sha256').update(row ? `${row.mailRef}|${text}` : text).digest('hex').slice(0, 32)}`;
     const now = new Date().toISOString();
+    // The rows the page takes the place of: its items aren't taken for them (D236).
+    const replaced = new Set<number>();
     if (row) {
       // The order's unnamed games give way to the page's.
       const unnamed = this.d.db.select().from(comingItems).where(and(eq(comingItems.status, 'waiting'), eq(comingItems.mailRef, row.mailRef))).all().filter((r) => r.id === row.id || isAmazonUnknown(r.listingTitle));
-      for (const u of unnamed) this.d.db.update(comingItems).set({ status: 'split', updatedAt: now }).where(eq(comingItems.id, u.id)).run();
+      for (const u of unnamed) {
+        this.d.db.update(comingItems).set({ status: 'split', updatedAt: now }).where(eq(comingItems.id, u.id)).run();
+        replaced.add(u.id);
+      }
     }
-    return this.addComing(ref, order);
+    return this.addComing(ref, order, { whole: true, not: replaced });
   }
 
   /**

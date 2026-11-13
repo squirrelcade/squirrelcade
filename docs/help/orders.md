@@ -37,7 +37,7 @@ When an order has several games, its tax, shipping and discount are shared out b
 
 ## On the way
 
-Games get here from your purchase emails (below), an order page or Amazon's order history pasted in, a purchases CSV, or a task of your own through Claude's connector (a key made to put games on On the way: [Claude and AI apps](ai-apps.md)).
+Games get here from your purchase emails (below), an order page or Amazon's order history pasted in, a purchases CSV, or a task of your own through Claude's connector (a key made to put games on On the way: [Claude and AI apps](ai-apps.md)). One purchase is listed once, however many of them say it: an order's email adds nothing for a game the connector put there that afternoon (it fills in the tax and shipping the connector didn't have), and a game that arrived or that you dismissed isn't put back. What makes two the same purchase is the order number, or, when one of them has none, the same game from the same store within three days. A second order of a game you already have on the way is a second copy, and is listed.
 
 The page shows to start, email or not; **Settings > Features > On the way** hides it and its menu entry. To have your purchase emails read for it, turn on **Watch for games you bought: On the way** (Settings > Collection > On the way). Squirrelcade then looks through your purchase emails every 24 hours (**Look every**, from 1 hour to a week), from eBay and Mercari to start with. To add more stores to **Purchase emails from**:
 
