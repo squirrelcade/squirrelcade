@@ -80,15 +80,21 @@ A game's drawer has **Add a copy**: **Add it**, and the copy's walk-through asks
 
 **Edit this copy**, in each copy at the top of a game's page, opens that copy's window (with where it is, lending and photos): its condition, what you paid, the day you bought it and notes, for any copy, one from PriceCharting's export too. What you change here stays yours: no export overwrites it, and the export still finds the copy. **Sold** or **Remove** takes it out of your collection (it stays in the history).
 
+### Typing prices, and a price that's out of line
+
+**Settings > General > How you type prices** sets how every price box takes what you type: **with the decimal point, as usual** (14 or 14.00 is fourteen), or **digits only, like PriceCharting**, where every digit counts and the last two are the cents (1400 is 14.00, 999 is 9.99). In digits-only boxes, the amount it will save shows under the box as you type ("Saves as $14.00").
+
+**A price paid that's out of line asks first.** Wherever you type what you paid for a copy (Add a game, Add a copy, the copy's window and its walk-through, Store Mode's **what you paid?**, Recently added, On the way's **Several games, one price**), a price far above what the game is worth in that condition (its value in your PriceCharting exports) says so under the box, and saving asks **Is that price right?**: **Fix it** takes you back to the box, **Yes, that's right** saves it. With no value known, a price above a ceiling asks the same. **Settings > Collection > Checking prices paid** sets when: more than 3 times the value and more than 50 over it (so a cheap game bought new isn't questioned: a game worth 10 is questioned above 60), or more than 300 with no value known; 0 turns either check off. Send to PriceCharting's check flags such a price too.
+
 ## Sending to PriceCharting
 
 PriceCharting keeps the prices, so a copy added in Squirrelcade gets its value once it's on PriceCharting too. **Stash updates > Send to PriceCharting** sends the copies added here two ways:
 
 **With their details (a CSV),** for the games PriceCharting knows: any game an export of yours ever brought (another copy of it, or one you've sold), or one you gave its PriceCharting ID. They go with everything PriceCharting's CSV importer takes: the condition, what you paid, the day you bought it, your notes (up to 300 characters), and, if you filled them in, who graded a graded copy and its certificate number (in the copy's window, when its condition is Graded) and a folder on PriceCharting for all of them (the card's **Folder on PriceCharting** box; PriceCharting makes the folder if it doesn't exist).
 
-1. Check the list on the card (each game with its condition, what you paid, the day bought and your notes).
+1. Look down **the check** on the card, once (below).
 2. Click **Download the CSV**, then **Open PriceCharting's CSV importer** and upload the file there. Upload it once: PriceCharting adds every row as a new copy.
-3. Back in Squirrelcade, click **I've uploaded it**.
+3. Back in Squirrelcade, click **I've uploaded it** (it marks the rows that were ticked).
 
 **By title (the paste list),** for the games PriceCharting doesn't know yet: lines for its paste importer ("Okami Playstation 2 CIB"). It reads CIB and Sealed, not what you paid (that stays here); a copy in another condition comes in as loose, so set its condition there after pasting (the card says which). Click **Copy the list**, **Open PriceCharting's importer**, paste and add them, then **I've added them there**.
 
@@ -96,11 +102,21 @@ To send one with its details instead, give it its **PriceCharting ID** on the ca
 
 1. Tap **Find it on PriceCharting**. When Squirrelcade knows the game's barcode (one you scanned and linked to it, or one another app's export brought), it opens the game's own page there; otherwise PriceCharting's search by title, where you open the game.
 2. Copy the number under Item Details, **PriceCharting ID** (the label, or all of Item Details, can come along).
-3. Come back and tap **Paste** beside the box: Squirrelcade takes the ID out of what you copied and saves it, and the copy moves to the CSV. On an iPhone, Safari shows its own **Paste** button first; tap it.
+3. Come back and tap **Paste** beside the box: Squirrelcade takes the ID out of what you copied and saves it, and the copy moves to the check. On an iPhone, Safari shows its own **Paste** button first; tap it.
 
-**Each ID is checked** before the copy goes in the CSV, because PriceCharting adds every row of it as a new copy and a misread can't be taken back there. Squirrelcade compares it with what your own PriceCharting exports say of that ID: PriceCharting's name for it beside your copy's title (another game, or another edition), its console and region, the value beside the same game's, and the UPC when you pasted all of Item Details (beside the game's barcode, when Squirrelcade knows it). An ID that matches goes in the CSV; one that doesn't, or that none of your exports has (so nothing here can vouch for it, unless the pasted UPC is the game's own barcode), waits on **Check these** with what disagrees. Open it on PriceCharting and press **It's right**, or fix it. **Change** gives a copy another ID and **Take it back** removes it (the copy goes by title again), on Check these and in the CSV's list alike, until you mark the copies uploaded.
+**Paste** is there when the browser lets a page read what you copied (Squirrelcade on an https address, or on the computer it runs on). Otherwise paste into the box (it keeps just the number) or type it, then **Save**. The next copy still waiting for its ID then comes up, marked **Next**, so a run through the list is: Find it, copy, back, Paste.
 
-**Paste** is there when the browser lets a page read what you copied (Squirrelcade on an https address, or on the computer it runs on). Otherwise paste into the box (it keeps just the number) or type it, then **Save**. The next copy still waiting for its ID then comes up, marked **Next**, so a run through the list is: Find it, copy, back, Paste. Squirrelcade never looks anything up on PriceCharting itself: these are links your browser opens.
+**The check** is one table of every copy going in the CSV, so a wrong ID (the wrong line copied, another console's version) is caught in one look before PriceCharting adds it as a copy, which can't be taken back there. Each row has:
+
+- your copy: its title, console and condition (and the day bought, your notes);
+- the **PriceCharting ID** you gave it, a link to its page on PriceCharting;
+- **PriceCharting says**: the name and console PriceCharting has for that ID, which Squirrelcade looks up itself;
+- a mark: **Matches** (the same game, console and region), **Doesn't match** (another game, edition, console or region, another barcode than the game's when you pasted all of Item Details, no such product on PriceCharting, or your export has the game under another ID), or **Can't check** (nothing here can name the ID), with what disagrees when you point at it;
+- **Paid** beside **Value** (the game's value in that condition, from your exports), with a price that's out of line marked.
+
+The rows that don't match, and the prices out of line, are listed at the top (**To look at**). Every row is in the CSV while it's ticked: untick one to leave it out, and fix it with **Change** (another ID) or **Take it back** (the copy goes by title again), until you mark the copies uploaded. **Settings > Collection > Sending to PriceCharting > A copy whose ID doesn't match** can leave such rows unticked until you tick them instead.
+
+**Where PriceCharting's name for an ID comes from:** your own PriceCharting exports, which name every product you have (or had). For an ID none of them has (a game new to you), **Settings > Collection > Sending to PriceCharting > Look up PriceCharting IDs on PriceCharting** (off unless you turn it on) lets Squirrelcade read that ID's public page on pricecharting.com: in the background, one page at a time with a pause, once per ID (it's kept, so the card opens at once next time), and only the name and console, never prices. A row being looked up says so and fills in by itself; one that couldn't be read says why, with **Try again**. With it off, nothing is read from PriceCharting, and such a row says it can't be checked here: open its ID on PriceCharting to check it by eye.
 
 Then export from PriceCharting as usual, and bring the export in. It brings each copy's value to the same copy here (not a second one); what you paid, the day and your notes stay Squirrelcade's. A free PriceCharting account takes one import and one export a week.
 

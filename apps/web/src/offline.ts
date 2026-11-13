@@ -1,4 +1,4 @@
-import { normalizeBarcode, normalizeTitle, searchRank } from '@squirrelcade/core';
+import { normalizeBarcode, normalizeTitle, pageOfGames, searchRank, type GamesPage } from '@squirrelcade/core';
 import { ApiError } from './api';
 import type { Answer } from './choices';
 
@@ -298,6 +298,14 @@ export function offlineSearch(copy: OfflineCopy, query: string, options: { platf
     .sort((a, b) => b.relevance - a.relevance || ORDER[a.r.answer] - ORDER[b.r.answer] || a.r.title.localeCompare(b.r.title) || a.r.platform.localeCompare(b.r.platform))
     .slice(0, options.limit ?? 30)
     .map((x) => x.r);
+}
+
+/**
+ * A search by game from the copy (T-407), as Squirrelcade answers one: every console's answer for the first `games`
+ * games, how many games in all and every console among the matches (no activity: that's Squirrelcade's to say).
+ */
+export function offlineGames(copy: OfflineCopy, query: string, options: { platformKey?: string; games: number }): GamesPage<OfflineResult> & { activity: Record<string, never> } {
+  return { ...pageOfGames(offlineSearch(copy, query, { platformKey: options.platformKey, limit: Number.MAX_SAFE_INTEGER }), options.games), activity: {} };
 }
 
 /** A saved barcode's game from the copy: what it was saved as, and Store Mode's answers for it; null if it isn't saved. */

@@ -88,7 +88,7 @@ Settings are stored in the database, so every backup includes them. Docker-level
 
 ## Data sources
 
-The user has PriceCharting's Collector plan: unlimited collection exports, but no API and no price-guide downloads (both need the $49/month Legendary plan). PriceCharting's terms also bar using its price data in software other people use without written permission, so a public Squirrelcade can't ship PriceCharting data or a reader for its pages; each user brings their own export. More generally, sources are used through official APIs or exports where those exist, and any source that reads public web pages is optional, low-volume, and checked against the site's terms before a public release.
+The user has PriceCharting's Collector plan: unlimited collection exports, but no API and no price-guide downloads (both need the $49/month Legendary plan). PriceCharting's terms also bar using its price data in software other people use without written permission, so a public Squirrelcade can't ship PriceCharting data, and reads none of its pages unless its user asks; each user brings their own export. The one page reader is off by default and the user's choice (D237, 2026-11-12, the owner turned it on for his install): Send to PriceCharting's check can look up the name and console of an ID the user's exports don't have, from that ID's public page, once per ID, one page at a time, never prices. More generally, sources are used through official APIs or exports where those exist, and any source that reads public web pages is optional, low-volume, and checked against the site's terms before a public release.
 
 | Source | Used for | Notes |
 | --- | --- | --- |

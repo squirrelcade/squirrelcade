@@ -27,6 +27,7 @@ import { IgdbClient, IgdbService, registerIgdbRoutes, type FetchLike } from './i
 import { CatalogBuilder, registerCatalogSourceRoutes, WikipediaClient } from './wikipedia.js';
 import { AddedSources, registerAddedSourceRoutes } from './addedSources.js';
 import { NintendoLifeSource } from './nintendolife.js';
+import { PriceChartingPages } from './pcLookup.js';
 import { PcService, registerPcRoutes } from './pc.js';
 import { PcWishlistService, registerPcWishlistRoutes } from './pcWishlist.js';
 import { LookupService, registerLookupRoutes, type BarcodePacing, type ProductNameLookup } from './lookup.js';
@@ -130,6 +131,9 @@ export interface BuildOptions {
   rommFetch?: FetchLike;
   /** Replaces the network for Nintendo Life (tests use a fake). */
   nintendoLifeFetch?: FetchLike;
+  /** PriceCharting's product pages, for Send to PriceCharting's check (tests use a fake, with no pause between pages). */
+  pcPageFetch?: FetchLike;
+  pcPagePauseMs?: number;
   /** Replaces the network for the online lists added as catalog sources (tests use a fake). */
   listFetch?: FetchLike;
   /** Replaces the network for Steam's review summaries (tests use a fake). */
@@ -173,6 +177,8 @@ export interface SquirrelcadeApp {
   wishlist: WishlistService;
   buyingRules: BuyingRulesService;
   lookup: LookupService;
+  /** PriceCharting's product pages read for Send to PriceCharting's check. */
+  pcPages: PriceChartingPages;
   notifications: NotificationService;
   igdb: IgdbService;
   catalogBuilder: CatalogBuilder;
@@ -245,6 +251,9 @@ export async function buildApp(options: BuildOptions = {}): Promise<Squirrelcade
   const auth = new AuthService(db, settings);
   const backups = new BackupService(db, env.configDir, settings);
   const collection = new CollectionService(db, settings, log);
+  // Send to PriceCharting's check: the names of the IDs no export has, read from PriceCharting when the owner allows it.
+  const pcPages = new PriceChartingPages(db, settings, log, options.pcPageFetch, options.pcPagePauseMs);
+  collection.usePriceChartingPages(pcPages);
   // Installs from before price history (and before the value by platform) start them from the updates they still keep.
   collection.backfillPrices();
   collection.backfillPlatformTotals();
@@ -340,7 +349,7 @@ export async function buildApp(options: BuildOptions = {}): Promise<Squirrelcade
   // Roots (D165): each game's Wikipedia article, read for its own time and since.
   const roots = new RootsService(db, settings, catalogs, wishlist, titles, wikipedia, new WikidataClient(options.wikidataFetch, options.wikidataFetch ? 0 : undefined), log);
   // The stars beside a game's name (D165), for the game page's header wherever it's shown: Game of the Day, Store Mode.
-  const launchDays = new LaunchDays(db);
+  const launchDays = new LaunchDays(db, () => catalogs.catalogStamp());
   const starsFor = (platformKey: string, platform: string, title: string, given: HeaderReviews | null) => {
     const read = roots.header(platformKey, platform, title);
     // Metacritic's score when the article's table has it for this console, IGDB's rating otherwise.
@@ -760,7 +769,7 @@ export async function buildApp(options: BuildOptions = {}): Promise<Squirrelcade
   const places = new PlacesService(db, details, lookup, catalogs, log);
   registerPlaceRoutes(app, places);
   registerAuditRoutes(app, new AuditService(db, settings, collection, details, places, env.configDir, log));
-  registerOwnCopyRoutes(app, { collection, catalogs, details, settings, db, igdb });
+  registerOwnCopyRoutes(app, { collection, catalogs, details, settings, db, igdb, pages: pcPages });
   registerCopyCareRoutes(app, care);
   // Selling (0.22.0): listing kits for eBay and Mercari, the sales, and what to sell next.
   registerSellingRoutes(app, new SellingService(db, settings, collection, details, care, igdb, catalogs, play, log));
@@ -1211,6 +1220,7 @@ export async function buildApp(options: BuildOptions = {}): Promise<Squirrelcade
     wishlist,
     buyingRules,
     lookup,
+    pcPages,
     notifications,
     igdb,
     catalogBuilder,

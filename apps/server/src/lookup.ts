@@ -1,16 +1,22 @@
 import {
+  ACTIVE_DAYS,
   barcodeForms,
   baseTitle,
   cleanProductTitle,
+  type ConsoleActivity,
   editionBase,
+  type GamesPage,
   KNOWN_PLATFORMS,
   matchKey,
   normalizeBarcode,
   normalizeTitle,
+  pageOfGames,
   productNameWords,
   productPlatform,
   searchRank,
+  SEARCH_GAMES_MAX,
   shelfReadKey,
+  titleStems,
   wordOverlap,
 } from '@squirrelcade/core';
 import { createHash } from 'node:crypto';
@@ -122,6 +128,19 @@ const NOT_ON_SHELVES = new Set(['DLC', 'Expansion', 'Mod', 'Episode', 'Season', 
 
 /** How long a built offline copy is handed out before it's built again, in milliseconds. */
 const OFFLINE_FRESH_MS = 60_000;
+
+/** What a search by game found beyond its page (T-407): how many games in all, and every console among the matches. */
+export type LookupPage = Omit<GamesPage<LookupResult>, 'results'>;
+
+/** The first `games` games of answers in the search's order, each with all its answers; fills in `page` (T-407). */
+function gamePage(sorted: LookupResult[], games: number, page?: LookupPage): LookupResult[] {
+  const found = pageOfGames(sorted, games);
+  if (page) {
+    page.games = found.games;
+    page.consoles = found.consoles;
+  }
+  return found.results;
+}
 
 /** Whether one game is owned (POST /api/v1/owned), for tools such as a game-of-the-day recommender. */
 export interface OwnedAnswer {
@@ -513,7 +532,12 @@ export class LookupService {
    */
   private batch: { rows: { productId: string; title: string; key: string; name: string }[]; preferences: Map<string, string> } | null = null;
 
-  search(query: string, options: { platformKey?: string; exact?: boolean; sameTitle?: boolean; limit?: number; brief?: boolean; every?: boolean; followed?: boolean } = {}): LookupResult[] {
+  /**
+   * `games`: answers by game (T-407), every console's answer for the first `games` games (a long series' games each
+   * keep all their consoles, none cut off by other games' answers), with how many games there are and every console the
+   * matches are on filled into `page`; `limit` is then not used.
+   */
+  search(query: string, options: { platformKey?: string; exact?: boolean; sameTitle?: boolean; limit?: number; brief?: boolean; every?: boolean; followed?: boolean; games?: number; page?: LookupPage } = {}): LookupResult[] {
     const q = normalizeTitle(query);
     // every: all the games Store Mode knows, unranked (the offline copy).
     if (!options.every && q.length < 2) return [];
@@ -646,7 +670,8 @@ export class LookupService {
 
     // What owned copies are worth, from the last export, and which releases they are (not for a brief search).
     const order: Record<Answer, number> = { need: 0, check: 1, unconfirmed: 2, 'own-elsewhere': 3, own: 4, 'own-not-in-catalog': 5, 'not-a-target': 6, 'not-tracked': 7 };
-    const kept = results.sort((a, b) => b.relevance - a.relevance || order[a.answer] - order[b.answer] || a.title.localeCompare(b.title) || a.platform.localeCompare(b.platform)).slice(0, limit);
+    const sorted = results.sort((a, b) => b.relevance - a.relevance || order[a.answer] - order[b.answer] || a.title.localeCompare(b.title) || a.platform.localeCompare(b.platform));
+    const kept = options.games ? gamePage(sorted, options.games, options.page) : sorted.slice(0, limit);
     for (const r of kept) {
       const l = later.get(r);
       if (!l) continue;
@@ -765,7 +790,42 @@ export class LookupService {
   }
 
   /** Kept until a copy is added, changed or gone (its count, newest id or last change): each search read them all. */
-  private copiesCache: { stamp: string; values?: { values: Map<string, number>; releases: Map<string, { region: string; consoleLabel: string }> } } | null = null;
+  private copiesCache: {
+    stamp: string;
+    values?: { values: Map<string, number>; releases: Map<string, { region: string; consoleLabel: string }> };
+    /** Each console's copies, and those added lately, as of `day` (T-407). */
+    activity?: { day: string; counts: Map<string, ConsoleActivity> };
+  } | null = null;
+
+  /**
+   * How busy you've been on each console, for the search's consoles (T-407): copies added in the last ACTIVE_DAYS days
+   * (by the day entered, else the day Squirrelcade got it) and games on the way (not for a viewer: they're the
+   * owner's), and the copies you have. Kept until a copy changes or the day does.
+   */
+  consoleActivity(withComing = true): Record<string, ConsoleActivity> {
+    const kept = this.copiesKept();
+    const day = new Date().toISOString().slice(0, 10);
+    if (kept.activity?.day !== day) {
+      const since = new Date(Date.now() - ACTIVE_DAYS * 86_400_000).toISOString().slice(0, 10);
+      const rows = this.db
+        .select({ key: platforms.key, copies: sql<number>`count(*)`, recent: sql<number>`sum(case when coalesce(${copies.dateEntered}, ${copies.addedAt}) >= ${since} then 1 else 0 end)` })
+        .from(copies)
+        .innerJoin(platforms, eq(platforms.id, copies.platformId))
+        .where(isNull(copies.goneAt))
+        .groupBy(platforms.key)
+        .all();
+      kept.activity = { day, counts: new Map(rows.map((r) => [r.key, { recent: Number(r.recent) || 0, copies: Number(r.copies) || 0 }])) };
+    }
+    const out: Record<string, ConsoleActivity> = {};
+    for (const [key, a] of kept.activity.counts) out[key] = { ...a };
+    if (withComing) {
+      for (const k of this.coming().keys()) {
+        const key = k.slice(0, k.indexOf('|'));
+        (out[key] ??= { recent: 0, copies: 0 }).recent++;
+      }
+    }
+    return out;
+  }
 
   /** Copies moved to another console (their console changes, not their last change): read again. */
   forgetCopies(): void {
@@ -919,25 +979,31 @@ export class LookupService {
     const cleaned = cleanProductTitle(productName);
     if (platformKey) {
       const typed = this.search(cleaned, { platformKey, limit: 15, followed: false });
-      if (typed.length > 0) return { query: cleaned, results: merge(typed, elsewhere?.results ?? []) };
-      // A game the named console's catalog doesn't have yet (a new release, or a remaster: "The Legend of Zelda: Ocarina
-      // of Time - Nintendo Switch 2" found only on the N64), known by its title elsewhere: on the named console, when
-      // IGDB has it there or the name is that title and nothing more (D184); before the closest words, so a close other game
-      // on that console isn't taken for it ("Tears of the Kingdom" for "Ocarina of Time", D186).
-      if (elsewhere && (this.igdb?.findByKey(platformKey, elsewhere.query) || matchKey(cleaned) === matchKey(elsewhere.query))) {
+      // A game the named console's catalog doesn't have yet (a new release, a remaster, or a console's own edition: "The
+      // Legend of Zelda: Ocarina of Time - Nintendo Switch 2" found only on the N64, "Hollow Knight - Nintendo Switch 2
+      // Edition" only on the Switch and the PS4), known by its title elsewhere: on the named console, when IGDB has it
+      // there or the name is that title and nothing more (D184); before the closest words, so a close other game on that
+      // console isn't taken for it ("Tears of the Kingdom" for "Ocarina of Time", D186).
+      const known = elsewhere && (this.igdb?.findByKey(platformKey, elsewhere.query) || matchKey(cleaned) === matchKey(elsewhere.query)) ? elsewhere : null;
+      // Before the console's games with the name's words too, when they're all longer titles that begin with it: other
+      // games of its series ("Hollow Knight: Silksong - Nintendo Switch 2 Edition" for "Hollow Knight"), offered after it.
+      const name = known ? matchKey(known.query) : '';
+      const sequel = (title: string) => matchKey(editionBase(title)) !== name && titleStems(editionBase(title)).some((s) => matchKey(s) === name);
+      if (typed.length > 0 && !(known && typed.every((r) => sequel(r.title)))) return { query: cleaned, results: merge(typed, elsewhere?.results ?? []) };
+      if (known) {
         const here: LookupResult = {
           platformKey,
           platform: this.catalogs.allMatches().find((m) => m.key === platformKey)?.name ?? KNOWN_PLATFORMS.find((k) => k.key === platformKey)?.name ?? platformKey,
-          title: elsewhere.query,
+          title: known.query,
           answer: 'need',
           ownedAs: [],
-          ownedOn: [...new Set(elsewhere.results.filter((r) => r.answer === 'own' || r.answer === 'own-not-in-catalog').map((r) => r.platform))],
+          ownedOn: [...new Set(known.results.filter((r) => r.answer === 'own' || r.answer === 'own-not-in-catalog').map((r) => r.platform))],
           ownedOnPc: [],
           maybe: [],
           wishlist: null,
           relevance: 3,
         };
-        return { query: elsewhere.query, results: merge([here], elsewhere.results) };
+        return { query: known.query, results: merge([here], typed, known.results) };
       }
       const close = this.closest(cleaned, platformKey);
       if (close.length > 0) return { query: close[0]!.title, results: merge(close, shortHere?.results ?? [], elsewhere?.results ?? []) };
@@ -1152,7 +1218,16 @@ export function registerLookupRoutes(app: FastifyInstance, lookup: LookupService
   };
 
   app.get('/api/v1/lookup', async (request) => {
-    const q = request.query as { q?: string; platform?: string; limit?: string };
+    const q = request.query as { q?: string; platform?: string; limit?: string; games?: string; brief?: string };
+    // By game (T-407): every console's answer for the best games, the games found in all, every console among the
+    // matches, and how busy you've been on each console (the header's search and Store Mode). brief=1 leaves out what
+    // the header's list doesn't show (covers, stars, values, notes, what's on the way).
+    if (q.games !== undefined) {
+      const n = Number(q.games);
+      const page: LookupPage = { games: 0, consoles: [] };
+      const results = lookup.search(q.q ?? '', { platformKey: q.platform || undefined, games: Number.isInteger(n) && n >= 1 ? Math.min(n, SEARCH_GAMES_MAX) : 20, page, brief: q.brief === '1' });
+      return { results: forRequester(request, results), games: page.games, consoles: page.consoles, activity: lookup.consoleActivity(!isViewer(request)) };
+    }
     const limit = Number(q.limit);
     return forRequester(request, lookup.search(q.q ?? '', { platformKey: q.platform || undefined, limit: Number.isInteger(limit) && limit >= 1 && limit <= 30 ? limit : undefined }));
   });

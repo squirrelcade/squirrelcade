@@ -122,6 +122,8 @@ export async function testApp(
     youtubeFetch?: FetchLike;
     rommFetch?: FetchLike;
     nintendoLifeFetch?: FetchLike;
+    /** PriceCharting's product pages (Send to PriceCharting's check), read with no pause between them. */
+    pcPageFetch?: FetchLike;
     listFetch?: FetchLike;
     steamFetch?: FetchLike;
     itadFetch?: FetchLike;
@@ -174,6 +176,8 @@ export async function testApp(
       youtubeFetch: options.youtubeFetch ?? noNetwork,
       rommFetch: options.rommFetch ?? noNetwork,
       nintendoLifeFetch: options.nintendoLifeFetch ?? noNetwork,
+      pcPageFetch: options.pcPageFetch ?? noNetwork,
+      pcPagePauseMs: 0,
       listFetch: options.listFetch ?? noNetwork,
       steamFetch: options.steamFetch ?? noNetwork,
       itadFetch: options.itadFetch ?? noNetwork,

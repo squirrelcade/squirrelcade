@@ -1,18 +1,21 @@
-import { Alert, Anchor, Badge, Button, Card, Group, List, Stack, Table, Text, Textarea, TextInput, Title } from '@mantine/core';
-import { priceChartingBarcodeUrl, priceChartingIdIn, priceChartingUrl } from '@squirrelcade/core';
-import { IconClipboard, IconCopy, IconDownload, IconExternalLink, IconSend } from '@tabler/icons-react';
+import { Alert, Anchor, Badge, Button, Card, Checkbox, Group, List, Loader, Stack, Table, Text, Textarea, TextInput, Title, Tooltip } from '@mantine/core';
+import { priceChartingBarcodeUrl, priceChartingIdIn, priceChartingProductUrl, priceChartingUrl } from '@squirrelcade/core';
+import { IconAlertTriangle, IconCheck, IconClipboard, IconCopy, IconDownload, IconExternalLink, IconQuestionMark, IconSend, IconX } from '@tabler/icons-react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useEffect, useRef, useState } from 'react';
+import { Link } from 'react-router';
 import { api } from '../api';
 import { copyText } from '../Copy';
 import { count, date, money } from '../format';
 import { notifyError, notifySuccess, useSetting } from '../hooks';
+import { usePriceCheck } from '../PriceInput';
 
 /** A copy of Squirrelcade's own on its way to PriceCharting, or sold here and still listed there (GET /api/v1/send/pricecharting). */
 interface SendCopy {
   id: number;
   title: string;
   platform: string | null;
+  platformKey: string | null;
   condition: string;
   line: string;
   conditionReadThere: boolean;
@@ -21,11 +24,22 @@ interface SendCopy {
   goneReason: string | null;
   /** Its PriceCharting product id, when Squirrelcade knows it: then it goes in the CSV with its details. */
   pcId: string | null;
-  /** The ID's check (D187): flagged ones wait on Check these, out of the CSV, until the owner confirms them. */
+  /** The ID's check (D187): ok, confirmed (said right after a flag), or flagged. */
   check: 'ok' | 'confirmed' | 'flagged' | null;
   why: string[];
-  /** PriceCharting's name and console for the ID, from the owner's exports. */
+  /** PriceCharting's name and console for the ID. */
   pcName: string | null;
+  /** The check (the owner, 2026-11-12): PriceCharting's name and console for the ID beside the copy's. */
+  verdict: 'match' | 'mismatch' | 'unknown' | null;
+  /** Where PriceCharting's name for the ID came from, or why there's none. */
+  lookup: 'export' | 'page' | 'pending' | 'failed' | 'missing' | 'off' | null;
+  lookupMessage: string | null;
+  pcTitle: string | null;
+  pcConsole: string | null;
+  /** Whether the check starts with it ticked (Settings › Collection › Sending to PriceCharting). */
+  inCsv: boolean;
+  /** The game's value in its condition, from the owner's exports. */
+  valueCents: number | null;
   /** A barcode Squirrelcade knows for the game on its console: "Find it" opens that product on PriceCharting (D154). */
   barcode: string | null;
   costCents: number | null;
@@ -90,7 +104,7 @@ function PriceChartingId({ c, currency, nextAt, onSaved, compact = false }: { c:
   const save = useMutation({
     mutationFn: (pcId: string) => api(`/send/pricecharting/${c.id}/product`, { method: 'PUT', json: { pcId, pasted: pasted.current } }),
     onSuccess: async () => {
-      notifySuccess(`${c.title} has its PriceCharting ID: checked, it goes in the CSV with its details (or on Check these, if something doesn't match).`);
+      notifySuccess(`${c.title} has its PriceCharting ID: it's on the check above, beside what PriceCharting calls it, and in the CSV with its details.`);
       pasted.current = '';
       setValue('');
       await onSaved(c.id);
@@ -196,15 +210,20 @@ function FixId({ c, currency, onDone }: { c: SendCopy; currency: string; onDone:
  * Send to PriceCharting (0.20.0, D83; the CSV, D150): the copies added in Squirrelcade that PriceCharting doesn't have
  * yet, two ways. Those whose PriceCharting product Squirrelcade knows (from an export that had the game, or an ID
  * typed here) go in a CSV for PriceCharting's CSV importer, with their condition, what you paid, the day bought and
- * your notes, after a look at the list; the rest go by title, as lines for its paste importer. Then the ones sent and
+ * your notes, after one look down the check (what PriceCharting calls each ID, and what was paid beside the value); the rest go by title, as lines for its paste importer. Then the ones sent and
  * waiting for an export, and the copies sold or removed here that PriceCharting still lists. Shown on Stash updates
  * while there's something to do.
  */
 export function SendToPriceCharting() {
   const queryClient = useQueryClient();
-  const dateFormat = useSetting('general.dateFormat', 'us');
   const currency = useSetting('general.currency', 'USD');
-  const data = useQuery({ queryKey: ['send', 'pricecharting'], queryFn: () => api<ForPriceCharting>('/send/pricecharting') });
+  // While any ID is still being looked up on PriceCharting (in the background), the list is asked for again.
+  const data = useQuery({
+    queryKey: ['send', 'pricecharting'],
+    queryFn: () => api<ForPriceCharting>('/send/pricecharting'),
+    refetchInterval: (q) => (q.state.data?.toSend.some((c) => c.lookup === 'pending') ? 2500 : false),
+  });
+  const dateFormat = useSetting('general.dateFormat', 'us');
   const [folder, setFolder] = useState(rememberedFolder);
   const keepFolder = (v: string) => {
     setFolder(v);
@@ -223,6 +242,8 @@ export function SendToPriceCharting() {
     },
     onError: (err) => notifyError(err),
   });
+  // The check's ticks, where the owner changed one: every other row is as the check starts it (inCsv).
+  const [ticks, setTicks] = useState<Record<number, boolean>>({});
   // After an ID is saved, the next copy still waiting for one (n tells one save from the next); id 0: none is left, so
   // the CSV's download is next.
   const [next, setNext] = useState<{ id: number; n: number } | null>(null);
@@ -234,11 +255,12 @@ export function SendToPriceCharting() {
   }, [next]);
   const d = data.data;
   if (!d || d.toSend.length + d.waiting.length + d.toRemove.length === 0) return null;
-  // Checked IDs go in the CSV; a flagged one waits on Check these until the owner looks (D187).
-  const withId = d.toSend.filter((c) => c.pcId !== null && c.check !== 'flagged');
-  const toCheck = d.toSend.filter((c) => c.pcId !== null && c.check === 'flagged');
+  // Every copy with a PriceCharting ID is on the check, and goes in the CSV while it's ticked.
+  const withId = d.toSend.filter((c) => c.pcId !== null);
+  const ticked = withId.filter((c) => ticks[c.id] ?? c.inCsv);
   const byTitle = d.toSend.filter((c) => c.pcId === null);
   const unread = byTitle.filter((c) => !c.conditionReadThere);
+  const csvHref = `/api/v1/send/pricecharting.csv?ids=${ticked.map((c) => c.id).join(',')}${folder.trim() ? `&folder=${encodeURIComponent(folder.trim())}` : ''}`;
 
   // A run through the list: the copy after the one just given its ID, or the first one before it.
   async function idSaved(id: number) {
@@ -267,60 +289,15 @@ export function SendToPriceCharting() {
           </Text>
         )}
 
-        {toCheck.length > 0 && <CheckThese copies={toCheck} currency={currency} onDone={refresh} />}
-
         {withId.length > 0 && (
           <Stack gap="xs">
-            <Title order={5}>With their details: PriceCharting's CSV importer ({count(withId.length)})</Title>
-            <Text size="sm" maw={720}>
-              PriceCharting knows these games, so they go with everything it takes: condition, what you paid, the day bought and your notes. Check the list, download the file, and
-              upload it on PriceCharting's CSV importer. Upload it once: PriceCharting adds every row as a new copy, so a second upload adds them again.
+            <Title order={5}>Check, then send: PriceCharting's CSV importer ({count(ticked.length)} of {count(withId.length)} ticked)</Title>
+            <Text size="sm" maw={760}>
+              These go with everything PriceCharting's CSV importer takes: condition, what you paid, the day bought and your notes. Each row has your copy beside what PriceCharting
+              calls the ID you gave it, looked up by Squirrelcade, with what you paid beside the game's value: look down the list once. Every ticked row goes in the file; untick one
+              that's wrong and fix it (Change), or leave it for another time. Upload the file once: PriceCharting adds every row as a new copy, so a second upload adds them again.
             </Text>
-            <div style={{ overflowX: 'auto' }}>
-              <Table verticalSpacing={4} fz="sm" miw={520} aria-label="What the CSV has">
-                <Table.Thead>
-                  <Table.Tr>
-                    <Table.Th>Game</Table.Th>
-                    <Table.Th>Condition</Table.Th>
-                    <Table.Th>Paid</Table.Th>
-                    <Table.Th>Bought</Table.Th>
-                    <Table.Th>Notes</Table.Th>
-                    <Table.Th />
-                  </Table.Tr>
-                </Table.Thead>
-                <Table.Tbody>
-                  {withId.map((c) => (
-                    <Table.Tr key={c.id}>
-                      <Table.Td>
-                        {c.title}{' '}
-                        <Text span size="xs" c="dimmed">
-                          {c.platform ?? '?'} · #{c.pcId}
-                        </Text>
-                      </Table.Td>
-                      <Table.Td>
-                        {c.condition}
-                        {c.gradingCompany && c.condition === 'Graded' && (
-                          <Text size="xs" c="dimmed">
-                            {c.gradingCompany}
-                            {c.gradingCertId ? ` #${c.gradingCertId}` : ''}
-                          </Text>
-                        )}
-                      </Table.Td>
-                      <Table.Td>{c.costCents ? money(c.costCents, currency) : '—'}</Table.Td>
-                      <Table.Td>{c.datePurchased ? date(c.datePurchased, dateFormat) : '—'}</Table.Td>
-                      <Table.Td style={{ maxWidth: 220 }}>
-                        <Text size="xs" lineClamp={2}>
-                          {c.notes ? c.notes.slice(0, 300) : '—'}
-                        </Text>
-                      </Table.Td>
-                      <Table.Td>
-                        <FixId c={c} currency={currency} onDone={refresh} />
-                      </Table.Td>
-                    </Table.Tr>
-                  ))}
-                </Table.Tbody>
-              </Table>
-            </div>
+            <CheckTable copies={withId} ticked={(c) => ticks[c.id] ?? c.inCsv} onTick={(c, on) => setTicks((t) => ({ ...t, [c.id]: on }))} currency={currency} dateFormat={dateFormat} onDone={refresh} />
             <TextInput
               size="xs"
               maw={320}
@@ -332,21 +309,13 @@ export function SendToPriceCharting() {
               onChange={(e) => keepFolder(e.currentTarget.value)}
             />
             <Group gap="xs">
-              <Button
-                ref={download}
-                size="compact-sm"
-                variant="light"
-                leftSection={<IconDownload size={14} />}
-                component="a"
-                href={`/api/v1/send/pricecharting.csv${folder.trim() ? `?folder=${encodeURIComponent(folder.trim())}` : ''}`}
-                download
-              >
-                Download the CSV
+              <Button ref={download} size="compact-sm" variant="light" leftSection={<IconDownload size={14} />} component="a" href={csvHref} download disabled={ticked.length === 0}>
+                Download the CSV ({count(ticked.length)})
               </Button>
               <Button size="compact-sm" variant="default" component="a" href={PRICECHARTING_CSV_IMPORTER} target="_blank" rel="noreferrer" rightSection={<IconExternalLink size={14} />}>
                 Open PriceCharting's CSV importer
               </Button>
-              <Button size="compact-sm" variant="default" loading={mark.isPending} onClick={() => mark.mutate({ path: 'sent', ids: withId.map((c) => c.id) })}>
+              <Button size="compact-sm" variant="default" loading={mark.isPending} disabled={ticked.length === 0} onClick={() => mark.mutate({ path: 'sent', ids: ticked.map((c) => c.id) })}>
                 I've uploaded it
               </Button>
             </Group>
@@ -416,54 +385,206 @@ export function SendToPriceCharting() {
   );
 }
 
+/** What the check's mark says, and its color. */
+const VERDICT: Record<'match' | 'mismatch' | 'unknown', { label: string; color: string; icon: typeof IconCheck }> = {
+  match: { label: 'Matches', color: 'green', icon: IconCheck },
+  mismatch: { label: "Doesn't match", color: 'red', icon: IconX },
+  unknown: { label: "Can't check", color: 'gray', icon: IconQuestionMark },
+};
+
 /**
- * Check these (D187): the copies whose PriceCharting ID didn't check out against your exports (another game's name,
- * console, region, edition or barcode there), or that no export of yours can vouch for. They stay out of the CSV until
- * you look and say it's right, because PriceCharting adds every row of it as a new copy and a misread can't be taken
- * back there.
+ * The check before the CSV (the owner, 2026-11-12: "one page that has Squirrelcade do the lookup for it and have it on a
+ * table, and you can just visually inspect it. You don't have to go through and click entry by entry"). One row a copy:
+ * its title and console beside the PriceCharting ID given to it and what PriceCharting calls that ID (from the owner's
+ * exports, or its page, read once in the background when Settings › Collection › Sending to PriceCharting allows it),
+ * a mark, and what was paid beside the game's value. The rows that disagree, and the prices out of line, are listed at
+ * the top. Every row is in the CSV while it's ticked; nothing waits for a click per row.
  */
-function CheckThese({ copies, currency, onDone }: { copies: SendCopy[]; currency: string; onDone: () => Promise<unknown> }) {
-  const confirm = useMutation({
-    mutationFn: (c: SendCopy) => api(`/send/pricecharting/${c.id}/confirm`, { method: 'POST' }),
-    onSuccess: async (_r, c) => {
-      notifySuccess(`${c.title} goes in the CSV.`);
-      await onDone();
-    },
+function CheckTable({
+  copies,
+  ticked,
+  onTick,
+  currency,
+  dateFormat,
+  onDone,
+}: {
+  copies: SendCopy[];
+  ticked: (c: SendCopy) => boolean;
+  onTick: (c: SendCopy, on: boolean) => void;
+  currency: string;
+  dateFormat: Parameters<typeof date>[1];
+  onDone: () => Promise<unknown>;
+}) {
+  const prices = usePriceCheck();
+  const priceFlag = (c: SendCopy) => prices.words(c.costCents, c.valueCents);
+  const again = useMutation({
+    mutationFn: (c: SendCopy) => api(`/send/pricecharting/${c.id}/lookup`, { method: 'POST' }),
+    onSuccess: () => onDone(),
     onError: (err) => notifyError(err),
   });
+  const mismatched = copies.filter((c) => c.verdict === 'mismatch');
+  const pricey = copies.filter((c) => priceFlag(c) !== null);
+  const unknown = copies.filter((c) => c.verdict === 'unknown' && c.lookup !== 'pending');
+  const pending = copies.filter((c) => c.lookup === 'pending').length;
+  const off = unknown.some((c) => c.lookup === 'off');
+  const name = (c: SendCopy) => `${c.title} (${c.platform ?? '?'})`;
   return (
-    <Alert variant="light" color="yellow" title={`Check these (${count(copies.length)})`} id="check-these">
-      <Text size="sm" mb="xs" maw={720}>
-        Their PriceCharting IDs don't match what your exports say, or no export of yours has them. They stay out of the CSV until you look: open each on PriceCharting, and
-        say it's right, change it, or take it back.
-      </Text>
-      <Stack gap="sm">
-        {copies.map((c) => (
-          <Stack key={c.id} gap={2}>
-            <Text size="sm" fw={600}>
-              {c.title}{' '}
-              <Text span size="xs" c="dimmed" fw={400}>
-                {c.platform ?? '?'} · {c.condition} · #{c.pcId}
-                {c.pcName ? ` · on PriceCharting: ${c.pcName}` : ''}
-              </Text>
-            </Text>
-            <List size="xs" spacing={0}>
-              {c.why.map((w) => (
-                <List.Item key={w}>{w}</List.Item>
-              ))}
-            </List>
-            <Group gap="xs" wrap="wrap">
-              <Anchor href={c.barcode ? priceChartingBarcodeUrl(c.barcode) : priceChartingUrl(c.title, c.platform ?? '')} target="_blank" rel="noreferrer" size="xs">
-                Find it on PriceCharting
-              </Anchor>
-              <Button size="compact-xs" variant="light" loading={confirm.isPending && confirm.variables?.id === c.id} onClick={() => confirm.mutate(c)} aria-label={`The PriceCharting ID of ${c.title} is right`}>
-                It's right
-              </Button>
-              <FixId c={c} currency={currency} onDone={onDone} />
-            </Group>
-          </Stack>
-        ))}
-      </Stack>
-    </Alert>
+    <Stack gap="xs">
+      {(mismatched.length > 0 || pricey.length > 0) && (
+        <Alert variant="light" color="red" icon={<IconAlertTriangle size={18} />} title={`To look at (${count(new Set([...mismatched, ...pricey].map((c) => c.id)).size)})`} id="check-these">
+          <List size="sm" spacing={2}>
+            {mismatched.map((c) => (
+              <List.Item key={`id-${c.id}`}>
+                <b>{name(c)}</b>, #{c.pcId}: {c.why.join('; ')}.{ticked(c) ? ' In the CSV unless you untick it.' : ' Not in the CSV.'}
+              </List.Item>
+            ))}
+            {pricey.map((c) => (
+              <List.Item key={`paid-${c.id}`}>
+                <b>{name(c)}</b>: paid {priceFlag(c)}.{' '}
+                {c.platformKey && (
+                  <Anchor component={Link} to={`/consoles/${c.platformKey}?game=${encodeURIComponent(`${c.platformKey}|${c.title}`)}`} size="sm">
+                    Open the game to fix it
+                  </Anchor>
+                )}
+              </List.Item>
+            ))}
+          </List>
+        </Alert>
+      )}
+      {(unknown.length > 0 || pending > 0) && (
+        <Text size="sm" c="dimmed" maw={760}>
+          {pending > 0 ? `Looking up ${count(pending)} on PriceCharting, one at a time; the rows fill in as they come. ` : ''}
+          {unknown.length > 0 && (
+            <>
+              {count(unknown.length)} can't be checked here: {off ? "your PriceCharting exports don't have their IDs" : "PriceCharting's page couldn't be read"}. Open each on PriceCharting from its ID
+              {off ? (
+                <>
+                  , or let Squirrelcade look IDs up there:{' '}
+                  <Anchor component={Link} to="/settings/collection#setting-collection.pcLookup" size="sm">
+                    Settings › Collection › Sending to PriceCharting
+                  </Anchor>
+                  .
+                </>
+              ) : (
+                '.'
+              )}
+            </>
+          )}
+        </Text>
+      )}
+      <div style={{ overflowX: 'auto' }}>
+        <Table verticalSpacing={4} fz="sm" miw={760} aria-label="What the CSV has">
+          <Table.Thead>
+            <Table.Tr>
+              <Table.Th w={36}>
+                <Checkbox
+                  size="xs"
+                  aria-label="Tick every row"
+                  checked={copies.every(ticked)}
+                  indeterminate={!copies.every(ticked) && copies.some(ticked)}
+                  onChange={(e) => {
+                    const on = e.currentTarget.checked;
+                    for (const c of copies) onTick(c, on);
+                  }}
+                />
+              </Table.Th>
+              <Table.Th>Your copy</Table.Th>
+              <Table.Th>PriceCharting ID</Table.Th>
+              <Table.Th>PriceCharting says</Table.Th>
+              <Table.Th>Check</Table.Th>
+              <Table.Th ta="right">Paid</Table.Th>
+              <Table.Th ta="right">Value</Table.Th>
+              <Table.Th />
+            </Table.Tr>
+          </Table.Thead>
+          <Table.Tbody>
+            {copies.map((c) => {
+              const v = VERDICT[c.verdict ?? 'unknown'];
+              const flag = priceFlag(c);
+              const on = ticked(c);
+              return (
+                // A bar down the left of a row to look at: red for an ID that doesn't match, orange for a price out of line.
+                <Table.Tr key={c.id} style={c.verdict === 'mismatch' || flag ? { boxShadow: `inset 4px 0 0 var(--mantine-color-${c.verdict === 'mismatch' ? 'red' : 'orange'}-6)` } : undefined}>
+                  <Table.Td>
+                    <Checkbox size="xs" aria-label={`${c.title} in the CSV`} checked={on} onChange={(e) => onTick(c, e.currentTarget.checked)} />
+                  </Table.Td>
+                  <Table.Td>
+                    <Text size="sm" fw={500}>
+                      {c.title}
+                    </Text>
+                    <Text size="xs" c="dimmed">
+                      {c.platform ?? '?'} · {c.condition}
+                      {c.gradingCompany && c.condition === 'Graded' ? ` (${c.gradingCompany}${c.gradingCertId ? ` #${c.gradingCertId}` : ''})` : ''}
+                      {c.datePurchased ? ` · bought ${date(c.datePurchased, dateFormat)}` : ''}
+                    </Text>
+                    {c.notes && (
+                      <Text size="xs" c="dimmed" lineClamp={1} maw={260}>
+                        {c.notes.slice(0, 300)}
+                      </Text>
+                    )}
+                  </Table.Td>
+                  <Table.Td>
+                    <Anchor href={priceChartingProductUrl(c.pcId!)} target="_blank" rel="noreferrer" size="sm" aria-label={`PriceCharting ID ${c.pcId}: open it on PriceCharting`}>
+                      #{c.pcId} <IconExternalLink size={11} />
+                    </Anchor>
+                  </Table.Td>
+                  <Table.Td>
+                    {c.pcTitle ? (
+                      <>
+                        <Text size="sm">{c.pcTitle}</Text>
+                        <Text size="xs" c="dimmed">
+                          {c.pcConsole}
+                          {c.lookup === 'export' ? ' · from your export' : ''}
+                        </Text>
+                      </>
+                    ) : c.lookup === 'pending' ? (
+                      <Group gap={6} wrap="nowrap">
+                        <Loader size={12} />
+                        <Text size="xs" c="dimmed">
+                          Looking it up…
+                        </Text>
+                      </Group>
+                    ) : c.lookup === 'missing' ? (
+                      <Text size="sm" c="red">
+                        No such product on PriceCharting
+                      </Text>
+                    ) : c.lookup === 'failed' ? (
+                      <Stack gap={2}>
+                        <Text size="xs" c="dimmed">
+                          Couldn't look it up{c.lookupMessage ? `: ${c.lookupMessage}` : ''}
+                        </Text>
+                        <Button size="compact-xs" variant="subtle" loading={again.isPending && again.variables?.id === c.id} onClick={() => again.mutate(c)} w="fit-content">
+                          Try again
+                        </Button>
+                      </Stack>
+                    ) : (
+                      <Text size="xs" c="dimmed">
+                        Not in your exports: open it to check
+                      </Text>
+                    )}
+                  </Table.Td>
+                  <Table.Td style={{ whiteSpace: 'nowrap' }}>
+                    <Tooltip label={c.why.join('; ') || (c.verdict === 'match' ? 'The same game, console and region' : v.label)} multiline maw={320} disabled={c.lookup === 'pending'}>
+                      <Badge size="sm" variant="light" color={v.color} leftSection={<v.icon size={11} />} style={{ textTransform: 'none', flexShrink: 0 }} styles={{ label: { overflow: 'visible' } }}>
+                        {c.lookup === 'pending' ? 'Looking…' : v.label}
+                      </Badge>
+                    </Tooltip>
+                  </Table.Td>
+                  <Table.Td ta="right">
+                    <Text size="sm" c={flag ? 'orange.8' : undefined} fw={flag ? 600 : undefined} title={flag ?? undefined}>
+                      {flag && <IconAlertTriangle size={12} style={{ verticalAlign: '-1px' }} aria-label="Out of line" />} {c.costCents ? money(c.costCents, currency) : '—'}
+                    </Text>
+                  </Table.Td>
+                  <Table.Td ta="right">{c.valueCents ? money(c.valueCents, currency) : '—'}</Table.Td>
+                  <Table.Td>
+                    <FixId c={c} currency={currency} onDone={onDone} />
+                  </Table.Td>
+                </Table.Tr>
+              );
+            })}
+          </Table.Tbody>
+        </Table>
+      </div>
+    </Stack>
   );
 }

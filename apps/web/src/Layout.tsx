@@ -1,7 +1,7 @@
 import { SETTINGS_PAGES } from '@squirrelcade/core';
 import { ActionIcon, Anchor, AppShell, Badge, Burger, Button, Group, Menu, NavLink, ScrollArea, Text, Tooltip, UnstyledButton } from '@mantine/core';
 import { useDisclosure, useMediaQuery } from '@mantine/hooks';
-import { IconSun, IconVideoFilled, IconChevronDown, IconHelp, IconListCheck, IconLogout, IconMenu2, IconPlus, IconServer, IconSettings, IconUser, IconUsersGroup } from '@tabler/icons-react';
+import { IconBooks, IconSun, IconVideoFilled, IconChevronDown, IconHelp, IconListCheck, IconLogout, IconMenu2, IconPlus, IconServer, IconSettings, IconUser, IconUsersGroup } from '@tabler/icons-react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useState, type ReactNode } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router';
@@ -86,6 +86,7 @@ const MAIN_PAGES: Record<string, string> = {
   '/today': 'Today',
   '/store': 'Store Mode',
   '/store/list': 'Check a list',
+  '/store/photo': 'Check a shelf',
   '/updates': 'Stash updates',
   '/notes': 'Your notes',
   '/roots': 'Roots',
@@ -105,7 +106,8 @@ function pageTitle(path: string): string | null {
 /** The frame around every page: the header (activity indicator, account menu) and the navigation, which folds away on phones. */
 export function Layout({ children }: { children: ReactNode }) {
   const [opened, { toggle, close }] = useDisclosure();
-  // On a phone, the redesign's bar at the bottom (0.51.0): Today, Collection, Scan (Store Mode, D153), Wishlist, and More (the menu).
+  // On a phone, the redesign's bar at the bottom (0.51.0): Today, Collection, Scan (Store Mode, D153), Shelf (Check a shelf,
+  // T-406, unless turned off), Wishlist, and More (the menu).
   const phone = useMediaQuery('(max-width: 47.99em)') ?? false;
   const location = useLocation();
   const navigate = useNavigate();
@@ -137,6 +139,8 @@ export function Layout({ children }: { children: ReactNode }) {
   // What the owner played and their copies' details are the owner's, unless shared with viewers.
   const playShown = useSetting('security.viewersSeePlay', true) || owner;
   const detailsShown = useSetting('security.viewersSeeCopyDetails', false) || owner;
+  // Check a shelf one tap away on a phone (T-406, Settings > Interface > Navigation): Shelf in the bar at the bottom.
+  const shelfTab = useSetting('interface.shelfShortcuts', true) !== false;
   const [password, setPassword] = useState(false);
   const review = useQuery({ queryKey: ['catalogs', 'review'], queryFn: () => api<{ lookAlikes: unknown[] }>('/review'), enabled: !!session?.authenticated && owner });
   // Copies a file no longer has wait there too (0.19.0).
@@ -259,6 +263,8 @@ export function Layout({ children }: { children: ReactNode }) {
       <AppShell.Navbar p="xs" style={{ background: 'var(--sc-chrome)', borderRight: '1px solid var(--sc-line)' }}>
         <AppShell.Section grow component={ScrollArea}>
           {link('/today', 'Today', <IconSun size={18} />)}
+          {/* Check a shelf (D147), near the top for a phone in a store (T-406): a photo of a shelf, which games you have and need. */}
+          {link('/store/photo', 'Check a shelf', <IconBooks size={18} />)}
           {/*
             Like Radarr's menus: a section opens its first page and shows its pages underneath, open while one of them is
             showing. A NavLink with pages under it cancels its own click (to fold them), so it navigates here.
@@ -397,6 +403,12 @@ export function Layout({ children }: { children: ReactNode }) {
             </span>
             Scan
           </Link>
+          {shelfTab && (
+            <Link to="/store/photo" className="sc-tab" aria-current={path === '/store/photo' ? 'page' : undefined} onClick={close}>
+              <IconBooks size={22} />
+              Shelf
+            </Link>
+          )}
           <Link to="/wishlist" className="sc-tab" aria-current={inAcorns ? 'page' : undefined} onClick={close}>
             <Acorn size={22} />
             Acorns

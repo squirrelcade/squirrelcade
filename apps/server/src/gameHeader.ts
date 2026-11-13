@@ -30,6 +30,9 @@ export const CRITICS_FAVORITE = 90;
 /** IGDB's rating counts toward critics' favorite when it rests on at least this many ratings. */
 const MIN_RATINGS = 5;
 
+/** How long launch days are kept on the catalogs' stamp alone, before their dates are counted again (a date changed outside the catalogs). */
+const STAMP_KEEP_MS = 10 * 60_000;
+
 /** A full date ("1991-08-23"), the only kind a launch day is compared on. */
 const FULL_DATE = /^\d{4}-\d{2}-\d{2}$/;
 
@@ -41,9 +44,17 @@ const longDate = (d: string) => new Date(`${d}T12:00:00Z`).toLocaleDateString('e
  * catalogs' size.
  */
 export class LaunchDays {
-  private cache: { size: number; days: Map<number, string> } | null = null;
+  private cache: { size: number; stamp: string | number | null; at: number; days: Map<number, string> } | null = null;
 
-  constructor(private readonly db: Db) {}
+  /**
+   * `stamp` (the catalogs' own, when given) says when the catalogs changed: the days are then kept until it changes (or
+   * for STAMP_KEEP_MS), instead of reading every catalog game's date to count them on each call. Store Mode asks once
+   * per answer, and that read was most of a search's time (T-407: about 9 ms an answer on the owner's catalogs).
+   */
+  constructor(
+    private readonly db: Db,
+    private readonly stamp?: () => string | number,
+  ) {}
 
   /** The console's launch day, if its catalog shows one. */
   of(platformId: number): string | null {
@@ -51,8 +62,13 @@ export class LaunchDays {
   }
 
   private days(): Map<number, string> {
+    const stamp = this.stamp?.() ?? null;
+    if (this.cache && stamp !== null && this.cache.stamp === stamp && Date.now() - this.cache.at < STAMP_KEEP_MS) return this.cache.days;
     const rows = this.db.select({ platformId: catalogEntries.platformId, releaseDate: catalogEntries.releaseDate }).from(catalogEntries).where(isNotNull(catalogEntries.releaseDate)).all();
-    if (this.cache && this.cache.size === rows.length) return this.cache.days;
+    if (this.cache && this.cache.size === rows.length) {
+      this.cache = { ...this.cache, stamp, at: Date.now() };
+      return this.cache.days;
+    }
     const byConsole = new Map<number, Map<string, number>>();
     for (const r of rows) {
       if (!r.releaseDate || !FULL_DATE.test(r.releaseDate)) continue;
@@ -65,7 +81,7 @@ export class LaunchDays {
       const launch = [...dates].filter(([, n]) => n >= 2).sort(([a], [b]) => a.localeCompare(b))[0];
       if (launch) days.set(platformId, launch[0]);
     }
-    this.cache = { size: rows.length, days };
+    this.cache = { size: rows.length, stamp, at: Date.now(), days };
     return days;
   }
 }

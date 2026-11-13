@@ -1,4 +1,4 @@
-import { Anchor, Autocomplete, Badge, Button, CloseButton, Divider, FileButton, Group, Image, Loader, Modal, NumberInput, SegmentedControl, Select, SimpleGrid, Stack, TagsInput, Text, TextInput, Tooltip } from '@mantine/core';
+import { Anchor, Autocomplete, Badge, Button, CloseButton, Divider, FileButton, Group, Image, Loader, Modal, SegmentedControl, Select, SimpleGrid, Stack, TagsInput, Text, TextInput, Tooltip } from '@mantine/core';
 import { COMPLETENESS_LABELS, GRADERS, MEDIA_NAMES, mediaOf, RIP_RESULTS, TEST_RESULTS, walkThroughPhotos, type Completeness, type TestKind, type TestResult } from '@squirrelcade/core';
 import { SellHelper } from './SellHelper';
 import { IconCamera, IconCheck, IconDeviceMobile, IconDeviceMobileRotated, IconMapPin, IconUserShare, IconVideoFilled } from '@tabler/icons-react';
@@ -11,6 +11,7 @@ import { overGoalNote } from './Goal';
 import { PLACE_EXAMPLE, usePlaceNotes, type Vocabulary } from './places';
 import { notifyError, notifySuccess, useSetting } from './hooks';
 import { FindInEmail, useOrdersOn, type FoundPrice } from './OrderEmails';
+import { PriceInput, usePriceCheck } from './PriceInput';
 
 /** The owner's details on a copy (GET /api/v1/copy). */
 export interface CopyDetail {
@@ -185,6 +186,11 @@ export function AddCopyModal({ game, onClose }: { game: { platformKey: string; p
   // With the walk-through on (D172), Add it adds the copy and its window asks the rest, a step at a time.
   const walkThrough = useSetting('collection.addWizard', true);
   const [added, setAdded] = useState<CopyRef | null>(null);
+  // A price far above the game's value (or the ceiling) asks first (Settings › Collection › Checking prices paid).
+  const prices = usePriceCheck(game && !walkThrough ? { platformKey: game.platformKey, title: game.title, completeness } : null);
+  const addChecked = async () => {
+    if (walkThrough || (await prices.confirm(paid === '' ? null : Math.round(Number(paid) * 100)))) add.mutate();
+  };
   useEffect(() => {
     if (!game) return;
     setCompleteness(usual);
@@ -218,19 +224,20 @@ export function AddCopyModal({ game, onClose }: { game: { platformKey: string; p
           <>
             <Select label="Condition" data={CONDITIONS} value={completeness} onChange={(v) => v && setCompleteness(v)} allowDeselect={false} comboboxProps={{ zIndex: 400 }} />
             <Group grow align="flex-start">
-              <NumberInput label={`Price paid (${currency})`} value={paid} onChange={setPaid} min={0} decimalScale={2} allowNegative={false} placeholder="Optional" data-autofocus />
+              <PriceInput label={`Price paid (${currency})`} value={paid} onChange={setPaid} placeholder="Optional" warning={prices.warn(paid)} data-autofocus />
               <TextInput label="Bought on" type="date" value={bought} onChange={(e) => setBought(e.currentTarget.value)} />
             </Group>
             <TextInput label="Notes" value={notes} onChange={(e) => setNotes(e.currentTarget.value)} maxLength={500} placeholder="Optional" />
           </>
         )}
         <Group>
-          <Button onClick={() => add.mutate()} loading={add.isPending} data-autofocus={walkThrough || undefined}>
+          <Button onClick={() => void addChecked()} loading={add.isPending} data-autofocus={walkThrough || undefined}>
             Add it
           </Button>
         </Group>
       </Stack>
     </Modal>
+    {prices.modal}
     <CopyDetailsModal copy={added} added onClose={() => setAdded(null)} />
     </>
   );
@@ -403,6 +410,9 @@ export function CopyDetailsModal({
   // What Suggest proposed, said beside the field (why that amount).
   const [suggested, setSuggested] = useState<CostGuess | null>(null);
   const suggestionsOn = useSetting('collection.estimates', true);
+  // A price paid far above the game's value in the condition chosen (or the ceiling) asks first (Settings › Collection ›
+  // Checking prices paid), and says so under the box as it's typed.
+  const prices = usePriceCheck(own ? { copyId: own.id, completeness: completeness || own.completeness } : null);
   useLayoutEffect(() => {
     if (!own) return;
     setCompleteness(own.completeness);
@@ -580,8 +590,10 @@ export function CopyDetailsModal({
   // Save and close, Done, Later and Scan the next one (a copy just added), and Next copy (a walk through copies), save
   // what was typed first, the copy and its details together, so nothing is lost on the way out or to the next one.
   const finish = useMutation({
-    mutationFn: async (_then: 'close' | 'scan' | 'next') => {
+    mutationFn: async (_then: 'close' | 'scan' | 'next'): Promise<boolean | 'fix'> => {
       const fields = changedCopy();
+      // A new price paid (or a new condition beside one) that's out of line: asked first, and "Fix it" keeps the window open.
+      if (own && ('costCents' in fields || 'completeness' in fields) && !(await prices.confirm((fields.costCents as number | null | undefined) ?? (paid === '' ? null : Math.round(Number(paid) * 100))))) return 'fix';
       const copyChanged = own !== undefined && Object.keys(fields).length > 0;
       if (copyChanged) await api(`/collection/copies/${own!.id}`, { method: 'PUT', json: fields });
       const detailChanged = detailsChanged();
@@ -589,6 +601,11 @@ export function CopyDetailsModal({
       return copyChanged || detailChanged;
     },
     onSuccess: (saved, then) => {
+      // The price is to be fixed: back to where it's typed (the walk-through's first step).
+      if (saved === 'fix') {
+        setStep(0);
+        return;
+      }
       if (saved) notifySuccess(`${copy?.title ?? 'The copy'}: saved.`);
       // The window goes at once, the page catching up behind it: waiting for every answer on the page to come back
       // first kept it open on a slow server (the same as its opening, D172).
@@ -673,7 +690,7 @@ export function CopyDetailsModal({
                 <Select label="Condition" data={CONDITIONS} value={completeness === 'unknown' ? null : completeness} onChange={(v) => v && setCompleteness(v)} allowDeselect={false} placeholder="Unknown" comboboxProps={{ zIndex: 400 }} />
               )}
               {askFirst.includes('Price paid') && (
-                <NumberInput label={`Price paid (${currency})`} value={paid} onChange={setPaid} min={0} decimalScale={2} allowNegative={false} placeholder="Not known" inputMode="decimal" data-autofocus />
+                <PriceInput label={`Price paid (${currency})`} value={paid} onChange={setPaid} placeholder="Not known" warning={prices.warn(paid)} data-autofocus />
               )}
               {askFirst.includes('Price paid') && ordersOn && copy && (
                 <FindInEmail
@@ -763,7 +780,7 @@ export function CopyDetailsModal({
                 {/* One under another on a phone: side by side, the day bought didn't fit. */}
                 <SimpleGrid cols={{ base: 1, xs: 3 }} spacing="xs">
                   <Select label="Condition" data={CONDITIONS} value={completeness === 'unknown' ? null : completeness} onChange={(v) => v && setCompleteness(v)} allowDeselect={false} placeholder="Unknown" comboboxProps={{ zIndex: 400 }} />
-                  <NumberInput label={`Price paid (${currency})`} value={paid} onChange={setPaid} min={0} decimalScale={2} allowNegative={false} placeholder="Not known" inputMode="decimal" />
+                  <PriceInput label={`Price paid (${currency})`} value={paid} onChange={setPaid} placeholder="Not known" warning={prices.warn(paid)} />
                   <TextInput label="Bought on" type="date" value={bought} onChange={(e) => setBought(e.currentTarget.value)} />
                 </SimpleGrid>
                 {/* What was paid, from the order email (D155): filled in to check, saved with the copy. */}
@@ -784,17 +801,7 @@ export function CopyDetailsModal({
                 {paid === '' && !added && (
                   <Stack gap={2}>
                     <Group align="flex-end" gap="xs" wrap="nowrap">
-                      <NumberInput
-                        label={`Estimated price (${currency})`}
-                        description="If you don't know what you paid"
-                        value={estimated}
-                        onChange={setEstimated}
-                        min={0}
-                        decimalScale={2}
-                        allowNegative={false}
-                        placeholder="Empty"
-                        maw={220}
-                      />
+                      <PriceInput label={`Estimated price (${currency})`} description="If you don't know what you paid" value={estimated} onChange={setEstimated} placeholder="Empty" maw={220} />
                       {suggestionsOn && (
                         <Button variant="default" size="sm" loading={suggest.isPending} onClick={() => suggest.mutate()}>
                           Suggest
@@ -928,7 +935,7 @@ export function CopyDetailsModal({
             />
             {sale !== 'none' && (
               <Group grow align="flex-start">
-                <NumberInput label={`Asking (${currency})`} value={asking} onChange={setAsking} min={0} decimalScale={2} allowNegative={false} placeholder="Optional" />
+                <PriceInput label={`Asking (${currency})`} value={asking} onChange={setAsking} placeholder="Optional" />
                 <TextInput label="A note for buyers" value={saleNote} onChange={(e) => setSaleNote(e.currentTarget.value)} maxLength={200} placeholder="Optional" />
               </Group>
             )}
@@ -1109,6 +1116,7 @@ export function CopyDetailsModal({
           )}
         </Stack>
       )}
+      {prices.modal}
     </Modal>
   );
 }

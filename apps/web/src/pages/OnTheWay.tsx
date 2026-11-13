@@ -1,4 +1,4 @@
-import { Alert, Anchor, Autocomplete, Badge, Button, Card, CloseButton, FileButton, Group, Loader, Modal, NumberInput, Select, Stack, Text, TextInput } from '@mantine/core';
+import { Alert, Anchor, Autocomplete, Badge, Button, Card, CloseButton, FileButton, Group, Loader, Modal, Select, Stack, Text, TextInput } from '@mantine/core';
 import { useDebouncedValue } from '@mantine/hooks';
 import { KNOWN_PLATFORMS } from '@squirrelcade/core';
 import { IconClipboardText, IconExternalLink, IconFileImport, IconMailSearch, IconPackage, IconPlus } from '@tabler/icons-react';
@@ -13,6 +13,7 @@ import { GameTitle } from '../GameDrawer';
 import { notifyError, notifySuccess, useSetting } from '../hooks';
 import { COUNTS_SAID } from '../OrderEmails';
 import { OrderPageModal } from '../OrderPage';
+import { PriceInput, usePriceCheck } from '../PriceInput';
 
 /** A game on the way (GET /api/v1/coming). */
 export interface ComingItem {
@@ -148,6 +149,16 @@ function SplitLot({ item, onClose, onDone }: { item: ComingItem | null; onClose:
     },
     onError: (err) => notifyError(err),
   });
+  // A price typed far above a game's value in the condition a game just bought gets (or the ceiling) asks first
+  // (Settings › Collection › Checking prices paid).
+  const usual = useSetting('collection.boughtCondition', 'complete');
+  const check = usePriceCheck();
+  const splitChecked = async () => {
+    for (const g of games.filter((x) => x.title.trim() && x.price !== '')) {
+      if (!(await check.confirm(Math.round(Number(g.price) * 100), { platformKey: g.platformKey, title: g.title.trim(), completeness: usual }))) return;
+    }
+    split.mutate();
+  };
   let shared = 0;
   return (
     <Modal opened={item !== null} onClose={onClose} title={item ? `Several games, one price · ${item.listingTitle}` : ''} size="lg">
@@ -165,14 +176,11 @@ function SplitLot({ item, onClose, onDone }: { item: ComingItem | null; onClose:
               <Group key={k} gap="xs" align="flex-end" wrap="nowrap">
                 <TextInput label={k === 0 ? 'Game' : undefined} aria-label={`Game ${k + 1}`} value={g.title} onChange={(e) => set(k, { title: e.currentTarget.value })} style={{ flex: 2 }} maxLength={200} />
                 <Select label={k === 0 ? 'Console' : undefined} aria-label={`Console of game ${k + 1}`} data={consoles} value={g.platformKey} onChange={(v) => set(k, { platformKey: v })} searchable style={{ flex: 1.3 }} placeholder="Which?" />
-                <NumberInput
+                <PriceInput
                   label={k === 0 ? `Price (${currency})` : undefined}
                   aria-label={`Price of game ${k + 1}`}
                   value={g.price}
                   onChange={(v) => set(k, { price: v })}
-                  min={0}
-                  decimalScale={2}
-                  allowNegative={false}
                   placeholder={share !== undefined ? (share / 100).toFixed(2) : ''}
                   disabled={item?.paidInCurrencyCents != null}
                   w={110}
@@ -190,12 +198,13 @@ function SplitLot({ item, onClose, onDone }: { item: ComingItem | null; onClose:
             <Button variant="subtle" leftSection={<IconPlus size={14} />} onClick={() => setGames((all) => [...all, { title: '', platformKey: all.at(-1)?.platformKey ?? null, price: '' }])} disabled={games.length >= 40}>
               Another game
             </Button>
-            <Button onClick={() => split.mutate()} loading={split.isPending} disabled={games.filter((g) => g.title.trim()).length < 2}>
+            <Button onClick={() => void splitChecked()} loading={split.isPending} disabled={games.filter((g) => g.title.trim()).length < 2}>
               Split it
             </Button>
           </Group>
         </Stack>
       )}
+      {check.modal}
     </Modal>
   );
 }

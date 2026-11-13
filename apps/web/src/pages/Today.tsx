@@ -1,6 +1,6 @@
 import { ActionIcon, Alert, Anchor, Button, Group, Loader, SegmentedControl, Select, Skeleton, Stack, Text } from '@mantine/core';
 import { normalizeTitle } from '@squirrelcade/core';
-import { IconChevronLeft, IconChevronRight, IconExternalLink } from '@tabler/icons-react';
+import { IconBooks, IconChevronLeft, IconChevronRight, IconExternalLink } from '@tabler/icons-react';
 import { useQuery } from '@tanstack/react-query';
 import { useState, type CSSProperties } from 'react';
 import { Link } from 'react-router';
@@ -171,6 +171,8 @@ export function TodayPage() {
   const dateFormat = useSetting('general.dateFormat', 'us');
   const zone = useSetting('general.timeZone', '');
   const reminderDays = useSetting('collection.exportReminderDays', 0);
+  // Check a shelf one tap away (T-406, Settings > Interface > Navigation): a head chip on Today.
+  const shelfShortcut = useSetting('interface.shelfShortcuts', true) !== false;
   const canEdit = useCanEdit();
   const { data: session } = useSession();
   const today = useQuery({ queryKey: ['today'], queryFn: () => api<Today>('/today') });
@@ -207,8 +209,14 @@ export function TodayPage() {
             <HelpLink topic="getting-started" />
           </Group>
         </div>
-        {(deals.length > 0 || t.releases.length > 0 || questions > 0) && (
+        {(shelfShortcut || deals.length > 0 || t.releases.length > 0 || questions > 0) && (
           <Group gap={8}>
+            {shelfShortcut && (
+              <Link className="sc-head-chip" to="/store/photo">
+                <IconBooks size={18} aria-hidden />
+                Check a shelf
+              </Link>
+            )}
             {deals.length > 0 && (
               <a className="sc-head-chip" href="#deals">
                 <span className="sc-pixel">{count(deals.length)}</span>

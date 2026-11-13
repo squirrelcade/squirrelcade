@@ -8,7 +8,7 @@ import { Cover, RetryCountdown } from './components';
 import { money } from './format';
 import { isBarcode } from './lines';
 import { ScannerModal } from './ScannerModal';
-import { doubtText, photoReader, progressText, progressValue, type ReaderProgress, type ShelfUnsure } from './shelfCheck';
+import { doubtText, photoReader, progressText, progressValue, unsureLists, type ReaderProgress, type ShelfUnsure } from './shelfCheck';
 
 /** What the check answers someone who isn't signed in (GET /api/v1/check). */
 interface CheckAnswer {
@@ -160,6 +160,7 @@ function PublicShelf() {
       if (mine === run.current) setBusy(null);
     }
   };
+  const unsure = answer ? unsureLists(answer.unsure) : null;
   return (
     <Stack gap="xs" mt="sm">
       <Title order={4}>Or check a whole shelf</Title>
@@ -225,9 +226,15 @@ function PublicShelf() {
               </Badge>
             </Group>
           ))}
-          {answer.unsure.length > 0 && (
+          {/* The unsure ones in two lists (T-406): worth a closer look if it's the game they need, and the rest. */}
+          {unsure && unsure.wanted.length > 0 && (
+            <Text size="xs">
+              <b>Unsure, but if it's this game they need it:</b> {unsure.wanted.map((u) => `${u.title} (${doubtText(u)})`).join('; ')}. Scan these games' barcodes above to be sure.
+            </Text>
+          )}
+          {unsure && unsure.rest.length > 0 && (
             <Text size="xs" c="dimmed">
-              Unsure: {answer.unsure.map((u) => `${u.title} (${doubtText(u)})`).join('; ')}. Scan these games' barcodes above to be sure.
+              Unsure, and they have it or don't need it either way: {unsure.rest.map((u) => `${u.title} (${doubtText(u)})`).join('; ')}.
             </Text>
           )}
         </Stack>

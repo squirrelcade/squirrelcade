@@ -1,5 +1,5 @@
 import { withoutEditionWords } from './catalog.js';
-import { platformInText } from './catalogList.js';
+import { consoleEditionIn, platformInText } from './catalogList.js';
 import { KNOWN_PLATFORMS } from './platforms.js';
 import { matchTokens, normalizeTitle, romajiTokens } from './text.js';
 
@@ -72,6 +72,11 @@ export function wordOverlap(name: string, title: string): number {
 /** The console a retail product name names ("Mafia III Deluxe Edition (Xbox One)" is for the Xbox One), or null. */
 export function productPlatform(name: string): string | null {
   return platformInText(name, KNOWN_PLATFORMS);
+}
+
+/** A title without a console's own edition in it ("Hollow Knight - Nintendo Switch 2 Edition" is "Hollow Knight"; see consoleEditionIn). */
+export function withoutConsoleEdition(title: string): string {
+  return consoleEditionIn(title, KNOWN_PLATFORMS)?.title ?? title;
 }
 
 /** searchRank on normalized text. */

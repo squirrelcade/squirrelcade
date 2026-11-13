@@ -64,6 +64,11 @@ const LINKED: SettingKey[] = [
   'collection.addWizard',
   'collection.addWizardFields',
   'collection.addWizardPhotos',
+  'general.priceTyping',
+  'collection.priceCheckTimes',
+  'collection.priceCheckCeiling',
+  'collection.pcLookup',
+  'collection.pcMismatchRows',
   'orders.page',
   'orders.watch',
   'orders.watchSenders',
@@ -100,7 +105,7 @@ const LINKED: SettingKey[] = [
 const PAGES: [string, string][] = [
   ['/welcome', 'The welcome guide (your games in, consoles, catalogs, covers, the wishlist)'],
   ['/collection/add', 'Acorns > Add a game (a game typed in by hand)'],
-  ['/updates', 'Acorns > Stash updates (upload an export; Send to PriceCharting and its Check these)'],
+  ['/updates', 'Acorns > Stash updates (upload an export; Send to PriceCharting and its check: each ID beside what PriceCharting calls it, what was paid beside the value)'],
   ['/coming', "Acorns > On the way (games bought, not here yet; Add from an order page, Amazon's order history), shown unless Settings > Features > On the way is off"],
   ['/updates/purchases', 'Stash updates > Your purchases (a purchases CSV and its audit), with the purchases CSV on'],
   ['/system/review', 'System > Review (look-alike titles to answer; Review > Magazines with the magazines on)'],
@@ -231,6 +236,9 @@ export function setupBrief(deps: BriefDeps, address: string, now = new Date()): 
   lines.push(`- **Watched folder:** ${settings.get('collection.dropFolderEnabled') ? 'on' : 'off'}.`);
   lines.push(
     `- **On the way** (Acorns > On the way, its switch in Settings > Features): ${settings.get('orders.page') ? 'shown' : 'hidden, with its menu entry'}; purchase emails ${settings.get('orders.watch') ? `read (Settings > Collection > On the way), from ${(settings.get('orders.watchSenders') as string[]).length} stores; ${lastRun('orders-watch')}` : 'not read (Settings > Collection > On the way, off)'}.`,
+  );
+  lines.push(
+    `- **Prices and Send to PriceCharting:** prices typed ${settings.get('general.priceTyping') === 'digits' ? 'as digits only (1400 is 14.00)' : 'with the decimal point'}; a price paid asks first above ${settings.get('collection.priceCheckTimes') || '(off)'} times its value and ${settings.get('collection.priceCheckOver')} over it, or ${settings.get('collection.priceCheckCeiling') || '(off)'} with no value; PriceCharting IDs ${settings.get('collection.pcLookup') ? 'looked up on PriceCharting when no export names them' : 'named from my exports only (looking them up on PriceCharting is off)'}; a copy whose ID doesn't match ${settings.get('collection.pcMismatchRows') === 'out' ? 'waits until ticked' : 'stays in the CSV, flagged'}.`,
   );
   lines.push(`- **Purchases CSV** (D178): ${settings.get('sources.purchaseCsv') ? `on; ${lastRun('purchase-sheet')}` : 'off'}.`);
   lines.push(

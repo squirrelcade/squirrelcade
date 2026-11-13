@@ -31,7 +31,7 @@ Values come from a PriceCharting export, or from a Value column in a spreadsheet
    - **Wishlist:** one question on a new install, **What your wishlist is**: **Suggested** (Squirrelcade's own ranked list of the games you're missing) or **Picked by you** (only the games you add yourself, with the ranked list kept as Suggestions). An install that already had games isn't asked, and keeps Suggested. Change it any time on Acorns.
    - **Add these any time:** the list of optional features (covers from IGDB, messages, your email, PC games, videos, friends' live links...). The same list is on **Settings > Features**: what each adds, what it needs, how long it takes (padded: setting up outside accounts usually takes longer than it looks), whether it works now, and **Set it up with AI**.
 
-After that, the menu on the left has everything (on a phone, the bar at the bottom has Today, Stash, Scan and Acorns, and **More** opens the menu). At its bottom, in small grey type, is the version your server runs (Squirrelcade 1.2.2 · f6b0323), to check that an update arrived. Its three main sections each say what they're for under their names: the **Stash** is the games you have, **Acorns** is games coming in and going out, and the **Nutshell** is your collection by the numbers.
+After that, the menu on the left has everything (on a phone, the bar at the bottom has Today, Stash, Scan, Shelf and Acorns, and **More** opens the menu). At its bottom, in small grey type, is the version your server runs (Squirrelcade 1.2.2 · f6b0323), to check that an update arrived. Its three main sections each say what they're for under their names: the **Stash** is the games you have, **Acorns** is games coming in and going out, and the **Nutshell** is your collection by the numbers.
 
 | Page | What it's for |
 | --- | --- |
@@ -42,7 +42,7 @@ After that, the menu on the left has everything (on a phone, the bar at the bott
 | **Roots** | Games in their time, and since: each console's history and its Top 100 list, the **Timeline** of consoles and landmark games, **Now in** (today's date a decade back at a time, with **On this day**) and the **Time machine** (any date) (with Roots on, Settings > Features). See [Roots](roots.md). |
 | **Leaves** | Your scanned game magazines, with the magazines on (Settings > Features; off to start): read, searched, and linked to their games. See [Leaves](magazines.md). |
 | **Friends** | Your collection next to your friends': each friend's page has **Compare** and **Trades**. See [Friends](friends.md). |
-| **Store Mode** | For your phone in a store: **Scan** at the top (and in the bar at the bottom on a phone) opens it with the camera on. |
+| **Store Mode** | For your phone in a store: **Scan** at the top (and in the bar at the bottom on a phone) opens it with the camera on. **Check a shelf** (at the top of the menu, on Today, and **Shelf** in a phone's bar) reads a photo of a whole shelf: see [Store Mode](store-mode.md#check-a-shelf). |
 | **Settings**, **System** | Everything you can change, and under System: **Review** (titles that look alike, for you to answer: the same game, or not; its count shows on System), the server's status, tasks, backups and logs. |
 
 **Today**, card by card:
@@ -56,7 +56,7 @@ After that, the menu on the left has everything (on a phone, the bar at the bott
 
 While a new install still has essential setup steps left, they come first. **Settings > Interface > Start page** chooses the page Squirrelcade opens on.
 
-Click any game's title (or its cover) to open everything about it in one panel, the game drawer: your copy first, with its own **Edit this copy**, then everything else (see [A game's page](collection.md#a-games-page)). The search box at the top (press **/**) finds any game on your consoles, and with the PC library on, your PC games too (a remaster that only came out as a download, say), which open in the PC library. Numbers can be typed either way: "Mafia 2" finds "Mafia II". When the games found are on several consoles, chips above them name each console with how many: tap one to see that console's only (Store Mode's search has them too).
+Click any game's title (or its cover) to open everything about it in one panel, the game drawer: your copy first, with its own **Edit this copy**, then everything else (see [A game's page](collection.md#a-games-page)). The search box at the top (press **/**) finds any game on your consoles, and with the PC library on, your PC games too (a remaster that only came out as a download, say), which open in the PC library. Numbers can be typed either way: "Mafia 2" finds "Mafia II". Each game is listed once with every console it came out on: its first three consoles' marks show (the ones you're most active on first), and **+n more** shows the rest; **More games** at the bottom lists more of a long series. When the games found are on several consoles, chips above them name each console with how many: tap one to see all of that console's games (Store Mode's search has them too). See [Store Mode](store-mode.md).
 
 ## Keeping it up to date
 

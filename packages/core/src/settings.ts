@@ -234,6 +234,18 @@ export const settingDefinitions = {
       { value: 'JPY', label: 'Japanese yen' },
     ],
   }),
+  'general.priceTyping': select({
+    page: 'general',
+    section: 'Localization',
+    label: 'How you type prices',
+    description:
+      "In every price box: what you paid for a copy, its estimate, an asking or sale price. With the decimal point, as usual: 14 or 14.00 is fourteen. Digits only, PriceCharting's way: every digit and no point, the last two are the cents, so 1400 is 14.00 and 999 is 9.99 (yen are whole); the box shows the amount it will save as you type.",
+    default: 'decimal',
+    options: [
+      { value: 'decimal', label: 'With the decimal point, as usual (14.00)' },
+      { value: 'digits', label: 'Digits only, like PriceCharting (1400 is 14.00)' },
+    ],
+  }),
   'general.publicUrl': text({
     page: 'general',
     section: 'Instance',
@@ -396,10 +408,21 @@ export const settingDefinitions = {
     page: 'interface',
     section: 'Navigation',
     label: 'Games the header search lists',
-    description: 'How many games the search box at the top of every page shows, the best matches first.',
+    description: 'How many games the search box at the top of every page shows, the best matches first, each with every console it came out on. More games, under them, lists that many more.',
     default: 8,
     min: 3,
     max: 30,
+  }),
+  'interface.searchConsoles': num({
+    page: 'interface',
+    section: 'Navigation',
+    label: "Consoles a search's game shows at first",
+    description:
+      "How many consoles' marks each game shows in the header search and Store Mode before \"+n more\", which shows every console it came out on: the console of the answer it shows, one you have it on, then the consoles you're most active on (copies added in the last 90 days, games on the way, games opened lately, then the most copies), then the rest.",
+    default: 3,
+    min: 2,
+    max: 4,
+    unit: 'consoles',
   }),
   'interface.startPage': select({
     page: 'interface',
@@ -413,6 +436,14 @@ export const settingDefinitions = {
       { value: 'platforms', label: 'Consoles' },
       { value: 'wishlist', label: 'Acorns wishlist' },
     ],
+  }),
+  'interface.shelfShortcuts': bool({
+    page: 'interface',
+    section: 'Navigation',
+    label: 'Check a shelf one tap away',
+    description:
+      "Shelf in the bar at the bottom of a phone (beside Scan) and a Check a shelf button at the top of Today: one tap to photograph a shelf of games and see which you have and which you need. Off: Check a shelf is in Store Mode and the menu.",
+    default: true,
   }),
   'interface.headerStars': num({
     page: 'interface',
@@ -503,6 +534,17 @@ export const settingDefinitions = {
     description:
       "Store Mode keeps a copy of its answers (your consoles' catalogs, what you own, your saved barcodes and notes) in the browser of the phone or computer it opens on, updated each time it opens, and answers from that copy when Squirrelcade can't be reached (no signal in a store, say). Signing out removes the copy. Off keeps nothing in the browser.",
     default: true,
+  }),
+  'interface.storeResults': num({
+    page: 'interface',
+    section: 'Store Mode',
+    label: 'Games a title search lists',
+    description:
+      'How many games Store Mode lists for a title at first, the best matches first, each with every console it came out on. More games, under them, lists that many more; the console chips show every console the search found, each with how many.',
+    default: 20,
+    min: 5,
+    max: 50,
+    unit: 'games',
   }),
   'interface.shelfFullList': bool({
     page: 'interface',
@@ -1281,6 +1323,57 @@ export const settingDefinitions = {
     default: ['{game} front', '{game} back'],
     maxItems: 10,
     shownWhen: 'collection.addWizardPhotos',
+  }),
+  'collection.priceCheckTimes': num({
+    page: 'collection',
+    section: 'Checking prices paid',
+    label: 'Ask when a price paid is more than',
+    description:
+      "A price you type for a copy (Add a game, a copy's window, Store Mode, Recently added, On the way's split) that's this many times the game's value in that condition, from your PriceCharting exports, and more than the amount below over it, asks you to confirm before it's saved; Send to PriceCharting's check flags it too. It catches a typo (an extra zero, 1400 for 14.00) before it counts. Both must be passed, so a cheap game bought new isn't questioned: with 3 and 50, a game worth 10 is questioned above 60, one worth 40 above 120. 0: no check against values.",
+    default: 3,
+    min: 0,
+    max: 100,
+    unit: 'times its value',
+    decimals: 1,
+  }),
+  'collection.priceCheckOver': num({
+    page: 'collection',
+    section: 'Checking prices paid',
+    label: 'And more than this over its value',
+    description: 'In your currency (Settings > General), whole units: how far over the value a price paid must also be to be questioned.',
+    default: 50,
+    min: 0,
+    max: 1_000_000,
+  }),
+  'collection.priceCheckCeiling': num({
+    page: 'collection',
+    section: 'Checking prices paid',
+    label: 'With no value known, ask above',
+    description:
+      'For a game none of your exports gives a value for in that condition (one typed in by hand, a game new to you): a price paid above this, in your currency, asks you to confirm. Most games cost less; a pricey one just takes a tap. 0: no check without a value.',
+    default: 300,
+    min: 0,
+    max: 1_000_000,
+  }),
+  'collection.pcLookup': bool({
+    page: 'collection',
+    section: 'Sending to PriceCharting',
+    label: 'Look up PriceCharting IDs on PriceCharting',
+    description:
+      "Send to PriceCharting's check shows, beside each copy's title and console, the name and console PriceCharting has for the ID you gave it. Your exports name the products you have; with this on, Squirrelcade also reads the public page of an ID none of them has, on pricecharting.com: in the background, one at a time with a pause, once per ID (kept), its name and console only, never prices. Off, nothing is read from PriceCharting, and such an ID says it can't be checked here, with a link to open it. PriceCharting's terms keep its data for its own site, so it's off unless you turn it on.",
+    default: false,
+  }),
+  'collection.pcMismatchRows': select({
+    page: 'collection',
+    section: 'Sending to PriceCharting',
+    label: "A copy whose ID doesn't match",
+    description:
+      "In Send to PriceCharting's check, a copy whose PriceCharting ID names another game, edition, console or region, or one that can't be checked: flagged at the top and kept in the CSV unless you untick it, or left out of it until you tick it.",
+    default: 'in',
+    options: [
+      { value: 'in', label: 'Flag it, keep it in the CSV' },
+      { value: 'out', label: 'Leave it out until I tick it' },
+    ],
   }),
   'collection.ripConsoles': list({
     page: 'collection',

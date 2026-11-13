@@ -53,14 +53,26 @@ describe('checking a shelf without signing in', () => {
       })
     ).json();
     expect(res.games).toEqual([
-      { title: 'Xenoblade Chronicles', answer: 'need', ownedOn: [], wishlist: { priority: 'High', rank: 2 }, read: 'XENOBLADE CHRONICLES' },
-      { title: 'Okami', answer: 'own', ownedOn: [], wishlist: null, read: 'OKAMI' },
+      { title: 'Xenoblade Chronicles', answer: 'need', ownedOn: [], wishlist: { priority: 'High', rank: 2 }, read: 'XENOBLADE CHRONICLES', reads: ['XENOBLADE CHRONICLES'] },
+      { title: 'Okami', answer: 'own', ownedOn: [], wishlist: null, read: 'OKAMI', reads: ['OKAMI'] },
     ]);
     expect(res.reads).toBe(2);
     // On the PS3, a spine read as DARKSIDERS could be Darksiders II with its number cut off: unsure, never "you have it".
+    // The owner has Darksiders but needs Darksiders II, so it goes in "unsure, but if it's this game they need it" (T-406).
     const ps3 = (await shelf({ platformKey: 'playstation-3', reads: [{ text: 'DARKSIDERS', score: 0.9 }] })).json();
     expect(ps3.games).toEqual([]);
-    expect(ps3.unsure).toEqual([{ title: 'Darksiders', read: 'DARKSIDERS', doubt: 'cut-off', other: 'Darksiders II' }]);
+    expect(ps3.unsure).toEqual([{ title: 'Darksiders', read: 'DARKSIDERS', reads: ['DARKSIDERS'], doubt: 'cut-off', other: 'Darksiders II', wanted: true }]);
+    // Once Darksiders II is owned too, the same spine is one they have either way.
+    seedCatalogs(g, {
+      owned: [
+        ['1', 'Okami', 'Wii'],
+        ['2', 'Darksiders', 'PlayStation 3'],
+        ['3', 'Darksiders II', 'PlayStation 3'],
+      ],
+      catalogs: { wii: ['Okami', 'Xenoblade Chronicles'], 'playstation-3': ['Darksiders', 'Darksiders II'] },
+    });
+    const both = (await shelf({ platformKey: 'playstation-3', reads: [{ text: 'DARKSIDERS', score: 0.9 }] })).json();
+    expect(both.unsure).toEqual([expect.objectContaining({ title: 'Darksiders', other: 'Darksiders II', wanted: false })]);
   });
 
   it('turns away bad requests, and too many from one address', async () => {
@@ -98,7 +110,7 @@ describe('checking a shelf without signing in', () => {
     let res = first;
     for (let i = 0; i < 50 && res.model.state === 'reading'; i++) res = (await g.app.inject({ url: `/api/v1/check/shelf/${first.model.id}` })).json();
     // A model reads whole spines: its Darksiders is Darksiders, not the cut-off start of Darksiders II.
-    expect(res.games).toEqual([{ title: 'Darksiders', answer: 'own', ownedOn: [], wishlist: null, read: 'Darksiders' }]);
+    expect(res.games).toEqual([{ title: 'Darksiders', answer: 'own', ownedOn: [], wishlist: null, read: 'Darksiders', reads: ['Darksiders'] }]);
     expect(res.model).toMatchObject({ state: 'done', sent: 1, titles: 2 });
     expect((await g.app.inject({ url: '/api/v1/check/shelf/00000000-0000-0000-0000-000000000000' })).statusCode).toBe(404);
     expect(asked[0]!.url).toBe('https://api.example.com/v1/chat/completions');

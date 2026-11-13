@@ -17,20 +17,21 @@ import {
   consoleFor,
   parseConsoleLabel,
   regionalConsoleLabel,
-  matchTitles,
-  SAME_GAME_AT,
   removalPercent,
   type CollectionDiff,
   type CollectionParseResult,
   type CollectionRow,
   type ParsedConsoleLabel,
+  productDisagreements,
+  type ProductSide,
 } from '@squirrelcade/core';
-import { and, asc, desc, eq, inArray, isNotNull, isNull, like, notInArray, sql, type SQL } from 'drizzle-orm';
+import { and, asc, desc, eq, inArray, isNotNull, isNull, like, notInArray, or, sql, type SQL } from 'drizzle-orm';
 import type { FastifyInstance } from 'fastify';
 import { createHash, randomBytes } from 'node:crypto';
 import { EventEmitter } from 'node:events';
 import { existsSync, mkdirSync, readFileSync, readdirSync, renameSync, statSync } from 'node:fs';
 import type { RommLink } from './romm.js';
+import type { KeptProduct, PriceChartingPages } from './pcLookup.js';
 import type { CopyExtras } from './copyDetails.js';
 import { unpackExport, ZipError } from './zip.js';
 import { join } from 'node:path';
@@ -172,8 +173,28 @@ export interface SendCopy {
    */
   check: 'ok' | 'confirmed' | 'flagged' | null;
   why: string[];
-  /** PriceCharting's name and console for the ID, when the owner's exports have it. */
+  /** PriceCharting's name and console for the ID, when the owner's exports have it (or its page was read). */
   pcName: string | null;
+  /**
+   * Send to PriceCharting's check (the owner, 2026-11-12): match (PriceCharting's name and console for the ID agree with
+   * the copy's), mismatch (another game, edition, console or region, another barcode, or no such product), or unknown
+   * (nothing here can say what the ID is); null without an ID.
+   */
+  verdict: 'match' | 'mismatch' | 'unknown' | null;
+  /**
+   * Where PriceCharting's name for the ID comes from: the owner's exports, its page (read once and kept), still being
+   * looked up, a read that failed, no such product, or nowhere (not in an export, and reading pages is off).
+   */
+  lookup: 'export' | 'page' | 'pending' | 'failed' | 'missing' | 'off' | null;
+  /** Why the lookup failed, in a few words. */
+  lookupMessage: string | null;
+  /** PriceCharting's name and console for the ID, apart. */
+  pcTitle: string | null;
+  pcConsole: string | null;
+  /** Whether the check starts with it ticked, in the CSV (Settings > Collection > Sending to PriceCharting). */
+  inCsv: boolean;
+  /** What a copy of the game in its condition is worth, from the owner's exports, when known. */
+  valueCents: number | null;
   condition: string;
   /** Its line for PriceCharting's paste importer ("Title Console Condition"). */
   line: string;
@@ -201,6 +222,13 @@ export interface SendCopy {
   gradingCompany: string;
   gradingCertId: string;
   folder: string;
+}
+
+/** What a send list's check reads once: the export copies of its products and consoles, the consoles' keys, the pages kept. */
+interface SendContext {
+  rows: { productId: string; title: string; consoleLabel: string; platformId: number | null; region: string; valueCents: number | null; completeness: string; game: string }[];
+  keys: Map<number, string>;
+  kept: Map<string, KeptProduct>;
 }
 
 /**
@@ -385,12 +413,19 @@ export class CollectionService {
   private changes = 0;
   private consoleChanges = new Map<number, number>();
   private readonly startedAt = Date.now().toString(36);
+  /** PriceCharting's product pages, read once and kept, for Send to PriceCharting's check (set by the app). */
+  private pages: Pick<PriceChartingPages, 'kept' | 'pending' | 'on'> | null = null;
 
   constructor(
     private readonly db: Db,
     private readonly settings: SettingsService,
     private readonly log: Logger,
   ) {}
+
+  /** Gives Send to PriceCharting's check the product pages read from PriceCharting (Settings > Collection > Sending to PriceCharting). */
+  usePriceChartingPages(pages: Pick<PriceChartingPages, 'kept' | 'pending' | 'on'>): void {
+    this.pages = pages;
+  }
 
   /** The last applied update: the export the values are from, and the one the next is compared with. */
   currentImportId(): number | null {
@@ -861,8 +896,10 @@ export class CollectionService {
   /**
    * PriceCharting's side of the hub (D83): the copies of Squirrelcade's own not on PriceCharting yet, as lines for its paste
    * importer (to send, and sent but not in an export yet), and the copies sold or removed here that its export still lists.
+   * The CSV has the copies whose product is known that the check starts ticked (inCsv), or, when `only` is given, those
+   * of them the owner left ticked.
    */
-  forPriceCharting(folder = ''): { toSend: SendCopy[]; waiting: SendCopy[]; toRemove: SendCopy[]; text: string; csv: string } {
+  forPriceCharting(folder = '', only?: readonly number[]): { toSend: SendCopy[]; waiting: SendCopy[]; toRemove: SendCopy[]; text: string; csv: string } {
     // PriceCharting's product for each game an export ever brought (live copies first, then sold or removed ones), by
     // console and game: a copy added here of such a game can go in PriceCharting's CSV importer with its details.
     const known = new Map<string, string>();
@@ -883,10 +920,25 @@ export class CollectionService {
       const k = `${b.platformId}|${gameKey(b.title)}`;
       if (!codes.has(k)) codes.set(k, b.code);
     }
+    const rows = this.ownCopies();
+    const toRemoveRows = this.db
+      .select({ copy: copies, platformKey: platforms.key, platform: platforms.name })
+      .from(copies)
+      .leftJoin(platforms, eq(platforms.id, copies.platformId))
+      .where(and(isNotNull(copies.goneAt), eq(copies.listedOn, 'pricecharting')))
+      .orderBy(asc(copies.goneAt))
+      .all();
+    const pcIdOf = (c: CopyRow) => (PC_ID.test(c.productId) ? c.productId : (known.get(`${c.platformId}|${gameKey(c.title)}`) ?? null));
+    const all = [...rows, ...toRemoveRows.map((r) => r.copy)];
+    // What the owner's exports (and the pages read from PriceCharting) say of these products and games, read once.
+    const ctx = this.sendContext(all, all.map(pcIdOf).filter((x): x is string => x !== null));
+    const keep = this.settings.get('collection.pcMismatchRows') !== 'out';
     const item = (c: CopyRow, platformKey: string | null, platform: string | null): SendCopy => {
       const word = PASTE_WORD[c.completeness as Completeness];
-      const pcId = PC_ID.test(c.productId) ? c.productId : (known.get(`${c.platformId}|${gameKey(c.title)}`) ?? null);
-      const checked = pcId ? this.checkPriceChartingId(c, pcId) : { check: null, why: [], pcName: null };
+      const pcId = pcIdOf(c);
+      const checked = pcId
+        ? this.checkPriceChartingId(c, pcId, ctx)
+        : { check: null, why: [], pcName: null, verdict: null, lookup: null, lookupMessage: null, pcTitle: null, pcConsole: null };
       return {
         id: c.id,
         key: c.key,
@@ -902,6 +954,9 @@ export class CollectionService {
         goneReason: c.goneReason,
         pcId,
         ...checked,
+        inCsv: pcId !== null && (keep || checked.verdict === 'match' || checked.check === 'confirmed'),
+        // An ID that names another game says nothing of this one's value: the same game on its console does.
+        valueCents: this.valueIn(ctx, c, checked.verdict === 'mismatch' ? null : pcId),
         barcode: codes.get(`${c.platformId}|${gameKey(c.title)}`) ?? null,
         costCents: c.costCents,
         datePurchased: c.datePurchased,
@@ -911,18 +966,11 @@ export class CollectionService {
         folder: c.folder,
       };
     };
-    const rows = this.ownCopies();
     const own = rows.map((c) => item(c, c.platformKey, c.platform));
-    const toRemove = this.db
-      .select({ copy: copies, platformKey: platforms.key, platform: platforms.name })
-      .from(copies)
-      .leftJoin(platforms, eq(platforms.id, copies.platformId))
-      .where(and(isNotNull(copies.goneAt), eq(copies.listedOn, 'pricecharting')))
-      .orderBy(asc(copies.goneAt))
-      .all()
-      .map((r) => item(r.copy, r.platformKey, r.platform));
+    const toRemove = toRemoveRows.map((r) => item(r.copy, r.platformKey, r.platform));
     const toSend = own.filter((c) => c.sentAt === null);
     const completeness = new Map(rows.map((c) => [c.id, c.completeness]));
+    const ticked = only ? new Set(only) : null;
     return {
       toSend,
       waiting: own.filter((c) => c.sentAt !== null),
@@ -932,59 +980,158 @@ export class CollectionService {
         .filter((c) => c.pcId === null)
         .map((c) => c.line)
         .join('\n'),
-      // The CSV importer's file: the copies whose product is known and checked, with their details. A flagged one stays
-      // out until the owner confirms it (D187): PriceCharting adds every row as a new copy, and a misread can't be taken
-      // back there.
+      // The CSV importer's file: the copies whose product is known, as the check has them ticked (every one unless the
+      // owner unticks it; Settings > Collection > Sending to PriceCharting can leave the ones that don't match out until
+      // ticked). PriceCharting adds every row as a new copy, and a misread can't be taken back there.
       csv: priceChartingCsv(
-        toSend.filter((c) => c.pcId === null || c.check !== 'flagged').map((c) => ({ ...c, completeness: completeness.get(c.id) ?? 'unknown' })),
+        toSend.filter((c) => c.pcId !== null && (ticked ? ticked.has(c.id) : c.inCsv)).map((c) => ({ ...c, completeness: completeness.get(c.id) ?? 'unknown' })),
         folder,
       ),
     };
   }
 
   /**
-   * A PriceCharting ID checked against what the owner's own exports say of it (D187): PriceCharting's name for that
-   * product beside the copy's title (another game, or another edition), its console and region beside the copy's, the
-   * same game's own ID in an export, the value far from the same game's, and the UPC pasted with it beside the game's
-   * barcode. An ID no export has can't be vouched for here: it's flagged for the owner to look at once. Nothing is
-   * fetched from PriceCharting: only the owner's exports and what they pasted (PriceCharting's OK covers those).
+   * What the owner's exports say of the products and games of these copies (their export copies: by PriceCharting ID, and
+   * on the same consoles), the consoles' keys, and the product pages read from PriceCharting: read once for a send list.
    */
-  checkPriceChartingId(c: CopyRow, pcId: string): { check: 'ok' | 'confirmed' | 'flagged'; why: string[]; pcName: string | null } {
-    const why: string[] = [];
-    const product = this.db
-      .select({ title: copies.title, consoleLabel: copies.consoleLabel, platformId: copies.platformId, region: copies.region, valueCents: copies.valueCents })
-      .from(copies)
-      .where(and(eq(copies.productId, pcId), sql`${copies.source} != 'squirrelcade'`))
-      .orderBy(sql`${copies.goneAt} is not null`, asc(copies.id))
-      .get();
+  private sendContext(list: readonly { platformId: number | null }[], pcIds: readonly string[]): SendContext {
+    const platformIds = [...new Set(list.map((c) => c.platformId).filter((p): p is number => p !== null))];
+    const ids = [...new Set(pcIds)];
+    const which = [...(platformIds.length > 0 ? [inArray(copies.platformId, platformIds)] : []), ...(ids.length > 0 ? [inArray(copies.productId, ids)] : [])];
+    const rows =
+      which.length === 0
+        ? []
+        : this.db
+            .select({ productId: copies.productId, title: copies.title, consoleLabel: copies.consoleLabel, platformId: copies.platformId, region: copies.region, valueCents: copies.valueCents, completeness: copies.completeness })
+            .from(copies)
+            .where(and(sql`${copies.source} != 'squirrelcade'`, or(...which)))
+            .orderBy(sql`${copies.goneAt} is not null`, asc(copies.id))
+            .all()
+            .map((r) => ({ ...r, game: gameKey(r.title) }));
+    const keys = new Map(this.db.select({ id: platforms.id, key: platforms.key }).from(platforms).all().map((p) => [p.id, p.key]));
+    return { rows, keys, kept: this.pages?.kept(ids) ?? new Map() };
+  }
+
+  /**
+   * What a copy of a game in its condition is worth, from the owner's exports: the same PriceCharting product first,
+   * then the copy's own value (one added here of a product an export has), then the same game on its console.
+   */
+  private valueIn(ctx: SendContext, c: Pick<CopyRow, 'title' | 'platformId' | 'completeness' | 'valueCents'>, pcId: string | null): number | null {
+    const priced = ctx.rows.filter((r) => r.valueCents !== null && r.valueCents > 0 && r.completeness === c.completeness);
     const game = gameKey(c.title);
-    // The same game on the copy's console in the owner's exports (one read of that console's export copies).
-    const sameGame = this.db
-      .select({ productId: copies.productId, title: copies.title, valueCents: copies.valueCents })
-      .from(copies)
-      .where(and(eq(copies.platformId, c.platformId ?? -1), sql`${copies.source} != 'squirrelcade'`))
-      .all()
-      .filter((x) => PC_ID.test(x.productId) && gameKey(x.title) === game);
+    return (pcId ? priced.find((r) => r.productId === pcId)?.valueCents : undefined) ?? (c.valueCents || null) ?? priced.find((r) => r.platformId === c.platformId && r.game === game)?.valueCents ?? null;
+  }
+
+  /**
+   * What a copy of a game in a condition is worth, from the owner's exports (Settings > Collection > Checking prices paid
+   * compares a price typed with it): a copy's own product first when one is given, then the same game on the console.
+   * Null when no export says.
+   */
+  knownValue(q: { platformKey?: string; copyId?: number; title?: string; completeness?: string }): number | null {
+    const copy = q.copyId !== undefined ? this.copy(q.copyId) : null;
+    const platformId = copy?.platformId ?? (q.platformKey ? (this.db.select({ id: platforms.id }).from(platforms).where(eq(platforms.key, q.platformKey)).get()?.id ?? null) : null);
+    const title = (q.title ?? copy?.title ?? '').trim();
+    const completeness = q.completeness ?? copy?.completeness ?? '';
+    if (platformId === null || !title || !completeness) return null;
+    const pcId = copy && PC_ID.test(copy.productId) ? copy.productId : null;
+    const ctx = this.sendContext([{ platformId }], pcId ? [pcId] : []);
+    // A copy's own value is for its saved condition: only when that's the one asked about.
+    return this.valueIn(ctx, { title, platformId, completeness, valueCents: copy && copy.completeness === completeness ? copy.valueCents : null }, pcId);
+  }
+
+  /** The console and region a PriceCharting console name stands for, as an update would file it (nothing is added). */
+  consoleOfName(name: string): { platformKey: string; region: string } {
+    const known = this.db
+      .select({ key: platforms.key, region: platformLabels.region })
+      .from(platformLabels)
+      .innerJoin(platforms, eq(platforms.id, platformLabels.platformId))
+      .where(sql`lower(${platformLabels.label}) = lower(${name.trim()})`)
+      .get();
+    if (known) return { platformKey: known.key, region: known.region };
+    const parsed = parseConsoleLabel(name);
+    return { platformKey: this.consoleOf(parsed).key, region: parsed.region };
+  }
+
+  /**
+   * A PriceCharting ID checked against what PriceCharting calls that product (D187, and the owner's check of
+   * 2026-11-12): its name beside the copy's title (another game, or another edition), its console and region beside the
+   * copy's, from the owner's own exports, or from the product's page on PriceCharting (read once and kept, when
+   * Settings > Collection > Sending to PriceCharting allows it); the same game's own ID in an export, the value far from
+   * the same game's, and the UPC pasted with it beside the game's barcode. An ID nothing here can name is unknown, said
+   * plainly; one PriceCharting has no product for is a mismatch.
+   */
+  checkPriceChartingId(
+    c: CopyRow,
+    pcId: string,
+    ctx: SendContext = this.sendContext([c], [pcId]),
+  ): Pick<SendCopy, 'check' | 'why' | 'pcName' | 'verdict' | 'lookup' | 'lookupMessage' | 'pcTitle' | 'pcConsole'> & { check: 'ok' | 'confirmed' | 'flagged' } {
+    const why: string[] = [];
+    let hard = false;
+    const game = gameKey(c.title);
+    const fromExport = ctx.rows.find((r) => r.productId === pcId);
+    // The same game on the copy's console in the owner's exports.
+    const sameGame = ctx.rows.filter((x) => x.platformId === (c.platformId ?? -1) && PC_ID.test(x.productId) && x.game === game);
+    const kept = fromExport ? undefined : ctx.kept.get(pcId);
+    let product: ProductSide | null = null;
+    let lookup: NonNullable<SendCopy['lookup']>;
+    if (fromExport) {
+      product = { title: fromExport.title, consoleName: fromExport.consoleLabel, platformKey: fromExport.platformId !== null ? (ctx.keys.get(fromExport.platformId) ?? null) : null, region: fromExport.region };
+      lookup = 'export';
+    } else if (kept?.status === 'found') {
+      product = { title: kept.title, consoleName: kept.consoleName, ...this.consoleOfName(kept.consoleName) };
+      lookup = 'page';
+    } else if (this.pages?.pending(pcId)) lookup = 'pending';
+    else if (kept?.status === 'missing') lookup = 'missing';
+    else if (kept?.status === 'failed') lookup = 'failed';
+    // Not read yet: the page asks for it as it's shown (when reading pages is on).
+    else lookup = this.pages?.on() ? 'pending' : 'off';
     if (product) {
-      const m = matchTitles(c.title, product.title);
-      if (!m || m.confidence < SAME_GAME_AT) why.push(`PriceCharting calls it "${product.title}"`);
-      else if (m.kind === 'edition') why.push(`Another edition: "${product.title}"`);
-      if (c.platformId !== null && product.platformId !== null && product.platformId !== c.platformId) why.push(`Another console: ${product.consoleLabel}`);
-      else if (product.region !== c.region) why.push(`Another region: ${product.consoleLabel}`);
+      const differ = productDisagreements({ title: c.title, platformKey: c.platformId !== null ? (ctx.keys.get(c.platformId) ?? null) : null, region: c.region }, product);
+      why.push(...differ);
+      hard ||= differ.length > 0;
       const theirs = sameGame.find((x) => x.productId !== pcId && x.valueCents);
-      if (theirs && product.valueCents && theirs.valueCents && Math.max(product.valueCents, theirs.valueCents) > 3 * Math.min(product.valueCents, theirs.valueCents)) why.push('Its value is far from the same game\'s in your export');
+      if (fromExport && theirs && fromExport.valueCents && theirs.valueCents && Math.max(fromExport.valueCents, theirs.valueCents) > 3 * Math.min(fromExport.valueCents, theirs.valueCents)) {
+        why.push("Its value is far from the same game's in your export");
+        hard = true;
+      }
     }
-    // The UPC pasted with the ID, beside the game's own barcode: the same vouches for an ID no export has.
+    if (lookup === 'missing') {
+      why.push(`PriceCharting has no product #${pcId}`);
+      hard = true;
+    }
+    // The UPC pasted with the ID, beside the game's own barcode: the same vouches for an ID nothing else names.
     const barcode = this.db.select({ code: barcodes.code, title: barcodes.title }).from(barcodes).where(eq(barcodes.platformId, c.platformId ?? -1)).all().find((b) => gameKey(b.title) === game);
     const digits = (s: string) => s.replace(/\D/g, '').replace(/^0+/, '');
     const sameBarcode = Boolean(c.pcUpc && barcode && digits(barcode.code) === digits(c.pcUpc));
-    if (c.pcUpc && barcode && !sameBarcode) why.push(`Another barcode: PriceCharting's ${c.pcUpc}, this game's ${barcode.code}`);
-    else if (!product && !sameBarcode) why.push("Your PriceCharting exports don't have this ID, so Squirrelcade can't check it: open it on PriceCharting and make sure it's this game");
+    if (c.pcUpc && barcode && !sameBarcode) {
+      why.push(`Another barcode: PriceCharting's ${c.pcUpc}, this game's ${barcode.code}`);
+      hard = true;
+    }
     const other = sameGame.find((x) => x.productId !== pcId);
-    if (other && !product) why.push(`Your export has this game as #${other.productId}`);
-    const pcName = product ? `${product.title} (${product.consoleLabel})` : null;
-    if (why.length === 0) return { check: 'ok', why, pcName };
-    return { check: c.pcConfirmed === pcId ? 'confirmed' : 'flagged', why, pcName };
+    if (other && !product) {
+      why.push(`Your export has this game as #${other.productId}`);
+      hard = true;
+    }
+    if (!product && !sameBarcode && !hard) {
+      why.push(
+        lookup === 'pending'
+          ? 'Looking it up on PriceCharting'
+          : lookup === 'failed'
+            ? `Couldn't look it up on PriceCharting${kept?.status === 'failed' ? `: ${kept.message}` : ''}`
+            : "Your PriceCharting exports don't have this ID, so Squirrelcade can't check it: open it on PriceCharting and make sure it's this game",
+      );
+    }
+    const verdict: 'match' | 'mismatch' | 'unknown' = hard ? 'mismatch' : product || sameBarcode ? 'match' : 'unknown';
+    const named = {
+      pcName: product ? `${product.title} (${product.consoleName})` : null,
+      pcTitle: product?.title ?? null,
+      pcConsole: product?.consoleName ?? null,
+      verdict,
+      lookup,
+      lookupMessage: kept?.status === 'failed' ? kept.message : null,
+    };
+    if (verdict === 'match') return { check: 'ok', why, ...named };
+    return { check: c.pcConfirmed === pcId ? 'confirmed' : 'flagged', why, ...named };
   }
 
   /**

@@ -1,4 +1,4 @@
-import { cleanProductTitle, productPlatform } from './lookup.js';
+import { cleanProductTitle, productPlatform, withoutConsoleEdition } from './lookup.js';
 import { matchTokens, normalizeTitle } from './text.js';
 
 /**
@@ -225,13 +225,15 @@ const NOT_A_SEQUEL = /^(19\d\d|20\d\d|\d{3,}|1)$/;
  * How well an order's item names a game, 0 to 1: the share of the game title's words in the item's title (as catalogs
  * compare words: "II" is "2"), less when the item has a sequel's number the title doesn't ("Halo 3" isn't "Halo").
  * A listing's packaging and console words don't count ("Okami PS2 CIB Complete Tested" names Okami well), nor its year
- * or a release's own number ("Okami PS2 2006", "Limited Run #214", "PB#49").
+ * or a release's own number ("Okami PS2 2006", "Limited Run #214", "PB#49"). A console's own edition in the game's title
+ * is its console, not its title: "Hollow Knight - Nintendo Switch 2 Edition" names two of the three words of "Hollow
+ * Knight: Silksong - Nintendo Switch 2 Edition", not five of six.
  */
 export function orderItemScore(line: string, gameTitle: string): number {
   // An email's line may have the price and quantity beside the title.
   const itemTitle = line.replace(AMOUNT, ' ').replace(QTY_WORDS, ' ').replace(TIMES, ' ');
   const words = (t: string) => matchTokens(t).filter((w) => !MINOR.has(w));
-  const game = words(gameTitle);
+  const game = words(withoutConsoleEdition(gameTitle));
   if (game.length === 0) return 0;
   const item = new Set([...words(itemTitle), ...words(cleanProductTitle(itemTitle))]);
   const hit = game.filter((w) => item.has(w)).length;

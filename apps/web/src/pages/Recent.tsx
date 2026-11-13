@@ -1,4 +1,4 @@
-import { Autocomplete, Button, Card, CloseButton, Group, Loader, Menu, NumberInput, SegmentedControl, Select, SimpleGrid, Stack, Text } from '@mantine/core';
+import { Autocomplete, Button, Card, CloseButton, Group, Loader, Menu, SegmentedControl, Select, SimpleGrid, Stack, Text } from '@mantine/core';
 import { RIP_RESULTS, type TestResult } from '@squirrelcade/core';
 import { IconCheck, IconChevronDown, IconDisc, IconPencil } from '@tabler/icons-react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
@@ -11,6 +11,7 @@ import { count, date, money } from '../format';
 import { GameTitle } from '../GameDrawer';
 import { notifyError, useSetting } from '../hooks';
 import { LookUpPrices, useFoundPrices, useOrdersOn } from '../OrderEmails';
+import { PriceInput, usePriceCheck } from '../PriceInput';
 
 /** A copy added lately (GET /api/v1/collection/recent, D161). */
 interface RecentItem {
@@ -57,6 +58,9 @@ function RecentRow({ item, places, onEdit, prices }: { item: RecentItem; places:
   const [paid, setPaid] = useState<number | string>(savedPaid);
   const [place, setPlace] = useState(item.location ?? '');
   useEffect(() => setPaid(savedPaid), [item.costCents]);
+  // A price far above the game's value (or the ceiling) asks before it's saved (Settings › Collection › Checking prices
+  // paid); its value is asked for only once the price is changed, so the list opens without a request a row.
+  const check = usePriceCheck(paid !== savedPaid ? { copyId: item.id } : null);
   useEffect(() => setPlace(item.location ?? ''), [item.location]);
   // "Saved" beside the copy for a moment after each change.
   const [saved, setSaved] = useState(false);
@@ -73,9 +77,11 @@ function RecentRow({ item, places, onEdit, prices }: { item: RecentItem; places:
     onError: (err) => notifyError(err),
   });
   const saveCopy = (fields: Record<string, unknown>) => save.mutate({ path: `/collection/copies/${item.id}`, method: 'PUT', json: fields });
-  const savePaid = () => {
+  const savePaid = async () => {
     const cents = paid === '' ? null : Math.round(Number(paid) * 100);
-    if (cents !== (item.costCents || null)) saveCopy({ costCents: cents });
+    if (cents === (item.costCents || null)) return;
+    // "Fix it" leaves the price typed, with its warning under it, for another go.
+    if (await check.confirm(cents)) saveCopy({ costCents: cents });
   };
   const savePlace = (value = place) => {
     const next = value.trim();
@@ -114,19 +120,17 @@ function RecentRow({ item, places, onEdit, prices }: { item: RecentItem; places:
           allowDeselect={false}
           onChange={(v) => v && v !== item.completeness && saveCopy({ completeness: v })}
         />
-        <NumberInput
+        <PriceInput
           label={`Price paid (${currency})`}
           aria-label={`Price paid for ${item.title}`}
           value={paid}
           onChange={setPaid}
-          onBlur={savePaid}
+          onBlur={() => void savePaid()}
           onKeyDown={blurOnEnter}
-          min={0}
-          decimalScale={2}
-          allowNegative={false}
-          inputMode="decimal"
+          warning={check.warn(paid)}
           placeholder={item.estimatedCents ? `About ${(item.estimatedCents / 100).toFixed(2)}` : 'Not known'}
         />
+        {check.modal}
         <Stack gap={4}>
           <Text size="sm" fw={500}>
             Ripped

@@ -55,3 +55,6 @@ export * from './magazineCitation.js';
 export * from './spotting.js';
 export * from './purchaseSheet.js';
 export * from './features.js';
+export * from './searchGames.js';
+export * from './priceEntry.js';
+export * from './pcProduct.js';

@@ -7,6 +7,7 @@ import type { CopyDetailsService } from './copyDetails.js';
 import type { Db } from './db/index.js';
 import { copies, platforms } from './db/schema.js';
 import type { IgdbService } from './igdb.js';
+import type { PriceChartingPages } from './pcLookup.js';
 import { catalogTarget } from './games.js';
 import type { SettingsService } from './settings.js';
 
@@ -41,7 +42,7 @@ const ids = (body: unknown): number[] | null => {
  */
 export function registerOwnCopyRoutes(
   app: FastifyInstance,
-  deps: { collection: CollectionService; catalogs: CatalogService; details: CopyDetailsService; settings: SettingsService; db: Db; igdb: IgdbService },
+  deps: { collection: CollectionService; catalogs: CatalogService; details: CopyDetailsService; settings: SettingsService; db: Db; igdb: IgdbService; pages: PriceChartingPages },
 ): void {
   const { collection } = deps;
   const fail = (reply: { code: (n: number) => { send: (b: unknown) => unknown } }, err: unknown) => {
@@ -167,7 +168,32 @@ export function registerOwnCopyRoutes(
   // Takes back a copy just added (a tap by mistake); one with details kept on it is removed instead.
   app.delete('/api/v1/purchases/:id', async (request) => ({ removed: collection.undoCopy(Number((request.params as { id: string }).id), hasExtras) }));
 
-  app.get('/api/v1/send/pricecharting', async () => collection.forPriceCharting());
+  // Send to PriceCharting, with its check (the owner, 2026-11-12): each ID's product as PriceCharting names it. The IDs
+  // nothing here names yet are read from PriceCharting in the background (when Settings > Collection > Sending to
+  // PriceCharting allows it); the page asks again while any is still being looked up.
+  app.get('/api/v1/send/pricecharting', async () => {
+    const list = collection.forPriceCharting();
+    deps.pages.want([...list.toSend, ...list.toRemove].filter((c) => c.pcId !== null && c.lookup === 'pending').map((c) => c.pcId!));
+    return list;
+  });
+
+  // Try again: an ID whose page couldn't be read is read again now.
+  app.post('/api/v1/send/pricecharting/:id/lookup', async (request, reply) => {
+    const id = Number((request.params as { id: string }).id);
+    const c = collection.forPriceCharting().toSend.find((x) => x.id === id);
+    if (!c?.pcId) return reply.code(404).send({ error: 'not-found', message: 'No copy waiting to be sent has that id and a PriceCharting ID.' });
+    if (!deps.pages.on()) return reply.code(409).send({ error: 'off', message: 'Looking IDs up on PriceCharting is off (Settings › Collection › Sending to PriceCharting).' });
+    deps.pages.want([c.pcId], true);
+    return { ok: true };
+  });
+
+  // What a game in a condition is worth, from the owner's exports: a price paid typed far above it asks first
+  // (Settings > Collection > Checking prices paid). By a copy (its own product first), or by console and title.
+  app.get('/api/v1/collection/known-value', async (request) => {
+    const q = request.query as { copy?: string; platform?: string; title?: string; completeness?: string };
+    const copyId = q.copy !== undefined && /^\d+$/.test(q.copy) ? Number(q.copy) : undefined;
+    return { valueCents: collection.knownValue({ copyId, platformKey: q.platform || undefined, title: q.title || undefined, completeness: q.completeness || undefined }) };
+  });
 
   // The file for PriceCharting's CSV importer: the copies added here whose PriceCharting product is known, with what you
   // paid, the day bought and your notes.
@@ -178,10 +204,13 @@ export function registerOwnCopyRoutes(
       .replace(/[\u0000-\u001f\u007f]/g, '')
       .trim()
       .slice(0, 60);
+    // The copies the check leaves ticked (ids=1,2,3), else every one it starts ticked.
+    const idsText = (request.query as { ids?: unknown }).ids;
+    const only = typeof idsText === 'string' ? idsText.split(',').filter((x) => /^\d+$/.test(x)).map(Number) : undefined;
     return reply
       .header('content-type', 'text/csv; charset=utf-8')
       .header('content-disposition', `attachment; filename="squirrelcade-for-pricecharting-${day}.csv"`)
-      .send(collection.forPriceCharting(folder).csv);
+      .send(collection.forPriceCharting(folder, only).csv);
   });
 
   // A copy added here gets its PriceCharting ID (from the game's page there), so it goes in the CSV with its details.
@@ -191,6 +220,8 @@ export function registerOwnCopyRoutes(
     try {
       // An empty id takes it back (D187); what was pasted with it gives its UPC to check.
       if (!collection.setPriceChartingId(Number((request.params as { id: string }).id), pcId, typeof b.pasted === 'string' ? b.pasted.slice(0, 5000) : '')) return reply.code(404).send({ error: 'not-found', message: 'No copy added here and not sent yet has that id.' });
+      // Looked up at once, in the background, so the check has it by the time it's opened.
+      if (pcId) deps.pages.want([pcId]);
     } catch (err) {
       if (err instanceof CopyError) return reply.code(400).send({ error: 'invalid', message: err.message });
       throw err;

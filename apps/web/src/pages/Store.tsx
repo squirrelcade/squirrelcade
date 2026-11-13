@@ -1,7 +1,7 @@
-import { Alert, Anchor, Button, Card, Group, Loader, NumberInput, Stack, Text, TextInput, Title } from '@mantine/core';
+import { Alert, Anchor, Button, Card, Group, Loader, Stack, Text, TextInput, Title } from '@mantine/core';
 import { useDebouncedValue, useMediaQuery } from '@mantine/hooks';
-import { priceChartingBarcodeUrl, priceChartingUrl, shopLinksFor, shopUrl, SHOPS_IN_LISTS } from '@squirrelcade/core';
-import { IconCurrencyDollar, IconPlus, IconSearch, IconVideoFilled } from '@tabler/icons-react';
+import { priceChartingBarcodeUrl, priceChartingUrl, SEARCH_GAMES_MAX, shopLinksFor, shopUrl, SHOPS_IN_LISTS } from '@squirrelcade/core';
+import { IconBooks, IconCurrencyDollar, IconPlus, IconSearch, IconVideoFilled } from '@tabler/icons-react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { api, errorMessage } from '../api';
@@ -10,6 +10,7 @@ import { RegionBadge } from '../Region';
 import type { RommLink } from '../Romm';
 import { count, date, money, timeAgo } from '../format';
 import { overGoalNote } from '../Goal';
+import { PriceInput, usePriceCheck } from '../PriceInput';
 import { notifyError, notifySuccess, useCanEdit, useFeature, useSetting, useSettings } from '../hooks';
 import {
   BARCODE_WAIT_MS,
@@ -17,7 +18,7 @@ import {
   NotSquirrelcade,
   OFFLINE_WAIT_MS,
   offlineBarcode,
-  offlineSearch,
+  offlineGames,
   queuedPurchases,
   queuePurchase,
   readCopy,
@@ -41,7 +42,8 @@ import { PreferencePicker } from '../Preference';
 import { Link, useSearchParams } from 'react-router';
 import { ConsoleChips } from '../ConsoleChips';
 import { ConsoleMark } from '../ConsoleMark';
-import { isOwned, oneLinePerGame } from '../oneLine';
+import { isOwned, marksToShow, oneLinePerGame, onePerConsole, type GamesAnswer } from '../oneLine';
+import { MoreConsoles, useSearchWeights } from '../SearchMarks';
 import { Acorns, Reviews, type ReviewsOf } from '../Acorn';
 
 
@@ -102,6 +104,9 @@ function PaidInStore({ purchase, currency }: { purchase: Purchase; currency: str
   const queryClient = useQueryClient();
   const [open, setOpen] = useState(false);
   const [paid, setPaid] = useState<number | string>(purchase.costCents ? purchase.costCents / 100 : '');
+  // A price far above the game's value (or the ceiling) asks first (Settings › Collection › Checking prices paid).
+  const prices = usePriceCheck(open ? { copyId: purchase.id } : null);
+  const saveChecked = () => void prices.confirm(paid === '' ? null : Math.round(Number(paid) * 100)).then((ok) => ok && save.mutate());
   const save = useMutation({
     mutationFn: () => api(`/collection/copies/${purchase.id}`, { method: 'PUT', json: { costCents: paid === '' ? null : Math.round(Number(paid) * 100) } }),
     onSuccess: async () => {
@@ -119,23 +124,21 @@ function PaidInStore({ purchase, currency }: { purchase: Purchase; currency: str
   }
   return (
     <Group gap={6} mt={4} wrap="nowrap" component="span" style={{ display: 'inline-flex' }}>
-      <NumberInput
+      <PriceInput
         size="xs"
-        w={110}
+        w={130}
         aria-label={`What you paid for ${purchase.title} (${currency})`}
         placeholder={currency}
         value={paid}
         onChange={setPaid}
-        min={0}
-        decimalScale={2}
-        allowNegative={false}
-        inputMode="decimal"
+        warning={prices.warn(paid)}
         autoFocus
-        onKeyDown={(e) => e.key === 'Enter' && save.mutate()}
+        onKeyDown={(e) => e.key === 'Enter' && saveChecked()}
       />
-      <Button size="compact-xs" onClick={() => save.mutate()} loading={save.isPending}>
+      <Button size="compact-xs" onClick={saveChecked} loading={save.isPending}>
         Save
       </Button>
+      {prices.modal}
     </Group>
   );
 }
@@ -207,25 +210,50 @@ export function StorePage() {
     };
   }, [settingsLoaded, offlineOn]);
 
+  // A title search lists the best games, each with every console it came out on (T-407: the top 30 answers had left out
+  // the consoles of a long series' games, "Call of Duty" without the PS3), `storeResults` of them and that many more for
+  // each More games (Settings > Interface > Store Mode); a console chip asks for that console's games.
+  const storeResults = useSetting('interface.storeResults', 20);
+  const consolesAtFirst = useSetting('interface.searchConsoles', 3);
+  const [consoleKey, setConsoleKey] = useState<string | null>(null);
+  const [pages, setPages] = useState(1);
+  const [consolePages, setConsolePages] = useState(1);
+  useEffect(() => {
+    setConsoleKey(null);
+    setPages(1);
+  }, [query]);
+  useEffect(() => setConsolePages(1), [consoleKey]);
+  const wanted = (n: number) => Math.min(storeResults * n, SEARCH_GAMES_MAX);
   // Each search asks Squirrelcade; when it can't be reached (no signal, a store's Wi-Fi sign-in page, a server
   // that's down, or no answer in a few seconds), the copy answers instead, and the page says so.
+  const searchGames = async (games: number, platformKey: string | null, signal: AbortSignal | undefined): Promise<GamesAnswer<Result> & { offlineAt: string | null }> => {
+    const copy = offlineOn ? await readCopy() : null;
+    try {
+      const found = await api<GamesAnswer<Result>>(`/lookup?q=${encodeURIComponent(query)}&games=${games}${platformKey ? `&platform=${encodeURIComponent(platformKey)}` : ''}`, { signal: copy ? waitAtMost(signal, OFFLINE_WAIT_MS) : signal });
+      if (!found || !Array.isArray(found.results)) throw new NotSquirrelcade(NOT_SQUIRRELCADE);
+      return { ...found, offlineAt: null };
+    } catch (err) {
+      if (!copy || signal?.aborted || !unreachable(err)) throw err;
+      return { ...offlineGames(copy.copy, query, { platformKey: platformKey ?? undefined, games }), offlineAt: copy.savedAt };
+    }
+  };
   const titleSearch = useQuery({
-    queryKey: ['lookup', 'title', query],
-    queryFn: async ({ signal }): Promise<{ results: Result[]; offlineAt: string | null }> => {
-      const copy = offlineOn ? await readCopy() : null;
-      try {
-        const results = await api<Result[]>(`/lookup?q=${encodeURIComponent(query)}`, { signal: copy ? waitAtMost(signal, OFFLINE_WAIT_MS) : signal });
-        if (!Array.isArray(results)) throw new NotSquirrelcade(NOT_SQUIRRELCADE);
-        return { results, offlineAt: null };
-      } catch (err) {
-        if (!copy || signal?.aborted || !unreachable(err)) throw err;
-        return { results: offlineSearch(copy.copy, query), offlineAt: copy.savedAt };
-      }
-    },
+    queryKey: ['lookup', 'store', query, wanted(pages)],
+    queryFn: ({ signal }) => searchGames(wanted(pages), null, signal),
     enabled: !barcode && query.length >= 2,
     // Asked even when the browser says it's offline (React Query would wait for the connection): the copy answers.
     networkMode: 'always',
+    // More games keeps the cards while the longer list comes (not another search's).
+    placeholderData: (prev, prevQuery) => (prevQuery?.queryKey[2] === query ? prev : undefined),
   });
+  const consoleSearch = useQuery({
+    queryKey: ['lookup', 'store', query, wanted(consolePages), consoleKey],
+    queryFn: ({ signal }) => searchGames(wanted(consolePages), consoleKey, signal),
+    enabled: !barcode && query.length >= 2 && consoleKey !== null,
+    networkMode: 'always',
+    placeholderData: (prev, prevQuery) => (prevQuery?.queryKey[2] === query && prevQuery.queryKey[4] === consoleKey ? prev : undefined),
+  });
+  const weights = useSearchWeights(titleSearch.data?.activity);
   const barcodeSearch = useQuery({
     queryKey: ['lookup', 'barcode', barcode],
     queryFn: async ({ signal }): Promise<BarcodeAnswer & { offlineAt: string | null }> => {
@@ -388,17 +416,28 @@ export function StorePage() {
   });
 
   const results = barcode ? barcodeSearch.data?.results : titleSearch.data?.results;
-  // One console's answers only, when they span several (the owner, 2026-10-16); a new search shows them all again.
-  const [consoleKey, setConsoleKey] = useState<string | null>(null);
-  useEffect(() => setConsoleKey(null), [query]);
-  const shown = consoleKey ? results?.filter((r) => r.platformKey === consoleKey) : results;
+  // One console's answers only, when they span several (the owner, 2026-10-16); a new search shows them all again. A
+  // title search's console is asked of Squirrelcade (all its games, T-407); a barcode's answers are only filtered.
+  const onConsole = consoleKey && !barcode ? consoleSearch.data : undefined;
+  const shown = consoleKey ? (onConsole?.results ?? results?.filter((r) => r.platformKey === consoleKey)) : results;
   // One card per game (D175), its consoles' marks on it: a mark shows that console's answer; the first answer to start.
   const games = shown ? oneLinePerGame(shown) : undefined;
   const [chosenOn, setChosenOn] = useState<Record<string, string>>({});
-  useEffect(() => setChosenOn({}), [query]);
-  const loading = barcode ? barcodeSearch.isFetching : titleSearch.isFetching;
+  // The games whose every console's mark shows ("+n more" tapped), until the search changes.
+  const [openGames, setOpenGames] = useState<ReadonlySet<string>>(new Set());
+  useEffect(() => {
+    setChosenOn({});
+    setOpenGames(new Set());
+  }, [query]);
+  // More games: the games the title search found beyond the cards (none past Squirrelcade's most: a chip or more of the
+  // title narrows it).
+  const page = barcode ? undefined : consoleKey ? onConsole : titleSearch.data;
+  const listed = consoleKey ? wanted(consolePages) : wanted(pages);
+  const moreGames = page ? Math.max(0, page.games - listed) : 0;
+  const canMore = moreGames > 0 && listed < SEARCH_GAMES_MAX;
+  const loading = barcode ? barcodeSearch.isFetching : titleSearch.isFetching || (consoleKey !== null && consoleSearch.isFetching);
   const failed = barcode ? barcodeSearch.error : titleSearch.error;
-  const offlineAt = (barcode ? barcodeSearch.data?.offlineAt : titleSearch.data?.offlineAt) ?? null;
+  const offlineAt = (barcode ? barcodeSearch.data?.offlineAt : (onConsole ?? titleSearch.data)?.offlineAt) ?? null;
   const b = barcode ? barcodeSearch.data : undefined;
   // A barcode that's new to Squirrelcade stays at hand for linking after a search by title.
   useEffect(() => {
@@ -464,9 +503,12 @@ export function StorePage() {
       )}
     </>
   );
-  // A console you don't collect gets the same Add it (D188): the copy goes on the console the scan matched.
+  // A console you don't collect gets the same Add it (D188): the copy goes on the console the scan matched. So does a
+  // scanned game its console's catalog hasn't yet, on the console the barcode's name gives ("Hollow Knight - Nintendo
+  // Switch 2 Edition", known only on other consoles), so Add it isn't left to another console's answer.
+  const scannedNew = (r: Result) => Boolean(b?.platformKey) && r.platformKey === b?.platformKey && r.answer === 'need' && r.entryId === undefined;
   const addable = (r: Result) =>
-    canEdit && ((r.entryId !== undefined && !queuedIds.has(r.entryId) && ADDABLE.includes(r.answer)) || (r.answer === 'not-tracked' && !offlineAt));
+    canEdit && ((r.entryId !== undefined && !queuedIds.has(r.entryId) && ADDABLE.includes(r.answer)) || ((r.answer === 'not-tracked' || scannedNew(r)) && !offlineAt));
 
   return (
     <Stack maw={640} mx="auto" gap="sm">
@@ -486,9 +528,6 @@ export function StorePage() {
               Pack a place
             </Anchor>
           )}
-          <Anchor component={Link} to="/store/photo" size="sm">
-            Check a shelf
-          </Anchor>
           <Anchor component={Link} to="/store/list" size="sm">
             Check a list
           </Anchor>
@@ -524,6 +563,10 @@ export function StorePage() {
           Scan
         </Button>
       </Group>
+      {/* Check a shelf (D147) a thumb away, under the one-game search (T-406): a photo of a shelf, the games you have and need. */}
+      <Button component={Link} to="/store/photo" size="md" variant="light" fullWidth leftSection={<IconBooks size={20} />}>
+        Check a whole shelf
+      </Button>
       {loading && <Loader size="sm" />}
       {offlineAt && !loading && (
         <Alert color="yellow" variant="light" title="Squirrelcade can't be reached">
@@ -605,10 +648,14 @@ export function StorePage() {
           No catalog or collection game matches “{query}”. If it's a real game for a console you collect, it may be missing from that console's catalog.
         </Alert>
       )}
-      {results && results.length > 0 && <ConsoleChips results={results} value={consoleKey} onChange={setConsoleKey} />}
+      {results && results.length > 0 && (barcode ? <ConsoleChips results={results} value={consoleKey} onChange={setConsoleKey} /> : <ConsoleChips counts={titleSearch.data?.consoles ?? []} value={consoleKey} onChange={setConsoleKey} />)}
       {games?.map((g) => {
-        const r = g.consoles.find((c) => c.platformKey === chosenOn[g.key]) ?? g.first;
+        // A tapped mark's console: its answer as its mark has it (the one you have, where it has two).
+        const r = onePerConsole(g.consoles).find((c) => c.platformKey === chosenOn[g.key]) ?? g.first;
         const reason = reasonOf(r);
+        // Its first consoles' marks (T-407): the one whose answer shows, then the ones you're most active on; "+n more" shows every one.
+        const unfolded = openGames.has(g.key);
+        const { marks, hidden } = marksToShow(g, r.platformKey, weights, consolesAtFirst, unfolded);
         return (
         <Card key={g.key} withBorder padding="sm">
           {/* The verdict, and beside it, as tall as it, Add it for a game you can buy here (D153). */}
@@ -631,7 +678,7 @@ export function StorePage() {
               {/* Its consoles' marks (D175): filled where you have it, dotted where you don't, PC last; tap one for its answer. */}
               {(g.consoles.length > 1 || g.onPc) && (
                 <Group gap={6} my={2} aria-label="Its consoles">
-                  {g.consoles.map((c) => (
+                  {marks.map((c) => (
                     <ConsoleMark
                       key={c.platformKey}
                       platformKey={c.platformKey}
@@ -643,6 +690,17 @@ export function StorePage() {
                     />
                   ))}
                   {g.onPc && <ConsoleMark platformKey="pc" name="PC" owned size={18} />}
+                  <MoreConsoles
+                    hidden={hidden}
+                    open={unfolded}
+                    onToggle={() =>
+                      setOpenGames((x) => {
+                        const next = new Set(x);
+                        if (!next.delete(g.key)) next.add(g.key);
+                        return next;
+                      })
+                    }
+                  />
                 </Group>
               )}
               <Group gap={6}>
@@ -751,6 +809,18 @@ export function StorePage() {
         </Card>
         );
       })}
+      {/* The games beyond the cards (T-407): that many more each time; past Squirrelcade's most, how to narrow it. */}
+      {page && moreGames > 0 && (shown?.length ?? 0) > 0 && (
+        canMore ? (
+          <Button variant="light" onClick={() => (consoleKey ? setConsolePages((n) => n + 1) : setPages((n) => n + 1))} loading={loading}>
+            More games ({count(moreGames)} more)
+          </Button>
+        ) : (
+          <Text size="sm" c="dimmed">
+            {SEARCH_GAMES_MAX} of {count(page.games)} games: type more of the title, or tap a console above.
+          </Text>
+        )
+      )}
       {/* After an answer, the camera again without scrolling back up (the way Store Mode is used in a shop). */}
       {(b !== undefined || narrow) && (results?.length ?? 0) > 0 && !loading && (
         <Button variant="light" size="md" leftSection={<IconVideoFilled size={18} />} onClick={() => setScanning(true)}>

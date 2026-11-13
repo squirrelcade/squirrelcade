@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { matchShelf, ShelfMatcher, shelfReadKey, withoutEdition } from './shelf.js';
+import { matchShelf, ShelfMatcher, shelfNeeds, shelfReadKey, unsureNeeded, withoutEdition } from './shelf.js';
 
 const GAMES = [
   "Assassin's Creed II",
@@ -64,6 +64,19 @@ describe('matchShelf', () => {
     const r = matchShelf([read('HALO 3'), read('HAL0 3'), read('HALO3')], GAMES);
     expect(r.sure.map((m) => m.title)).toEqual(['Halo 3']);
     expect(r.reads).toBe(3);
+    // Every text read surely as the game is kept with it (the closest first), so each of its spines can be found on the
+    // photo; HAL0 3, with a digit beside the number, was a doubtful read and isn't one of them.
+    expect([...r.sure[0]!.reads].sort()).toEqual(['HALO 3', 'HALO3']);
+    expect(r.sure[0]!.reads[0]).toBe(r.sure[0]!.read);
+  });
+
+  it("names the other game an unsure read could be by its key, and keeps a sure game's reads apart from doubtful ones", () => {
+    const r = one('DARKSIDERS');
+    expect(r.unsure[0]).toMatchObject({ key: '5', otherKey: '6', reads: ['DARKSIDERS'] });
+    // DARKSIDERS stays unsure for Darksiders when Darksiders II is read surely too: its text isn't one of II's reads.
+    const both = matchShelf([read('DARKSIDERS II'), read('DARKSIDERS')], GAMES);
+    expect(both.sure).toEqual([expect.objectContaining({ title: 'Darksiders II', reads: ['DARKSIDERS II'] })]);
+    expect(both.unsure).toEqual([expect.objectContaining({ title: 'Darksiders', reads: ['DARKSIDERS'] })]);
   });
 
   it('reuses one list for several photos', () => {
@@ -78,12 +91,41 @@ describe('matchShelf', () => {
     expect(m.match([read('UNCHARTED')]).sure).toEqual([]);
     const fixes = new Map<string, string | null>([[shelfReadKey('UNCHARTED'), 'Uncharted 2: Among Thieves'], [shelfReadKey('HALO 3'), null]]);
     const r = m.match([read('Un charted'), read('HALO 3')], fixes);
-    expect(r.sure).toEqual([{ key: '3', title: 'Uncharted 2: Among Thieves', read: 'Un charted', likeness: 1, fixed: true }]);
+    expect(r.sure).toEqual([{ key: '3', title: 'Uncharted 2: Among Thieves', read: 'Un charted', likeness: 1, fixed: true, reads: ['Un charted'] }]);
     expect(r.unsure).toEqual([]);
     // A key is its own key (a phone sends a fix it kept by its key).
     for (const t of ['HALO 3', 'll3 Iio1', 'UNCHARTED']) expect(shelfReadKey(shelfReadKey(t))).toBe(shelfReadKey(t));
     // A fix to a game not on the list is left out: the read is matched as usual.
     expect(m.match([read('REMEMBER ME')], new Map([[shelfReadKey('REMEMBER ME'), 'Not On This Console']])).sure.map((x) => x.title)).toEqual(['Remember Me']);
+  });
+});
+
+describe('which unsure list a spine goes in (T-406)', () => {
+  // Store Mode's answers, by key: what the caller knows about each game.
+  const answers: Record<string, { a: string; w?: { score: number } }> = {
+    own: { a: 'own' },
+    need: { a: 'need' },
+    physical: { a: 'unconfirmed' },
+    wished: { a: 'own-elsewhere', w: { score: 40 } },
+    elsewhere: { a: 'own-elsewhere' },
+    maybe: { a: 'check' },
+    skipped: { a: 'not-a-target' },
+    offList: { a: 'not-tracked' },
+  };
+  const of = (key: string) => answers[key];
+
+  it("needs a want, a catalog game you don't have, or a wishlist game you have only elsewhere", () => {
+    expect(['need', 'physical', 'wished'].every((k) => shelfNeeds(of(k)))).toBe(true);
+    expect(['own', 'elsewhere', 'maybe', 'skipped', 'offList', 'unknown'].some((k) => shelfNeeds(of(k)))).toBe(false);
+  });
+
+  it('counts a spine as needed if either game it could be is needed, and as not needed only when neither is', () => {
+    expect(unsureNeeded({ key: 'need' }, of)).toBe(true);
+    // Darksiders (yours) or Darksiders II (needed), cut off: if it's II, you need it.
+    expect(unsureNeeded({ key: 'own', otherKey: 'need' }, of)).toBe(true);
+    expect(unsureNeeded({ key: 'own', otherKey: 'elsewhere' }, of)).toBe(false);
+    expect(unsureNeeded({ key: 'offList' }, of)).toBe(false);
+    expect(unsureNeeded({ key: 'maybe', otherKey: 'skipped' }, of)).toBe(false);
   });
 });
 

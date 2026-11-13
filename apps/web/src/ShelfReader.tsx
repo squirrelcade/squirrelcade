@@ -1,11 +1,29 @@
 import { Autocomplete, Button, Group, Modal, Stack, Text } from '@mantine/core';
+import { useElementSize, useReducedMotion } from '@mantine/hooks';
 import { shelfReadKey } from '@squirrelcade/core';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { api, errorMessage } from './api';
 import { notifyError, useCanEdit } from './hooks';
 import { readCopy, refreshCopy, unreachable, type OfflineCopy } from './offline';
-import { allReads, checklist, keepOwnFix, keepTitles, keptTitles, ownFixes, photoReader, shelfConsoles, shelfFixes, shelfMatcher, type ReadLine, type ReaderProgress, type ShelfChecklist } from './shelfCheck';
+import {
+  allReads,
+  boundsOf,
+  checklist,
+  keepOwnFix,
+  keepTitles,
+  keptTitles,
+  linesFor,
+  ownFixes,
+  photoReader,
+  photoView,
+  shelfConsoles,
+  shelfFixes,
+  shelfMatcher,
+  type ReadLine,
+  type ReaderProgress,
+  type ShelfChecklist,
+} from './shelfCheck';
 
 /**
  * Reading a shelf on the phone (D147), shared by Check a shelf (Store Mode) and the collection audit's shelves: Store
@@ -45,42 +63,105 @@ async function loadCopy(): Promise<OfflineCopy> {
   return api<OfflineCopy>('/lookup/offline');
 }
 
-/** The colors of the boxes drawn on the photo, by group. */
-const BOX = { need: '#2f9e44', own: '#1c7ed6', elsewhere: '#f59f00', other: '#868e96', unsure: '#e8590c', unread: '#ffffff' } as const;
+/** The colors of the boxes drawn on the photo, by group: the unsure ones you'd need are green and dashed (T-406). */
+export const BOX = { need: '#2f9e44', own: '#1c7ed6', elsewhere: '#f59f00', other: '#868e96', unsure: '#e8590c', unread: '#ffffff' } as const;
+
+/** Each text read as a game, with its box's color: the sure games' (each of their reads), then the unsure ones'. */
+function boxColors(list: ShelfChecklist): Map<string, { color: string; dashed: boolean }> {
+  const color = new Map<string, { color: string; dashed: boolean }>();
+  for (const group of ['need', 'own', 'elsewhere', 'other'] as const) for (const f of list[group]) for (const t of f.reads) if (!color.has(t)) color.set(t, { color: BOX[group], dashed: false });
+  for (const u of list.unsure) for (const t of u.reads ?? [u.read]) if (!color.has(t)) color.set(t, { color: u.wanted ? BOX.need : BOX.unsure, dashed: true });
+  return color;
+}
+
+const points = (box: [number, number][]) => box.map(([x, y]) => `${x},${y}`).join(' ');
 
 /**
  * The photo with a box around each spine read as a game, colored by its answer (unsure ones dashed), and a faint
- * one around the other text read: tap any box to say which game it is (or that it's none).
+ * one around the other text read: tap any box to say which game it is (or that it's none). With `focus` (the texts read
+ * as a game tapped in a list, T-406), it zooms to that game's spines and lights them up, the rest of the photo dimmed;
+ * the boxes still answer a tap. `maxHeight` keeps the frame within that height, a taller photo shown whole inside it.
  */
-export function PhotoBoxes({ url, width, height, lines, list, fixes, onTap }: { url: string; width: number; height: number; lines: ReadLine[]; list: ShelfChecklist; fixes: Map<string, string | null>; onTap: (read: string) => void }) {
-  const color = new Map<string, { color: string; dashed: boolean }>();
-  for (const group of ['need', 'own', 'elsewhere', 'other'] as const) for (const f of list[group]) color.set(f.read, { color: BOX[group], dashed: false });
-  for (const u of list.unsure) if (!color.has(u.read)) color.set(u.read, { color: BOX.unsure, dashed: true });
+export function PhotoBoxes({
+  url,
+  width,
+  height,
+  lines,
+  list,
+  fixes,
+  onTap,
+  focus,
+  maxHeight,
+}: {
+  url: string;
+  width: number;
+  height: number;
+  lines: ReadLine[];
+  list: ShelfChecklist;
+  fixes: Map<string, string | null>;
+  onTap: (read: string) => void;
+  focus?: readonly string[] | null;
+  maxHeight?: string;
+}) {
+  const color = useMemo(() => boxColors(list), [list]);
+  const { ref, width: frameWidth, height: frameHeight } = useElementSize();
+  const still = useReducedMotion();
+  const focused = useMemo(() => (focus?.length ? linesFor(lines, focus) : []), [lines, focus]);
+  const view = frameWidth > 0 ? photoView({ width, height }, { width: frameWidth, height: frameHeight }, boundsOf(focused)) : null;
+  // Lines keep their width on the screen however far the photo is zoomed.
+  const zoom = view?.scale ?? 1;
   const stroke = Math.max(2, Math.round(Math.max(width, height) / 400));
   return (
-    <div style={{ position: 'relative', width: '100%' }}>
-      <img src={url} alt="Your shelf photo, with a box around each game read" style={{ width: '100%', display: 'block', borderRadius: 6 }} />
-      <svg viewBox={`0 0 ${width} ${height}`} style={{ position: 'absolute', inset: 0, width: '100%', height: '100%' }} aria-hidden>
-        {lines.map((l, i) => {
-          // Only reads long enough to be a game can be fixed (the matcher's own rule).
-          if (l.score < 0.5 || shelfReadKey(l.text).length < 4) return null;
-          const c = color.get(l.text);
-          const none = fixes.get(shelfReadKey(l.text)) === null;
-          return (
-            <polygon
-              key={i}
-              points={l.box.map(([x, y]) => `${x},${y}`).join(' ')}
-              fill="transparent"
-              stroke={c ? c.color : none ? BOX.other : BOX.unread}
-              strokeOpacity={c ? 1 : 0.55}
-              strokeWidth={c ? stroke : Math.max(1, stroke / 2)}
-              strokeDasharray={c?.dashed ? `${stroke * 3} ${stroke * 2}` : !c ? `${stroke} ${stroke * 2}` : undefined}
-              style={{ cursor: 'pointer', pointerEvents: 'all' }}
-              onClick={() => onTap(l.text)}
-            />
-          );
-        })}
-      </svg>
+    <div ref={ref} style={{ position: 'relative', width: '100%', aspectRatio: `${width} / ${height}`, maxHeight, overflow: 'hidden', borderRadius: 6, background: 'var(--mantine-color-dark-7)' }}>
+      <div
+        style={{
+          position: 'absolute',
+          left: 0,
+          top: 0,
+          width: frameWidth || '100%',
+          height: frameWidth ? (frameWidth * height) / width : '100%',
+          transform: view ? `translate(${view.x}px, ${view.y}px) scale(${view.scale})` : undefined,
+          transformOrigin: '0 0',
+          transition: still ? undefined : 'transform 280ms ease-out',
+        }}
+      >
+        <img src={url} alt="Your shelf photo, with a box around each game read" style={{ width: '100%', height: '100%', display: 'block' }} />
+        <svg viewBox={`0 0 ${width} ${height}`} style={{ position: 'absolute', inset: 0, width: '100%', height: '100%' }} aria-hidden>
+          {lines.map((l, i) => {
+            // Only reads long enough to be a game can be fixed (the matcher's own rule).
+            if (l.score < 0.5 || shelfReadKey(l.text).length < 4) return null;
+            const c = color.get(l.text);
+            const none = fixes.get(shelfReadKey(l.text)) === null;
+            const w = (c ? stroke : Math.max(1, stroke / 2)) / zoom;
+            return (
+              <polygon
+                key={i}
+                points={points(l.box)}
+                fill="transparent"
+                stroke={c ? c.color : none ? BOX.other : BOX.unread}
+                strokeOpacity={c ? 1 : 0.55}
+                strokeWidth={w}
+                strokeDasharray={c?.dashed ? `${w * 3} ${w * 2}` : !c ? `${w} ${w * 2}` : undefined}
+                style={{ cursor: 'pointer', pointerEvents: 'all' }}
+                onClick={() => onTap(l.text)}
+              />
+            );
+          })}
+          {focused.length > 0 && (
+            // The tapped game's spines: the rest of the photo dimmed around them, and each outlined in white and its color.
+            // Drawn over the boxes but letting taps through to them.
+            <g style={{ pointerEvents: 'none' }}>
+              <path d={`M0 0H${width}V${height}H0Z ${focused.map((l) => `M${l.box.map(([x, y]) => `${x} ${y}`).join('L')}Z`).join(' ')}`} fill="#000" fillOpacity={0.5} fillRule="evenodd" />
+              {focused.map((l, i) => (
+                <polygon key={`white${i}`} points={points(l.box)} fill="transparent" stroke="#fff" strokeWidth={(stroke * 4) / zoom} />
+              ))}
+              {focused.map((l, i) => (
+                <polygon key={`color${i}`} points={points(l.box)} fill="transparent" stroke={color.get(l.text)?.color ?? BOX.unread} strokeWidth={(stroke * 2) / zoom} />
+              ))}
+            </g>
+          )}
+        </svg>
+      </div>
     </div>
   );
 }

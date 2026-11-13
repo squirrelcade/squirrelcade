@@ -12,17 +12,21 @@ export const isConsoleChip = (el: EventTarget | null): boolean => el instanceof 
  */
 export function ConsoleChips({
   results,
+  counts: given,
   value,
   onChange,
   keepFocus = false,
 }: {
-  results: readonly { platformKey: string; platform: string }[];
+  results?: readonly { platformKey: string; platform: string }[];
+  /** Every console the search found, with how many (a search by game's, T-407), in place of counting `results`. */
+  counts?: readonly { platformKey: string; platform: string; count: number }[];
   value: string | null;
   onChange: (platformKey: string | null) => void;
   keepFocus?: boolean;
 }) {
   const counts = new Map<string, { name: string; n: number }>();
-  for (const r of results) {
+  for (const c of given ?? []) counts.set(c.platformKey, { name: c.platform, n: c.count });
+  for (const r of given ? [] : (results ?? [])) {
     const c = counts.get(r.platformKey) ?? { name: r.platform, n: 0 };
     c.n++;
     counts.set(r.platformKey, c);

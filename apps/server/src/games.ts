@@ -185,7 +185,7 @@ export function registerGameRoutes(
 ): void {
   const { db } = deps;
   const catalogGame = (key: string, title: string) => catalogTarget(deps.catalogs, key, title);
-  const launchDays = new LaunchDays(db);
+  const launchDays = new LaunchDays(db, () => deps.catalogs.catalogStamp());
 
   app.get('/api/v1/game', async (request, reply) => {
     const { platform: key, title } = request.query as { platform?: string; title?: string };

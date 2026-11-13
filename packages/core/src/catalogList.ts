@@ -389,6 +389,42 @@ export function platformInText(text: string, platforms: readonly { key: string; 
   return best?.key ?? null;
 }
 
+/** The pattern of "<a console's name> Edition" for a list of platforms, made once per list. */
+const editionPatterns = new WeakMap<object, { re: RegExp; keyOf: Map<string, string> }>();
+function editionPattern(platforms: readonly { key: string; name: string; labels?: readonly string[] }[]): { re: RegExp; keyOf: Map<string, string> } {
+  let made = editionPatterns.get(platforms);
+  if (!made) {
+    const keyOf = new Map<string, string>();
+    for (const p of platforms) for (const name of [p.name, ...(p.labels ?? []), ...(NICKNAMES[p.key] ?? [])]) {
+      const w = words(name).trim();
+      if (w && !keyOf.has(w)) keyOf.set(w, p.key);
+    }
+    // The longest names first, so "Switch 2" is tried before "Switch".
+    const names = [...keyOf.keys()].sort((a, b) => b.length - a.length).map((n) => n.split(' ').join('[^a-z0-9]+'));
+    made = { re: new RegExp(`(^|[^a-z0-9])(${names.join('|')})[^a-z0-9]+edition(?![a-z0-9])`, 'i'), keyOf };
+    editionPatterns.set(platforms, made);
+  }
+  return made;
+}
+
+/**
+ * A console's own edition named in a title ("Hollow Knight - Nintendo Switch 2 Edition", "Minecraft: Xbox 360 Edition",
+ * "Hades II [Switch 2 Edition]"): the console it's for, and the title without it ("Hollow Knight"). That edition is the
+ * game on that console, so its words are the console's, not the title's: "Hollow Knight: Silksong - Nintendo Switch 2
+ * Edition" is Hollow Knight: Silksong, which shares only "Hollow Knight" with the first game. Null when it names none.
+ */
+export function consoleEditionIn(title: string, platforms: readonly { key: string; name: string; labels?: readonly string[] }[]): { platformKey: string; title: string } | null {
+  const text = title.replace(/[™®©]/g, '');
+  const { re, keyOf } = editionPattern(platforms);
+  const m = re.exec(text);
+  const key = m ? keyOf.get(words(m[2]!).trim()) : undefined;
+  if (!m || !key) return null;
+  const before = text.slice(0, m.index + m[1]!.length).replace(/[\s:;|([\-–—]+$/, '');
+  const after = text.slice(m.index + m[0].length).replace(/^\s*[\])]/, '');
+  const rest = `${before}${after}`.replace(/\s+/g, ' ').trim();
+  return rest.length >= 2 ? { platformKey: key, title: rest } : null;
+}
+
 /**
  * Which console a list is for: from its Platform (or Console) column, as the old workbook's
  * Master Catalog tabs have, else from its file name ("PS3 Master Catalog.csv"). Null when unsure.

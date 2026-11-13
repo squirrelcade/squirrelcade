@@ -34,11 +34,14 @@ export interface ShelfMatch {
   read: string;
   /** How close the read is to the title, 0 to 1. */
   likeness: number;
-  /** Set when unsure: why, and the other game it could be. */
+  /** Set when unsure: why, and the other game it could be (its title and the caller's key for it). */
   doubt?: ShelfDoubt;
   other?: string;
+  otherKey?: string;
   /** Said by you: a fix remembered for this read. */
   fixed?: true;
+  /** Every text read as this game (read is the closest), so a page can find each of its spines on the photo. */
+  reads: string[];
 }
 
 export interface ShelfResult {
@@ -209,6 +212,14 @@ export class ShelfMatcher {
   match(lines: ShelfRead[], fixes?: ReadonlyMap<string, string | null>): ShelfResult {
     const sure = new Map<string, ShelfMatch>();
     const unsure = new Map<string, ShelfMatch>();
+    // The texts read as each game, sure and unsure apart (a game's sure spines aren't mixed with doubtful reads).
+    const sureReads = new Map<string, string[]>();
+    const unsureReads = new Map<string, string[]>();
+    const readAs = (all: Map<string, string[]>, key: string, text: string) => {
+      const list = all.get(key);
+      if (!list) all.set(key, [text]);
+      else if (!list.includes(text)) list.push(text);
+    };
     let count = 0;
     for (const line of lines) {
       if (line.score < 0.5) continue;
@@ -219,7 +230,8 @@ export class ShelfMatcher {
       if (fix === null) continue;
       const fixedTo = fix === undefined ? undefined : this.byTitle.get(normalizeTitle(fix));
       if (fixedTo) {
-        sure.set(fixedTo.game.key, { key: fixedTo.game.key, title: fixedTo.game.title, read: line.text, likeness: 1, fixed: true });
+        sure.set(fixedTo.game.key, { key: fixedTo.game.key, title: fixedTo.game.title, read: line.text, likeness: 1, fixed: true, reads: [] });
+        readAs(sureReads, fixedTo.game.key, line.text);
         continue;
       }
       // The read as it is, and without an edition at its end ("... Deluxe Edition" on the spine, not in the list).
@@ -270,28 +282,50 @@ export class ShelfMatcher {
           );
       const needed = read.length <= 6 ? 0.95 : 0.82;
       const doubt: ShelfDoubt | undefined = chosen.likeness < needed ? 'not-close' : !chosen.numberRead ? 'number' : rival ? 'or' : cutOff ? 'cut-off' : undefined;
-      const other = doubt === 'or' ? rival!.x.game.title : doubt === 'cut-off' ? cutOff!.game.title : undefined;
+      const otherGame = doubt === 'or' ? rival!.x.game : doubt === 'cut-off' ? cutOff!.game : undefined;
       const found: ShelfMatch = {
         key: chosen.x.game.key,
         title: chosen.x.game.title,
         read: line.text,
         likeness: Math.round(chosen.likeness * 100) / 100,
         ...(doubt ? { doubt } : {}),
-        ...(other ? { other } : {}),
+        ...(otherGame ? { other: otherGame.title, otherKey: otherGame.key } : {}),
+        reads: [],
       };
       // A short or far-off partial read is noise, not a guess worth listing ("RAGD" isn't worth "Rage?").
       if (doubt === 'not-close' && (read.length <= 6 || chosen.likeness < 0.7)) continue;
       const map = doubt ? unsure : sure;
+      readAs(doubt ? unsureReads : sureReads, found.key, line.text);
       const was = map.get(found.key);
       if (!was || was.likeness < found.likeness) map.set(found.key, found);
     }
     for (const key of sure.keys()) unsure.delete(key);
+    // Each game's reads, the one shown first.
+    const withReads = (m: ShelfMatch, all: Map<string, string[]>): ShelfMatch => ({ ...m, reads: [m.read, ...(all.get(m.key) ?? []).filter((t) => t !== m.read)] });
     return {
-      sure: [...sure.values()].sort((a, b) => a.title.localeCompare(b.title)),
-      unsure: [...unsure.values()].sort((a, b) => b.likeness - a.likeness),
+      sure: [...sure.values()].map((m) => withReads(m, sureReads)).sort((a, b) => a.title.localeCompare(b.title)),
+      unsure: [...unsure.values()].map((m) => withReads(m, unsureReads)).sort((a, b) => b.likeness - a.likeness),
       reads: count,
     };
   }
+}
+
+/**
+ * Whether a spine's game is one you'd need, from Store Mode's answer for it (its `a`) and its wishlist entry (`w`): a
+ * want or a catalog game you don't have ("need", "unconfirmed"), or a game on your wishlist that you have only on
+ * another console. Ownership stays the caller's: this only reads the answer it was given.
+ */
+export function shelfNeeds(game: { a: string; w?: unknown } | undefined): boolean {
+  if (!game) return false;
+  return game.a === 'need' || game.a === 'unconfirmed' || (game.a === 'own-elsewhere' && game.w != null);
+}
+
+/**
+ * An unsure spine's list (T-406): "unsure, but if it's this game you need it" when the best guess or the other game it
+ * could be is one you'd need; otherwise "unsure, and you have it or don't need it either way".
+ */
+export function unsureNeeded<G extends { a: string; w?: unknown }>(match: Pick<ShelfMatch, 'key' | 'otherKey'>, gameOf: (key: string) => G | undefined): boolean {
+  return shelfNeeds(gameOf(match.key)) || (match.otherKey !== undefined && shelfNeeds(gameOf(match.otherKey)));
 }
 
 /** One photo's reads matched against a list of games (see ShelfMatcher to reuse the list's forms). */

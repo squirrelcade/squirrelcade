@@ -122,16 +122,30 @@ describe('copies of Squirrelcade\'s own', () => {
     expect((await g.app.inject({ method: 'PUT', url: `/api/v1/send/pricecharting/${fresh.id}/product`, cookies, payload: { pcId: '45678' } })).json()).toEqual({ ok: true });
     let after = (await g.app.inject({ url: '/api/v1/send/pricecharting', cookies })).json();
     expect(after.text).toBe('');
-    // No export of the owner's has that ID, so nothing here can vouch for it (D187): it waits on Check these, out of the
-    // CSV, until the owner says it's right.
-    expect(after.toSend.find((c: { id: number }) => c.id === fresh.id)).toMatchObject({ pcId: '45678', check: 'flagged', why: [expect.stringContaining("can't check it")] });
+    // No export of the owner's has that ID and reading PriceCharting's pages is off, so nothing here can name it: the
+    // check says so plainly, and the copy stays in the CSV unless the owner unticks it (the owner, 2026-11-12).
+    const mine = (l: { toSend: { id: number }[] }) => l.toSend.find((c) => c.id === fresh.id);
+    expect(mine(after)).toMatchObject({ pcId: '45678', check: 'flagged', verdict: 'unknown', lookup: 'off', inCsv: true, pcTitle: null, why: [expect.stringContaining("can't check it")] });
+    expect(after.csv).toContain('45678,8,1,800,,');
+    // Unticked in the check: the CSV has only the copies left ticked.
+    const ticked = (await g.app.inject({ url: `/api/v1/send/pricecharting.csv?ids=${second.id},${again.id}`, cookies })).body;
+    expect(ticked).not.toContain('45678');
+    expect(ticked).toContain('\r\n1,3,1,1997,');
+    // Settings > Collection > Sending to PriceCharting can leave the ones that don't match out until they're ticked (or,
+    // as before, said to be right).
+    g.settings.update({ 'collection.pcMismatchRows': 'out' });
+    after = (await g.app.inject({ url: '/api/v1/send/pricecharting', cookies })).json();
+    expect(mine(after)).toMatchObject({ inCsv: false });
     expect(after.csv).not.toContain('45678');
     expect((await g.app.inject({ method: 'POST', url: `/api/v1/send/pricecharting/${fresh.id}/confirm`, cookies })).json()).toEqual({ ok: true });
     after = (await g.app.inject({ url: '/api/v1/send/pricecharting', cookies })).json();
-    expect(after.toSend.find((c: { id: number }) => c.id === fresh.id)).toMatchObject({ check: 'confirmed' });
+    expect(mine(after)).toMatchObject({ check: 'confirmed', inCsv: true });
     expect(after.csv).toContain('45678,8,1,800,,');
+    g.settings.update({ 'collection.pcMismatchRows': 'in' });
     // The ones an export vouches for are fine as they are.
-    expect(after.toSend.find((c: { id: number }) => c.id === second.id)).toMatchObject({ check: 'ok', why: [], pcName: 'Uncharted (Playstation 3)' });
+    expect(after.toSend.find((c: { id: number }) => c.id === second.id)).toMatchObject({ check: 'ok', verdict: 'match', lookup: 'export', why: [], pcName: 'Uncharted (Playstation 3)', pcTitle: 'Uncharted', pcConsole: 'Playstation 3' });
+    // With the value of the game in its condition from the export, for the check's Paid and Value columns.
+    expect(after.toSend.find((c: { id: number }) => c.id === second.id)).toMatchObject({ costCents: 1997, valueCents: 1000 });
     // A graded copy goes with who graded it and its certificate; grading on a copy that isn't graded doesn't go.
     expect((await edit(fresh.id, { completeness: 'graded', gradingCompany: 'WATA', gradingCertId: '123456-001' })).statusCode).toBe(200);
     expect((await edit(again.id, { gradingCompany: 'PSA' })).statusCode).toBe(200);
@@ -156,8 +170,10 @@ describe('copies of Squirrelcade\'s own', () => {
     const mine = async () => (await send()).toSend.find((c) => c.id === copy.id) as unknown as { pcId: string | null; check: string | null; why: string[] };
     // Another game's ID (a misread): Flower's, which the export knows.
     expect((await put('3')).statusCode).toBe(200);
-    expect(await mine()).toMatchObject({ pcId: '3', check: 'flagged', why: ['PriceCharting calls it "Flower"'] });
-    expect((await g.app.inject({ url: '/api/v1/send/pricecharting.csv', cookies })).body).not.toMatch(/\r\n3,/);
+    expect(await mine()).toMatchObject({ pcId: '3', check: 'flagged', verdict: 'mismatch', pcTitle: 'Flower', pcConsole: 'Playstation 3', why: ['PriceCharting calls it "Flower"'] });
+    // Flagged at the top of the check, in the CSV unless unticked.
+    expect((await g.app.inject({ url: '/api/v1/send/pricecharting.csv', cookies })).body).toMatch(/\r\n3,/);
+    expect((await g.app.inject({ url: '/api/v1/send/pricecharting.csv?ids=', cookies })).body).not.toMatch(/\r\n3,/);
     // Changed: another ID; the pasted Item Details' UPC is checked against the game's barcode.
     await g.app.inject({ method: 'POST', url: '/api/v1/barcodes', cookies, payload: { code: '711719000001', platformKey: 'playstation-3', title: 'Puppeteer' } });
     expect((await put('77777', 'Genre: Platformer\nUPC: 711719999999\nPriceCharting ID: 77777')).statusCode).toBe(200);

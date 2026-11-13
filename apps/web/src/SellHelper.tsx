@@ -1,5 +1,5 @@
 import { MARKETPLACES, type Marketplace } from '@squirrelcade/core';
-import { Anchor, Badge, Button, Divider, Group, Image, Loader, Modal, NumberInput, Select, SimpleGrid, Stack, Table, Tabs, Text, Textarea, TextInput } from '@mantine/core';
+import { Anchor, Badge, Button, Divider, Group, Image, Loader, Modal, Select, SimpleGrid, Stack, Table, Tabs, Text, Textarea, TextInput } from '@mantine/core';
 import { IconCheck, IconCopy, IconDownload, IconExternalLink } from '@tabler/icons-react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useEffect, useState } from 'react';
@@ -8,6 +8,7 @@ import { CopyButton } from './Copy';
 import { photoUrl } from './CopyDetails';
 import { count, money } from './format';
 import { notifyError, notifySuccess, useSetting } from './hooks';
+import { PriceInput } from './PriceInput';
 
 /** GET /api/v1/collection/copies/<id>/listing: a copy's listing kit for a marketplace. */
 interface ListingKit {
@@ -190,7 +191,7 @@ export function SellHelper({
                   </Text>
                   <Text fw={600}>{k.price.valueCents !== null ? money(k.price.valueCents, currency) : 'Not known'}</Text>
                 </Stack>
-                <NumberInput label={`Your asking price (${currency})`} value={asking} onChange={setAsking} min={0} decimalScale={2} allowNegative={false} w={180} />
+                <PriceInput label={`Your asking price (${currency})`} value={asking} onChange={setAsking} w={180} />
                 <Button variant="light" loading={saveAsking.isPending} onClick={() => saveAsking.mutate()}>
                   Mark it for sale
                 </Button>
@@ -250,7 +251,7 @@ export function SellHelper({
             </>
           )}
           <Group gap="xs" align="flex-end" wrap="wrap">
-            <NumberInput label={`Sold for (${currency})`} value={soldFor} onChange={setSoldFor} min={0} decimalScale={2} allowNegative={false} w={140} />
+            <PriceInput label={`Sold for (${currency})`} value={soldFor} onChange={setSoldFor} w={140} />
             <Select
               label="Where"
               data={[
@@ -266,8 +267,8 @@ export function SellHelper({
               comboboxProps={{ zIndex: 400 }}
             />
             <TextInput label="On" type="date" value={soldAt} onChange={(e) => setSoldAt(e.currentTarget.value)} w={160} />
-            <NumberInput label="Fees" placeholder="Worked out" value={fees} onChange={setFees} min={0} decimalScale={2} allowNegative={false} w={120} />
-            <NumberInput label="Shipping cost" placeholder={soldVia === 'local' ? '0.00' : (k.price.shippingCostCents / 100).toFixed(2)} value={shipping} onChange={setShipping} min={0} decimalScale={2} allowNegative={false} w={130} />
+            <PriceInput label="Fees" placeholder="Worked out" value={fees} onChange={setFees} w={120} />
+            <PriceInput label="Shipping cost" placeholder={soldVia === 'local' ? '0.00' : (k.price.shippingCostCents / 100).toFixed(2)} value={shipping} onChange={setShipping} w={130} />
             <Button color="green" disabled={soldFor === ''} loading={sell.isPending} onClick={() => sell.mutate()}>
               Record the sale
             </Button>

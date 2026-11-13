@@ -1,4 +1,4 @@
-import { ShelfMatcher, type ShelfDoubt, type ShelfRead } from '@squirrelcade/core';
+import { ShelfMatcher, unsureNeeded, type ShelfDoubt, type ShelfRead } from '@squirrelcade/core';
 import type { FastifyInstance } from 'fastify';
 import { CHECK_ANSWERS, type CheckAnswer } from './check.js';
 import type { LookupService, OfflineGame } from './lookup.js';
@@ -36,16 +36,23 @@ export interface ShelfAnswer {
   answer: CheckAnswer['answer'];
   ownedOn: string[];
   wishlist: { priority: string; rank: number | null } | null;
-  /** What was read. */
+  /** What was read: the closest text, and every text read as it (the visitor's own, to find its spines on their photo). */
   read: string;
+  reads: string[];
 }
 
 /** A spine read that could be a game, but not surely: the best guess, and why it's unsure. */
 export interface ShelfGuess {
   title: string;
   read: string;
+  reads: string[];
   doubt: ShelfDoubt;
   other: string | null;
+  /**
+   * The owner would need it if it's the guess or the other game (T-406): the visitor's "unsure, but if it's this game
+   * they need it" list, apart from "they have it or don't need it either way". Only that, not either game's answer.
+   */
+  wanted: boolean;
 }
 
 /** The pieces in a request, checked: data URLs of images, not too many, not too big. */
@@ -202,10 +209,10 @@ export function registerShelfRoutes(app: FastifyInstance, lookup: LookupService,
         const g = found.games.get(m.key)!;
         const answer = CHECK_ANSWERS[g.a];
         const wanted = answer === 'need' || answer === 'elsewhere';
-        return { title: g.t, answer, ownedOn: g.on ?? [], wishlist: wanted && g.w ? { priority: g.w.priority, rank: g.w.rank } : null, read: m.read };
+        return { title: g.t, answer, ownedOn: g.on ?? [], wishlist: wanted && g.w ? { priority: g.w.priority, rank: g.w.rank } : null, read: m.read, reads: m.reads };
       })
       .sort((a, b) => order[a.answer] - order[b.answer] || (a.wishlist?.rank ?? 1e9) - (b.wishlist?.rank ?? 1e9) || a.title.localeCompare(b.title));
-    const unsure: ShelfGuess[] = result.unsure.map((m) => ({ title: m.title, read: m.read, doubt: m.doubt!, other: m.other ?? null }));
+    const unsure: ShelfGuess[] = result.unsure.map((m) => ({ title: m.title, read: m.read, reads: m.reads, doubt: m.doubt!, other: m.other ?? null, wanted: unsureNeeded(m, (k) => found.games.get(k)) }));
     const model = modelError ? { id: null, state: 'failed', titles: 0, sent: 0, error: modelError } : job ? { id: job.id, state: job.state, titles: job.titles.length, sent: job.sent, error: job.error } : null;
     return { platform: consoleNameOf(platformKey), games, unsure, reads: result.reads, model };
   };

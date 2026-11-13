@@ -1,4 +1,4 @@
-import { ShelfMatcher, type ShelfDoubt, type ShelfRead, type ShelfResult } from '@squirrelcade/core';
+import { ShelfMatcher, unsureNeeded, type ShelfDoubt, type ShelfRead, type ShelfResult } from '@squirrelcade/core';
 import type { Answer } from './choices';
 import type { OfflineCopy, OfflineGame } from './offline';
 
@@ -142,6 +142,8 @@ export interface ShelfFound {
   title: string;
   answer: Answer;
   read: string;
+  /** Every text read as it (read first): its spines on the photo. */
+  reads: string[];
   game: OfflineGame;
   /** Said by you (a fix remembered). */
   fixed?: boolean;
@@ -151,10 +153,15 @@ export interface ShelfFound {
 export interface ShelfUnsure {
   title: string;
   read: string;
+  /** Every text read as this guess (read first). */
+  reads?: string[];
   doubt: ShelfDoubt;
   other: string | null;
-  /** Store Mode's answer if the guess is right (the page's own list only). */
+  /** Store Mode's answer if the guess is right, and if it's the other game (the page's own list only). */
   answer?: Answer;
+  otherAnswer?: Answer;
+  /** You'd need it if it's the guess or the other game (T-406): "Unsure, but if it's this game you need it". */
+  wanted?: boolean;
 }
 
 /** The checklist: games you need (the wishlist's first), have, have elsewhere or might have, the rest, and the unsure. */
@@ -182,12 +189,95 @@ export function checklist(result: ShelfResult, games: Map<string, OfflineGame>):
   const out: ShelfChecklist = { need: [], own: [], elsewhere: [], other: [], unsure: [], reads: result.reads };
   for (const m of result.sure) {
     const game = games.get(m.key);
-    if (game) out[GROUP[game.a]].push({ key: m.key, title: game.t, answer: game.a, read: m.read, game, ...(m.fixed ? { fixed: true } : {}) });
+    if (game) out[GROUP[game.a]].push({ key: m.key, title: game.t, answer: game.a, read: m.read, reads: m.reads, game, ...(m.fixed ? { fixed: true } : {}) });
   }
   // The wishlist's order first (its rank, then its acorns), then the rest by title.
   out.need.sort((a, b) => (a.game.w?.rank ?? 1e9) - (b.game.w?.rank ?? 1e9) || (b.game.w?.score ?? -1) - (a.game.w?.score ?? -1) || a.title.localeCompare(b.title));
-  out.unsure = result.unsure.map((m) => ({ title: m.title, read: m.read, doubt: m.doubt!, other: m.other ?? null, ...(games.get(m.key) ? { answer: games.get(m.key)!.a } : {}) }));
+  out.unsure = result.unsure.map((m) => {
+    const guess = games.get(m.key);
+    const other = m.otherKey !== undefined ? games.get(m.otherKey) : undefined;
+    return {
+      title: m.title,
+      read: m.read,
+      reads: m.reads,
+      doubt: m.doubt!,
+      other: m.other ?? null,
+      ...(guess ? { answer: guess.a } : {}),
+      ...(other ? { otherAnswer: other.a } : {}),
+      wanted: unsureNeeded(m, (k) => games.get(k)),
+    };
+  });
   return out;
+}
+
+/**
+ * The unsure spines in their two lists (T-406): the ones you'd need if the guess (or the other game it could be) is
+ * right, then the ones you have or don't need either way. The matcher's order (closest reads first) within each.
+ */
+export function unsureLists(unsure: readonly ShelfUnsure[]): { wanted: ShelfUnsure[]; rest: ShelfUnsure[] } {
+  return { wanted: unsure.filter((u) => u.wanted), rest: unsure.filter((u) => !u.wanted) };
+}
+
+/** A rectangle on the photo, in its own pixels. */
+export interface PhotoRect {
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+}
+
+/** The lines read as any of a game's texts (the ones that can be drawn: read well enough), so it can be shown on the photo. */
+export function linesFor(lines: readonly ReadLine[], reads: readonly string[]): ReadLine[] {
+  const texts = new Set(reads);
+  return lines.filter((l) => l.score >= 0.5 && l.box.length > 0 && texts.has(l.text));
+}
+
+/** The rectangle around some lines' boxes, or null when there are none. */
+export function boundsOf(lines: readonly ReadLine[]): PhotoRect | null {
+  let x0 = Infinity;
+  let y0 = Infinity;
+  let x1 = -Infinity;
+  let y1 = -Infinity;
+  for (const l of lines)
+    for (const [x, y] of l.box) {
+      x0 = Math.min(x0, x);
+      y0 = Math.min(y0, y);
+      x1 = Math.max(x1, x);
+      y1 = Math.max(y1, y);
+    }
+  return x0 === Infinity ? null : { x: x0, y: y0, w: Math.max(1, x1 - x0), h: Math.max(1, y1 - y0) };
+}
+
+/** How the photo is drawn in its frame: scaled by `scale` (1 is the frame's width) and moved by x and y, in CSS pixels. */
+export interface PhotoView {
+  scale: number;
+  x: number;
+  y: number;
+}
+
+/** At most this much bigger than the whole photo, so a zoomed spine stays sharp enough to judge. */
+const MOST_ZOOM = 6;
+
+/**
+ * Where the photo sits in a frame of the page (T-406). With no rectangle, the whole photo, centered when the frame is
+ * shorter than it (a tall photo in a frame of limited height). With one, zoomed so the rectangle and some of the shelf
+ * around it fill the frame, centered on it but never past the photo's edges, so a tapped game's spine is in view.
+ */
+export function photoView(photo: { width: number; height: number }, frame: { width: number; height: number }, rect: PhotoRect | null): PhotoView {
+  const f = frame.width / photo.width; // the photo's pixels in CSS pixels, at scale 1
+  const tall = photo.height * f; // the photo's height at scale 1
+  const fit = Math.min(1, frame.height / tall);
+  const whole = { scale: fit, x: (frame.width - frame.width * fit) / 2, y: (frame.height - tall * fit) / 2 };
+  if (!rect || frame.width <= 0 || frame.height <= 0) return whole;
+  // Room around the spine: half its size again, at least an eighth of the frame.
+  const w = rect.w * f * 1.5 + frame.width / 8;
+  const h = rect.h * f * 1.5 + frame.height / 8;
+  const scale = Math.max(fit, Math.min(MOST_ZOOM, frame.width / w, frame.height / h));
+  const cx = (rect.x + rect.w / 2) * f * scale;
+  const cy = (rect.y + rect.h / 2) * f * scale;
+  // Centered on the spine, kept inside the photo (or centered, along a side where the photo is smaller than the frame).
+  const place = (center: number, size: number, room: number) => (size <= room ? (room - size) / 2 : Math.min(0, Math.max(room - size, room / 2 - center)));
+  return { scale, x: place(cx, frame.width * scale, frame.width), y: place(cy, tall * scale, frame.height) };
 }
 
 /** Why a spine is unsure, in words. */

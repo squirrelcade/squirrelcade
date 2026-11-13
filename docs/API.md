@@ -72,9 +72,10 @@ The wishlist as one self-contained web page, sent as an attachment (`wishlist-<d
 
 ```
 GET /api/v1/lookup?q=<title>[&platform=<platform key>][&limit=<1 to 30>]
+GET /api/v1/lookup?q=<title>&games=<1 to 100>[&platform=<platform key>][&brief=1]
 ```
 
-The answer Store Mode shows, for every catalog and collection game whose title matches, best matches first (at most 30, or `limit`):
+With `games`, the answers come by game, as the header's search and Store Mode ask for them: `{results, games, consoles, activity}`. `results` has every console's answer for the best `games` games (each game with all its consoles, however many answers that is), `games` is how many games matched in all, `consoles` is every console among all the matches with how many answers there (`[{platformKey, platform, count}]`, the most first), and `activity` is how busy the owner has been on each console (`{"playstation-3": {"recent": 72, "copies": 1205}}`: copies added in the last 90 days plus games on the way, and copies; a viewer's leaves out what's on the way). `brief=1` leaves out covers, stars, values, notes and what's on the way. Without `games`, the answer Store Mode shows, for every catalog and collection game whose title matches, best matches first (at most 30, or `limit`):
 
 ```json
 [
@@ -438,7 +439,10 @@ POST /api/v1/collection/copies/<id>/remove  {"reason": "sold" | "removed"}: take
 GET  /api/v1/purchases                      the copies added in Squirrelcade that no export has yet: [{id, key, entryId, title, platformKey, platform, condition, costCents, createdAt, sentAt}]
 POST /api/v1/purchases                      {"entryId", "completeness"}: "I bought it": adds a copy of a catalog game, bought today, in Settings > Collection's condition for a game just bought unless given (201 {id, key, overGoal}, as for Add a copy); the same game sent again the same day answers the copy already added (200)
 DELETE /api/v1/purchases/<id>               takes back a copy just added (one no export has had, with nothing kept on it): {removed}
-GET  /api/v1/send/pricecharting             {toSend, waiting, toRemove, text}: the copies added here as lines for PriceCharting's importer (text, one per line), the ones pasted and waiting for an export, and the copies sold or removed here that PriceCharting still lists
+GET  /api/v1/send/pricecharting             {toSend, waiting, toRemove, text}: the copies added here as lines for PriceCharting's importer (text, one per line), the ones pasted and waiting for an export, and the copies sold or removed here that PriceCharting still lists; each copy with a pcId has its check: verdict (match, mismatch, unknown), lookup (export, page, pending, failed, missing, off), pcTitle, pcConsole, why, inCsv and valueCents
+GET  /api/v1/send/pricecharting.csv?ids=1,2&folder=   the file for PriceCharting's CSV importer: the copies the check leaves ticked (ids), else every one it starts ticked (inCsv)
+POST /api/v1/send/pricecharting/<id>/lookup  reads a copy's PriceCharting ID page again (Try again; 409 while looking IDs up on PriceCharting is off)
+GET  /api/v1/collection/known-value?copy=<id>|platform=<key>&title=<title>&completeness=<c>   {valueCents}: a game's value in a condition from the owner's exports, or null (the price check)
 POST /api/v1/send/pricecharting/sent        {"ids": [...]}: the copies pasted into PriceCharting's importer
 POST /api/v1/send/pricecharting/removed     {"ids": [...]}: the copies removed on PriceCharting by hand
 ```

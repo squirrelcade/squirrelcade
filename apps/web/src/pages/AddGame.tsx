@@ -1,5 +1,5 @@
 import { KNOWN_PLATFORMS, normalizeTitle } from '@squirrelcade/core';
-import { Alert, Anchor, Autocomplete, Badge, Button, Card, Group, NumberInput, Select, Stack, Text, TextInput } from '@mantine/core';
+import { Alert, Anchor, Autocomplete, Badge, Button, Card, Group, Select, Stack, Text, TextInput } from '@mantine/core';
 import { useDebouncedValue } from '@mantine/hooks';
 import { IconArrowLeft, IconCheck, IconPlus } from '@tabler/icons-react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
@@ -11,6 +11,7 @@ import { PageHeader } from '../components';
 import { addedCopyRef, CONDITIONS, CopyDetailsModal, TOUCHED, useFromPriceCharting, type CopyRef } from '../CopyDetails';
 import { overGoalNote } from '../Goal';
 import { notifyError, notifySuccess, useSetting } from '../hooks';
+import { PriceInput, usePriceCheck } from '../PriceInput';
 
 /** A title for what's typed (GET /api/v1/collection/add/suggest): where it's known from, and copies you have of it. */
 interface Suggestion {
@@ -55,6 +56,8 @@ export function AddGamePage() {
   // With the walk-through on (D172), adding opens the copy's own steps (what you paid, the day, its photos) at once.
   const walkThrough = useSetting('collection.addWizard', true);
   const [editing, setEditing] = useState<CopyRef | null>(null);
+  // A price far above the game's value in that condition (or the ceiling) asks first (Settings › Collection › Checking prices paid).
+  const prices = usePriceCheck(!walkThrough && platformKey && title.trim() ? { platformKey, title: title.trim(), completeness: completeness ?? usual } : null);
 
   const mine = (yours.data ?? []).filter((p) => p.copies > 0).sort((a, b) => b.copies - a.copies);
   const mineKeys = new Set(mine.map((p) => p.key));
@@ -121,7 +124,9 @@ export function AddGamePage() {
         <form
           onSubmit={(e) => {
             e.preventDefault();
-            if (platformKey && title.trim()) add.mutate();
+            if (!platformKey || !title.trim()) return;
+            const cents = walkThrough || paid === '' ? null : Math.round(Number(paid) * 100);
+            void prices.confirm(cents).then((ok) => ok && add.mutate());
           }}
         >
           <Stack gap="sm">
@@ -180,7 +185,7 @@ export function AddGamePage() {
               <>
                 <Select label="Condition" data={CONDITIONS} value={completeness ?? usual} onChange={(v) => v && setCompleteness(v)} allowDeselect={false} />
                 <Group grow align="flex-start">
-                  <NumberInput label={`Price paid (${currency})`} value={paid} onChange={setPaid} min={0} decimalScale={2} allowNegative={false} placeholder="Optional" />
+                  <PriceInput label={`Price paid (${currency})`} value={paid} onChange={setPaid} placeholder="Optional" warning={prices.warn(paid)} />
                   <TextInput label="Bought on" type="date" value={bought} onChange={(e) => setBought(e.currentTarget.value)} />
                 </Group>
                 <TextInput label="Notes" value={notes} onChange={(e) => setNotes(e.currentTarget.value)} maxLength={500} placeholder="Optional: where it came from, what's special about it" />
@@ -200,6 +205,7 @@ export function AddGamePage() {
         </form>
       </Card>
       <CopyDetailsModal copy={editing} added onClose={() => setEditing(null)} />
+      {prices.modal}
       {added.length > 0 && (
         <Alert color="green" variant="light" icon={<IconCheck size={18} />} title="Added just now" mt="md" maw={640}>
           <Stack gap={2}>
