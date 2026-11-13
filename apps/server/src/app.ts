@@ -639,6 +639,8 @@ export async function buildApp(options: BuildOptions = {}): Promise<Squirrelcade
   registerOrderRoutes(app, orders, tasks);
   // Once (D236): the games listed twice on On the way before one purchase was listed once are made one.
   orders.sameOnce();
+  // Once (D241): what isn't a game is taken off On the way.
+  orders.notGamesOnce();
   lookup.setComing(() => orders.index());
   const deals = new DealsService(settings, mail, catalogs, wishlist, igdb, notifications);
   mail.onNewDeals(async (added) => {

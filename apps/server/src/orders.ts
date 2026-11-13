@@ -8,6 +8,7 @@ import {
   gmailOrderSearch,
   gmailPurchaseSearch,
   fromAmazon,
+  isAmazonOrderEmail,
   isAmazonUnknown,
   ITEM_MATCH,
   orderPageDate,
@@ -36,6 +37,7 @@ import {
   type FoundOrder,
   type MailHeader,
   type OrderEmail,
+  type OrderItem,
   type PaidCounts,
   type StoreSeen,
 } from '@squirrelcade/core';
@@ -84,6 +86,8 @@ const KEEP_SEEN = 1000;
 const KEEP_FOUND = 500;
 /** Set once the games listed twice before 1.5.2 have been made one (D236). */
 const SAME_ONCE_KEY = 'orders.sameOnce';
+/** Set once what isn't a game was taken off On the way (D241). */
+const NOT_GAMES_ONCE_KEY = 'orders.notGamesOnce';
 /** With no order number to go by, two sources say one purchase when the store is the same and their days are this close. */
 const SAME_PURCHASE_DAYS = 3;
 
@@ -609,7 +613,8 @@ export class OrderService {
       const ask: number[] = [];
       emails.forEach((e, i) => {
         const kept = cache.get(e.ref);
-        if (readAmazonOrder(e)) return;
+        // Amazon's order email names departments, never an item: the model isn't asked what it bought (D241).
+        if (isAmazonOrderEmail(e)) return;
         if (kept) out[i] = kept.order;
         else ask.push(i);
       });
@@ -638,9 +643,9 @@ export class OrderService {
       this.writeState(READ_KEY, [...cache.values()].sort((a, b) => b.at.localeCompare(a.at)).slice(0, KEEP_READ));
     }
     return emails.map((e, i) => {
-      // Amazon's order email names departments, not items (D176): its video games wait, unnamed, under its order.
-      const amazon = readAmazonOrder(e);
-      if (amazon) return amazon;
+      // Amazon's order email names departments, not items (D176): its video games wait, unnamed, under its order;
+      // one with no video game has nothing to list (D241: a model read "Electronics" and "Automotive" as its items).
+      if (isAmazonOrderEmail(e)) return readAmazonOrder(e);
       const o = out[i];
       if (o === undefined) return readOrderEmail(e, wanted);
       // A model's reading that doesn't have the game asked for: the plain rules may still find its line.
@@ -731,7 +736,7 @@ export class OrderService {
     const added: ComingView[] = [];
     fresh.forEach((mail, i) => {
       const order = orders[i];
-      if (order) added.push(...this.addComing(refOf(mail.id), order, { whole: true }));
+      if (order) added.push(...this.addComing(refOf(mail.id), order, { whole: true, games: s.get('orders.onlyGames') }));
     });
     this.writeState(SEEN_KEY, [...fresh.map((m) => refOf(m.id)), ...seen].slice(0, KEEP_SEEN));
     await this.fillRates();
@@ -841,21 +846,25 @@ export class OrderService {
    * another source put there already (D236: Claude's connector, then the order's email) isn't added again: what this
    * one knows fills what's missing on it. `whole`: the order is all here (an email, a pasted page), not a row of it.
    * `checked`: the caller looked for it already. `not`: rows this order takes the place of, never taken for its items.
+   * `games`: only its games (D241): what an email or a page has that isn't one is left out.
    */
-  private addComing(ref: string, order: FoundOrder, opts: { whole?: boolean; checked?: boolean; not?: Set<number> } = {}): ComingView[] {
+  private addComing(ref: string, order: FoundOrder, opts: { whole?: boolean; checked?: boolean; not?: Set<number>; games?: boolean } = {}): ComingView[] {
     const now = new Date().toISOString();
     const out: ComingView[] = [];
+    // Each keeps its place in the order (a row is its email's item by that place), listed or not.
+    const listed = order.items.map((item) => opts.games !== true || this.aGame(item, order.date));
+    const one = listed.filter(Boolean).length === 1;
     // Two of a game on one order are two: each row there stands for one of this order's items.
     const taken = new Set<number>(opts.not ?? []);
     order.items.forEach((item, index) => {
       const known = this.d.db.select({ id: comingItems.id }).from(comingItems).where(and(eq(comingItems.mailRef, ref), eq(comingItems.itemIndex, index))).get();
-      if (known) return;
+      if (known || !listed[index]) return;
       // Each share for one copy: the price paid is worked out from them as Settings > Email counts it, then.
       const cost = itemCost(order, index, 'all');
       const game = isAmazonUnknown(item.title) ? null : this.matchListing(item.title);
       const there = opts.checked
         ? undefined
-        : this.already(ref, order, { listing: item.title, game, itemId: itemIdOf({ mailRef: ref, listingTitle: item.title }) }, { whole: opts.whole === true && order.items.length === 1, taken });
+        : this.already(ref, order, { listing: item.title, game, itemId: itemIdOf({ mailRef: ref, listingTitle: item.title }) }, { whole: opts.whole === true && one, taken });
       if (there) {
         taken.add(there.id);
         this.complete(there, { ...cost, currency: order.currency, link: order.link, orderNumber: order.orderNumber, orderDate: order.date, expectedOn: order.expectedOn ?? null, game }, now);
@@ -1008,6 +1017,45 @@ export class OrderService {
     this.writeState(SAME_ONCE_KEY, { at: now, made: away.size });
     if (away.size > 0) this.d.log.info({ context: 'orders' }, `On the way: ${away.size} listed twice made one`);
     return away.size;
+  }
+
+  /**
+   * Whether an item of an email or a pasted page is a game (D241), so a mouse or a membership bought from a store whose
+   * emails are read isn't put on the way. A game Squirrelcade is sure of is one; a console game bought as a code isn't
+   * (unless Settings counts them). Else the AI model's word, when it read the email. Else, by its name: one with a
+   * console in it, or anything that doesn't say it's a console or an accessory (so a game no catalog has still waits).
+   */
+  private aGame(item: OrderItem, orderDate: string | null): boolean {
+    if (isAmazonUnknown(item.title)) return true;
+    const kind = this.classify(item.title, { orderDate });
+    if (kind.kind === 'digital') return false;
+    if (kind.kind === 'game' && kind.game) return true;
+    if (item.game !== undefined) return item.game;
+    return kind.kind === 'game' || (kind.kind === 'other' && !isAccessory(item.title) && !isConsoleHardware(item.title));
+  }
+
+  /**
+   * Once (D241): what was put on the way before only games were (a mouse from eBay, Amazon's departments a model read
+   * as items) is dismissed: off On the way, and still under what was dismissed. Only what waits from an email or a
+   * pasted page and that nobody named: a row Claude's connector or a sheet put there was a game by their own check.
+   * Not while "Only games" is off. How many.
+   */
+  notGamesOnce(): number {
+    if (!this.d.settings.get('orders.onlyGames') || this.readState<{ at: string }>(NOT_GAMES_ONCE_KEY)) return 0;
+    const now = new Date().toISOString();
+    let off = 0;
+    for (const r of this.d.db.select().from(comingItems).where(eq(comingItems.status, 'waiting')).all()) {
+      if (/^(?:connector|sheet|amazon-history):/.test(r.mailRef) || r.title || r.platformKey || r.lotOf !== null || isAmazonUnknown(r.listingTitle)) continue;
+      // Amazon's emails name no item: a row of one that isn't its unnamed video game is a department's name.
+      const department = r.store.trim().toLowerCase() === 'amazon' && !r.mailRef.startsWith('page:');
+      const kind = this.classify(r.listingTitle, { orderDate: r.orderDate });
+      if (department ? kind.kind === 'game' && kind.platformKey !== null : this.aGame({ title: r.listingTitle, priceCents: null, quantity: 1 }, r.orderDate)) continue;
+      this.d.db.update(comingItems).set({ status: 'dismissed', updatedAt: now }).where(eq(comingItems.id, r.id)).run();
+      off++;
+    }
+    this.writeState(NOT_GAMES_ONCE_KEY, { at: now, off });
+    if (off > 0) this.d.log.info({ context: 'orders' }, `On the way: ${off} that weren't games taken off`);
+    return off;
   }
 
   /** The game a listing's title is, when Squirrelcade is sure (for other sources, D178). */
@@ -1164,6 +1212,9 @@ export class OrderService {
       order.orderNumber ??= row.orderNumber;
       if (orderPageDate(text) === null && row.orderDate) order.date = row.orderDate;
     }
+    const games = this.d.settings.get('orders.onlyGames');
+    // A page with no game on it names nothing: the game it was pasted for keeps waiting.
+    if (row && games && !order.items.some((item) => this.aGame(item, order.date))) throw new CopyError("That page has no game on it that Squirrelcade can tell: pick the game by hand instead.");
     const ref = `page:${createHash('sha256').update(row ? `${row.mailRef}|${text}` : text).digest('hex').slice(0, 32)}`;
     const now = new Date().toISOString();
     // The rows the page takes the place of: its items aren't taken for them (D236).
@@ -1176,7 +1227,7 @@ export class OrderService {
         replaced.add(u.id);
       }
     }
-    return this.addComing(ref, order, { whole: true, not: replaced });
+    return this.addComing(ref, order, { whole: true, not: replaced, games });
   }
 
   /**

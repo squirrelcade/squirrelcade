@@ -2,6 +2,16 @@
 
 What changed in each version of Squirrelcade (called Gamefolio before 0.35.0). The decisions behind these (D01, D02...) are in [docs/DECISIONS.md](docs/DECISIONS.md), each with a tag to roll it back.
 
+## 1.6.1 (not yet released)
+
+### Changed
+
+- **Only games on On the way** (D241, the owner: "I want the non-game stuff taken off"): what a purchase email or a pasted order page has that isn't a game (a mouse, a cable, a console, a membership) is left out. A game Squirrelcade is sure of always counts; for the rest it takes the AI model's word when one reads your emails (the model now says, for each item, whether it's a video game), and otherwise goes by the item's name. Amazon's order emails name only departments, so one with no Video Games in it lists nothing and is no longer sent to the model. What was listed before that isn't a game is dismissed once, when this version first starts (it stays under what was dismissed). **Only games** (Settings > Collection > On the way), on to start with, turns it off.
+
+### Fixed
+
+- **A store's note about your shipping address no longer hides the game** (D241, the owner: Super Rare Games' orders weren't on On the way): before an order email goes to the AI model, the lines of your postal address are left out. A sentence that only mentions one ("Please double check your shipping address is correct...") was taken for the address's label, so the lines under it, the game's name among them, were left out too, and the model, given prices and no item, called the email not a purchase. Only a label starts an address now ("Shipping address", "Ship to:"), and a line with an item's count ("× 1") is never one of its lines. An email read that way before isn't read again: put its game on by pasting the order's page, or through Claude's connector.
+
 ## 1.6.0 (2026-11-12): one check before PriceCharting, prices that look wrong ask first, a closer shelf check, and every console in the search
 
 ### Added

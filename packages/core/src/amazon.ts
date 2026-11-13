@@ -16,13 +16,21 @@ export function fromAmazon(address: string): boolean {
   return /(^|[@.])amazon\.[a-z.]+$/i.test(address.trim());
 }
 
+/** Amazon's "Ordered 2 items: Video Games, Electronics" email, which names departments, never an item (D176). */
+const AMAZON_ORDERED = /^(?:re:\s*|fwd?:\s*)?ordered\s+(\d+)\s+items?:\s*(.+)$/i;
+
+/** Whether an email is Amazon's order email, which names only departments: nothing in it but a video game can be listed (D241). */
+export function isAmazonOrderEmail(mail: { from: string; subject: string }): boolean {
+  return fromAmazon(mail.from) && AMAZON_ORDERED.test(mail.subject.trim());
+}
+
 /**
  * Amazon's order email, read for what it says (D176): its order number, its total, and one item for each video game in
  * it (its name unknown: "a video game"). Null when it isn't Amazon's "Ordered" email or has no video game.
  */
 export function readAmazonOrder(mail: OrderEmail): FoundOrder | null {
   if (!fromAmazon(mail.from)) return null;
-  const subject = /^(?:re:\s*|fwd?:\s*)?ordered\s+(\d+)\s+items?:\s*(.+)$/i.exec(mail.subject.trim());
+  const subject = AMAZON_ORDERED.exec(mail.subject.trim());
   if (!subject) return null;
   // "2 items: 1 Video Games, 1 Electronics" in the email says how many of each; else the subject's departments, one each.
   const counted = /(\d+)\s+items?:\s*((?:\d+\s+[^,\n]+(?:,\s*)?)+)/i.exec(mail.text);

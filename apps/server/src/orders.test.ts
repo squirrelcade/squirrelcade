@@ -501,3 +501,77 @@ describe('On the way: one purchase, listed once (D236)', () => {
     expect(g!.orders.sameOnce()).toBe(0);
   });
 });
+
+describe('On the way: only games (D241)', () => {
+  const waiting = async (cookies: Record<string, string>) => (await g!.app.inject({ url: '/api/v1/coming', cookies })).json().items as Record<string, unknown>[];
+  const MOUSE = orderMail('ebay-mouse@ebay', 1, 'ebay@ebay.com', 'Order confirmed: New Wireless Gaming Mouse Black', [['Order number:', '24-00000-00001'], ['Item price', '$69.99'], ['Total', '$69.99']]);
+  // Amazon's order email names departments only; this one has no video game.
+  const DEPARTMENTS = orderMail('amazon-dept@amazon', 1, 'auto-confirm@amazon.com', 'Ordered 2 items: Automotive, Electrical Supplies', [['Order #', '111-0000000-0000009'], ['Grand Total:', '$31.20']]);
+
+  it("leaves out what an email has that isn't a game, and Amazon's order with no video game; Settings can list everything", async () => {
+    const { box, cookies } = await owner([EBAY_OKAMI, MOUSE, DEPARTMENTS]);
+    g!.settings.update({ 'orders.watch': true, 'orders.watchSenders': ['ebay.com', 'amazon.com'] });
+    expect(await g!.orders.watch()).toBe('1 new on the way (3 purchase emails read).');
+    expect((await waiting(cookies)).map((i) => i.title)).toEqual(['Okami']);
+    // Off: what's bought from those stores is listed, game or not (Amazon's departments never are: they name no item).
+    g!.settings.update({ 'orders.onlyGames': false });
+    box.mails.push(orderMail('ebay-pad@ebay', 0, 'ebay@ebay.com', 'Order confirmed: Wireless Controller Blue', [['Order number:', '24-00000-00002'], ['Item price', '$19.99'], ['Total', '$19.99']]));
+    box.mails.push(orderMail('amazon-dept2@amazon', 0, 'auto-confirm@amazon.com', 'Ordered 1 item: Computers', [['Order #', '111-0000000-0000010'], ['Grand Total:', '$9.99']]));
+    expect(await g!.orders.watch()).toMatch(/^1 new on the way/);
+    expect((await waiting(cookies)).map((i) => i.listingTitle).sort()).toEqual(['Okami PS2 Complete CIB Tested', 'Wireless Controller Blue']);
+  });
+
+  it("takes the AI model's word for what Squirrelcade can't tell, never against a game it's sure of, and doesn't ask it about Amazon's departments", async () => {
+    const prompts: string[] = [];
+    const items = [
+      // Sure of it from the catalog, whatever the model says.
+      { title: 'Okami PS2 Complete CIB Tested', price: 23.5, quantity: 1, game: false },
+      // No catalog has it and its name has no console: the model's word.
+      { title: 'Obscure Thing Deluxe', price: 10, quantity: 1, game: true },
+      { title: 'HyperSpeed Wireless Pointer', price: 69.99, quantity: 1, game: false },
+      // No word from the model: its name says what it is.
+      { title: 'Charging Cable 10ft', price: 5, quantity: 1 },
+    ];
+    const { cookies } = await owner([EBAY_OKAMI, DEPARTMENTS], {
+      visionFetch: async (_url, init) => {
+        prompts.push(String((JSON.parse(String(init?.body)) as { messages: { content: string }[] }).messages[0]!.content));
+        return Response.json({ choices: [{ message: { content: JSON.stringify({ orders: [{ email: 1, purchase: true, store: 'eBay', date: '2026-10-01', orderNumber: '12-34567-89012', currency: 'USD', items, total: 108.49 }] }) } }] });
+      },
+    });
+    g!.settings.update({ 'orders.watch': true, 'orders.watchSenders': ['ebay.com', 'amazon.com'], 'features.vision': true, 'sources.visionUrl': 'https://ai.example/v1', 'sources.visionModel': 'reader' });
+    expect(await g!.orders.watch()).toBe('2 new on the way (2 purchase emails read).');
+    expect((await waiting(cookies)).map((i) => i.listingTitle).sort()).toEqual(['Obscure Thing Deluxe', 'Okami PS2 Complete CIB Tested']);
+    expect(prompts).toHaveLength(1);
+    expect(prompts[0]).toContain('game: true when it is a video game');
+    expect(prompts[0]).not.toContain('Automotive');
+  });
+
+  it('takes off, once, what was listed before that is not a game', async () => {
+    const { cookies } = await owner([]);
+    const row = { itemIndex: 0, store: 'eBay', orderDate: '2026-11-01', quantity: 1, currency: 'USD', readBy: 'ai', status: 'waiting', createdAt: '2026-11-01T16:00:00.000Z' };
+    g!.db
+      .insert(comingItems)
+      .values([
+        // Stay: a game, a listing with a console in it, an Amazon game its email didn't name, one the owner named, and
+        // what Claude's connector put there.
+        { ...row, mailRef: 'mail-a', orderNumber: '08-1', listingTitle: 'Okami PS2 Complete', platformKey: 'playstation-2', title: 'Okami' },
+        { ...row, mailRef: 'mail-b', orderNumber: '08-2', listingTitle: 'Some Online Game [ Expansion ] (PS4) NEW' },
+        { ...row, mailRef: 'mail-c', store: 'Amazon', orderNumber: '111-0000001-0000001', listingTitle: 'Amazon order 111-0000001-0000001: a video game, its name not in the email' },
+        { ...row, mailRef: 'mail-d', orderNumber: '08-3', listingTitle: 'Gaming Mouse Pad Legends', platformKey: 'playstation-2' },
+        { ...row, mailRef: 'connector:08-4|1', orderNumber: '08-4', listingTitle: 'Wireless Controller Quest' },
+        // Go: a mouse, and Amazon's departments a model read as items.
+        { ...row, mailRef: 'mail-e', orderNumber: '08-5', listingTitle: 'New Wireless Gaming Mouse Black' },
+        { ...row, mailRef: 'mail-f', store: 'Amazon', orderNumber: '111-0000001-0000002', listingTitle: '1 item: Electronics' },
+        { ...row, mailRef: 'mail-g', store: 'Amazon', orderNumber: '111-0000001-0000003', listingTitle: 'Automotive' },
+        { ...row, mailRef: 'mail-g', itemIndex: 1, store: 'Amazon', orderNumber: '111-0000001-0000003', listingTitle: 'Electrical Supplies' },
+      ])
+      .run();
+    // A start does it once (this install's start, before these rows, found nothing and noted it).
+    g!.db.delete(appState).where(eq(appState.key, 'orders.notGamesOnce')).run();
+    expect(g!.orders.notGamesOnce()).toBe(4);
+    expect((await waiting(cookies)).map((i) => i.orderNumber).sort()).toEqual(['08-1', '08-2', '08-3', '08-4', '111-0000001-0000001']);
+    // Dismissed, so still under what was dismissed.
+    expect(((await g!.app.inject({ url: '/api/v1/coming?all=1', cookies })).json().items as { status: string }[]).filter((i) => i.status === 'dismissed')).toHaveLength(4);
+    expect(g!.orders.notGamesOnce()).toBe(0);
+  });
+});

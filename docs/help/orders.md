@@ -47,6 +47,8 @@ The page shows to start, email or not; **Settings > Features > On the way** hide
 
 Then **Save changes**. A purchase email is one whose subject says so ("Order confirmed", "You purchased", "Thanks for your order", a receipt), and not a shipping or delivery notice, a refund or a sale of yours: both lists are under **Show advanced**.
 
+**Only games are listed.** What a purchase email or a pasted order page has that isn't a game (a mouse, a cable, a console, a membership) is left out. A game Squirrelcade is sure of always counts; for the rest it takes the AI model's word when one reads your emails, and otherwise goes by the item's name, so a game no catalog has still waits for you to say which it is. Amazon's order emails name only departments, so one with no Video Games in it lists nothing. To have everything bought from those stores listed, for you to dismiss, turn off **Only games** (Settings > Collection > On the way).
+
 Each game bought goes on **Acorns > On the way** with the store, the day, the price paid (as counted above) and the listing or order. Squirrelcade matches the listing's title to the game it is when it's sure (its console named, its title's words all there); when it isn't, the listing's own title shows with **Is it ...?** and a search, for you to say. What's on the way:
 
 - isn't in your collection: not counted anywhere, not on your lists, never sent to PriceCharting;

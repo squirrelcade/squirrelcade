@@ -74,6 +74,7 @@ const LINKED: SettingKey[] = [
   'orders.watch',
   'orders.watchSenders',
   'orders.amazonEmails',
+  'orders.onlyGames',
   'orders.exchangeRates',
   'sources.purchaseCsv',
   'sources.gamefly',

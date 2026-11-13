@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { isAmazonOrderEmail } from './amazon.js';
 import {
   gmailOrderSearch,
   gmailPurchaseSearch,
@@ -493,5 +494,41 @@ describe('several games, one price (D173)', () => {
     expect(lotGames('Halo: Infinite (Microsoft Xbox One/Xbox Series X, 2021)')).toEqual([]);
     expect(splitEvenly(1001, 3)).toEqual([334, 334, 333]);
     expect(splitEvenly(9300, 3).reduce((a, b) => a + b, 0)).toBe(9300);
+  });
+});
+
+describe('what goes to the model keeps an order\'s items (D241)', () => {
+  // A Shopify store's email with a note about the shipping address above the order's items (made up, in Super Rare Games' shape).
+  const NOTE_HTML = `<h2>Thank you for your purchase!</h2><p>Hi Pat, thanks for your order!</p>
+<p>Please double check your shipping address is correct, as we've recently had some autofill issues. If an adjustment is needed, let us know and we can change it!</p>
+<table><tr><td><a href="https://store.example/orders/1">View your order</a></td></tr><tr><td>or <a href="https://store.example">Visit our store</a></td></tr></table>
+<h3>Order summary</h3>
+<table><tr><td><table><tr><td><span>CLUB - [Special Edition] SW2 PB#01: Example Quest (Switch 2) &amp; SW2#02 (Switch 2 Edition) × 1</span></td><td><p>£50.00</p></td></tr></table></td></tr></table>
+<table><tr><td><p>Subtotal</p></td><td><strong>£50.00</strong></td></tr><tr><td><p>Shipping</p></td><td><strong>£10.00</strong></td></tr><tr><td><p>Total</p></td><td><strong>£60.00 GBP</strong></td></tr></table>
+<h3>Customer information</h3><table><tr><td><h4>Shipping address</h4><p>Pat Example<br>1 Example Way<br>Springfield ST 00000<br>United States</p></td></tr></table>`;
+
+  it("a sentence about the shipping address isn't an address's label: the item under it stays, the address still goes", () => {
+    const m = mail('Order #123456 confirmed', 'help@superraregames.com', NOTE_HTML);
+    const forModel = orderTextForModel(m.text);
+    expect(forModel).toContain('Example Quest (Switch 2)');
+    expect(forModel).toContain('£50.00');
+    expect(forModel).not.toMatch(/Pat Example|Example Way|Springfield/);
+    // A label still starts an address, on its own line or before a colon; an item's line never is one of its lines.
+    expect(orderTextForModel('Ship to: Pat Example\n1 Example Way\nSpringfield, ST 00000\nOkami (PS2)\t$19.99')).toBe('Ship to: [address]\nOkami (PS2)\t$19.99');
+    expect(orderTextForModel('Your order will ship to:\nPat Example\nOkami (PS2) × 1\n$19.99')).toBe('Your order will ship to: [address]\nOkami (PS2) × 1\n$19.99');
+  });
+
+  it("keeps the model's word for whether each item is a game", () => {
+    const read = ordersFromAnswer(
+      { orders: [{ email: 1, purchase: true, store: 'eBay', items: [{ title: 'Okami PS2', price: 24.99, game: true }, { title: 'Wireless Gaming Mouse', price: 69.99, game: false }, { title: 'Halo 3', game: 'yes' }] }] },
+      [{ from: 'ebay@ebay.com', day: '2026-11-01', text: '' }],
+    );
+    expect(read[0]!.items.map((i) => i.game)).toEqual([true, false, undefined]);
+  });
+
+  it("knows Amazon's order email, which names departments only", () => {
+    expect(isAmazonOrderEmail({ from: 'auto-confirm@amazon.com', subject: 'Ordered 2 items: Automotive, Electrical Supplies' })).toBe(true);
+    expect(isAmazonOrderEmail({ from: 'auto-confirm@amazon.com', subject: 'Your Amazon.com order of "Okami HD"' })).toBe(false);
+    expect(isAmazonOrderEmail({ from: 'ebay@ebay.com', subject: 'Ordered 1 item: Video Games' })).toBe(false);
   });
 });

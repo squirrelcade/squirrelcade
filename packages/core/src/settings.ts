@@ -1191,6 +1191,14 @@ export const settingDefinitions = {
     default: true,
     shownWhen: 'orders.watch',
   }),
+  'orders.onlyGames': bool({
+    page: 'collection',
+    section: 'On the way',
+    label: 'Only games',
+    description: "What a purchase email or a pasted order page has that isn't a game (a mouse, a cable, a console, a membership) is left out. Off: everything bought from those stores is listed, for you to dismiss.",
+    default: true,
+    shownWhen: 'orders.watch',
+  }),
   'orders.watchSubjects': list({
     page: 'collection',
     section: 'On the way',
