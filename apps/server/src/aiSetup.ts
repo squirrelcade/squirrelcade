@@ -66,6 +66,7 @@ const LINKED: SettingKey[] = [
   'collection.addWizardPhotos',
   'general.priceTyping',
   'collection.priceCheckTimes',
+  'collection.priceCheckOver',
   'collection.priceCheckCeiling',
   'collection.pcLookup',
   'collection.pcMismatchRows',
@@ -81,6 +82,9 @@ const LINKED: SettingKey[] = [
   'sources.upcDatabaseKey',
   'interface.coverMarks',
   'interface.coverMarksPc',
+  'interface.searchConsoles',
+  'interface.storeResults',
+  'interface.shelfShortcuts',
   'roots.videos',
   'roots.consolePictures',
   'roots.youtubeMode',
@@ -121,6 +125,7 @@ const PAGES: [string, string][] = [
   ['/wishlist/rules', 'Acorns > Your buying rules (my own rules for buying, in my words, read by Claude through get_buying_rules; Bring in from a spreadsheet, each tab saved as CSV)'],
   ['/collection/audit', 'Stash > Collection audit (photograph each shelf, find the games never logged; Not seen yet at the end)'],
   ['/store', 'Store Mode'],
+  ['/store/photo', 'Check a shelf (photograph a shelf of games: what you need, what you have, unsure ones split in two; tap a game to find it on the photo)'],
   ['/help', 'Help (the guides)'],
 ];
 

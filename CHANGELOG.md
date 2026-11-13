@@ -2,7 +2,7 @@
 
 What changed in each version of Squirrelcade (called Gamefolio before 0.35.0). The decisions behind these (D01, D02...) are in [docs/DECISIONS.md](docs/DECISIONS.md), each with a tag to roll it back.
 
-## 1.6.0 (not yet released)
+## 1.6.0 (2026-11-12): one check before PriceCharting, prices that look wrong ask first, a closer shelf check, and every console in the search
 
 ### Added
 
