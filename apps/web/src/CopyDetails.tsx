@@ -477,9 +477,13 @@ export function CopyDetailsModal({
     digitalStore: digitalClaim ? digitalStore.trim() || null : null,
   });
 
-  /** A standard photo (its slot), taking the place of the one it had; one taken the other way than usual says so (D162). */
-  async function addSlotPhoto(slot: string, file: File) {
+  /**
+   * A standard photo (its slot), taking the place of the one it had; one taken the other way than usual says so (D162).
+   * True once it's kept: the walk-through moves on only then, so a photo that failed is taken again where it was asked.
+   */
+  async function addSlotPhoto(slot: string, file: File): Promise<boolean> {
     setUploading(1);
+    let kept = false;
     try {
       const form = new FormData();
       form.append('key', key);
@@ -487,6 +491,7 @@ export function CopyDetailsModal({
       const size = { width: 0, height: 0 };
       form.append('file', await shrinkPhoto(file, maxSide, size), 'photo.jpg');
       await api('/photos', { method: 'POST', body: form });
+      kept = true;
       const wanted = isSideways(slot);
       const landscape = size.width > size.height;
       notifySuccess(
@@ -500,6 +505,7 @@ export function CopyDetailsModal({
       setUploading(0);
       await refresh();
     }
+    return kept;
   }
 
   const addTest = (result: TestResult, kind: TestKind = 'test') => {
@@ -639,6 +645,9 @@ export function CopyDetailsModal({
   const steps = 1 + photoSteps.length;
   const walking = added && walkThrough && !wholeForm && own !== undefined;
   const stepSlot = step > 0 ? photoSteps[step - 1] : undefined;
+  // On a phone the photo steps' buttons sit at the bottom of the screen, under the thumb, where the camera's own
+  // button is too (the owner, 2026-11-12): the window's body fills the screen and the step is pushed down in it.
+  const thumb = phone && walking && stepSlot !== undefined;
 
   return (
     // Above the game drawer it opens from (a drawer is 200), with its lists above it in turn.
@@ -649,11 +658,12 @@ export function CopyDetailsModal({
       size="lg"
       zIndex={350}
       fullScreen={phone}
+      styles={thumb ? { content: { display: 'flex', flexDirection: 'column' }, body: { flex: '1 0 auto', display: 'flex', flexDirection: 'column' } } : undefined}
     >
       {!current.data ? (
         <Loader />
       ) : walking ? (
-        <Stack gap="md">
+        <Stack gap="md" style={thumb ? { flex: 1 } : undefined}>
           <Text size="sm" c="dimmed">
             Step {step + 1} of {steps}: {stepSlot ?? 'about this copy'}
           </Text>
@@ -684,9 +694,9 @@ export function CopyDetailsModal({
               )}
             </Stack>
           ) : (
-            <Stack gap="xs" align="stretch">
+            <Stack gap="xs" align="stretch" justify="flex-end" style={thumb ? { flex: 1 } : undefined}>
               {inSlot.get(stepSlot) && <Image src={photoUrl(inSlot.get(stepSlot)!.id)} radius="sm" h={220} fit="contain" alt={stepSlot} />}
-              <FileButton onChange={(file) => file && void addSlotPhoto(stepSlot, file).then(() => setStep((s) => Math.min(s + 1, steps - 1)))} accept="image/*" capture="environment">
+              <FileButton onChange={(file) => file && void addSlotPhoto(stepSlot, file).then((kept) => kept && setStep((s) => Math.min(s + 1, steps - 1)))} accept="image/*" capture="environment">
                 {(props) => (
                   <Button {...props} size="lg" fullWidth leftSection={<IconCamera size={20} />} loading={uploading > 0}>
                     {inSlot.get(stepSlot) ? `Retake: ${stepSlot}` : `Take: ${stepSlot}`}
