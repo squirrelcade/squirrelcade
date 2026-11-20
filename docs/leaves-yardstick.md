@@ -46,7 +46,7 @@ Until those pages are labelled, precision is judged by hand on samples: `sample`
    npm run leaves:yardstick -- compare /path/to/leaves-audit/runs/before.json /path/to/leaves-audit/runs/after.json
    ```
 
-   A run looks through every issue with the same code the nightly task uses (`spotIndex`, `spotIssue` and `spotWindow` in `packages/core/src/spotting.ts`), on several processor cores: about a minute and a half for 285,000 pages on 12 cores. It keeps `<label>.json` (the numbers), `<label>.md` (the report) and `<label>.db` (every game found, to look into).
+   A run looks through every issue with the same code the nightly task uses (`spotIndex`, `spotIssue` and `spotWindow` in `packages/core/src/spotting.ts`), in four processes at a time: about 1,600 processor-seconds for 285,000 pages, so several minutes. `--shards 12` took a minute and a half on a 16-thread computer, at full load and heat the whole time: ask for more than four only when nothing else is working on that computer. It keeps `<label>.json` (the numbers), `<label>.md` (the report) and `<label>.db` (every game found, to look into).
 
 Other options and commands:
 

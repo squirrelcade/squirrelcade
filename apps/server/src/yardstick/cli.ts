@@ -220,7 +220,9 @@ async function run(args: Args): Promise<void> {
   const label = str(args, 'label', args['stored'] === true ? 'stored' : `v${SPOT_VERSION}`);
   const outDir = resolve(str(args, 'out', join(dataDir, 'runs')));
   mkdirSync(outDir, { recursive: true });
-  const parts = Number(str(args, 'shards', String(Math.max(1, Math.min(12, cpus().length - 2)))));
+  // Four processes at a time unless asked for more: a run on every core holds a computer at full load and heat for
+  // minutes, which is rarely what its owner wants beside their other work.
+  const parts = Math.max(1, Number(str(args, 'shards', String(Math.max(1, Math.min(4, cpus().length - 2))))));
   const started = Date.now();
   const files = await runShards(args, outDir, label, parts);
   const runFile = join(outDir, `${label}.db`);
