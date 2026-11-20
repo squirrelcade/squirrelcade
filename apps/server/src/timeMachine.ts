@@ -45,7 +45,7 @@ export interface MediaWindow {
 }
 
 /** The kinds of IGDB entries that count as a game's release (not its bundles, packs or updates). */
-const COUNTED = new Set(['Main Game', 'Remake', 'Remaster', 'Expanded Game', 'Standalone Expansion', 'Port']);
+export const COUNTED = new Set(['Main Game', 'Remake', 'Remaster', 'Expanded Game', 'Standalone Expansion', 'Port']);
 
 const shift = (day: string, days: number) => new Date(Date.parse(`${day}T00:00:00Z`) + days * 86_400_000).toISOString().slice(0, 10);
 

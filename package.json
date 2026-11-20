@@ -20,6 +20,7 @@
     "typecheck": "npm run typecheck --workspaces --if-present",
     "check:eol": "node scripts/check-eol.mjs",
     "fix:eol": "node scripts/check-eol.mjs --fix",
+    "leaves:yardstick": "npm run leaves:yardstick --workspace @squirrelcade/server --",
     "start": "node apps/server/dist/main.js"
   },
   "devDependencies": {

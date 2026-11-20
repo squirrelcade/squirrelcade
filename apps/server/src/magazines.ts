@@ -1,4 +1,4 @@
-import { baseTitle, citationMonth, citedIssueNumber, matchKey, platformsIn, scoresOn, SPOT_VERSION, spotIndex, spotTitles, spotWord, type SpotCandidate, coverLeadFor, guessDates, magazineGaps, magazineOf, neverPrinted, printedPage, type MissingIssue, type MissingMonth, type NumberJump, issueFromFileName, issueLabel, pageNames, parseComicInfo, parseHocr, skippedName, writeHocr, type IssueInfo, type IssueToDate, type PageWord } from '@squirrelcade/core';
+import { baseTitle, citationMonth, citedIssueNumber, matchKey, printedKey, SPOT_VERSION, spotIndex, spotIssue, type SpotCandidate, type SpotMention, coverLeadFor, guessDates, magazineGaps, magazineOf, neverPrinted, printedPage, type MissingIssue, type MissingMonth, type NumberJump, issueFromFileName, issueLabel, pageNames, parseComicInfo, parseHocr, skippedName, writeHocr, type IssueInfo, type IssueToDate, type PageWord } from '@squirrelcade/core';
 import Database from 'better-sqlite3';
 import { spawn } from 'node:child_process';
 import { accessSync, constants, existsSync, mkdirSync, readdirSync, renameSync, rmSync, statSync, type Dirent } from 'node:fs';
@@ -1160,40 +1160,18 @@ export class MagazineService {
         await breathe();
       }
       const pages = db.prepare('SELECT n, text, words FROM pages WHERE issue_id = ?').all(i.id) as { n: number; text: string; words: string }[];
-      const spotted = new Map<number, ReturnType<typeof spotTitles>>();
+      const found: SpotMention[] = [];
       for (const p of pages) {
-        spotted.set(p.n, spotTitles(JSON.parse(p.words) as PageWord[], index, coverDay));
+        found.push(...spotIssue([{ n: p.n, text: p.text, words: JSON.parse(p.words) as PageWord[] }], index, { magazine: i.magazine, coverDay, linkAt, askAt, rules }));
         await breathe();
       }
       const now = new Date().toISOString();
       db.transaction(() => {
         db.prepare("DELETE FROM mentions WHERE issue_id = ? AND source = 'ocr'").run(i.id);
-        for (const p of pages) {
-          const found = spotted.get(p.n) ?? [];
-          const kept: { s: (typeof found)[number]; state: 'linked' | 'suggested' }[] = [];
-          for (const f of found) {
-            const printedKey = spotWord(f.printed.replace(/\s+/g, ''));
-            const rule = rules.get(`${printedKey}|${i.magazine}`) ?? rules.get(`${printedKey}|*`);
-            if (rule === 'not' || rule === `notgame:${f.platformKey}|${f.title}`) continue;
-            if (rule?.startsWith('game:')) {
-              const [pk, ...t] = rule.slice(5).split('|');
-              kept.push({ s: { ...f, platformKey: pk!, title: t.join('|'), confidence: 1 }, state: 'linked' });
-              continue;
-            }
-            if (f.confidence >= linkAt) kept.push({ s: f, state: 'linked' });
-            else if (f.confidence >= askAt) kept.push({ s: f, state: 'suggested' });
-          }
-          // The consoles the page names, for the chest on its games (item 11): once a page.
-          const named = kept.length > 0 ? JSON.stringify(platformsIn(p.text.replace(/\n+/g, ', '))) : null;
-          // A review's scores go to the game it's about: the one linked game, or the one in the biggest type.
-          const score = scoresOn(p.text, i.magazine);
-          const linkedHere = kept.filter((x) => x.state === 'linked');
-          const reviewed = score && linkedHere.length > 0 ? linkedHere.reduce((a, b) => (b.s.box[3] - b.s.box[1] > a.s.box[3] - a.s.box[1] ? b : a)) : null;
-          for (const x of kept) {
-            add.run(i.id, p.n, x.s.platformKey, x.s.title, matchKey(baseTitle(x.s.title)), x.s.printed, x === reviewed ? 'review' : null, x === reviewed ? score : null, x.s.confidence, x.state, JSON.stringify(x.s.box), now, named);
-            if (x.state === 'linked') linked++;
-            else asked++;
-          }
+        for (const x of found) {
+          add.run(i.id, x.page, x.platformKey, x.title, matchKey(baseTitle(x.title)), x.printed, x.kind, x.score, x.confidence, x.state, JSON.stringify(x.box), now, JSON.stringify(x.consoles));
+          if (x.state === 'linked') linked++;
+          else asked++;
         }
         this.setState(`spotted:${i.id}`, `${sig}|${i.file_mtime}`);
       })();
@@ -1229,9 +1207,9 @@ export class MagazineService {
       | (MentionRow & { magazine: string })
       | undefined;
     if (!m) return false;
-    const printedKey = spotWord((m.printed ?? m.title).replace(/\s+/g, ''));
+    const key = printedKey(m.printed ?? m.title);
     const where = a.everywhere ? '*' : m.magazine;
-    const rule = (answer: string) => db.prepare('INSERT INTO mention_rules (printed_key, magazine, answer) VALUES (?, ?, ?) ON CONFLICT(printed_key, magazine) DO UPDATE SET answer = excluded.answer').run(printedKey, where, answer);
+    const rule = (answer: string) => db.prepare('INSERT INTO mention_rules (printed_key, magazine, answer) VALUES (?, ?, ?) ON CONFLICT(printed_key, magazine) DO UPDATE SET answer = excluded.answer').run(key, where, answer);
     if (a.answer === 'yes') {
       rule(`game:${m.platform_key}|${m.title}`);
       db.prepare("UPDATE mentions SET state = 'linked', confidence = 1 WHERE id = ?").run(id);

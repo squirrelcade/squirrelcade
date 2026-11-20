@@ -10,6 +10,7 @@
     "build": "tsup",
     "test": "vitest run",
     "typecheck": "tsc --noEmit",
+    "leaves:yardstick": "tsx src/yardstick/cli.ts",
     "db:generate": "drizzle-kit generate"
   },
   "devDependencies": {

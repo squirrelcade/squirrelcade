@@ -1,4 +1,7 @@
 import type { PageWord } from './magazines.js';
+import { CONSOLE_MARKS } from './marks.js';
+import { regionalConsole } from './platforms.js';
+import { platformsIn } from './sets.js';
 
 /**
  * The games on a magazine's page (D192, magazines.md "Matching"): the titles it could be about (the magazine's
@@ -41,15 +44,16 @@ export const spotWord = (w: string) =>
     .toLowerCase()
     .replace(/[^a-z0-9]/g, '');
 
-const wordsOf = (s: string) => s.split(/[\s:\-–—/]+/).map(spotWord).filter(Boolean);
+/** A title's words as compared (its colon, dashes and slashes are breaks between words). */
+export const spotWords = (s: string) => s.split(/[\s:\-–—/]+/).map(spotWord).filter(Boolean);
 
 /** The ways a title may be written on a page: whole, its main title, or its subtitle (each a little less sure). */
 function variants(title: string): { words: string[]; penalty: number }[] {
-  const out = [{ words: wordsOf(title), penalty: 0 }];
+  const out = [{ words: spotWords(title), penalty: 0 }];
   const colon = title.split(/:\s+| - /);
   if (colon.length > 1) {
-    const main = wordsOf(colon[0]!);
-    const sub = wordsOf(colon.slice(1).join(' '));
+    const main = spotWords(colon[0]!);
+    const sub = spotWords(colon.slice(1).join(' '));
     // A main title alone is often the series' name ("Tomb Raider" for Tomb Raider: Legend): much less sure.
     if (main.filter((w) => !STOP.has(w)).length >= 2) out.push({ words: main, penalty: 0.2 });
     if (sub.filter((w) => !STOP.has(w)).length >= 2) out.push({ words: sub, penalty: 0.15 });
@@ -75,7 +79,7 @@ export function spotIndex(candidates: readonly SpotCandidate[], coverDay: string
   const near = (c: SpotCandidate) => (c.day ? Math.abs(Date.parse(c.day) - Date.parse(coverDay)) : Number.MAX_SAFE_INTEGER);
   const byTitle = new Map<string, SpotCandidate>();
   for (const c of candidates) {
-    const k = wordsOf(c.title).join(' ');
+    const k = spotWords(c.title).join(' ');
     const had = byTitle.get(k);
     if (!had || near(c) < near(had)) byTitle.set(k, c);
   }
@@ -153,4 +157,95 @@ export function scoresOn(text: string, magazine: string): string | null {
     if (np) return `G ${np[1]} · P ${np[2]} · C ${np[3]} · T ${np[4]}`;
   }
   return null;
+}
+
+/** A page of an issue, as the spotter reads it. */
+export interface SpotPage {
+  n: number;
+  text: string;
+  words: readonly PageWord[];
+}
+
+/** A game found on an issue's page, and what becomes of it: linked, or a maybe to answer. */
+export interface SpotMention extends Spotted {
+  page: number;
+  state: 'linked' | 'suggested';
+  /** review, with its scores, for the game a review page's scores go with. */
+  kind: 'review' | null;
+  score: string | null;
+  /** The consoles the page names (for the chest on its games). */
+  consoles: string[];
+}
+
+export interface SpotIssueOptions {
+  magazine: string;
+  coverDay: string;
+  /** Link games found at this confidence; ask about them from askAt. */
+  linkAt: number;
+  askAt: number;
+  /** The owner's answers: "<printed key>|<magazine or *>" to not, notgame:<console>|<title> or game:<console>|<title>. */
+  rules: ReadonlyMap<string, string>;
+}
+
+/** The key the owner's answer about printed words is kept by: the words as compared, run together. */
+export const printedKey = (printed: string) => spotWord(printed.replace(/\s+/g, ''));
+
+/**
+ * The games of one issue (D192): each page's words checked for the issue's candidates, the owner's rules applied, a
+ * game linked at linkAt and asked about from askAt, a review's scores given to the game they go with.
+ */
+export function spotIssue(pages: readonly SpotPage[], index: SpotIndex, o: SpotIssueOptions): SpotMention[] {
+  const out: SpotMention[] = [];
+  for (const p of pages) {
+    const kept: SpotMention[] = [];
+    for (const f of spotTitles(p.words, index, o.coverDay)) {
+      const key = printedKey(f.printed);
+      const rule = o.rules.get(`${key}|${o.magazine}`) ?? o.rules.get(`${key}|*`);
+      if (rule === 'not' || rule === `notgame:${f.platformKey}|${f.title}`) continue;
+      if (rule?.startsWith('game:')) {
+        const [pk, ...t] = rule.slice(5).split('|');
+        kept.push({ ...f, platformKey: pk!, title: t.join('|'), confidence: 1, page: p.n, state: 'linked', kind: null, score: null, consoles: [] });
+        continue;
+      }
+      if (f.confidence >= o.linkAt) kept.push({ ...f, page: p.n, state: 'linked', kind: null, score: null, consoles: [] });
+      else if (f.confidence >= o.askAt) kept.push({ ...f, page: p.n, state: 'suggested', kind: null, score: null, consoles: [] });
+    }
+    if (kept.length === 0) continue;
+    // The consoles the page names, for the chest on its games: once a page.
+    const named = platformsIn(p.text.replace(/\n+/g, ', '));
+    // A review's scores go to the game it's about: the one linked game, or the one in the biggest type.
+    const score = scoresOn(p.text, o.magazine);
+    const linkedHere = kept.filter((x) => x.state === 'linked');
+    const reviewed = score && linkedHere.length > 0 ? linkedHere.reduce((a, b) => (b.box[3] - b.box[1] > a.box[3] - a.box[1] ? b : a)) : null;
+    for (const x of kept) {
+      x.consoles = named;
+      if (x === reviewed) {
+        x.kind = 'review';
+        x.score = score;
+      }
+      out.push(x);
+    }
+  }
+  return out;
+}
+
+/**
+ * The games an issue could be about (D192): out from so many years before its cover date to so many after ("2, 1"),
+ * on its magazine's maker's consoles when it has one ("Nintendo Power: nintendo"), else on every console.
+ */
+export function spotWindow(issue: { magazine: string; year: number; month: number | null }, spotYears: string, makers: readonly string[]): { from: string; to: string; keep: (platformKey: string) => boolean } {
+  const [before, after] = spotYears
+    .split(/[,\s]+/)
+    .map(Number)
+    .map((n) => (Number.isFinite(n) ? n : 1)) as [number, number];
+  const maker = makers
+    .map((l) => l.split(':'))
+    .find(([name]) => name!.trim().toLowerCase() === issue.magazine.toLowerCase())?.[1]
+    ?.trim()
+    .toLowerCase();
+  return {
+    from: `${issue.year - (before ?? 2)}-${String(issue.month ?? 1).padStart(2, '0')}-01`,
+    to: `${issue.year + (after ?? 1)}-${String(issue.month ?? 12).padStart(2, '0')}-28`,
+    keep: (key: string) => !maker || (CONSOLE_MARKS[key] ?? CONSOLE_MARKS[regionalConsole(key)?.base ?? ''])?.company === maker,
+  };
 }

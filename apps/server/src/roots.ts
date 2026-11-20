@@ -9,6 +9,7 @@ import {
   reviewPlatformFits,
   ROOTS_READER_VERSION,
   type ReviewScore,
+  articleGameTitle,
   type RootsReading,
   type WikiCitation,
   type WikiMention,
@@ -372,13 +373,15 @@ export class RootsService {
         readings.set(g.article, row?.data ? (JSON.parse(row.data) as RootsReading) : null);
       }
       const r = readings.get(g.article);
+      // A game found by its article alone goes by the article's name, without Wikipedia's "(video game)".
+      const title = g.title === g.article ? articleGameTitle(g.title) : g.title;
       for (const row of r?.reviews ?? []) {
         const c = row.citation;
         if (!c || row.aggregate || (kindOf(c) !== 'magazine' && kindOf(c) !== 'news')) continue;
-        const k = `${g.key}|${matchKey(g.title)}|${row.outlet}|${c.date}|${c.page}`;
+        const k = `${g.key}|${matchKey(title)}|${row.outlet}|${c.date}|${c.page}`;
         if (seen.has(k)) continue;
         seen.add(k);
-        out.push({ platformKey: g.key, title: g.title, outlet: row.outlet, score: row.scores.map((x) => (x.platform ? `${x.platform} ${x.score}` : x.score)).join(' · '), work: c.work ?? row.outlet, date: c.date, issue: c.issue, page: c.page });
+        out.push({ platformKey: g.key, title: title, outlet: row.outlet, score: row.scores.map((x) => (x.platform ? `${x.platform} ${x.score}` : x.score)).join(' · '), work: c.work ?? row.outlet, date: c.date, issue: c.issue, page: c.page });
       }
     }
     return out;
