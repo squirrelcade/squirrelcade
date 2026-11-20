@@ -1,6 +1,6 @@
 import { readFileSync } from 'node:fs';
 import { baseTitle, matchKey } from '@squirrelcade/core';
-import { COUNTED } from '../timeMachine.js';
+import { SPOT_TYPES } from '../timeMachine.js';
 
 /**
  * The yardstick's release index (docs/leaves-yardstick.md): IGDB's games with a release day, by day, read from the
@@ -77,7 +77,7 @@ export function readReleases(path: string): Releases {
     if (!r.t || !r.day) continue;
     const row = { platformKey: r.k, title: r.t, day: r.day, alt: r.alt ?? [] };
     every.push(row);
-    if (r.type === null || COUNTED.has(r.type)) rows.push(row);
+    if (r.type === null || SPOT_TYPES.has(r.type)) rows.push(row);
   }
   return new Releases(rows, every);
 }

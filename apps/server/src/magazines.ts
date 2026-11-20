@@ -1,4 +1,4 @@
-import { baseTitle, citationMonth, citedIssueNumber, matchKey, printedKey, SPOT_VERSION, spotIndex, spotIssue, type SpotCandidate, type SpotMention, coverLeadFor, guessDates, magazineGaps, magazineOf, neverPrinted, printedPage, type MissingIssue, type MissingMonth, type NumberJump, issueFromFileName, issueLabel, pageNames, parseComicInfo, parseHocr, skippedName, writeHocr, type IssueInfo, type IssueToDate, type PageWord } from '@squirrelcade/core';
+import { baseTitle, citationMonth, citedIssueNumber, matchKey, printedKey, SPOT_VERSION, spotIndex, spotIssue, type SpotCandidate, type SpotMention, type SpotPage, coverLeadFor, guessDates, magazineGaps, magazineOf, neverPrinted, printedPage, type MissingIssue, type MissingMonth, type NumberJump, issueFromFileName, issueLabel, pageNames, parseComicInfo, parseHocr, skippedName, writeHocr, type IssueInfo, type IssueToDate, type PageWord } from '@squirrelcade/core';
 import Database from 'better-sqlite3';
 import { spawn } from 'node:child_process';
 import { accessSync, constants, existsSync, mkdirSync, readdirSync, renameSync, rmSync, statSync, type Dirent } from 'node:fs';
@@ -1126,7 +1126,7 @@ export class MagazineService {
     const db = this.store();
     const linkAt = this.settings.get('magazines.linkAt');
     const askAt = this.settings.get('magazines.askAt');
-    const sig = JSON.stringify([SPOT_VERSION, linkAt, askAt, this.settings.get('magazines.spotYears'), this.settings.get('magazines.makers'), this.rulesVersion()]);
+    const sig = JSON.stringify([SPOT_VERSION, linkAt, askAt, this.settings.get('magazines.spotYears'), this.settings.get('magazines.makers'), this.rulesVersion(), this.settings.get('magazines.spotYearsOlder')]);
     type Row = Parameters<MagazineService['view']>[0];
     const issues = (db.prepare(`${this.issueQuery} WHERE i.text_state IN ('hocr', 'ocr') AND COALESCE(i.owner_year, i.year) IS NOT NULL`).all() as Row[]).filter(
       (i) => this.stateOf(`spotted:${i.id}`) !== `${sig}|${i.file_mtime}`,
@@ -1160,11 +1160,16 @@ export class MagazineService {
         await breathe();
       }
       const pages = db.prepare('SELECT n, text, words FROM pages WHERE issue_id = ?').all(i.id) as { n: number; text: string; words: string }[];
-      const found: SpotMention[] = [];
+      // Its pages' words made ready a page at a time, then the issue looked through whole: what one page says of a
+      // game settles another page's maybe (D242).
+      const ready: SpotPage[] = [];
       for (const p of pages) {
-        found.push(...spotIssue([{ n: p.n, text: p.text, words: JSON.parse(p.words) as PageWord[] }], index, { magazine: i.magazine, coverDay, linkAt, askAt, rules }));
+        ready.push({ n: p.n, text: p.text, words: JSON.parse(p.words) as PageWord[] });
         await breathe();
       }
+      const cited = new Set((db.prepare("SELECT title_key FROM mentions WHERE issue_id = ? AND source = 'citation'").all(i.id) as { title_key: string }[]).map((r) => r.title_key));
+      const found: SpotMention[] = spotIssue(ready, index, { magazine: i.magazine, coverDay, linkAt, askAt, rules, cited });
+      await breathe();
       const now = new Date().toISOString();
       db.transaction(() => {
         db.prepare("DELETE FROM mentions WHERE issue_id = ? AND source = 'ocr'").run(i.id);

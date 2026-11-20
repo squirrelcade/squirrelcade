@@ -739,7 +739,7 @@ export async function buildApp(options: BuildOptions = {}): Promise<Squirrelcade
       // What's missing (D221): the magazines your games' reviews cite, and the issues they're in.
       if (settings.get('magazines.suggest')) magazines.setCited(await roots.citedMagazines());
       const spotted = await magazines.spotGames((issue) => {
-        const w = spotWindow(issue, settings.get('magazines.spotYears'), settings.get('magazines.makers'));
+        const w = spotWindow(issue, settings.get('magazines.spotYears'), settings.get('magazines.makers'), settings.get('magazines.spotYearsOlder'));
         return timeMachine.releasesBetween(w.from, w.to, w.keep);
       }, progress);
       return `${cited} reviews cited from Wikipedia found in your issues; ${spotted}`;

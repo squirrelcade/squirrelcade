@@ -5,9 +5,10 @@ import { join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import Database from 'better-sqlite3';
 import { articleGameTitle, baseTitle, matchKey, printedKey, settingDefinitions, SPOT_VERSION, spotIndex, spotIssue, spotTitles, spotWindow, spotWord, spotWords, type PageWord, type SettingKey, type SpotIndex } from '@squirrelcade/core';
+import { guessKind, samplePages, type SamplePage } from './pages.js';
 import { readReleases, type Releases } from './releases.js';
 import { compareMarkdown, reportMarkdown, type PileStats, type RunResult } from './report.js';
-import { causePages, missCause, scoreCited, scoreLabels, type CitedRow, type FoundOnPage, type LabelledPage, type MissCause } from './score.js';
+import { causePages, eraOf, missCause, scoreCited, scoreLabels, type CitedRow, type FoundOnPage, type LabelledPage, type MissCause } from './score.js';
 
 /**
  * The Leaves yardstick (docs/leaves-yardstick.md): measures how well the games on the magazines' pages are found,
@@ -72,8 +73,9 @@ function shard(args: Args): void {
   // A game found by its article goes by the article's name in older copies ("Deadpool (video game)"): read as the game's.
   const titleOf = args['raw-titles'] === true ? (t: string) => t : articleGameTitle;
   const setting = settingsOf(dataDir);
-  const linkAt = setting('magazines.linkAt');
-  const askAt = setting('magazines.askAt');
+  // The bars to link and to ask at: the install's own, or others to try (--link-at 0.8).
+  const linkAt = typeof args['link-at'] === 'string' ? Number(args['link-at']) : setting('magazines.linkAt');
+  const askAt = typeof args['ask-at'] === 'string' ? Number(args['ask-at']) : setting('magazines.askAt');
   const db = new Database(join(dataDir, 'magazines-audit.db'), { readonly: true, fileMustExist: true });
   const out = new Database(str(args, 'out'));
   out.pragma('journal_mode = OFF');
@@ -115,8 +117,8 @@ function shard(args: Args): void {
     let index: SpotIndex | null = null;
     let candidateKeys: Set<string> | null = null;
     const candidates = () => {
-      const w = spotWindow({ magazine: i.magazine, year: year!, month }, setting('magazines.spotYears'), setting('magazines.makers'));
-      return releases.between(w.from, w.to, w.keep);
+      const w = spotWindow({ magazine: i.magazine, year: year!, month }, setting('magazines.spotYears'), setting('magazines.makers'), setting('magazines.spotYearsOlder'));
+      return releases.between(w.from, w.to, w.keep).map((r) => ({ platformKey: r.platformKey, title: r.title, day: r.day, names: r.alt }));
     };
     let found: { page: number; platform_key: string | null; title: string; title_key: string; printed: string | null; kind: string | null; score: string | null; confidence: number | null; state: string; box: string | null; consoles: string | null }[];
     if (stored) found = storedOf.all(i.id) as typeof found;
@@ -125,7 +127,10 @@ function shard(args: Args): void {
       const list = candidates();
       index = spotIndex(list, coverDay);
       if (cited.length > 0) candidateKeys = new Set(list.map((c) => matchKey(baseTitle(c.title))));
-      found = spotIssue(pages, index, { magazine: i.magazine, coverDay, linkAt, askAt, rules }).map((x) => ({
+      // A cited review is itself a reason to link a maybe: left out unless asked for, as the citations are what the
+      // spotter is measured against.
+      const options = { magazine: i.magazine, coverDay, linkAt, askAt, rules, evidence: args['no-evidence'] !== true, ...(args['cited'] === true ? { cited: new Set(cited.map((c) => matchKey(baseTitle(titleOf(c.title))))) } : {}) };
+      found = spotIssue(pages, index, options).map((x) => ({
         page: x.page,
         platform_key: x.platformKey,
         title: x.title,
@@ -179,7 +184,7 @@ function runShards(args: Args, outDir: string, label: string, parts: number): Pr
       (file, k) =>
         new Promise<string>((done, fail) => {
           rmSync(file, { force: true });
-          const pass = ['shard', '--data', str(args, 'data'), '--shard', `${k}/${parts}`, '--out', file, ...(args['stored'] === true ? ['--stored'] : []), ...(args['raw-titles'] === true ? ['--raw-titles'] : []), ...(typeof args['only'] === 'string' ? ['--only', args['only']] : [])];
+          const pass = ['shard', '--data', str(args, 'data'), '--shard', `${k}/${parts}`, '--out', file, ...(args['stored'] === true ? ['--stored'] : []), ...['raw-titles', 'no-evidence', 'cited'].filter((flag) => args[flag] === true).map((flag) => `--${flag}`), ...['only', 'link-at', 'ask-at'].flatMap((name) => (typeof args[name] === 'string' ? [`--${name}`, args[name] as string] : []))];
           const child = spawn(process.execPath, [...process.execArgv, self, ...pass], { stdio: ['ignore', 'inherit', 'inherit'], windowsHide: true });
           child.on('error', fail);
           child.on('exit', (code) => (code === 0 ? done(file) : fail(new Error(`shard ${k} ended with ${code}`))));
@@ -278,8 +283,10 @@ function why(args: Args): void {
   const year = (i.owner_year ?? i.year)!;
   const month = (i.owner_year !== null ? i.owner_month : i.month) ?? 6;
   const coverDay = `${year}-${String(month).padStart(2, '0')}-01`;
-  const w = spotWindow({ magazine: i.magazine, year, month }, setting('magazines.spotYears'), setting('magazines.makers'));
-  const list = readReleases(join(dataDir, 'releases.jsonl')).between(w.from, w.to, w.keep);
+  const w = spotWindow({ magazine: i.magazine, year, month }, setting('magazines.spotYears'), setting('magazines.makers'), setting('magazines.spotYearsOlder'));
+  const list = readReleases(join(dataDir, 'releases.jsonl'))
+    .between(w.from, w.to, w.keep)
+    .map((r) => ({ platformKey: r.platformKey, title: r.title, day: r.day, names: r.alt }));
   const key = matchKey(baseTitle(title));
   const same = list.filter((c) => matchKey(baseTitle(c.title)) === key);
   const say = (line: string) => process.stdout.write(`${line}
@@ -303,13 +310,89 @@ function why(args: Args): void {
   db.close();
 }
 
+/** A stable pick of n from a list: by a hash of each item's key and the seed, so a later run picks the same ones again. */
+function pick<T>(items: readonly T[], n: number, seed: string, keyOf: (item: T) => string): T[] {
+  const hash = (s: string) => {
+    let h = 2166136261;
+    for (let k = 0; k < s.length; k++) h = Math.imul(h ^ s.charCodeAt(k), 16777619);
+    return h >>> 0;
+  };
+  return items
+    .map((item) => ({ item, h: hash(`${seed}|${keyOf(item)}`) }))
+    .sort((a, b) => a.h - b.h)
+    .slice(0, n)
+    .map((x) => x.item);
+}
+
+/**
+ * Some of a run's finds, each with the words around it on its page, to judge by hand whether the page names that game
+ * (precision, until the labelled pages exist). --not-in leaves out what another run found the same way.
+ */
+function sample(args: Args): void {
+  const dataDir = resolve(str(args, 'data'));
+  const state = str(args, 'state', 'linked');
+  const db = new Database(join(dataDir, 'magazines-audit.db'), { readonly: true, fileMustExist: true });
+  const run = new Database(resolve(str(args, 'run')), { readonly: true, fileMustExist: true });
+  type Row = { issue_id: number; page: number; platform_key: string | null; title: string; title_key: string; printed: string | null; confidence: number | null; box: string | null };
+  let rows = run.prepare('SELECT issue_id, page, platform_key, title, title_key, printed, confidence, box FROM mentions WHERE state = ?').all(state) as Row[];
+  if (typeof args['not-in'] === 'string') {
+    const other = new Database(resolve(args['not-in']), { readonly: true, fileMustExist: true });
+    const had = new Set((other.prepare('SELECT issue_id, page, title_key FROM mentions WHERE state = ?').all(state) as Row[]).map((r) => `${r.issue_id}|${r.page}|${r.title_key}`));
+    other.close();
+    rows = rows.filter((r) => !had.has(`${r.issue_id}|${r.page}|${r.title_key}`));
+  }
+  const id = (r: Row) => `${r.issue_id}|${r.page}|${r.title_key}|${printedKey(r.printed ?? r.title)}`;
+  const picked = pick(rows, Number(str(args, 'n', '100')), str(args, 'seed', '1'), id);
+  const issueOf = db.prepare('SELECT m.name AS magazine, COALESCE(i.owner_year, i.year) AS year, COALESCE(i.owner_month, i.month) AS month FROM issues i JOIN magazines m ON m.id = i.magazine_id WHERE i.id = ?');
+  const wordsOf = db.prepare('SELECT words FROM pages WHERE issue_id = ? AND n = ?');
+  const lines = picked.map((r) => {
+    const issue = issueOf.get(r.issue_id) as { magazine: string; year: number; month: number | null };
+    const words = JSON.parse((wordsOf.get(r.issue_id, r.page) as { words: string }).words) as PageWord[];
+    const box = JSON.parse(r.box ?? '[0,0,0,0]') as number[];
+    const inside = words.map((w, k) => (w.box[0] >= box[0]! && w.box[1] >= box[1]! && w.box[2] <= box[2]! && w.box[3] <= box[3]! ? k : -1)).filter((k) => k >= 0);
+    const a = inside[0] ?? 0;
+    const b = inside[inside.length - 1] ?? 0;
+    const around = `${words.slice(Math.max(0, a - 14), a).map((w) => w.text).join(' ')} [[${words.slice(a, b + 1).map((w) => w.text).join(' ')}]] ${words.slice(b + 1, b + 15).map((w) => w.text).join(' ')}`;
+    return JSON.stringify({ id: id(r), where: `${issue.magazine} ${issue.year}-${String(issue.month ?? 0).padStart(2, '0')} p.${r.page}`, title: r.title, console: r.platform_key, confidence: r.confidence, around });
+  });
+  process.stdout.write(`${lines.join('\n')}\n`);
+  db.close();
+  run.close();
+}
+
+/**
+ * The pages to label for truth set B: about --n of them (300), spread over magazines, eras and kinds of page, written
+ * as a labels file with no games yet (tools/leaves-yardstick/label-pages.py fills them; some are then corrected by hand).
+ */
+function samplePagesFile(args: Args): void {
+  const dataDir = resolve(str(args, 'data'));
+  const db = new Database(join(dataDir, 'magazines-audit.db'), { readonly: true, fileMustExist: true });
+  const issues = new Map(
+    (db.prepare("SELECT i.id, i.path, m.name AS magazine, COALESCE(i.owner_year, i.year) AS year, COALESCE(i.owner_month, i.month) AS month FROM issues i JOIN magazines m ON m.id = i.magazine_id WHERE i.text_state IN ('hocr', 'ocr') AND COALESCE(i.owner_year, i.year) IS NOT NULL").all() as { id: number; path: string; magazine: string; year: number; month: number | null }[]).map((i) => [i.id, i]),
+  );
+  const all: SamplePage[] = [];
+  for (const p of db.prepare('SELECT issue_id, n, text FROM pages').iterate() as IterableIterator<{ issue_id: number; n: number; text: string }>) {
+    const issue = issues.get(p.issue_id);
+    if (issue) all.push({ issueId: p.issue_id, page: p.n, magazine: issue.magazine, year: issue.year, kind: guessKind(p.n, p.text) });
+  }
+  db.close();
+  const picked = samplePages(all, Number(str(args, 'n', '300')), str(args, 'seed', 'leaves'));
+  const pages = picked.map((p) => ({ ...p, month: issues.get(p.issueId)!.month, path: issues.get(p.issueId)!.path, games: [] as { title: string }[], labelledBy: null as string | null, checked: false }));
+  const out = resolve(str(args, 'out', join(dataDir, 'pages.json')));
+  writeFileSync(out, `${JSON.stringify({ pages }, null, 1)}\n`);
+  const by = (key: (p: SamplePage) => string) => Object.entries(picked.reduce<Record<string, number>>((n, p) => ((n[key(p)] = (n[key(p)] ?? 0) + 1), n), {})).sort(([a], [b]) => a.localeCompare(b)).map(([k, n]) => `${k} ${n}`).join(', ');
+  process.stdout.write(`${picked.length} pages of ${all.length} to label, in ${out}\nBy kind (a guess from the text): ${by((p) => p.kind)}\nBy era: ${by((p) => eraOf(p.year))}\nBy magazine: ${by((p) => p.magazine)}\n`);
+}
+
 const { rest, args } = parseArgs(process.argv.slice(2));
 const command = rest[0];
 if (command === 'shard') shard(args);
 else if (command === 'run') await run(args);
 else if (command === 'compare') compare(rest.slice(1));
 else if (command === 'why') why(args);
+else if (command === 'sample') sample(args);
+else if (command === 'sample-pages') samplePagesFile(args);
 else {
-  process.stderr.write('Leaves yardstick: run --data <folder> [--label name] [--stored] [--raw-titles] [--only cited] [--labels pages.json] [--shards n] [--out folder] | compare <before.json> <after.json>\n');
+  process.stderr.write('Leaves yardstick: run --data <folder> [--label name] [--stored] [--raw-titles] [--no-evidence] [--cited] [--link-at 0.8] [--ask-at 0.6] [--only cited] [--labels pages.json] [--shards n] [--out folder] | compare <before.json> <after.json> | why --data <folder> --issue <id> --title <game> | sample --data <folder> --run <run.db> [--not-in <run.db>] [--n 100] | sample-pages --data <folder> [--n 300] [--out pages.json]\n');
   process.exitCode = 1;
 }

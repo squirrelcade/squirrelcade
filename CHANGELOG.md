@@ -6,9 +6,21 @@ What changed in each version of Squirrelcade (called Gamefolio before 0.35.0). T
 
 ### Changed
 
+- **Leaves finds far more of the games on your magazines' pages** (D242, the owner: spot checks showed games missed). Measured on a library of 2,479 issues against the reviews Wikipedia cites with a page: 76% of them are now linked in their issue where 55% were, and 86% found where 74% were, with the new links right nearly as often as the old (57 of 60 in a hand-checked sample, the old ones 70 of 70). What changed:
+  - A title is found however the page spaces or hyphenates it (Spider-Man was never found unless printed "Spider Man"), with "and" for "&", "2" for "II" and the "Il" a reading makes of it, without its "The", its possessive or its "Tom Clancy's", and by the other names IGDB has for it (Starwing, Wonder Boy III).
+  - A game's words go to the game, not to an edition of it: "Lollipop Chainsaw" was taken for "Lollipop Chainsaw: Premium Edition" and left as a maybe.
+  - Two words written as a title are linked when they aren't both ordinary words of the issue; one word counts when the issue never writes it small. A console named after a title speaks for it.
+  - An older issue is checked for older games (**Settings > Magazines > Older issues look further back**: six years through 1989, four through 1994), and collections sold as one game are checked for too.
+  - The rest of the issue settles a maybe: a review cited for the issue, the contents page, or another page that is sure of the game.
+  - Fewer junk questions on Review > Magazines: a series' name beside one of its games, a name several games share ("The Video Game"), the magazine's own name, a console's or a company's name and ordinary words in headings ("One", "Up") are no longer asked about. The likely ones (0.80 to 0.85, about nine in ten right) are linked too if you set **Link games found at** to 0.80.
+  - Every issue is looked through again after the update (a few minutes for a big library).
+- **A yardstick for it** ([docs/leaves-yardstick.md](docs/leaves-yardstick.md)): `npm run leaves:yardstick` measures the finding against a read-only copy of an install's magazines, before and after a change.
+
 - **Only games on On the way** (D241, the owner: "I want the non-game stuff taken off"): what a purchase email or a pasted order page has that isn't a game (a mouse, a cable, a console, a membership) is left out. A game Squirrelcade is sure of always counts; for the rest it takes the AI model's word when one reads your emails (the model now says, for each item, whether it's a video game), and otherwise goes by the item's name. Amazon's order emails name only departments, so one with no Video Games in it lists nothing and is no longer sent to the model. What was listed before that isn't a game is dismissed once, when this version first starts (it stays under what was dismissed). **Only games** (Settings > Collection > On the way), on to start with, turns it off.
 
 ### Fixed
+
+- **A cited review found under its game's name** (D242): a game known only by its Wikipedia article was kept under the article's name ("Deadpool (video game)"), so its cited reviews never showed with the game's other mentions. And "Official Xbox Magazine US" is the Official Xbox Magazine you have.
 
 - **A store's note about your shipping address no longer hides the game** (D241, the owner: Super Rare Games' orders weren't on On the way): before an order email goes to the AI model, the lines of your postal address are left out. A sentence that only mentions one ("Please double check your shipping address is correct...") was taken for the address's label, so the lines under it, the game's name among them, were left out too, and the model, given prices and no item, called the email not a purchase. Only a label starts an address now ("Shipping address", "Ship to:"), and a line with an item's count ("× 1") is never one of its lines. An email read that way before isn't read again: put its game on by pasting the order's page, or through Claude's connector.
 

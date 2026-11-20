@@ -47,6 +47,17 @@ export interface MediaWindow {
 /** The kinds of IGDB entries that count as a game's release (not its bundles, packs or updates). */
 export const COUNTED = new Set(['Main Game', 'Remake', 'Remaster', 'Expanded Game', 'Standalone Expansion', 'Port']);
 
+/** The kinds a magazine's page may name (D242): those, and the collections sold as a game of their own. */
+export const SPOT_TYPES = new Set([...COUNTED, 'Bundle']);
+
+/** A game a magazine's issue could be about: its console, title, release day and other names. */
+export interface SpotRelease {
+  platformKey: string;
+  title: string;
+  day: string;
+  names: string[];
+}
+
 const shift = (day: string, days: number) => new Date(Date.parse(`${day}T00:00:00Z`) + days * 86_400_000).toISOString().slice(0, 10);
 
 /**
@@ -56,26 +67,31 @@ const shift = (day: string, days: number) => new Date(Date.parse(`${day}T00:00:0
  * index of IGDB's lists, built once (and again when IGDB's lists change) and searched by day, never read per request.
  */
 export class TimeMachineService {
-  private index: { stamp: number; rows: Release[]; top: Set<string> } | null = null;
+  private index: { stamp: number; rows: Release[]; spot: SpotRelease[]; top: Set<string> } | null = null;
 
   constructor(private readonly d: { db: Db; settings: SettingsService; igdb: IgdbService; history: HistoryService; magazines: MagazineService; roots?: RootsService; log: Logger }) {}
 
   /** The release index: every IGDB game with a release day on a console Squirrelcade knows, by day. */
-  private releases(): { rows: Release[]; top: Set<string> } {
+  private releases(): { rows: Release[]; spot: SpotRelease[]; top: Set<string> } {
     const stamp = this.d.igdb.stamp();
     if (this.index?.stamp === stamp) return this.index;
     const started = Date.now();
     // Only the few fields a window needs, read straight from each row's JSON (the whole lists aren't kept for this).
-    const raw = this.d.db.all<{ id: number; key: string; name: string; title: string; day: string; rating: number | null; count: number | null; cover: string | null; type: string | null }>(sql`
+    const raw = this.d.db.all<{ id: number; key: string; name: string; title: string; day: string; rating: number | null; count: number | null; cover: string | null; type: string | null; alt: string | null }>(sql`
       SELECT g.igdb_id AS id, p.key AS key, p.name AS name, json_extract(g.data, '$.name') AS title, json_extract(g.data, '$.released') AS day,
         json_extract(g.data, '$.rating') AS rating, json_extract(g.data, '$.ratingCount') AS count, json_extract(g.data, '$.coverId') AS cover,
-        json_extract(g.data, '$.gameType') AS type
+        json_extract(g.data, '$.gameType') AS type, json_extract(g.data, '$.altNames') AS alt
       FROM igdb_games g JOIN platforms p ON p.id = g.platform_id
       WHERE json_extract(g.data, '$.released') IS NOT NULL`);
     const rows = raw
       .filter((r) => r.type === null || COUNTED.has(r.type))
       .map((r) => ({ igdbId: r.id, day: r.day, platformKey: r.key, platform: r.name, title: r.title, rating: r.rating, count: r.count ?? 0, coverId: r.cover }))
       .sort((a, b) => a.day.localeCompare(b.day));
+    // What a magazine's pages are checked for: collections too, each game with its other names.
+    const spot = raw
+      .filter((r) => r.title && (r.type === null || SPOT_TYPES.has(r.type)))
+      .map((r) => ({ platformKey: r.key, title: r.title, day: r.day, names: r.alt ? (JSON.parse(r.alt) as string[]) : [] }))
+      .sort((a, b) => (a.day < b.day ? -1 : a.day > b.day ? 1 : 0));
     // A Top 100 place lifts a game in its window.
     const top = new Set<string>();
     try {
@@ -86,7 +102,7 @@ export class TimeMachineService {
     } catch (err) {
       this.d.log.debug({ context: 'history', err }, "The Top 100 lists couldn't be read for Now in");
     }
-    this.index = { stamp, rows, top };
+    this.index = { stamp, rows, spot, top };
     this.d.log.info({ context: 'history' }, `Now in's release index: ${rows.length} releases in ${Date.now() - started} ms`);
     return this.index;
   }
@@ -134,8 +150,8 @@ export class TimeMachineService {
   }
 
   /** The games out between two days on the consoles chosen (D192: the games a magazine's issue could be about). */
-  releasesBetween(from: string, to: string, keep: (platformKey: string) => boolean = () => true): { platformKey: string; title: string; day: string }[] {
-    const { rows } = this.releases();
+  releasesBetween(from: string, to: string, keep: (platformKey: string) => boolean = () => true): SpotRelease[] {
+    const rows = this.releases().spot;
     let lo = 0;
     let hi = rows.length;
     while (lo < hi) {
@@ -143,8 +159,8 @@ export class TimeMachineService {
       if (rows[mid]!.day < from) lo = mid + 1;
       else hi = mid;
     }
-    const out: { platformKey: string; title: string; day: string }[] = [];
-    for (let i = lo; i < rows.length && rows[i]!.day <= to; i++) if (keep(rows[i]!.platformKey)) out.push({ platformKey: rows[i]!.platformKey, title: rows[i]!.title, day: rows[i]!.day });
+    const out: SpotRelease[] = [];
+    for (let i = lo; i < rows.length && rows[i]!.day <= to; i++) if (keep(rows[i]!.platformKey)) out.push(rows[i]!);
     return out;
   }
 

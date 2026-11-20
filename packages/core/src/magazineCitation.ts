@@ -15,6 +15,7 @@ const ALIASES: Record<string, string[]> = {
   'official us playstation magazine': ['official us playstation magazine', 'official u s playstation magazine', 'opm', 'official playstation magazine', 'official playstation magazine us'],
   'playstation the official magazine': ['playstation the official magazine', 'playstation official magazine', 'ps the official magazine'],
   'electronic games': ['electronic games'],
+  'official xbox magazine': ['official xbox magazine', 'official xbox magazine us', 'official us xbox magazine', 'oxm', 'oxm us'],
 };
 
 const norm = (s: string) =>
