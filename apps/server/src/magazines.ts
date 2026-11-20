@@ -1,4 +1,4 @@
-import { baseTitle, citationMonth, citedIssueNumber, matchKey, printedKey, SPOT_VERSION, spotIndex, spotIssue, type SpotCandidate, type SpotMention, type SpotPage, coverLeadFor, guessDates, magazineGaps, magazineOf, neverPrinted, printedPage, type MissingIssue, type MissingMonth, type NumberJump, issueFromFileName, issueLabel, pageNames, parseComicInfo, parseHocr, skippedName, writeHocr, type IssueInfo, type IssueToDate, type PageWord } from '@squirrelcade/core';
+import { baseTitle, citationMonth, citedIssueNumber, matchKey, printedKey, SPOT_VERSION, spotIndex, spotIssueSteps, type SpotCandidate, type SpotMention, type SpotPage, coverLeadFor, guessDates, magazineGaps, magazineOf, neverPrinted, printedPage, type MissingIssue, type MissingMonth, type NumberJump, issueFromFileName, issueLabel, pageNames, parseComicInfo, parseHocr, skippedName, writeHocr, type IssueInfo, type IssueToDate, type PageWord } from '@squirrelcade/core';
 import Database from 'better-sqlite3';
 import { spawn } from 'node:child_process';
 import { accessSync, constants, existsSync, mkdirSync, readdirSync, renameSync, rmSync, statSync, type Dirent } from 'node:fs';
@@ -1168,7 +1168,13 @@ export class MagazineService {
         await breathe();
       }
       const cited = new Set((db.prepare("SELECT title_key FROM mentions WHERE issue_id = ? AND source = 'citation'").all(i.id) as { title_key: string }[]).map((r) => r.title_key));
-      const found: SpotMention[] = spotIssue(ready, index, { magazine: i.magazine, coverDay, linkAt, askAt, rules, cited });
+      const steps = spotIssueSteps(ready, index, { magazine: i.magazine, coverDay, linkAt, askAt, rules, cited });
+      let step = steps.next();
+      while (!step.done) {
+        await breathe();
+        step = steps.next();
+      }
+      const found: SpotMention[] = step.value;
       await breathe();
       const now = new Date().toISOString();
       db.transaction(() => {

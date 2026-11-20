@@ -591,6 +591,18 @@ const BARE = 0.84;
 const SURE_ALONE = 0.85;
 
 export function spotIssue(pages: readonly SpotPage[], index: SpotIndex, o: SpotIssueOptions): SpotMention[] {
+  const steps = spotIssueSteps(pages, index, o);
+  for (;;) {
+    const step = steps.next();
+    if (step.done) return step.value;
+  }
+}
+
+/**
+ * spotIssue a page at a time: it stops after each page (a few milliseconds of work), so a server can answer its
+ * requests in between (It stays snappy), and returns the issue's games at the end.
+ */
+export function* spotIssueSteps(pages: readonly SpotPage[], index: SpotIndex, o: SpotIssueOptions): Generator<void, SpotMention[], void> {
   const context = spotContext(pages.map((p) => p.words));
   const idOf = (f: { platformKey: string; title: string }) => `${f.platformKey}|${f.title}`;
   const ownName = printedKey(o.magazine);
@@ -611,6 +623,7 @@ export function spotIssue(pages: readonly SpotPage[], index: SpotIndex, o: SpotI
     }
     // The consoles the page names: for the chest on its games, and as a word for a game that is on one of them.
     if (found.length > 0) byPage.push({ p, found, named: platformsIn(p.text.replace(/\n+/g, ', ')) });
+    yield;
   }
   if (o.evidence !== false) {
     // Where the issue names each game: on which pages, surely on which, and on its contents page.
