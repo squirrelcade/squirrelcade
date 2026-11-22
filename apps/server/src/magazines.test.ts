@@ -1,4 +1,4 @@
-import { copyFileSync, mkdirSync, mkdtempSync, readdirSync, rmSync, unlinkSync, writeFileSync } from 'node:fs';
+import { copyFileSync, mkdirSync, mkdtempSync, readdirSync, renameSync, rmSync, statSync, unlinkSync, utimesSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import sharp from 'sharp';
@@ -21,6 +21,43 @@ function cbz(path: string, pages: number, info: Record<string, string | number> 
 }
 
 const hocr = (words: string[]) => `<div class='ocr_page'><span class='ocr_line' title="bbox 0 0 100 10">${words.map((w, i) => `<span class='ocrx_word' title='bbox ${i * 10} 0 ${i * 10 + 9} 10; x_wconf 95'>${w}</span>`).join(' ')}</span></div>`;
+
+/** A page's hOCR: a heading in big type, then lines in small type. */
+const hocrPage = (lines: string[][]) =>
+  `<div class='ocr_page'>${lines.map((ws, y) => `<span class='ocr_line'>${ws.map((w, x) => `<span class='ocrx_word' title='bbox ${x * 100} ${y * 40} ${x * 100 + 90} ${y * 40 + (y === 0 ? 60 : 20)}; x_wconf 95'>${w}</span>`).join(' ')}</span>`).join('')}</div>`;
+
+/** A made-up scan of an issue: its pages' bytes name the scan, so two scans share no picture (and none of their CRCs). */
+function scanOf(path: string, scan: string, pages: number, info: Record<string, string | number> | null = null): void {
+  const files = Array.from({ length: pages }, (_, i) => ({ name: `${String(i + 1).padStart(3, '0')}.jpg`, data: Buffer.from(`scan ${scan} page ${i + 1}`) }));
+  if (info) files.push({ name: 'ComicInfo.xml', data: Buffer.from(`<?xml version="1.0"?><ComicInfo>${Object.entries(info).map(([k, v]) => `<${k}>${v}</${k}>`).join('')}</ComicInfo>`) });
+  writeFileSync(path, writeZip(files));
+}
+
+/** A file's date set by hand, so a test never depends on two writes landing in different milliseconds. */
+const dated = (path: string, minute: number) => utimesSync(path, new Date(2026, 0, 1, 12, minute), new Date(2026, 0, 1, 12, minute));
+
+const REVIEW_PAGE = [['SUPER', 'METROID'], ['Samus', 'returns', 'in', 'Super', 'Metroid', 'the', 'best', 'yet'], ['9.0', '9.0', '9.5', '9.0'], ['Wario', 'Land', 'sneaks', 'in']];
+/** What each made-up scan's pages read as (the stand-in for Tesseract is handed a page's bytes). */
+const READS: Record<string, string[][]> = {
+  'scan A page 1': [['Contents']],
+  'scan A page 2': REVIEW_PAGE,
+  'scan A page 3': [['Next', 'month']],
+  // The same issue scanned again: as many pages, the review a page later.
+  'scan B page 1': [['Contents']],
+  'scan B page 2': [['Letters']],
+  'scan B page 3': REVIEW_PAGE,
+  // And a shorter one.
+  'scan C page 1': REVIEW_PAGE,
+  'scan C page 2': [['Next', 'month']],
+};
+const readScan = async (image: Buffer) => hocrPage(READS[image.toString()] ?? [['blank']]);
+const GAMES = [
+  { platformKey: 'super-nintendo', title: 'Super Metroid', day: '1994-04-18' },
+  { platformKey: 'super-nintendo', title: 'Wario Land', day: '1994-01-01' },
+];
+type Db = import('better-sqlite3').Database;
+const storeOf = (t: TestApp) => (t.magazines as unknown as { store(): Db }).store();
+const EGM59 = 'Electronic Gaming Monthly #059 (1994-06).cbz';
 
 describe('Leaves: the magazine scans (D177)', () => {
   it('reads the folder, its issues from their ComicInfo.xml or names, the text that came with them, and searches it', async () => {
@@ -383,5 +420,200 @@ describe('Leaves: the magazine scans (D177)', () => {
     // Count from #1 off: only the gaps between.
     g.settings.update({ 'magazines.missingFromOne': false });
     expect((await missing()).magazines.find((m: { name: string }) => m.name === 'Electronic Gaming Monthly').missing.map((m: { key: string }) => m.key)).toEqual(['#4', '#5']);
+  });
+
+  it("reads an issue again when its file is another scan under the same name: the old text, its search rows and the games found in it go; the owner's answers and marks stay (D243)", async () => {
+    dir = mkdtempSync(join(tmpdir(), 'squirrelcade-magazines-'));
+    mkdirSync(join(dir, 'Electronic Gaming Monthly'));
+    const file = join(dir, 'Electronic Gaming Monthly', EGM59);
+    scanOf(file, 'A', 3);
+    dated(file, 0);
+    g = await testApp({ magazineReader: readScan });
+    const cookies = await setUp(g);
+    g.settings.update({ 'features.magazines': true, 'magazines.folder': dir, 'magazines.ocr': true });
+    const db = storeOf(g);
+    const issue = () => db.prepare('SELECT id, pages, text_state, text_at, page_offset FROM issues').get() as { id: number; pages: number; text_state: string; text_at: string | null; page_offset: number | null };
+    const found = () => (db.prepare('SELECT page, title, source, state FROM mentions ORDER BY page, title').all() as { page: number; title: string; source: string; state: string }[]).map((m) => [m.page, m.title, m.source, m.state]);
+    const hits = async (q: string) => (await g.app.inject({ url: `/api/v1/magazines/search?q=${q}`, cookies })).json().hits.map((h: { page: number }) => h.page);
+    expect(await g.magazines.scan()).toBe('1 issues, 1 new');
+    expect(await g.magazines.readText(() => undefined, true)).toBe('1 issue read (3 pages)');
+    const { id } = issue();
+    await g.magazines.spotGames(() => GAMES);
+    // The owner's part: yes to the maybe (a rule for those words), two games marked by hand, and "file page 3 is printed page 1".
+    const maybe = g.magazines.toReview().find((m) => m.title === 'Wario Land')!;
+    expect(g.magazines.answer(maybe.id, { answer: 'yes' })).toBe(true);
+    g.magazines.markGame(id, 1, { platformKey: 'super-nintendo', title: 'Stunt Race FX', box: [10, 10, 200, 80] });
+    g.magazines.markGame(id, 3, { platformKey: 'super-nintendo', title: 'Star Fox', box: [10, 10, 200, 80] });
+    g.magazines.setPageOffset(id, 3, 1);
+    expect(found()).toEqual([
+      [1, 'Stunt Race FX', 'owner', 'linked'],
+      [2, 'Super Metroid', 'ocr', 'linked'],
+      [2, 'Wario Land', 'ocr', 'linked'],
+      [3, 'Star Fox', 'owner', 'linked'],
+    ]);
+    expect(await hits('metroid')).toEqual([2]);
+
+    // Another scan put in its place: the same name, the same size, as many pages, other pictures. Only its pages'
+    // fingerprint tells.
+    const size = statSync(file).size;
+    scanOf(file, 'B', 3);
+    dated(file, 1);
+    expect(statSync(file).size).toBe(size);
+    expect(await g.magazines.scan()).toBe('1 issues, 1 changed (1 with other pages, to be read again)');
+    // The text of pages that are no longer there is gone, from the search too, and the issue is back in line.
+    expect(issue()).toMatchObject({ id, pages: 3, text_state: 'none', text_at: null });
+    expect((db.prepare('SELECT COUNT(*) AS n FROM pages').get() as { n: number }).n).toBe(0);
+    expect(await hits('metroid')).toEqual([]);
+    // The games found in the old text are gone, the answered one too; the owner's marks stay, and so does the page
+    // offset (as many pages as before).
+    expect(found()).toEqual([
+      [1, 'Stunt Race FX', 'owner', 'linked'],
+      [3, 'Star Fox', 'owner', 'linked'],
+    ]);
+    expect(issue().page_offset).toBe(2);
+    expect(db.prepare("SELECT 1 FROM state WHERE key LIKE 'spotted:%'").get()).toBeUndefined();
+    // Read again, and looked through again: the review is on page 3 now, and the owner's answer still holds.
+    expect(await g.magazines.readText(() => undefined, true)).toBe('1 issue read (3 pages)');
+    expect(issue()).toMatchObject({ text_state: 'ocr' });
+    expect(await hits('metroid')).toEqual([3]);
+    await g.magazines.spotGames(() => GAMES);
+    expect(found()).toEqual([
+      [1, 'Stunt Race FX', 'owner', 'linked'],
+      [3, 'Star Fox', 'owner', 'linked'],
+      [3, 'Super Metroid', 'ocr', 'linked'],
+      [3, 'Wario Land', 'ocr', 'linked'],
+    ]);
+
+    // A shorter scan: the page offset can't be trusted any more, and a mark on a page that's gone goes with it.
+    scanOf(file, 'C', 2);
+    dated(file, 2);
+    expect(await g.magazines.scan()).toBe('1 issues, 1 changed (1 with other pages, to be read again)');
+    expect(issue()).toMatchObject({ id, pages: 2, text_state: 'none', text_at: null, page_offset: null });
+    expect(found()).toEqual([[1, 'Stunt Race FX', 'owner', 'linked']]);
+    expect(await g.magazines.readText(() => undefined, true)).toBe('1 issue read (2 pages)');
+    expect(await hits('metroid')).toEqual([1]);
+  });
+
+  it("forgets a gone file's games with it, so a file that comes back starts clean, and clears the games of issues long gone (D243)", async () => {
+    dir = mkdtempSync(join(tmpdir(), 'squirrelcade-magazines-'));
+    mkdirSync(join(dir, 'Electronic Gaming Monthly'));
+    mkdirSync(join(dir, '_out'));
+    const file = join(dir, 'Electronic Gaming Monthly', EGM59);
+    scanOf(file, 'A', 3);
+    g = await testApp({ magazineReader: readScan });
+    g.settings.update({ 'features.magazines': true, 'magazines.folder': dir, 'magazines.ocr': true });
+    const db = storeOf(g);
+    const count = (sql: string) => (db.prepare(sql).get() as { n: number }).n;
+    await g.magazines.scan();
+    await g.magazines.readText(() => undefined, true);
+    const first = (db.prepare('SELECT id FROM issues').get() as { id: number }).id;
+    g.magazines.seedCitations([{ platformKey: 'super-nintendo', title: 'Donkey Kong Country', outlet: 'EGM', score: '9/10', work: 'EGM', date: 'June 1994', issue: null, page: '3' }]);
+    await g.magazines.spotGames(() => GAMES);
+    g.magazines.markGame(first, 1, { platformKey: 'super-nintendo', title: 'Stunt Race FX', box: [10, 10, 200, 80] });
+    expect(count('SELECT COUNT(*) AS n FROM mentions')).toBe(4);
+    // What an older version left behind: the games and the looked-through mark of an issue forgotten long ago.
+    db.prepare("INSERT INTO mentions (issue_id, page, title, title_key, source, state, created_at) VALUES (9999, 4, 'Left Behind', 'left behind', 'ocr', 'linked', '2026-11-20')").run();
+    db.prepare("INSERT INTO state (key, value) VALUES ('spotted:9999', 'x')").run();
+
+    // The file moved out of the library: its issue goes, and everything on its pages with it.
+    renameSync(file, join(dir, '_out', EGM59));
+    expect(await g.magazines.scan()).toBe('0 issues, 1 gone');
+    expect(count('SELECT COUNT(*) AS n FROM mentions')).toBe(0);
+    expect(count("SELECT COUNT(*) AS n FROM state WHERE key LIKE 'spotted:%'")).toBe(0);
+    expect(count('SELECT COUNT(*) AS n FROM pages')).toBe(0);
+    // What isn't an issue's stays (the reading's estimate).
+    expect(count("SELECT COUNT(*) AS n FROM state WHERE key = 'ocrEstimate'")).toBe(1);
+
+    // Back again: a new issue (it may well be given the old one's number), with nothing of the old one's.
+    renameSync(join(dir, '_out', EGM59), file);
+    expect(await g.magazines.scan()).toBe('1 issues, 1 new');
+    const back = db.prepare('SELECT id, text_state FROM issues').get() as { id: number; text_state: string };
+    expect(back.text_state).toBe('none');
+    expect(g.magazines.gamesOn(back.id)).toEqual([]);
+    expect(await g.magazines.readText(() => undefined, true)).toBe('1 issue read (3 pages)');
+    await g.magazines.spotGames(() => GAMES);
+    expect(g.magazines.gamesOn(back.id).map((m) => [m.page, m.title, m.state])).toEqual([
+      [2, 'Super Metroid', 'linked'],
+      [2, 'Wario Land', 'suggested'],
+    ]);
+  });
+
+  it('leaves an issue as it is when its file is the same scan: untouched, dated anew (a library copied to another disk), or tagged again (D243)', async () => {
+    dir = mkdtempSync(join(tmpdir(), 'squirrelcade-magazines-'));
+    mkdirSync(join(dir, 'Electronic Gaming Monthly'));
+    const file = join(dir, 'Electronic Gaming Monthly', EGM59);
+    scanOf(file, 'A', 3);
+    dated(file, 0);
+    let read = 0;
+    g = await testApp({ magazineReader: async (image) => (read++, readScan(image)) });
+    const cookies = await setUp(g);
+    g.settings.update({ 'features.magazines': true, 'magazines.folder': dir, 'magazines.ocr': true });
+    const db = storeOf(g);
+    const issue = () => db.prepare('SELECT id, title, text_state, text_at, fingerprint FROM issues').get() as { id: number; title: string | null; text_state: string; text_at: string | null; fingerprint: string | null };
+    await g.magazines.scan();
+    await g.magazines.readText(() => undefined, true);
+    await g.magazines.spotGames(() => GAMES);
+    const { id, text_at: readAt, fingerprint } = issue();
+    expect(fingerprint).toMatch(/^[0-9a-f]{40}$/);
+    g.magazines.setPageOffset(id, 3, 1);
+    const kept = async () => {
+      expect(issue()).toMatchObject({ id, text_state: 'ocr', text_at: readAt, fingerprint });
+      expect((db.prepare('SELECT COUNT(*) AS n FROM pages').get() as { n: number }).n).toBe(3);
+      expect((await g.app.inject({ url: '/api/v1/magazines/search?q=metroid', cookies })).json().hits.map((h: { page: number }) => h.page)).toEqual([2]);
+      expect(g.magazines.gamesOn(id).map((m) => [m.page, m.title, m.state])).toEqual([
+        [2, 'Super Metroid', 'linked'],
+        [2, 'Wario Land', 'suggested'],
+      ]);
+      expect(g.magazines.issue(id)).toMatchObject({ pageOffset: 2 });
+      expect(await g.magazines.readText(() => undefined, true)).toBe('Nothing left to read');
+      expect(read).toBe(3);
+    };
+    // Untouched: not even opened.
+    expect(await g.magazines.scan()).toBe('1 issues');
+    await kept();
+    // A new date and nothing else, as every file has after a library is copied to another disk.
+    dated(file, 30);
+    expect(await g.magazines.scan()).toBe('1 issues, 1 changed');
+    await kept();
+    // The same pictures packed again with a ComicInfo.xml (a tagging tool's work): another size, a new title, the same pages.
+    const size = statSync(file).size;
+    scanOf(file, 'A', 3, { Series: 'Electronic Gaming Monthly', Number: 59, Year: 1994, Month: 6, Title: 'Super Metroid' });
+    dated(file, 31);
+    expect(statSync(file).size).not.toBe(size);
+    expect(await g.magazines.scan()).toBe('1 issues, 1 changed');
+    expect(issue().title).toBe('Super Metroid');
+    await kept();
+  });
+
+  it('takes the fingerprint of an issue read by an older version once, and until then tells another scan by its size or its pages (D243)', async () => {
+    dir = mkdtempSync(join(tmpdir(), 'squirrelcade-magazines-'));
+    mkdirSync(join(dir, 'Electronic Gaming Monthly'));
+    const file = join(dir, 'Electronic Gaming Monthly', EGM59);
+    scanOf(file, 'A', 3);
+    dated(file, 0);
+    g = await testApp({ magazineReader: readScan });
+    g.settings.update({ 'features.magazines': true, 'magazines.folder': dir, 'magazines.ocr': true });
+    const db = storeOf(g);
+    const issue = () => db.prepare('SELECT text_state, fingerprint FROM issues').get() as { text_state: string; fingerprint: string | null };
+    const older = () => db.prepare('UPDATE issues SET fingerprint = NULL').run();
+    await g.magazines.scan();
+    await g.magazines.readText(() => undefined, true);
+    const { fingerprint } = issue();
+    // As an older version left it: no fingerprint. The next read of the folder takes it, and nothing else changes.
+    older();
+    expect(await g.magazines.scan()).toBe('1 issues');
+    expect(issue()).toEqual({ text_state: 'ocr', fingerprint });
+    // No fingerprint yet and a new date: the same size and as many pages, so the same scan.
+    older();
+    dated(file, 30);
+    expect(await g.magazines.scan()).toBe('1 issues, 1 changed');
+    expect(issue()).toEqual({ text_state: 'ocr', fingerprint });
+    // No fingerprint yet and a fuller scan in its place: another size and more pages, so it's read again.
+    older();
+    scanOf(file, 'B', 5);
+    dated(file, 31);
+    expect(await g.magazines.scan()).toBe('1 issues, 1 changed (1 with other pages, to be read again)');
+    expect(issue().text_state).toBe('none');
+    expect(issue().fingerprint).not.toBe(fingerprint);
   });
 });

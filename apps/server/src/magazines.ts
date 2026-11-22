@@ -1,6 +1,7 @@
 import { baseTitle, citationMonth, citedIssueNumber, matchKey, printedKey, SPOT_VERSION, spotIndex, spotIssueSteps, type SpotCandidate, type SpotMention, type SpotPage, coverLeadFor, guessDates, magazineGaps, magazineOf, neverPrinted, printedPage, type MissingIssue, type MissingMonth, type NumberJump, issueFromFileName, issueLabel, pageNames, parseComicInfo, parseHocr, skippedName, writeHocr, type IssueInfo, type IssueToDate, type PageWord } from '@squirrelcade/core';
 import Database from 'better-sqlite3';
 import { spawn } from 'node:child_process';
+import { createHash } from 'node:crypto';
 import { accessSync, constants, existsSync, mkdirSync, readdirSync, renameSync, rmSync, statSync, type Dirent } from 'node:fs';
 import { mkdir, open, readdir, readFile, rm, stat, utimes, writeFile } from 'node:fs/promises';
 import { basename, join, relative } from 'node:path';
@@ -20,7 +21,8 @@ import { ZipFileWriter } from './zip.js';
  * changed). Everything Squirrelcade learns from them (the issues, their pages' text and word boxes, the search index)
  * is kept in a database of its own, magazines.db in the config folder: rebuildable from the scans, so left out of
  * backups. Reading the library opens a CBZ only for its table of contents and its small ComicInfo.xml, and only when
- * the file changed; a page is read from its CBZ when it's shown.
+ * the file changed; a page is read from its CBZ when it's shown. A file whose pages are other pictures than before
+ * (another scan under the same name, told by pagesFingerprint) loses what was read from the old ones and is read again.
  */
 
 /** A file or folder the magazines folder's permissions keep Squirrelcade out of (D196). */
@@ -86,6 +88,8 @@ interface TextManifest {
 interface ZipItem {
   name: string;
   method: number;
+  /** The file's CRC-32, as the table of contents gives it. */
+  crc: number;
   compressed: number;
   size: number;
   offset: number;
@@ -148,7 +152,7 @@ export async function zipContents(path: string): Promise<ZipItem[]> {
           e += 4 + len;
         }
       }
-      items.push({ name: cd.toString('utf8', p + 46, p + 46 + nameLen), method: cd.readUInt16LE(p + 10), compressed, size, offset });
+      items.push({ name: cd.toString('utf8', p + 46, p + 46 + nameLen), method: cd.readUInt16LE(p + 10), crc: cd.readUInt32LE(p + 16), compressed, size, offset });
       p += 46 + nameLen + extraLen + commentLen;
     }
     return items;
@@ -173,6 +177,22 @@ export async function zipRead(path: string, item: ZipItem): Promise<Buffer> {
   } finally {
     await fh.close();
   }
+}
+
+/**
+ * What a CBZ's pages are, from its table of contents alone (D243): each page's CRC-32 and size, in page order. The same
+ * pictures give the same fingerprint however the file is dated, packed or tagged (a library copied to another disk, a
+ * ComicInfo.xml written into it, pages renamed in the same order); another scan of the issue never does.
+ */
+export function pagesFingerprint(items: readonly ZipItem[]): string {
+  const byName = new Map<string, ZipItem>();
+  for (const i of items) if (!byName.has(i.name)) byName.set(i.name, i);
+  const hash = createHash('sha1');
+  for (const name of pageNames(items.map((i) => i.name))) {
+    const page = byName.get(name)!;
+    hash.update(`${page.crc}:${page.size};`);
+  }
+  return hash.digest('hex');
 }
 
 /** The widths a page is made at for screens (D182): a step up from what's asked, so few are made and kept. */
@@ -396,6 +416,8 @@ export class MagazineService {
       if (!columns.includes('page_offset')) this.db.exec('ALTER TABLE issues ADD COLUMN page_offset INTEGER');
       // D209: when an issue's text was read or brought in, for an export of only what's new since the last.
       if (!columns.includes('text_at')) this.db.exec('ALTER TABLE issues ADD COLUMN text_at TEXT');
+      // D243: the fingerprint of the file's pages (pagesFingerprint), to tell another scan under the same name.
+      if (!columns.includes('fingerprint')) this.db.exec('ALTER TABLE issues ADD COLUMN fingerprint TEXT');
       // The consoles a mention's page names (item 11 of the owner's 1.3 list), for the chest on its game.
       if (!(this.db.prepare('PRAGMA table_info(mentions)').all() as { name: string }[]).some((c) => c.name === 'consoles')) this.db.exec('ALTER TABLE mentions ADD COLUMN consoles TEXT');
     }
@@ -420,9 +442,12 @@ export class MagazineService {
     const seen = new Set<string>();
     let added = 0;
     let changed = 0;
+    let replaced = 0;
     let failed = 0;
     let locked = 0;
-    const known = new Map((db.prepare('SELECT path, file_size AS size, file_mtime AS mtime FROM issues').all() as { path: string; size: number; mtime: number }[]).map((r) => [r.path, r]));
+    type Known = { id: number; path: string; size: number; mtime: number; pages: number; fingerprint: string | null };
+    const known = new Map((db.prepare('SELECT id, path, file_size AS size, file_mtime AS mtime, pages, fingerprint FROM issues').all() as Known[]).map((r) => [r.path, r]));
+    const fingerprinted = db.prepare('UPDATE issues SET fingerprint = ? WHERE id = ?');
     // D196: a folder Squirrelcade can't enter is said plainly (the task fails, so System > Status shows it), and
     // what was read of it before is kept.
     let entries: Dirent[];
@@ -451,14 +476,39 @@ export class MagazineService {
         seen.add(rel);
         try {
           const st = await stat(path);
+          const mtime = Math.round(st.mtimeMs);
           const was = known.get(rel);
-          if (was && was.size === st.size && was.mtime === Math.round(st.mtimeMs)) continue;
+          if (was && was.size === st.size && was.mtime === mtime) {
+            // Read by a version that kept no fingerprint (before D243): taken once, from the table of contents, and
+            // its text left as it is. A file that can't be opened now waits for the next read.
+            if (was.fingerprint === null) {
+              try {
+                fingerprinted.run(pagesFingerprint(await zipContents(path)), was.id);
+              } catch {
+                // Tried again at the next read.
+              }
+            }
+            continue;
+          }
           const items = await zipContents(path);
           const info = items.find((i) => /(^|\/)comicinfo\.xml$/i.test(i.name));
           const fromInfo = info ? parseComicInfo((await zipRead(path, info)).toString('utf8')) : null;
           const fromName = issueFromFileName(file.name);
           const issue: IssueInfo = fromInfo?.magazine ? { ...fromName, ...Object.fromEntries(Object.entries(fromInfo).filter(([, v]) => v !== null)) } : fromName;
-          this.saveIssue(rel, dir.name, issue, pageNames(items.map((i) => i.name)).length, st.size, Math.round(st.mtimeMs), fromInfo?.magazine ? 'comicinfo' : 'filename');
+          const pages = pageNames(items.map((i) => i.name)).length;
+          const fingerprint = pagesFingerprint(items);
+          // D243: a known file with other pages than before is another scan under the same name. Told by its pages'
+          // fingerprint; for an issue that has none yet, by its size or its number of pages. A new date alone (a
+          // library copied to another disk) or the same pages packed or tagged again is the same scan: its text stays.
+          const otherPages = was !== undefined && (was.fingerprint !== null ? was.fingerprint !== fingerprint : was.size !== st.size || was.pages !== pages);
+          db.transaction(() => {
+            this.saveIssue(rel, dir.name, issue, pages, st.size, mtime, fromInfo?.magazine ? 'comicinfo' : 'filename', fingerprint);
+            if (was && otherPages) this.unread(was.id, pages, was.pages === pages);
+          })();
+          if (was && otherPages) {
+            replaced++;
+            this.log.info({ context: 'magazines' }, `${rel} has other pages than before (${was.pages} then, ${pages} now): its text and the games found in it are dropped, and it's back in line to be read`);
+          }
           if (was) changed++;
           else added++;
         } catch (err) {
@@ -471,6 +521,7 @@ export class MagazineService {
     // Files gone from the folder: their issues, and their text, forgotten.
     const gone = [...known.keys()].filter((p) => !seen.has(p));
     for (const p of gone) this.forget(p);
+    this.clearOrphans();
     const dated = this.fillDates();
     const requeued = this.requeueUnlocked();
     const text = await this.importText(progress);
@@ -491,7 +542,7 @@ export class MagazineService {
       }
     }
     const issues = (db.prepare('SELECT COUNT(*) AS n FROM issues').get() as { n: number }).n;
-    const message = `${issues} issues${added > 0 ? `, ${added} new` : ''}${changed > 0 ? `, ${changed} changed` : ''}${gone.length > 0 ? `, ${gone.length} gone` : ''}${failed > 0 ? `, ${failed} couldn't be read` : ''}${locked > 0 ? `, ${locked} couldn't be opened (their permissions: Help > Magazines)` : ''}${requeued > 0 ? `; ${requeued} back in line for their text` : ''}${dated > 0 ? `; ${dated} dated by the magazine index` : ''}${text > 0 ? `; text brought in for ${text}` : ''}${shared > 0 ? `; a friend's text for ${shared}` : ''}`;
+    const message = `${issues} issues${added > 0 ? `, ${added} new` : ''}${changed > 0 ? `, ${changed} changed` : ''}${replaced > 0 ? ` (${replaced} with other pages, to be read again)` : ''}${gone.length > 0 ? `, ${gone.length} gone` : ''}${failed > 0 ? `, ${failed} couldn't be read` : ''}${locked > 0 ? `, ${locked} couldn't be opened (their permissions: Help > Magazines)` : ''}${requeued > 0 ? `; ${requeued} back in line for their text` : ''}${dated > 0 ? `; ${dated} dated by the magazine index` : ''}${text > 0 ? `; text brought in for ${text}` : ''}${shared > 0 ? `; a friend's text for ${shared}` : ''}`;
     return locked > 0 || failed > 0 ? { message, warning: true } : message;
   }
 
@@ -518,17 +569,47 @@ export class MagazineService {
     return n;
   }
 
-  private saveIssue(path: string, folder: string, info: IssueInfo, pages: number, size: number, mtime: number, namedBy: string): void {
+  private saveIssue(path: string, folder: string, info: IssueInfo, pages: number, size: number, mtime: number, namedBy: string, fingerprint: string): void {
     const db = this.store();
     const name = info.magazine ?? folder;
     db.prepare('INSERT INTO magazines (name, folder, publisher) VALUES (?, ?, ?) ON CONFLICT(name) DO UPDATE SET publisher = COALESCE(excluded.publisher, publisher)').run(name, folder, info.publisher);
     const magazine = (db.prepare('SELECT id FROM magazines WHERE name = ?').get(name) as { id: number }).id;
     db.prepare(
-      `INSERT INTO issues (magazine_id, path, file_size, file_mtime, number, volume, year, month, title, pages, named_by, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      `INSERT INTO issues (magazine_id, path, file_size, file_mtime, number, volume, year, month, title, pages, named_by, updated_at, fingerprint) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
        ON CONFLICT(path) DO UPDATE SET magazine_id = excluded.magazine_id, file_size = excluded.file_size, file_mtime = excluded.file_mtime, number = excluded.number, volume = excluded.volume,
-         year = excluded.year, month = excluded.month, date_from = NULL, title = excluded.title, pages = excluded.pages, named_by = excluded.named_by, problem = NULL, updated_at = excluded.updated_at`,
-    ).run(magazine, path, size, mtime, info.number, info.volume, info.year, info.month, info.title, pages, namedBy, new Date().toISOString());
+         year = excluded.year, month = excluded.month, date_from = NULL, title = excluded.title, pages = excluded.pages, named_by = excluded.named_by, problem = NULL, updated_at = excluded.updated_at,
+         fingerprint = excluded.fingerprint`,
+    ).run(magazine, path, size, mtime, info.number, info.volume, info.year, info.month, info.title, pages, namedBy, new Date().toISOString(), fingerprint);
     this.contents.delete(path);
+  }
+
+  /** An issue's page text and its rows in the search. */
+  private dropText(issueId: number): void {
+    const db = this.store();
+    // The search's table has no index by issue, so it's left alone when the issue has no text.
+    if (!db.prepare('SELECT 1 FROM pages WHERE issue_id = ? LIMIT 1').get(issueId)) return;
+    db.prepare('DELETE FROM pages WHERE issue_id = ?').run(issueId);
+    db.prepare('DELETE FROM pages_fts WHERE issue_id = ?').run(issueId);
+  }
+
+  /**
+   * A known issue whose file holds other pages now (D243): what was read from the old ones goes, and it's back in line
+   * for its text.
+   * - Its page text, its rows in the search and the games found in that text (answered ones too: an answer lives on as
+   *   a rule for those words, applied when the new text is looked through) are dropped, with the mark that it was
+   *   looked through.
+   * - The owner's own marks stay, on the page and in the box they were given (they can't be made again; Not on this
+   *   page, on the game's card, takes one off), but for a mark on a page past the new last one.
+   * - The printed page offset stays when the file has as many pages as before, and is forgotten when it hasn't: a
+   *   wrong one would open every cited review at the wrong page, an unknown one asks once.
+   * - Cited reviews are left to seedCitations, which makes them all again each day.
+   */
+  private unread(issueId: number, pages: number, samePageCount: boolean): void {
+    const db = this.store();
+    this.dropText(issueId);
+    db.prepare("DELETE FROM mentions WHERE issue_id = ? AND (source = 'ocr' OR (source = 'owner' AND page > ?))").run(issueId, pages);
+    db.prepare('DELETE FROM state WHERE key = ?').run(`spotted:${issueId}`);
+    db.prepare(`UPDATE issues SET text_state = 'none', text_at = NULL${samePageCount ? '' : ', page_offset = NULL'} WHERE id = ?`).run(issueId);
   }
 
   /**
@@ -550,13 +631,40 @@ export class MagazineService {
     return fills;
   }
 
+  /** A file gone from the folder: its issue, its text, every game on its pages and the mark that it was looked through. */
   private forget(path: string): void {
     const db = this.store();
     const row = db.prepare('SELECT id FROM issues WHERE path = ?').get(path) as { id: number } | undefined;
     if (!row) return;
-    db.prepare('DELETE FROM pages WHERE issue_id = ?').run(row.id);
-    db.prepare('DELETE FROM pages_fts WHERE issue_id = ?').run(row.id);
-    db.prepare('DELETE FROM issues WHERE id = ?').run(row.id);
+    db.transaction(() => {
+      this.dropText(row.id);
+      db.prepare('DELETE FROM mentions WHERE issue_id = ?').run(row.id);
+      db.prepare('DELETE FROM state WHERE key = ?').run(`spotted:${row.id}`);
+      db.prepare('DELETE FROM issues WHERE id = ?').run(row.id);
+    })();
+  }
+
+  /**
+   * The games and looked-through marks of issues that are gone (D243): forgetting an issue left them behind before,
+   * unseen, and a new issue given a gone one's number would have taken them for its own. Cleared at each read of the
+   * folder, by walking the mentions' index an issue at a time (a few milliseconds when there's nothing to clear).
+   * How many games went.
+   */
+  private clearOrphans(): number {
+    const db = this.store();
+    const next = db.prepare('SELECT issue_id AS id FROM mentions WHERE issue_id > ? ORDER BY issue_id LIMIT 1');
+    const here = db.prepare('SELECT 1 FROM issues WHERE id = ?');
+    const drop = db.prepare('DELETE FROM mentions WHERE issue_id = ?');
+    const cleared = db.transaction(() => {
+      let n = 0;
+      for (let row = next.get(0) as { id: number } | undefined; row; row = next.get(row.id) as { id: number } | undefined) {
+        if (!here.get(row.id)) n += drop.run(row.id).changes;
+      }
+      db.prepare("DELETE FROM state WHERE key >= 'spotted:' AND key < 'spotted;' AND CAST(substr(key, 9) AS INTEGER) NOT IN (SELECT id FROM issues)").run();
+      return n;
+    })();
+    if (cleared > 0) this.log.info({ context: 'magazines' }, `${cleared} games found in issues that are gone were cleared`);
+    return cleared;
   }
 
   /**

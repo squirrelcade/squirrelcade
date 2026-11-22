@@ -16,6 +16,12 @@
 
 Squirrelcade reads the folder a few minutes after it starts and then every night (**Read the folder now** on Leaves does it at once). The first time it reads every issue's table of contents and `ComicInfo.xml` only (a few kilobytes each, never the whole scan), so even a big library is read in minutes; after that, only the files that changed. Folders and files starting with `_` or `.` are left out (**Folders and files to leave out**).
 
+**When a file changes.** Squirrelcade tells whether a changed file still holds the same pages from its table of contents (each page's checksum and size, in order), not from its date or size:
+
+- **The same pages** (a library copied to another disk, a `ComicInfo.xml` written into the file, the same pictures packed again): its name, number and date are read again, and its text and the games found in it stay as they are.
+- **Other pages** (another scan of the issue put in its place under the same name): what was read from the old pages no longer fits, so its text, its search results and the games found in that text are dropped, and the issue is back in line to be read (the folder's read says how many: "1 with other pages, to be read again"). Your answers on Review > Magazines are kept and applied to the new text. Games you marked by hand stay on the pages you marked them on, so check them (**Not on this page** on a game's card takes one off); one on a page the new file no longer has is dropped. The printed page number you typed in the **p.** box is kept when the file has as many pages as before, and asked again when it hasn't.
+- **A file taken out of the folder** is forgotten with its text and every game on its pages, your marks among them; put back, it's a new issue.
+
 **If Squirrelcade can't read the folder.** Squirrelcade runs as the `user:` in your compose file (`1000:1000`, say), and that account needs permission to read the magazines folder and every file in it. When it can't, the folder's light on **System > Status > Integrations** turns red with "Squirrelcade can't open the magazines folder", the night's reading stops instead of marking every issue failed, and the issues it couldn't open are counted apart from ones that couldn't be read. Give the account read permission (on Linux, `sudo chmod -R a+rX /path/to/Magazines`; on a Synology, the folder's Permissions, read for that user or Everyone), then **Check now** on its line: the issues that couldn't be opened go back in line by themselves.
 
 ## Reading their text at night
