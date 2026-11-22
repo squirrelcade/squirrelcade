@@ -313,7 +313,7 @@ describe('Leaves: the magazine scans (D177)', () => {
     expect((await g.app.inject({ url: '/api/v1/game/magazines?title=Donkey%20Kong%20Country', cookies })).json().mentions).toEqual([
       expect.objectContaining({ page: 3, source: 'citation', score: '9/10', printed: 'EGM' }),
     ]);
-    // Wario Land is a maybe (two words in small type): on Review > Magazines.
+    // Wario Land is a maybe (two words found once, nothing else in the issue to go on): on Review > Magazines.
     const review = (await g.app.inject({ url: '/api/v1/magazines/review', cookies })).json().mentions;
     expect(review.map((m: { title: string; state: string }) => [m.title, m.state])).toEqual([['Wario Land', 'suggested']]);
     // The owner says yes: linked, and a rule for those words from now on.

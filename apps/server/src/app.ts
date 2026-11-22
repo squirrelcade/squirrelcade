@@ -1,7 +1,7 @@
 import cookie from '@fastify/cookie';
 import multipart from '@fastify/multipart';
 import fastifyStatic from '@fastify/static';
-import { CONSOLE_MARKS, dayIn, FEATURE_SETTINGS, normalizeTitle, regionalConsole, settingDefinitions, type FeatureKey, type SettingDefinition } from '@squirrelcade/core';
+import { dayIn, FEATURE_SETTINGS, normalizeTitle, settingDefinitions, spotWindow, type FeatureKey, type SettingDefinition } from '@squirrelcade/core';
 import { eq } from 'drizzle-orm';
 import Fastify, { LogController, type FastifyBaseLogger, type FastifyInstance } from 'fastify';
 import { existsSync, mkdirSync } from 'node:fs';
@@ -738,18 +738,9 @@ export async function buildApp(options: BuildOptions = {}): Promise<Squirrelcade
       const cited = magazines.seedCitations(roots.printedReviews());
       // What's missing (D221): the magazines your games' reviews cite, and the issues they're in.
       if (settings.get('magazines.suggest')) magazines.setCited(await roots.citedMagazines());
-      const [before, after] = settings
-        .get('magazines.spotYears')
-        .split(/[,\s]+/)
-        .map(Number)
-        .map((n) => (Number.isFinite(n) ? n : 1)) as [number, number];
-      const makers = settings.get('magazines.makers');
-      const spotted = await magazines.spotGames(({ magazine, year, month }) => {
-        const maker = makers.map((l) => l.split(':')).find(([name]) => name!.trim().toLowerCase() === magazine.toLowerCase())?.[1]?.trim().toLowerCase();
-        const keep = (key: string) => !maker || (CONSOLE_MARKS[key] ?? CONSOLE_MARKS[regionalConsole(key)?.base ?? ''])?.company === maker;
-        const from = `${year - (before ?? 2)}-${String(month ?? 1).padStart(2, '0')}-01`;
-        const to = `${year + (after ?? 1)}-${String(month ?? 12).padStart(2, '0')}-28`;
-        return timeMachine.releasesBetween(from, to, keep);
+      const spotted = await magazines.spotGames((issue) => {
+        const w = spotWindow(issue, settings.get('magazines.spotYears'), settings.get('magazines.makers'), settings.get('magazines.spotYearsOlder'));
+        return timeMachine.releasesBetween(w.from, w.to, w.keep);
       }, progress);
       return `${cited} reviews cited from Wikipedia found in your issues; ${spotted}`;
     },

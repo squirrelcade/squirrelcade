@@ -795,3 +795,12 @@ export function metacriticFor(reviews: readonly ReviewRow[], platformKey: string
   const whole = mc.scores.filter((s) => s.platform === null);
   return whole.length === 1 && mc.scores.length === 1 ? num(whole[0]!.score) : null;
 }
+
+/**
+ * A game's title from its Wikipedia article's name: the name without the words Wikipedia adds to tell articles apart
+ * ("Deadpool (video game)", "Sonic the Hedgehog (1991 video game)", "Frogger (handheld video game)").
+ */
+export function articleGameTitle(article: string): string {
+  const title = article.replace(/\s+\((?:[^()]*\s)?(?:video game|game|series|franchise)\)\s*$/i, '').trim();
+  return title || article;
+}

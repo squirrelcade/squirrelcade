@@ -9,6 +9,11 @@ describe("a review's citation in the owner's magazines (D191)", () => {
     expect(magazineOf("''Nintendo Power''", mine)).toBe('Nintendo Power');
     expect(magazineOf('Official U.S. PlayStation Magazine', mine)).toBe('Official U.S. PlayStation Magazine');
     expect(magazineOf('Famitsu', mine)).toBeNull();
+    // A magazine cited by its country's edition or its later name is the one held.
+    expect(magazineOf('Official Xbox Magazine US', ['Official Xbox Magazine'])).toBe('Official Xbox Magazine');
+    expect(magazineOf('NextGen', ['Next Generation'])).toBe('Next Generation');
+    // Its website isn't its print issues.
+    expect(magazineOf('Official Xbox Magazine online', ['Official Xbox Magazine'])).toBeNull();
   });
   it('reads the month, the page and the issue', () => {
     expect(citationMonth('1994-06')).toEqual({ year: 1994, month: 6 });

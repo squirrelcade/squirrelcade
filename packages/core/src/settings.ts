@@ -2582,6 +2582,14 @@ export const settingDefinitions = {
     default: '2, 1',
     maxLength: 10,
   }),
+  'magazines.spotYearsOlder': list({
+    page: 'magazines',
+    section: 'The games on the page',
+    label: 'Older issues look further back',
+    description: 'Issues through a year look further back, as "1989: 6, 1" (through 1989: six years before, one after): games then took years to cross the sea, and the first magazines wrote of the arcade games of the years before them.',
+    default: ['1989: 6, 1', '1994: 4, 1'],
+    maxItems: 10,
+  }),
   'magazines.makers': list({
     page: 'magazines',
     section: 'The games on the page',

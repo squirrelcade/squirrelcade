@@ -1,6 +1,6 @@
 {
   "name": "@squirrelcade/server",
-  "version": "1.6.1-rc.1",
+  "version": "1.6.1-rc.2",
   "private": true,
   "license": "AGPL-3.0-only",
   "description": "Squirrelcade server: API, tasks and database",
@@ -10,6 +10,7 @@
     "build": "tsup",
     "test": "vitest run",
     "typecheck": "tsc --noEmit",
+    "leaves:yardstick": "tsx src/yardstick/cli.ts",
     "db:generate": "drizzle-kit generate"
   },
   "devDependencies": {
@@ -25,7 +26,7 @@
     "@fastify/multipart": "^10.1.2",
     "@fastify/static": "^10.1.5",
     "@modelcontextprotocol/sdk": "^1.32.1",
-    "@squirrelcade/core": "^1.6.1-rc.1",
+    "@squirrelcade/core": "^1.6.1-rc.2",
     "better-sqlite3": "^13.0.3",
     "drizzle-orm": "^0.45.3",
     "fastify": "^5.12.5",
