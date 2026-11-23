@@ -209,4 +209,22 @@ describe('the games on a magazine page (D192, D242)', () => {
     expect(scoresOn('Page 28 of 1994 issue 59', 'Electronic Gaming Monthly')).toBeNull();
     expect(scoresOn('POWER METER G 4.5 P 4.0 C 3.5 T 4.5', 'Nintendo Power')).toBe('G 4.5 · P 4.0 · C 3.5 · T 4.5');
   });
+  it("looks through a page both ways where a second read made something else of a word (D244)", () => {
+    const at = (text: string, x: number, alt?: string) => ({ text, box: [x, 100, x + 80, 120] as [number, number, number, number], ...(alt === undefined ? {} : { alt }) });
+    const games = [
+      { platformKey: 'dreamcast', title: 'Space Channel 5', day: '2000-06-04' },
+      { platformKey: 'dreamcast', title: 'Jet Grind Radio', day: '2000-10-30' },
+    ];
+    // The first read got a letter short ("Chanel"); the second read it right.
+    const first = [at('Space', 0), at('Chanel', 100), at('5', 200), at('is', 300), at('the', 400), at('funkiest', 500), at('game', 600), at('since', 700), at('Jet', 800), at('Grind', 900), at('Radio', 1000)];
+    expect(spotTitles(first, games, '2000-08-01').map((s) => s.title)).toEqual(['Jet Grind Radio']);
+    const both = first.map((w) => (w.text === 'Chanel' ? at('Chanel', 100, 'Channel') : w));
+    const found = spotTitles(both, games, '2000-08-01');
+    expect(found.map((s) => s.title).sort()).toEqual(['Jet Grind Radio', 'Space Channel 5']);
+    expect(found.find((s) => s.title === 'Space Channel 5')!.printed).toBe('Space Channel 5');
+    // A game both readings name is the same game once, no surer for being read twice.
+    expect(found.find((s) => s.title === 'Jet Grind Radio')).toEqual(spotTitles(first, games, '2000-08-01')[0]);
+    // And a second reading that names nothing changes nothing.
+    expect(spotTitles(first.map((w) => (w.text === 'funkiest' ? at('funkiest', 500, 'funkiesl') : w)), games, '2000-08-01')).toEqual(spotTitles(first, games, '2000-08-01'));
+  });
 });

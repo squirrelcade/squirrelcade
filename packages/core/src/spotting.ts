@@ -341,8 +341,23 @@ const ALWAYS_CAPITAL = new Set(
  */
 export function spotTitles(words: readonly PageWord[], candidates: readonly SpotCandidate[] | SpotIndex, coverDay: string, context?: SpotContext): Spotted[] {
   if (words.length === 0) return [];
-  const { first } = Array.isArray(candidates) ? spotIndex(candidates, coverDay) : (candidates as SpotIndex);
-  const { lower, lowerPairs } = context ?? spotContext([words]);
+  const index = Array.isArray(candidates) ? spotIndex(candidates, coverDay) : (candidates as SpotIndex);
+  const own = context ?? spotContext([words]);
+  const found = spotRead(words, index, own);
+  // D244: where a second read made something else of a word, and surely, the page is looked through that way too
+  // ("Space Channel 5" where the first read made "Chanel" of it). A game found both ways is the same game once, as
+  // the surer of the two found it.
+  if (!words.some((w) => w.alt !== undefined)) return found;
+  const byKey = new Map(found.map((f) => [`${f.platformKey}|${f.title}`, f] as const));
+  for (const f of spotRead(words.map((w) => (w.alt !== undefined ? { text: w.alt, box: w.box } : w)), index, own)) {
+    const had = byKey.get(`${f.platformKey}|${f.title}`);
+    if (!had || f.confidence > had.confidence) byKey.set(`${f.platformKey}|${f.title}`, f);
+  }
+  return [...byKey.values()];
+}
+
+/** One reading of a page looked through (spotTitles). */
+function spotRead(words: readonly PageWord[], { first }: SpotIndex, { lower, lowerPairs }: SpotContext): Spotted[] {
   // The page's words as compared, each knowing the printed word it's from.
   const tok: string[] = [];
   const from: number[] = [];

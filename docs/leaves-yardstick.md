@@ -53,6 +53,7 @@ Other options and commands:
 - `--only cited` looks through only the issues with a cited review (a third of the time, for trying things).
 - `--no-evidence` leaves each page as it alone reads (without what the rest of the issue settles); `--cited` lets a cited review settle a maybe, as the nightly task does. It's left out by default because the citations are what the finding is measured against.
 - `--link-at 0.8` and `--ask-at 0.6` try other bars than the install's.
+- `--without-second` leaves out what the second read of thin pages added (its words and its other readings of the first read's): two runs on the same copy, one with it and one without, say what that read brought.
 - `why --data <folder> --issue <id> --title "<game>"` says whether a game was a candidate for an issue, where its words are on the pages, and what the finding made of them.
 - `sample --data <folder> --run runs/after.db --not-in runs/before.db --n 100` prints 100 finds the second run doesn't have, each with its surroundings, to judge by hand.
 

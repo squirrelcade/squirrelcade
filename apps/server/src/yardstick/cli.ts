@@ -74,6 +74,7 @@ function shard(args: Args): void {
   const titleOf = args['raw-titles'] === true ? (t: string) => t : articleGameTitle;
   const setting = settingsOf(dataDir);
   // The bars to link and to ask at: the install's own, or others to try (--link-at 0.8).
+  const withoutSecond = args['without-second'] === true;
   const linkAt = typeof args['link-at'] === 'string' ? Number(args['link-at']) : setting('magazines.linkAt');
   const askAt = typeof args['ask-at'] === 'string' ? Number(args['ask-at']) : setting('magazines.askAt');
   const db = new Database(join(dataDir, 'magazines-audit.db'), { readonly: true, fileMustExist: true });
@@ -111,7 +112,8 @@ function shard(args: Args): void {
     }
     const month = (i.owner_year !== null ? i.owner_month : i.month) ?? 6;
     const coverDay = `${year}-${String(month).padStart(2, '0')}-01`;
-    const pages = (pagesOf.all(i.id) as { n: number; text: string; words: string }[]).map((p) => ({ n: p.n, text: p.text, words: JSON.parse(p.words) as PageWord[] }));
+    // --without-second leaves out what the second read added (D244: its words, and its other readings), to measure what that read brought.
+    const pages = (pagesOf.all(i.id) as { n: number; text: string; words: string }[]).map((p) => ({ n: p.n, text: p.text, words: withoutSecond ? (JSON.parse(p.words) as PageWord[]).filter((w) => !w.second).map((w) => ({ text: w.text, box: w.box })) : (JSON.parse(p.words) as PageWord[]) }));
     pagesRead += pages.length;
     // The games the issue is checked for, as the server's task makes them (app.ts, magazines-games).
     let index: SpotIndex | null = null;
@@ -184,7 +186,7 @@ function runShards(args: Args, outDir: string, label: string, parts: number): Pr
       (file, k) =>
         new Promise<string>((done, fail) => {
           rmSync(file, { force: true });
-          const pass = ['shard', '--data', str(args, 'data'), '--shard', `${k}/${parts}`, '--out', file, ...(args['stored'] === true ? ['--stored'] : []), ...['raw-titles', 'no-evidence', 'cited'].filter((flag) => args[flag] === true).map((flag) => `--${flag}`), ...['only', 'link-at', 'ask-at'].flatMap((name) => (typeof args[name] === 'string' ? [`--${name}`, args[name] as string] : []))];
+          const pass = ['shard', '--data', str(args, 'data'), '--shard', `${k}/${parts}`, '--out', file, ...(args['stored'] === true ? ['--stored'] : []), ...['raw-titles', 'no-evidence', 'cited', 'without-second'].filter((flag) => args[flag] === true).map((flag) => `--${flag}`), ...['only', 'link-at', 'ask-at'].flatMap((name) => (typeof args[name] === 'string' ? [`--${name}`, args[name] as string] : []))];
           const child = spawn(process.execPath, [...process.execArgv, self, ...pass], { stdio: ['ignore', 'inherit', 'inherit'], windowsHide: true });
           child.on('error', fail);
           child.on('exit', (code) => (code === 0 ? done(file) : fail(new Error(`shard ${k} ended with ${code}`))));
@@ -395,6 +397,6 @@ else if (command === 'why') why(args);
 else if (command === 'sample') sample(args);
 else if (command === 'sample-pages') samplePagesFile(args);
 else {
-  process.stderr.write('Leaves yardstick: run --data <folder> [--label name] [--stored] [--raw-titles] [--no-evidence] [--cited] [--link-at 0.8] [--ask-at 0.6] [--only cited] [--labels pages.json] [--shards n] [--out folder] | compare <before.json> <after.json> | why --data <folder> --issue <id> --title <game> | sample --data <folder> --run <run.db> [--not-in <run.db>] [--n 100] | sample-pages --data <folder> [--n 300] [--out pages.json]\n');
+  process.stderr.write('Leaves yardstick: run --data <folder> [--label name] [--stored] [--raw-titles] [--no-evidence] [--cited] [--without-second] [--link-at 0.8] [--ask-at 0.6] [--only cited] [--labels pages.json] [--shards n] [--out folder] | compare <before.json> <after.json> | why --data <folder> --issue <id> --title <game> | sample --data <folder> --run <run.db> [--not-in <run.db>] [--n 100] | sample-pages --data <folder> [--n 300] [--out pages.json]\n');
   process.exitCode = 1;
 }

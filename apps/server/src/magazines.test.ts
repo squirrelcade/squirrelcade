@@ -617,3 +617,161 @@ describe('Leaves: the magazine scans (D177)', () => {
     expect(issue().fingerprint).not.toBe(fingerprint);
   });
 });
+
+describe('Leaves: the second read of thin pages, and the search rows by page (D244)', () => {
+  const filler = (n: number, word: string) => Array.from({ length: n }, (_, k) => `${word}${k}`);
+  /** An article's lines: plenty of words, none of a review. */
+  const ARTICLE = [['Letters'], ...Array.from({ length: 13 }, (_, y) => filler(10, `mail${y}x`))];
+  /** A review's page whose heading the first read left out: plenty of words, a review's among them. */
+  const REVIEW = [['Review'], ['Graphics', '8', 'Gameplay', '9', 'Overall', '9'], ...Array.from({ length: 13 }, (_, y) => filler(10, `text${y}x`))];
+  const FIRST: Record<string, string[][]> = {
+    // An ad: its heading read in part.
+    'scan D page 1': [['SUPER']],
+    'scan D page 2': ARTICLE,
+    'scan D page 3': REVIEW,
+  };
+  /** What the sparse read finds: everything the first read had, and what its layout left out. */
+  const SPARSE: Record<string, string[][]> = {
+    'scan D page 1': [['SUPER', 'METROID']],
+    'scan D page 2': [...ARTICLE, ['Never', 'read']],
+    'scan D page 3': [...REVIEW, ['WARIO', 'LAND']],
+  };
+  const setup = async (reader: (image: Buffer, threads: number, mode?: 'sparse') => Promise<string>, second = true) => {
+    dir = mkdtempSync(join(tmpdir(), 'squirrelcade-magazines-'));
+    mkdirSync(join(dir, 'Electronic Gaming Monthly'));
+    const file = join(dir, 'Electronic Gaming Monthly', EGM59);
+    scanOf(file, 'D', 3);
+    dated(file, 0);
+    g = await testApp({ magazineReader: reader });
+    const cookies = await setUp(g);
+    g.settings.update({ 'features.magazines': true, 'magazines.folder': dir, 'magazines.ocr': true, 'magazines.secondRead': second });
+    return { file, cookies, db: storeOf(g) };
+  };
+
+  it("reads an issue's thin pages and its reviews again, adds what the first read left out, and has its games looked for again", async () => {
+    const sparseRead: string[] = [];
+    const { file, cookies, db } = await setup(async (image, _threads, mode) => {
+      if (mode !== 'sparse') return hocrPage(FIRST[image.toString()] ?? [['blank']]);
+      sparseRead.push(image.toString());
+      return hocrPage(SPARSE[image.toString()] ?? []);
+    });
+    const issue = () => db.prepare('SELECT id, text_state, text_at, second_at FROM issues').get() as { id: number; text_state: string; text_at: string | null; second_at: string | null };
+    const words = (n: number) => (JSON.parse((db.prepare('SELECT words FROM pages WHERE n = ?').get(n) as { words: string }).words) as { text: string; second?: true }[]).map((w) => `${w.text}${w.second ? '*' : ''}`);
+    const hits = async (q: string) => (await g.app.inject({ url: `/api/v1/magazines/search?q=${q}`, cookies })).json().hits.map((h: { page: number }) => h.page);
+    const found = () => (db.prepare("SELECT page, title FROM mentions WHERE source = 'ocr' ORDER BY page, title").all() as { page: number; title: string }[]).map((m) => `${m.page} ${m.title}`);
+    expect(await g.magazines.scan()).toBe('1 issues, 1 new');
+    // The first read comes first, and a forced read does one thing.
+    expect(await g.magazines.readText(() => undefined, true)).toBe('1 issue read (3 pages)');
+    expect(sparseRead).toEqual([]);
+    expect(issue()).toMatchObject({ text_state: 'ocr', second_at: null });
+    await g.magazines.spotGames(() => GAMES);
+    expect(found()).toEqual([]);
+    expect(await hits('metroid')).toEqual([]);
+    expect(g.magazines.status().secondLeft).toBe(1);
+    const readAt = issue().text_at;
+
+    // The second read: the ad (little text) and the review (a review's words), not the article.
+    const lines: string[] = [];
+    expect(await g.magazines.readText((line) => lines.push(line), true)).toBe('1 issue read a second time (2 pages, 3 words more)');
+    expect(sparseRead.sort()).toEqual(['scan D page 1', 'scan D page 3']);
+    expect(lines.at(-1)).toBe(`${EGM59}: second read, page 2 of 2`);
+    // The heading read in part is whole, the new word beside the one the first read had; the review's heading is on a
+    // line of its own after the page's other words. Nothing the first read gave has changed.
+    expect(words(1)).toEqual(['SUPER', 'METROID*']);
+    expect(words(3).slice(-3)).toEqual(['text12x9', 'WARIO*', 'LAND*']);
+    expect(words(3).filter((w) => !w.endsWith('*'))).toEqual(REVIEW.flat());
+    expect(words(2)).toEqual(ARTICLE.flat());
+    expect((db.prepare('SELECT text FROM pages WHERE n = 1').get() as { text: string }).text).toBe('SUPER METROID');
+    // The search has the new words (and the page once, not twice), and the issue counts as read anew.
+    expect(await hits('metroid')).toEqual([1]);
+    expect(await hits('wario')).toEqual([3]);
+    expect(await hits('super')).toEqual([1]);
+    expect((db.prepare('SELECT COUNT(*) AS n FROM pages_fts').get() as { n: number }).n).toBe(3);
+    expect(issue().second_at).not.toBeNull();
+    expect(issue().text_at! >= readAt!).toBe(true);
+    expect(g.magazines.status().secondLeft).toBe(0);
+    // Its games are looked for again: the mark that it was looked through is gone.
+    expect(db.prepare("SELECT 1 FROM state WHERE key LIKE 'spotted:%'").get()).toBeUndefined();
+    await g.magazines.spotGames(() => GAMES);
+    expect(found()).toEqual(['1 Super Metroid', '3 Wario Land']);
+
+    // Once only.
+    sparseRead.length = 0;
+    expect(await g.magazines.readText(() => undefined, true)).toBe('Nothing left to read');
+    expect(sparseRead).toEqual([]);
+
+    // Another scan in its place is read from the start, its second read too (D243).
+    scanOf(file, 'A', 3);
+    dated(file, 1);
+    await g.magazines.scan();
+    expect(issue()).toMatchObject({ text_state: 'none', second_at: null });
+    expect((db.prepare('SELECT COUNT(*) AS n FROM pages_fts').get() as { n: number }).n).toBe(0);
+  });
+
+  it('does nothing while it is off, and leaves a page it cannot read as it was', async () => {
+    let sparse = 0;
+    const { db } = await setup(async (image, _threads, mode) => {
+      if (mode !== 'sparse') return hocrPage(FIRST[image.toString()] ?? [['blank']]);
+      sparse++;
+      if (image.toString() === 'scan D page 1') throw new Error('Tesseract stopped (1)');
+      return hocrPage(SPARSE[image.toString()] ?? []);
+    }, false);
+    await g.magazines.scan();
+    expect(await g.magazines.readText(() => undefined, true)).toBe('1 issue read (3 pages)');
+    expect(await g.magazines.readText(() => undefined, true)).toBe('Nothing left to read');
+    expect(sparse).toBe(0);
+    expect(g.magazines.status().secondLeft).toBeNull();
+    g.settings.update({ 'magazines.secondRead': true });
+    // The ad's page fails: it stays as the first read gave it, the review's page gains its heading, and the issue
+    // is done (a page that can't be read is not tried night after night).
+    expect(await g.magazines.readText(() => undefined, true)).toBe("1 issue read a second time (1 page, 2 words more), 1 page couldn't be read again");
+    expect((db.prepare('SELECT text FROM pages WHERE n = 1').get() as { text: string }).text).toBe('SUPER');
+    expect((db.prepare('SELECT second_at FROM issues').get() as { second_at: string | null }).second_at).not.toBeNull();
+    // Only the pages with fewer words than the setting says, and the reviews: with 0, only the review.
+    db.prepare('UPDATE issues SET second_at = NULL').run();
+    g.settings.update({ 'magazines.secondReadWords': 0 });
+    sparse = 0;
+    expect(await g.magazines.readText(() => undefined, true)).toBe('1 issue read a second time (1 page, 0 words more)');
+    expect(sparse).toBe(1);
+  });
+
+  it('leaves an issue for another night when none of its pages can be read', async () => {
+    const { db } = await setup(async (image, _threads, mode) => {
+      if (mode === 'sparse') throw new Error('Tesseract stopped (1)');
+      return hocrPage(FIRST[image.toString()] ?? [['blank']]);
+    });
+    await g.magazines.scan();
+    await g.magazines.readText(() => undefined, true);
+    expect(await g.magazines.readText(() => undefined, true)).toBe('Nothing left to read');
+    expect((db.prepare('SELECT second_at FROM issues').get() as { second_at: string | null }).second_at).toBeNull();
+  });
+
+  it("takes an issue's rows out of the search by each page's own row, and ties the pages an older version read to theirs once", async () => {
+    const { file, db } = await setup(async (image) => hocrPage(FIRST[image.toString()] ?? READS[image.toString()] ?? []), false);
+    const service = g.magazines as unknown as { mapSearch(): Promise<number> };
+    await g.magazines.scan();
+    await g.magazines.readText(() => undefined, true);
+    const rows = () => db.prepare('SELECT s.n, (SELECT f.n FROM pages_fts f WHERE f.rowid = s.row) AS page FROM page_search s ORDER BY s.n').all() as { n: number; page: number | null }[];
+    // Each page with text knows its row in the search.
+    expect(rows().map((r) => r.page)).toEqual([1, 2, 3]);
+    // As an older version left it: no page knows its row, and a row of an issue long gone is still there.
+    db.prepare('DELETE FROM page_search').run();
+    db.prepare("DELETE FROM state WHERE key IN ('searchMapped', 'searchMappedTo')").run();
+    db.prepare("INSERT INTO pages_fts (text, issue_id, n) VALUES ('left behind', 999, 1)").run();
+    (g.magazines as unknown as { mapped: boolean }).mapped = false;
+    expect(await service.mapSearch()).toBe(3);
+    expect(rows().map((r) => r.page)).toEqual([1, 2, 3]);
+    expect((db.prepare('SELECT COUNT(*) AS n FROM pages_fts').get() as { n: number }).n).toBe(3);
+    expect(await service.mapSearch()).toBe(0);
+    // The rows go by their numbers, not by asking the search for the issue's (which reads the whole table): rows
+    // that no longer say whose they are go all the same.
+    db.prepare('UPDATE pages_fts SET issue_id = -1').run();
+    scanOf(file, 'A', 3);
+    dated(file, 1);
+    expect(await g.magazines.scan()).toBe('1 issues, 1 changed (1 with other pages, to be read again)');
+    expect((db.prepare('SELECT COUNT(*) AS n FROM pages_fts').get() as { n: number }).n).toBe(0);
+    // And the new scan's pages know their rows from the start; a page with no text has none.
+    expect(await g.magazines.readText(() => undefined, true)).toBe('1 issue read (3 pages)');
+    expect((db.prepare('SELECT COUNT(*) AS n FROM page_search').get() as { n: number }).n).toBe(3);
+  });
+});

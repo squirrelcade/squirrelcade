@@ -52,6 +52,8 @@ interface Status {
   withText: number;
   failed: number;
   estimate: { perIssueSeconds: number; issuesLeft: number; hoursLeft: number } | null;
+  /** The issues waiting for the second read of their thin pages (D244); null while it's off. */
+  secondLeft?: number | null;
 }
 
 /**
@@ -141,7 +143,8 @@ export function LeavesPage() {
         )}
         {s && s.issues > 0 && (
           <Text size="sm" c="dimmed">
-            {count(s.issues)} issues, {count(s.withText)} with their text{s.estimate ? `; the rest read at night, about ${s.estimate.hoursLeft} hours of reading left` : ''}.
+            {count(s.issues)} issues, {count(s.withText)} with their text{s.estimate ? `; the rest read at night, about ${s.estimate.hoursLeft} hours of reading left` : ''}
+            {s.secondLeft ? `; ${count(s.secondLeft)} wait for the second read of their thin pages` : ''}.
           </Text>
         )}
         {(undated.data?.issues.length ?? 0) > 0 && (

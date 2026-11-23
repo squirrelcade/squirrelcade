@@ -28,6 +28,16 @@ Squirrelcade reads the folder a few minutes after it starts and then every night
 
 With **Read the rest of their text at night** on (Settings > Magazines, off to start), Tesseract reads the pages without text, at the lowest priority, in the **Reading hours** (it starts within a few minutes of them opening). It runs beside Squirrelcade's other work, so email checks, the game of the day and the syncs never wait for it. **Processor cores for each page** (2) is what one page may use; **Pages read at once** (1) reads several pages together, each with its own Tesseract: on a server with 8 cores or more, 4 at once reads about three times as fast. On a NAS with a slow processor (an Intel Atom, a Celeron J-series, an ARM NAS), keep 1, or leave the reading off and use scans that come with their text: there it takes about an hour or more per 100 pages.
 
+**A second read of thin pages.** The first read works out a page's layout (its columns and blocks) and reads what it finds there. That leaves out a good deal of display type: a game's name set big across an ad, a review's heading in outline letters, a title printed over a picture. With **Read thin pages a second time** on (Settings > Magazines, off to start), once every issue has its text Squirrelcade reads again the pages where that matters most:
+
+- pages with little text (fewer words than **A thin page has fewer words than**, 120 to start with): ads, covers, title pages;
+- contents pages;
+- reviews' pages.
+
+This read looks for every bit of text on the page, wherever it is. What it finds that the first read didn't have is added to the page: beside the words of its line that the first read did have (a heading read in part becomes whole), or on a line of its own. Where it reads a word otherwise than the first read did ("Channel" where the first read made "Chanel" of it), its reading is kept beside the first one. Nothing the first read gave is changed or taken out, and a word or another reading is kept only when the reader is sure of it, because this way of reading also takes pictures for letters. The search finds the new words and the other readings, and the games on a page that gained any are looked for again, both ways where a word has two readings.
+
+It runs in the reading hours like the first read, the newest issue first, each issue once, and an issue that still waits for its first read always goes before it. About four pages in ten are read again, so it takes about half as long as the first read did. Leaves says how many issues still wait. A file replaced by another scan gets both reads again.
+
 ## Sharing the text with a friend
 
 Someone with the same scans doesn't have to read them again. On **Settings > Magazines > Share the text with a friend**:

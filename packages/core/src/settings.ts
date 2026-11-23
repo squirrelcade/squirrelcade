@@ -2554,6 +2554,25 @@ export const settingDefinitions = {
     max: 16,
     shownWhen: 'magazines.ocr',
   }),
+  'magazines.secondRead': bool({
+    page: 'magazines',
+    section: 'Their text',
+    label: 'Read thin pages a second time',
+    description:
+      "Once every issue has its text, reads again the pages where the first read most often leaves a game's name out: pages with little text (ads, covers, title pages), contents pages and reviews' pages. This read looks for every bit of text on the page, headings and display type too, and adds what it finds to what the first read gave (nothing is changed or taken out; a word is added only when the reader is sure of it). In the reading hours, an issue at a time; the games on a page that gained words are looked for again. About four pages in ten are read again, so it takes about half as long as the first read did.",
+    default: false,
+    shownWhen: 'magazines.ocr',
+  }),
+  'magazines.secondReadWords': num({
+    page: 'magazines',
+    section: 'Their text',
+    label: 'A thin page has fewer words than',
+    description: 'A page with fewer words than this is read a second time (contents pages and reviews\' pages are, however many words they have). 0: only contents and reviews.',
+    default: 120,
+    min: 0,
+    max: 5000,
+    shownWhen: 'magazines.secondRead',
+  }),
   'magazines.linkAt': num({
     page: 'magazines',
     section: 'The games on the page',

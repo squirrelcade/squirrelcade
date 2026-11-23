@@ -1,4 +1,4 @@
-import { baseTitle, citationMonth, citedIssueNumber, matchKey, printedKey, SPOT_VERSION, spotIndex, spotIssueSteps, type SpotCandidate, type SpotMention, type SpotPage, coverLeadFor, guessDates, magazineGaps, magazineOf, neverPrinted, printedPage, type MissingIssue, type MissingMonth, type NumberJump, issueFromFileName, issueLabel, pageNames, parseComicInfo, parseHocr, skippedName, writeHocr, type IssueInfo, type IssueToDate, type PageWord } from '@squirrelcade/core';
+import { baseTitle, citationMonth, citedIssueNumber, matchKey, printedKey, SPOT_VERSION, spotIndex, spotIssueSteps, type SpotCandidate, type SpotMention, type SpotPage, coverLeadFor, guessDates, magazineGaps, magazineOf, neverPrinted, printedPage, type MissingIssue, type MissingMonth, type NumberJump, issueFromFileName, issueLabel, pageNames, parseComicInfo, mergeSecondRead, parseHocr, searchText, secondReadPage, skippedName, writeHocr, type IssueInfo, type IssueToDate, type PageWord } from '@squirrelcade/core';
 import Database from 'better-sqlite3';
 import { spawn } from 'node:child_process';
 import { createHash } from 'node:crypto';
@@ -47,6 +47,21 @@ export function nightMessage(read: number, pages: number, failed: number, unopen
   if (failed > 0) parts.push(`${n(failed)} couldn't be read`);
   if (unopened > 0) parts.push(`${n(unopened)} couldn't be opened (their permissions)`);
   return `${parts.join(', ')}${stoppedLocked ? '; stopped: the magazines folder looks locked' : ''}`;
+}
+
+/** What a night's second reads did (D244): issues done, pages read again, words added, words read otherwise, pages that couldn't be read. */
+export interface SecondRead {
+  issues: number;
+  pages: number;
+  words: number;
+  otherwise: number;
+  failed: number;
+}
+
+/** The night's second reads in a line. */
+export function secondMessage(s: SecondRead): string {
+  const n = (x: number) => x.toLocaleString('en-US');
+  return `${n(s.issues)} ${s.issues === 1 ? 'issue' : 'issues'} read a second time (${n(s.pages)} ${s.pages === 1 ? 'page' : 'pages'}, ${n(s.words)} ${s.words === 1 ? 'word' : 'words'} more${s.otherwise > 0 ? `, ${n(s.otherwise)} read another way` : ''})${s.failed > 0 ? `, ${n(s.failed)} ${s.failed === 1 ? "page couldn't" : "pages couldn't"} be read again` : ''}`;
 }
 
 /** A magazines' text export (D209): its manifest's format name. */
@@ -207,6 +222,7 @@ CREATE TABLE IF NOT EXISTS issues (
 CREATE INDEX IF NOT EXISTS issues_magazine ON issues(magazine_id);
 CREATE TABLE IF NOT EXISTS pages (issue_id INTEGER NOT NULL, n INTEGER NOT NULL, text TEXT NOT NULL, words TEXT NOT NULL, width INTEGER, height INTEGER, source TEXT NOT NULL, PRIMARY KEY (issue_id, n));
 CREATE VIRTUAL TABLE IF NOT EXISTS pages_fts USING fts5(text, issue_id UNINDEXED, n UNINDEXED, tokenize = 'unicode61 remove_diacritics 2');
+CREATE TABLE IF NOT EXISTS page_search (issue_id INTEGER NOT NULL, n INTEGER NOT NULL, row INTEGER NOT NULL, PRIMARY KEY (issue_id, n)) WITHOUT ROWID;
 CREATE TABLE IF NOT EXISTS state (key TEXT PRIMARY KEY, value TEXT NOT NULL);
 CREATE TABLE IF NOT EXISTS mentions (
   id INTEGER PRIMARY KEY, issue_id INTEGER NOT NULL, page INTEGER NOT NULL, platform_key TEXT, title TEXT NOT NULL, title_key TEXT NOT NULL,
@@ -363,13 +379,16 @@ export interface PageHit {
   snippet: string;
 }
 
-/** Reads one page with Tesseract: its hOCR (the image's bytes in), for the night's reading. */
-export type PageReader = (image: Buffer, threads: number) => Promise<string>;
+/**
+ * Reads one page with Tesseract: its hOCR (the image's bytes in), for the night's reading. "sparse" is the second
+ * read's way (D244): every bit of text it can find, with no layout analysis.
+ */
+export type PageReader = (image: Buffer, threads: number, mode?: 'sparse') => Promise<string>;
 
 /** Tesseract, at the lowest priority ("nice"), the page on its standard input, its hOCR out. */
-export const tesseract: PageReader = (image, threads) =>
+export const tesseract: PageReader = (image, threads, mode) =>
   new Promise((resolve, reject) => {
-    const child = spawn('nice', ['-n', '19', 'tesseract', 'stdin', 'stdout', '-l', 'eng', 'hocr'], { env: { ...process.env, OMP_THREAD_LIMIT: String(threads) }, windowsHide: true });
+    const child = spawn('nice', ['-n', '19', 'tesseract', 'stdin', 'stdout', '-l', 'eng', ...(mode === 'sparse' ? ['--psm', '11'] : []), 'hocr'], { env: { ...process.env, OMP_THREAD_LIMIT: String(threads) }, windowsHide: true });
     const out: Buffer[] = [];
     child.stdout.on('data', (d: Buffer) => out.push(d));
     child.on('error', reject);
@@ -379,6 +398,8 @@ export const tesseract: PageReader = (image, threads) =>
 
 export class MagazineService {
   private db: Database.Database | null = null;
+  /** searchMapped's answer once it's yes (it never goes back). */
+  private mapped = false;
   /** The table of contents of the CBZs read lately (a page turned reads only its picture). */
   private contents = new Map<string, { mtime: number; pages: ZipItem[] }>();
 
@@ -418,6 +439,8 @@ export class MagazineService {
       if (!columns.includes('text_at')) this.db.exec('ALTER TABLE issues ADD COLUMN text_at TEXT');
       // D243: the fingerprint of the file's pages (pagesFingerprint), to tell another scan under the same name.
       if (!columns.includes('fingerprint')) this.db.exec('ALTER TABLE issues ADD COLUMN fingerprint TEXT');
+      // D244: when an issue's thin pages were read a second time (null: not yet, or its text is new).
+      if (!columns.includes('second_at')) this.db.exec('ALTER TABLE issues ADD COLUMN second_at TEXT');
       // The consoles a mention's page names (item 11 of the owner's 1.3 list), for the chest on its game.
       if (!(this.db.prepare('PRAGMA table_info(mentions)').all() as { name: string }[]).some((c) => c.name === 'consoles')) this.db.exec('ALTER TABLE mentions ADD COLUMN consoles TEXT');
     }
@@ -427,6 +450,7 @@ export class MagazineService {
   close(): void {
     this.db?.close();
     this.db = null;
+    this.mapped = false;
   }
 
   /**
@@ -438,6 +462,9 @@ export class MagazineService {
     const root = this.folder();
     if (!root || !existsSync(root)) return `The magazines folder${root ? ` (${root})` : ''} can't be found: name it on Settings > Magazines, or mount it at /magazines.`;
     const db = this.store();
+    // D244: the pages read by an earlier version are tied to their rows in the search first (once), so that what
+    // follows takes an issue's rows out without reading the whole search table.
+    await this.mapSearch();
     const skip = this.settings.get('magazines.skip');
     const seen = new Set<string>();
     let added = 0;
@@ -583,13 +610,67 @@ export class MagazineService {
     this.contents.delete(path);
   }
 
-  /** An issue's page text and its rows in the search. */
+  /**
+   * An issue's page text and its rows in the search. The search's table has no index by issue (asking it for an
+   * issue's rows reads the whole table, which held the server for up to half a minute on a big library): each page's
+   * row is kept by its number instead (page_search, D244: a small table of its own, so filling it in never rewrites a
+   * page's words), and the rows are taken out by it. Only a page read before that was kept, and not yet tied to its
+   * row by mapSearch, still takes the slow way.
+   */
   private dropText(issueId: number): void {
     const db = this.store();
-    // The search's table has no index by issue, so it's left alone when the issue has no text.
     if (!db.prepare('SELECT 1 FROM pages WHERE issue_id = ? LIMIT 1').get(issueId)) return;
+    const untied =
+      !this.searchMapped() &&
+      db.prepare("SELECT 1 FROM pages p WHERE p.issue_id = ? AND trim(p.text) <> '' AND NOT EXISTS (SELECT 1 FROM page_search s WHERE s.issue_id = p.issue_id AND s.n = p.n) LIMIT 1").get(issueId);
+    if (untied) db.prepare('DELETE FROM pages_fts WHERE issue_id = ?').run(issueId);
+    else db.prepare('DELETE FROM pages_fts WHERE rowid IN (SELECT row FROM page_search WHERE issue_id = ?)').run(issueId);
+    db.prepare('DELETE FROM page_search WHERE issue_id = ?').run(issueId);
     db.prepare('DELETE FROM pages WHERE issue_id = ?').run(issueId);
-    db.prepare('DELETE FROM pages_fts WHERE issue_id = ?').run(issueId);
+  }
+
+  /** Whether every page read before page_search was kept has been tied to its row in the search (mapSearch). */
+  private searchMapped(): boolean {
+    this.mapped ||= this.readState('searchMapped') === '1';
+    return this.mapped;
+  }
+
+  /**
+   * Ties the pages read before D244 to their rows in the search, once: the search's rows are read through from the
+   * first to the last, a few hundred at a time with requests let in between, and each row's number is kept for its
+   * page. They are read from the search's own table of rows (pages_fts_content: its id is the row's number, c1 and c2
+   * the issue and the page), which is found by row number at once; asked for a range of rows, the search itself reads
+   * from its first row every time (measured: the last rows of 60,000 took 150 times as long as the first). A row whose page is gone (an issue forgotten before its rows were) is taken out on the way. It picks
+   * up where it stopped. How many rows it tied.
+   */
+  async mapSearch(): Promise<number> {
+    if (this.searchMapped()) return 0;
+    const db = this.store();
+    const rows = db.prepare('SELECT id, c1 AS issue, c2 AS n FROM pages_fts_content WHERE id > ? ORDER BY id LIMIT 300');
+    const there = db.prepare('SELECT 1 FROM pages WHERE issue_id = ? AND n = ?');
+    const tie = db.prepare('INSERT OR REPLACE INTO page_search (issue_id, n, row) VALUES (?, ?, ?)');
+    const gone = db.prepare('DELETE FROM pages_fts WHERE rowid = ?');
+    let from = Number(this.readState('searchMappedTo') ?? 0);
+    let tied = 0;
+    for (;;) {
+      const some = rows.all(from) as { id: number; issue: number; n: number }[];
+      if (some.length === 0) break;
+      from = some.at(-1)!.id;
+      db.transaction(() => {
+        for (const r of some) {
+          if (there.get(r.issue, r.n)) {
+            tie.run(r.issue, r.n, r.id);
+            tied++;
+          } else gone.run(r.id);
+        }
+        this.writeState('searchMappedTo', String(from));
+      })();
+      await new Promise((resolve) => setImmediate(resolve));
+    }
+    this.writeState('searchMapped', '1');
+    this.mapped = true;
+    if (tied > 0) this.log.info({ context: 'magazines' }, `${tied} pages tied to their rows in the search`);
+    return tied;
   }
 
   /**
@@ -609,7 +690,7 @@ export class MagazineService {
     this.dropText(issueId);
     db.prepare("DELETE FROM mentions WHERE issue_id = ? AND (source = 'ocr' OR (source = 'owner' AND page > ?))").run(issueId, pages);
     db.prepare('DELETE FROM state WHERE key = ?').run(`spotted:${issueId}`);
-    db.prepare(`UPDATE issues SET text_state = 'none', text_at = NULL${samePageCount ? '' : ', page_offset = NULL'} WHERE id = ?`).run(issueId);
+    db.prepare(`UPDATE issues SET text_state = 'none', text_at = NULL, second_at = NULL${samePageCount ? '' : ', page_offset = NULL'} WHERE id = ?`).run(issueId);
   }
 
   /**
@@ -704,16 +785,16 @@ export class MagazineService {
    */
   private async savePages(issueId: number, pages: { n: number; text: string; words: PageWord[] }[], source: 'hocr' | 'ocr'): Promise<void> {
     const db = this.store();
-    db.transaction(() => {
-      db.prepare('DELETE FROM pages WHERE issue_id = ?').run(issueId);
-      db.prepare('DELETE FROM pages_fts WHERE issue_id = ?').run(issueId);
-    })();
+    // What was kept of it before goes first (nothing, for an issue read for the first time: the search isn't touched).
+    db.transaction(() => this.dropText(issueId))();
     const page = db.prepare('INSERT INTO pages (issue_id, n, text, words, source) VALUES (?, ?, ?, ?, ?)');
     const fts = db.prepare('INSERT INTO pages_fts (text, issue_id, n) VALUES (?, ?, ?)');
+    const tie = db.prepare('INSERT OR REPLACE INTO page_search (issue_id, n, row) VALUES (?, ?, ?)');
     const some = db.transaction((list: { n: number; text: string; words: PageWord[] }[]) => {
       for (const p of list) {
         page.run(issueId, p.n, p.text, JSON.stringify(p.words), source);
-        if (p.text.trim()) fts.run(p.text, issueId, p.n);
+        // Its row in the search, and the row's number kept for the page (a page with no text has none).
+        if (p.text.trim()) tie.run(issueId, p.n, Number(fts.run(p.text, issueId, p.n).lastInsertRowid));
       }
     });
     let at = 0;
@@ -742,6 +823,7 @@ export class MagazineService {
    */
   async readText(progress: (line: string) => void = () => undefined, force = false): Promise<string | { message: string; warning: true }> {
     if (!this.enabled() || !this.settings.get('magazines.ocr')) return 'Reading the magazines is off';
+    await this.mapSearch();
     if (!force && !this.inReadingHours()) return 'Outside the reading hours';
     const root = this.folder();
     if (!root || !existsSync(root)) return "The magazines folder can't be found";
@@ -809,11 +891,117 @@ export class MagazineService {
       }
       if (force) break;
     }
-    if (read + failed + unopened === 0) return 'Nothing left to read';
-    const message = nightMessage(read, pagesRead, failed, unopened, stoppedLocked);
+    // D244: with every issue read once, the issues read get the second read of their thin pages. A forced read does
+    // one thing: an issue's first read when one waits, else an issue's second.
+    const firsts = read + failed + unopened;
+    const second =
+      this.settings.get('magazines.secondRead') && !stoppedLocked && !(force && firsts > 0) && !db.prepare("SELECT 1 FROM issues WHERE text_state = 'none' LIMIT 1").get()
+        ? await this.secondRead(root, threads, atOnce, progress, force)
+        : null;
+    const again = second && second.issues > 0 ? secondMessage(second) : null;
+    if (firsts === 0) return again ?? 'Nothing left to read';
+    const message = [nightMessage(read, pagesRead, failed, unopened, stoppedLocked), again].filter((part) => part !== null).join('; ');
     // Nothing read and files that couldn't be opened: the run failed, so System > Status shows it in red.
     if (read === 0 && unopened > 0) throw new Error(`${message} ${lockedHelp}`);
     return failed > 0 || unopened > 0 ? { message, warning: true } : message;
+  }
+
+  /**
+   * The second read (D244): the thin pages, the contents pages and the reviews' pages of the issues already read
+   * (secondReadPage), read again with Tesseract's sparse mode, and what it finds that the first read didn't added to
+   * the page's words and text (mergeSecondRead; nothing the first read gave is changed). Newest issue first, in the
+   * reading hours, as many pages at once as the first read. An issue is done once: its second_at says when, and a
+   * replaced scan clears it. An issue that gained words is looked through for its games again (its mark that it was
+   * goes). A page that can't be read is left as it was; a file that can't be opened waits for another night.
+   */
+  private async secondRead(root: string, threads: number, atOnce: number, progress: (line: string) => void, force: boolean): Promise<SecondRead> {
+    const db = this.store();
+    const thinUnder = this.settings.get('magazines.secondReadWords');
+    const out: SecondRead = { issues: 0, pages: 0, words: 0, otherwise: 0, failed: 0 };
+    const unopened: number[] = [];
+    const pageNow = db.prepare('SELECT p.text, (SELECT s.row FROM page_search s WHERE s.issue_id = p.issue_id AND s.n = p.n) AS row FROM pages p WHERE p.issue_id = ? AND p.n = ?');
+    const change = db.prepare('UPDATE pages SET text = ?, words = ? WHERE issue_id = ? AND n = ?');
+    const dropRow = db.prepare('DELETE FROM pages_fts WHERE rowid = ?');
+    const addRow = db.prepare('INSERT INTO pages_fts (text, issue_id, n) VALUES (?, ?, ?)');
+    const tie = db.prepare('INSERT OR REPLACE INTO page_search (issue_id, n, row) VALUES (?, ?, ?)');
+    const untie = db.prepare('DELETE FROM page_search WHERE issue_id = ? AND n = ?');
+    // A page's new words and text kept, and its row in the search made again (by the row's number: no reading of the
+    // whole search table).
+    const keep = db.transaction((issueId: number, n: number, page: { words: PageWord[]; text: string }) => {
+      const was = pageNow.get(issueId, n) as { text: string; row: number | null } | undefined;
+      if (!was) return;
+      // A row not yet tied to its page (mapSearch didn't finish) is left as it is: the search has the first read's words.
+      const untied = was.row === null && was.text.trim() !== '' && !this.searchMapped();
+      if (!untied) {
+        if (was.row !== null) dropRow.run(was.row);
+        const kept = searchText(page);
+        if (kept.trim()) tie.run(issueId, n, Number(addRow.run(kept, issueId, n).lastInsertRowid));
+        else untie.run(issueId, n);
+      }
+      change.run(page.text, JSON.stringify(page.words), issueId, n);
+    });
+    for (;;) {
+      if (!force && !this.inReadingHours()) break;
+      // An issue that came in meanwhile is read for the first time before any more second reads.
+      if (db.prepare("SELECT 1 FROM issues WHERE text_state = 'none' LIMIT 1").get()) break;
+      const issue = db
+        .prepare(`SELECT id, path FROM issues WHERE text_state IN ('ocr', 'hocr') AND second_at IS NULL${unopened.length > 0 ? ` AND id NOT IN (${unopened.join(', ')})` : ''} ORDER BY id DESC LIMIT 1`)
+        .get() as { id: number; path: string } | undefined;
+      if (!issue) break;
+      const path = join(root, issue.path);
+      let added = 0;
+      let otherwise = 0;
+      let failed = 0;
+      let chosen: { n: number; text: string; words: string }[] = [];
+      try {
+        const names = await this.pageItems(path);
+        chosen = (db.prepare('SELECT n, text, words FROM pages WHERE issue_id = ? ORDER BY n').all(issue.id) as { n: number; text: string; words: string }[]).filter(
+          (p) => p.n <= names.length && secondReadPage(p.n, p.text, thinUnder),
+        );
+        let next = 0;
+        let done = 0;
+        const worker = async () => {
+          for (let i = next++; i < chosen.length; i = next++) {
+            const p = chosen[i]!;
+            try {
+              const hocr = await this.readPage(await zipRead(path, names[p.n - 1]!), threads, 'sparse');
+              const merged = mergeSecondRead({ words: JSON.parse(p.words) as PageWord[], text: p.text }, hocr);
+              if (merged.added + merged.otherwise > 0) {
+                keep(issue.id, p.n, merged);
+                added += merged.added;
+                otherwise += merged.otherwise;
+              }
+            } catch {
+              failed++;
+            }
+            done++;
+            progress(`${basename(issue.path)}: second read, page ${done} of ${chosen.length}`);
+          }
+        };
+        await Promise.all(Array.from({ length: Math.min(atOnce, Math.max(1, chosen.length)) }, worker));
+      } catch {
+        failed = Math.max(1, chosen.length);
+      }
+      // Not one page could be read (the file can't be opened, or the reader is broken): it waits for another night,
+      // and ten such in a row end this one.
+      if (failed > 0 && failed >= chosen.length) {
+        unopened.push(issue.id);
+        if (unopened.length >= 10 || force) break;
+        continue;
+      }
+      const now = new Date().toISOString();
+      db.transaction(() => {
+        db.prepare(`UPDATE issues SET second_at = ?${added + otherwise > 0 ? ', text_at = ?' : ''} WHERE id = ?`).run(...(added + otherwise > 0 ? [now, now, issue.id] : [now, issue.id]));
+        if (added + otherwise > 0) db.prepare('DELETE FROM state WHERE key = ?').run(`spotted:${issue.id}`);
+      })();
+      out.issues++;
+      out.pages += chosen.length - failed;
+      out.words += added;
+      out.otherwise += otherwise;
+      out.failed += failed;
+      if (force) break;
+    }
+    return out;
   }
 
   private writeState(key: string, value: string): void {
@@ -1633,12 +1821,19 @@ export class MagazineService {
   }
 
   /** What Settings > Magazines and Leaves say of the library and its reading. */
-  status(): { folder: string | null; found: boolean; issues: number; withText: number; failed: number; estimate: { perIssueSeconds: number; issuesLeft: number; hoursLeft: number } | null } {
+  status(): { folder: string | null; found: boolean; issues: number; withText: number; failed: number; estimate: { perIssueSeconds: number; issuesLeft: number; hoursLeft: number } | null; secondLeft: number | null } {
     const folder = this.folder();
-    if (!this.enabled()) return { folder, found: false, issues: 0, withText: 0, failed: 0, estimate: null };
-    const c = this.store().prepare("SELECT COUNT(*) AS issues, SUM(text_state IN ('hocr', 'ocr')) AS withText, SUM(text_state = 'failed') AS failed FROM issues").get() as { issues: number; withText: number | null; failed: number | null };
+    if (!this.enabled()) return { folder, found: false, issues: 0, withText: 0, failed: 0, estimate: null, secondLeft: null };
+    const c = this.store().prepare("SELECT COUNT(*) AS issues, SUM(text_state IN ('hocr', 'ocr')) AS withText, SUM(text_state = 'failed') AS failed, SUM(text_state IN ('hocr', 'ocr') AND second_at IS NULL) AS second FROM issues").get() as {
+      issues: number;
+      withText: number | null;
+      failed: number | null;
+      second: number | null;
+    };
     const e = this.readState('ocrEstimate');
-    return { folder, found: Boolean(folder && existsSync(folder)), issues: c.issues, withText: c.withText ?? 0, failed: c.failed ?? 0, estimate: e ? (JSON.parse(e) as { perIssueSeconds: number; issuesLeft: number; hoursLeft: number }) : null };
+    // D244: the issues still waiting for the second read of their thin pages, while it's on.
+    const secondLeft = this.settings.get('magazines.ocr') && this.settings.get('magazines.secondRead') ? (c.second ?? 0) : null;
+    return { folder, found: Boolean(folder && existsSync(folder)), issues: c.issues, withText: c.withText ?? 0, failed: c.failed ?? 0, estimate: e ? (JSON.parse(e) as { perIssueSeconds: number; issuesLeft: number; hoursLeft: number }) : null, secondLeft };
   }
 }
 
