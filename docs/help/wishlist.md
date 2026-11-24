@@ -96,10 +96,13 @@ Prices for new copies in shops aren't read anywhere (no shop or price site offer
 
 **Squirrelcade Deal check** is a browser extension for Edge, Chrome and the other Chromium browsers. On a store's page, press its button (or Alt+Shift+S) and each game listed gets a badge:
 
-- **The Stash's chest:** filled when you have the game on that console, grey when you don't. "On PlayStation 5" means you have it on another console.
-- **A dot for how sure that is:** green when it's sure, yellow when it's pretty sure (an edition of yours, or the console came from the page rather than the listing), red when it isn't (one of yours comes close under another name). Hover over the dot to see why.
-- **Its acorns** and priority when it's on your wishlist, what your copy is worth, and flags for a Game-Key Card, a code in a box, a digital code or a marketplace seller.
-- **PriceCharting:** opens PriceCharting's loose, complete and new prices for the game beside the listing's price, with a link to its page there.
+- **The Stash's chest and the console marks:** the chest is filled when you have the game on that console, half filled (its lower right) when you have it on another console or PC, grey when you don't; the marks are every console the game came out on, in color where you have it. Click them to open the game's drawer from Squirrelcade, over the store's page.
+- **Your acorns:** its acorns and priority (or just "Acorns" when it isn't on your wishlist). Click to pick your preference (Must Have, Strong Interest...): Squirrelcade keeps it and the badge shows the new acorns.
+- **Flags** for a Game-Key Card, a code in a box, a digital code or a marketplace seller.
+- **PriceCharting:** PriceCharting's loose, complete and new prices beside the listing's price, the deal meter (the listing's price against the usual price, PriceCharting's new price plus typical shipping: Overpriced, Pricey, Fair, Deal or Steal), and a link to its page there.
+- **H, M or L:** how sure the answer is (high: the same title on that console; medium: an edition of yours, or the console came from the page rather than the listing; low: one of yours comes close under another name). Click it for why, and what Squirrelcade read from the listing.
+
+Accessories, amiibo, controllers and consoles a store lists among its games get no badge.
 
 A bar in the corner counts the games, and **Copy for Claude** copies them as a table to paste into a chat with Claude (or any AI app) and ask about them.
 

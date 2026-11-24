@@ -203,6 +203,10 @@ What the browser extension (`extension/`, [Deal check](help/wishlist.md#deal-che
 - `valueCents`: what your copy on that console is worth (your PriceCharting export).
 - `flags`: `game-key-card`, `code-in-box`, `digital`, as the listing says.
 - `priceChartingUrl`: PriceCharting's search for the game and console. Squirrelcade fetches nothing from the store or PriceCharting for this.
+- `chest`: `own`, `elsewhere` (half filled) or `none`; `marks`: `[{key, name, owned, svg}]`, every console the game came out on and those you have it on, newest first, PC last, each with its mark as an SVG.
+- `drawer`: `{platformKey, title}`, the game to open (`GET /api/v1/game`); `preference`: `{platformKey, title, value}`, where your preference for it is kept (`PUT /api/v1/wishlist/preferences`).
+
+The answer also has `preferences`: `[{name, acorns}]`, the preferences a game can have with the acorns each adds (Settings > Acorns ranking), Do Not Recommend last.
 
 ## The wishlist
 

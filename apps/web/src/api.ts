@@ -18,10 +18,16 @@ export class ApiError extends Error {
 
 type Options = Omit<RequestInit, 'body'> & { json?: unknown; body?: BodyInit };
 
+/**
+ * How the API is reached: the page's own fetch, or, in the Deal check extension's drawer (D245), the extension's, which
+ * asks Squirrelcade with its key from the store's page.
+ */
+export const apiTransport: { fetch: (url: string, init: RequestInit) => Promise<Response> } = { fetch: (url, init) => fetch(url, init) };
+
 /** Calls the Squirrelcade API. Errors become ApiError with the server's message. */
 export async function api<T>(path: string, options: Options = {}): Promise<T> {
   const { json, headers, ...rest } = options;
-  const res = await fetch(`/api/v1${path}`, {
+  const res = await apiTransport.fetch(`/api/v1${path}`, {
     credentials: 'same-origin',
     ...rest,
     headers: { ...(json !== undefined ? { 'content-type': 'application/json' } : {}), ...headers },

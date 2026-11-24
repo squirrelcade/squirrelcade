@@ -782,7 +782,7 @@ export async function buildApp(options: BuildOptions = {}): Promise<Squirrelcade
   // Talk to Squirrelcade (D148): the connector's read-only tools, with the AI model set up for Check a shelf.
   registerTalkRoutes(app, new TalkService({ settings, vision, helpers, tools: aiTools, lookup, notes }));
   // Deal check (D245): the titles on a store's page, from the browser extension, answered with the same matcher.
-  registerDealCheckRoutes(app, new DealCheckService(aiTools, settings));
+  registerDealCheckRoutes(app, new DealCheckService(aiTools, settings, wishlist, marks));
   collection.events.on('changed', () => aiTools.invalidate());
   collection.events.on('remapped', () => aiTools.invalidate());
   pc.events.on('changed', () => aiTools.invalidate());

@@ -37,6 +37,13 @@ describe('POST /api/v1/deal-check', () => {
     expect(elsewhere.why).toMatch(/you have it on Xbox 360, not this console/);
     expect(reach).toMatchObject({ title: 'Halo Reach', answer: 'need', platformKey: 'xbox-360' });
     expect(reach.why).toMatch(/console came from the page/);
+    // The chest, the marks, the drawer's game and where a preference goes (D246).
+    expect(halo).toMatchObject({ chest: 'own', drawer: { platformKey: 'xbox-360', title: 'Halo 3' }, preference: null });
+    expect(halo.marks).toEqual(expect.arrayContaining([expect.objectContaining({ key: 'xbox-360', owned: true })]));
+    expect(halo.marks[0].svg).toMatch(/^<svg[\s\S]*Xbox 360 \(owned\)/);
+    expect(elsewhere).toMatchObject({ chest: 'elsewhere', drawer: { platformKey: 'xbox-360', title: 'Halo 3' } });
+    expect(reach).toMatchObject({ chest: 'none', drawer: { platformKey: 'xbox-360' }, preference: { platformKey: 'xbox-360', value: null } });
+    expect(res.json().preferences[0]).toMatchObject({ name: 'Must Have', acorns: 20 });
     // A printing of the same game ("[Platinum Hits]") is the same game.
     expect(gears).toMatchObject({ answer: 'own', sure: 'sure', match: { title: 'Gears of War [Platinum Hits]' } });
   });
@@ -49,6 +56,14 @@ describe('POST /api/v1/deal-check', () => {
   it('flags the kind of copy', async () => {
     const [r] = (await check([{ title: "Demon's Souls - PlayStation 3 [Digital Code]" }])).json().results;
     expect(r.flags).toEqual(['digital']);
+  });
+
+  it("keeps a preference given from the badge, and answers with it", async () => {
+    const [reach] = (await check([{ title: 'Halo Reach', platform: 'Xbox 360' }])).json().results;
+    const put = await g.app.inject({ method: 'PUT', url: '/api/v1/wishlist/preferences', cookies, payload: { platformKey: reach.preference.platformKey, title: reach.preference.title, preference: 'Must Have' } });
+    expect(put.statusCode).toBe(200);
+    const [again] = (await check([{ title: 'Halo Reach', platform: 'Xbox 360' }])).json().results;
+    expect(again.preference.value).toBe('Must Have');
   });
 
   it('takes 1 to 50 listings', async () => {

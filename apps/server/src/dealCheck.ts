@@ -1,7 +1,9 @@
-import { findPlatforms, KNOWN_PLATFORMS, numbersDiffer, priceChartingUrl, readListing, surenessOf, type ListingFlag, type Sureness } from '@squirrelcade/core';
+import { baseTitle, findPlatforms, KNOWN_PLATFORMS, markOrder, markSvg, matchKey, numbersDiffer, priceChartingUrl, readListing, surenessOf, type ListingFlag, type Sureness } from '@squirrelcade/core';
 import type { FastifyInstance } from 'fastify';
 import { AiToolError, type AiTools, type AiView } from './aiTools.js';
+import type { MarksService } from './marks.js';
 import type { SettingsService } from './settings.js';
+import type { WishlistService } from './wishlist.js';
 
 /**
  * Deal check (D245): the titles on a store's page (sent by the browser extension when the owner presses its button),
@@ -42,6 +44,20 @@ export interface DealCheckAnswer {
   wishlist: { acorns: number; priority: string; rank: number | null; platform: string } | null;
   flags: ListingFlag[];
   priceChartingUrl: string;
+  /** The chest: filled (yours on this console), half (yours on another console or PC) or grey. */
+  chest: 'own' | 'elsewhere' | 'none';
+  /** Every console the game came out on (and those you have it on), newest first, PC last: in color where it's yours. */
+  marks: { key: string; name: string; owned: boolean; svg: string }[];
+  /** The game to open in the drawer (its console and title as Squirrelcade knows them), when there's one. */
+  drawer: { platformKey: string; title: string } | null;
+  /** Where your preference for it is kept (PUT /api/v1/wishlist/preferences), and what it is: for a game you don't have there. */
+  preference: { platformKey: string; title: string; value: string | null } | null;
+}
+
+/** A deal check's answer: the listings', and the preferences you can give a game (with the acorns each adds). */
+export interface DealCheckResponse {
+  results: DealCheckAnswer[];
+  preferences: { name: string; acorns: number | null }[];
 }
 
 /** The owner's view of the collection, without prices paid or notes (the page shows neither). */
@@ -53,9 +69,38 @@ export class DealCheckService {
   constructor(
     private readonly tools: AiTools,
     private readonly settings: SettingsService,
+    private readonly wishlist?: WishlistService,
+    private readonly marks?: MarksService,
   ) {}
 
-  check(items: readonly DealCheckItem[]): DealCheckAnswer[] {
+  /** The preferences a game can have, best first, with the acorns each adds (Do Not Recommend keeps it off the wishlist). */
+  preferences(): DealCheckResponse['preferences'] {
+    const points = this.settings.get('wishlist.preferencePoints') as Record<string, number>;
+    return [
+      ...Object.entries(points)
+        .sort((a, b) => b[1] - a[1])
+        .map(([name, acorns]) => ({ name, acorns })),
+      { name: 'Do Not Recommend', acorns: null },
+    ];
+  }
+
+  async check(items: readonly DealCheckItem[]): Promise<DealCheckAnswer[]> {
+    const answers = this.answer(items);
+    if (!this.marks) return answers.map((a) => a.answer);
+    // The consoles each game came out on, asked for all the listings at once.
+    const keyOf = (a: (typeof answers)[number]) => matchKey(baseTitle(a.markTitle));
+    const released = await this.marks.released([...new Set(answers.map(keyOf))]);
+    const owned = this.marks.owned(true);
+    return answers.map((a) => {
+      const key = keyOf(a);
+      const mine = new Set([...(owned[key] ?? []), ...(a.answer.answer === 'own' && a.answer.platformKey ? [a.answer.platformKey] : [])]);
+      const all = markOrder([...(released[key] ?? []), ...mine, ...(a.answer.platformKey ? [a.answer.platformKey] : [])]);
+      const nameOf = (k: string) => (k === 'pc' ? 'PC' : (KNOWN_PLATFORMS.find((p) => p.key === k)?.name ?? k));
+      return { ...a.answer, marks: all.map((k) => ({ key: k, name: nameOf(k), owned: mine.has(k), svg: markSvg(k, nameOf(k), mine.has(k)) })) };
+    });
+  }
+
+  private answer(items: readonly DealCheckItem[]): { answer: DealCheckAnswer; markTitle: string }[] {
     const sureAt = this.settings.get('dealCheck.sureAt') / 100;
     const unsureAt = this.settings.get('dealCheck.unsureAt') / 100;
     return items.map((item) => {
@@ -74,7 +119,20 @@ export class DealCheckService {
       const shown = best ?? near ?? elsewhere[0] ?? null;
       const ownedOn = [...new Set([...owned, ...elsewhere].map((m) => m.platform).filter((p) => p !== known?.name))];
       const valueCents = owned.reduce<number | null>((n, m) => ('value_cents' in m && typeof m.value_cents === 'number' ? (n ?? 0) + m.value_cents : n), null);
-      return {
+      const wish = answer === 'own' ? null : this.wishOf(result, known);
+      // The drawer opens your copy's game, or the wishlist's (its catalog title), or what the listing says.
+      const consoleMatch = [...owned, ...elsewhere].find((m) => 'platform_key' in m && typeof m.platform_key === 'string') as { platform_key: string; title: string } | undefined;
+      const drawer = consoleMatch
+        ? { platformKey: consoleMatch.platform_key, title: consoleMatch.title }
+        : wish && known
+          ? { platformKey: known.key, title: wish.title }
+          : known
+            ? { platformKey: known.key, title: read.title }
+            : null;
+      const prefTitle = wish?.title ?? read.title;
+      const preference = answer !== 'own' && known ? { platformKey: known.key, title: prefTitle, value: this.wishlist?.preferenceOf(known.key, prefTitle) ?? null } : null;
+      const chest: DealCheckAnswer['chest'] = answer === 'own' ? 'own' : answer === 'elsewhere' ? 'elsewhere' : 'none';
+      const out: DealCheckAnswer = {
         listing: item.title,
         title: read.title,
         platformKey: read.platformKey,
@@ -85,10 +143,15 @@ export class DealCheckService {
         match: shown ? { title: shown.title, platform: shown.platform, confidence: shown.confidence, gameId: shown.game_id } : null,
         ownedOn,
         valueCents,
-        wishlist: answer === 'own' ? null : this.wishOf(result, known),
+        wishlist: wish ? { acorns: wish.acorns, priority: wish.priority, rank: wish.rank, platform: wish.platform } : null,
         flags: read.flags,
         priceChartingUrl: priceChartingUrl(read.title, known?.name ?? ''),
+        chest,
+        marks: [],
+        drawer,
+        preference,
       };
+      return { answer: out, markTitle: shown?.title ?? read.title };
     });
   }
 
@@ -108,10 +171,10 @@ export class DealCheckService {
   }
 
   /** The wishlist's place on the listing's console, or the best one without a console. */
-  private wishOf(result: CheckResult, known: { key: string; name: string } | null): DealCheckAnswer['wishlist'] {
+  private wishOf(result: CheckResult, known: { key: string; name: string } | null): { acorns: number; priority: string; rank: number | null; platform: string; title: string } | null {
     const wishes = result.wishlist ?? [];
     const pick = known ? wishes.find((w) => findPlatforms(w.platform, [known]).length > 0) : wishes[0];
-    return pick ? { acorns: pick.acorns, priority: pick.priority, rank: pick.rank ?? null, platform: pick.platform } : null;
+    return pick ? { acorns: pick.acorns, priority: pick.priority, rank: pick.rank ?? null, platform: pick.platform, title: pick.title } : null;
   }
 }
 
@@ -151,6 +214,7 @@ export function registerDealCheckRoutes(app: FastifyInstance, deals: DealCheckSe
   app.post('/api/v1/deal-check', async (request, reply) => {
     const items = parseItems(request.body);
     if (!items) return reply.code(400).send({ error: `Send {"items": [{"title": "...", "platform": "..."}]}, 1 to ${DEAL_CHECK_MAX} of them.` });
-    return { results: deals.check(items) };
+    const response: DealCheckResponse = { results: await deals.check(items), preferences: deals.preferences() };
+    return response;
   });
 }

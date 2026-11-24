@@ -1,5 +1,7 @@
 import { consoleEditionIn, platformInText } from './catalogList.js';
-import { PLATFORM_SHORT_NAMES } from './platforms.js';
+import { MARK_DRAWINGS } from './markDrawings.js';
+import { consoleMark, markInk, markPixels } from './marks.js';
+import { PLATFORM_SHORT_NAMES, regionalConsole } from './platforms.js';
 import { romanNumerals } from './text.js';
 
 /**
@@ -104,6 +106,16 @@ export function readListing(text: string, platforms: readonly PlatformLike[], hi
   const pieces = t.split(/\s+[-–—|]\s+|\s*[|–—]\s*|,\s+/);
   const kept = [pieces[0]!, ...pieces.slice(1).filter((p) => !storeOnly(p, names) && !GAME_KEY_CARD.test(p))];
   t = kept.join(' - ');
+  // A console's full name in the middle of a title: what follows is a store's facts ("Pokemon Legends: Arceus Nintendo
+  // Switch Role-Playing Game Cards"). A title that starts with one (Nintendo Switch Sports, Sega Genesis Classics) keeps
+  // it, and short names (DS, DC) don't count here: they're words of titles too.
+  const fullNames = [...new Set(platforms.flatMap((p) => [p.name, ...(p.labels ?? [])]).map((n) => norm(n).trim()).filter((n) => n.includes(' ')))];
+  let cut = -1;
+  for (const n of fullNames) {
+    const m = new RegExp(`(^|[^a-z0-9])${n.split(' ').join('[^a-z0-9]+')}(?![a-z0-9])`, 'i').exec(t);
+    if (m && t.slice(0, m.index).trim().split(/\s+/).length >= 2 && (cut < 0 || m.index < cut)) cut = m.index;
+  }
+  if (cut > 0) t = t.slice(0, cut);
   // A console's name or the store's words left at the end ("Super Mario Odyssey Nintendo Switch Brand New").
   for (let changed = true; changed; ) {
     changed = false;
@@ -135,6 +147,49 @@ export function numbersDiffer(a: string, b: string): boolean {
   const na = numbers(a);
   const nb = numbers(b);
   return na !== '' && nb !== '' && na !== nb;
+}
+
+/** A faded mark's grey (the web's --sc-mark-off in light mode). */
+const MARK_OFF = '#b4b4b9';
+
+/**
+ * A console's mark as a standalone SVG, drawn as the web app's ConsoleMark draws it (D185): its drawing in its color
+ * where you have the game, grey where you don't; the pixel mark for a console without a drawing. For pages that aren't
+ * Squirrelcade's own (the Deal check extension), so a store's page shows the same marks. `size` is its height.
+ */
+export function markSvg(platformKey: string, name: string, owned: boolean, size = 14): string {
+  const label = `${name} (${owned ? 'owned' : 'unowned'})`.replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]!);
+  const drawing = MARK_DRAWINGS[platformKey] ?? MARK_DRAWINGS[regionalConsole(platformKey)?.base ?? ''];
+  if (drawing) {
+    const id = `m${platformKey.replace(/[^a-z0-9]/gi, '')}${owned ? 1 : 0}`;
+    const body = (owned ? drawing.svg : (drawing.faded ?? drawing.svg).replace(/fill="#(?!fff"|000")[0-9a-f]{3,6}"/gi, 'fill="currentColor"')).replaceAll('__ID__', id);
+    const width = Math.round((size / 24) * drawing.width * 10) / 10;
+    return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${drawing.width} 24" width="${width}" height="${size}" role="img" aria-label="${label}" style="color:${owned ? drawing.color : MARK_OFF};overflow:visible;flex:none"><title>${label}</title>${body}</svg>`;
+  }
+  const mark = consoleMark(platformKey, name);
+  const rows = markPixels(mark);
+  const height = 8;
+  const width = Math.max(...rows.map((r) => r.length));
+  const dy = (height - rows.length) / 2;
+  const ink = markInk(mark.color);
+  let cells = '';
+  rows.forEach((row, y) =>
+    [...row].forEach((ch, x) => {
+      if (ch === '.') return;
+      let fill: string | null;
+      if (mark.icon) fill = owned ? (mark.icon.colors['ABCDEFGH'.indexOf(ch)] ?? mark.color) : MARK_OFF;
+      else if (owned) fill = ch === '+' ? ink : mark.color;
+      else fill = ch === '+' ? null : MARK_OFF;
+      if (fill) cells += `<rect x="${x}" y="${y + dy}" width="1" height="1" fill="${fill}"/>`;
+    }),
+  );
+  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${width} ${height}" width="${Math.round((size / height) * width * 10) / 10}" height="${size}" role="img" aria-label="${label}" shape-rendering="crispEdges" style="flex:none"><title>${label}</title>${cells}</svg>`;
+}
+
+/** Consoles in the order a badge shows them: the newest first, PC at the right end (the marks' rule, D175). */
+export function markOrder(keys: readonly string[]): string[] {
+  const year = (k: string) => (k === 'pc' ? -1 : (consoleMark(k).year ?? 0));
+  return [...new Set(keys)].sort((a, b) => year(b) - year(a) || a.localeCompare(b));
 }
 
 /** How sure a deal check is of its answer: green, yellow or red on the page (D245). */

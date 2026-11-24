@@ -19,6 +19,10 @@ describe('readListing', () => {
     });    expect(read('LEGO Harry Potter Collection - Nintendo Switch')).toMatchObject({ title: 'LEGO Harry Potter Collection', platformKey: 'nintendo-switch' });
     expect(read('Super Mario Odyssey (Nintendo Switch, 2017) Brand New Sealed')).toMatchObject({ title: 'Super Mario Odyssey', platformKey: 'nintendo-switch' });
     expect(read('Halo 3 Xbox 360 Complete CIB Tested')).toMatchObject({ title: 'Halo 3', platformKey: 'xbox-360' });
+    expect(read('Pokemon Legends: Arceus Nintendo Switch Role-Playing Game Cards, RPG, Action, Adventure, Parental Controls')).toMatchObject({ title: 'Pokemon Legends: Arceus', platformKey: 'nintendo-switch' });
+    expect(read('Nintendo Switch Sports - Nintendo Switch').title).toBe('Nintendo Switch Sports');
+    expect(read('Sega Genesis Classics - PlayStation 4').title).toBe('Sega Genesis Classics');
+    expect(read('LEGO DC Super-Villains - Nintendo Switch').title).toBe('LEGO DC Super-Villains');
   });
 
   it('keeps an edition that is the game', () => {

@@ -7,6 +7,7 @@
   "type": "module",
   "scripts": {
     "dev": "node scripts/reader-files.mjs && vite",
+    "build:extension": "vite build -c vite.extension.config.ts",
     "build": "node scripts/reader-files.mjs && vite build && node scripts/compress.mjs",
     "preview": "vite preview",
     "typecheck": "tsc --noEmit",

@@ -28,6 +28,10 @@ chrome.runtime.onMessage.addListener((message, _sender, reply) => {
     prices(message.url, message.title, message.platform).then(reply, (e) => reply({ error: String(e?.message ?? e) }));
     return true;
   }
+  if (message?.type === 'api') {
+    api(message).then(reply, (e) => reply({ status: 502, type: 'application/json', body: JSON.stringify({ error: 'error', message: String(e?.message ?? e) }) }));
+    return true;
+  }
   if (message?.type === 'options') {
     chrome.runtime.openOptionsPage();
   }
@@ -39,6 +43,7 @@ async function check(items) {
   const { server, key } = await chrome.storage.local.get(['server', 'key']);
   if (!server || !key) return { error: 'Set your Squirrelcade address and key in the extension’s options.', options: true };
   const results = [];
+  let preferences = [];
   for (let i = 0; i < items.length; i += BATCH) {
     let res;
     try {
@@ -53,9 +58,27 @@ async function check(items) {
     if (res.status === 401 || res.status === 403) return { error: 'Squirrelcade turned the key down. Check it in the extension’s options.', options: true };
     if (res.status === 404) return { error: 'This Squirrelcade has no Deal check yet: update it.' };
     if (!res.ok) return { error: `Squirrelcade answered ${res.status}.` };
-    results.push(...(await res.json()).results);
+    const answer = await res.json();
+    results.push(...answer.results);
+    preferences = answer.preferences ?? preferences;
   }
-  return { results };
+  return { results, preferences };
+}
+
+/**
+ * One call to Squirrelcade's API with your key, for the game drawer over a store's page and the badge's acorns: only
+ * paths under /api/v1/. The answer comes back as text with its status and type.
+ */
+async function api({ url, method = 'GET', contentType = null, body = null }) {
+  const { server, key } = await chrome.storage.local.get(['server', 'key']);
+  if (!server || !key) return { status: 401, type: 'application/json', body: JSON.stringify({ error: 'unauthorized', message: 'Set your Squirrelcade address and key in the extension’s options.' }) };
+  if (typeof url !== 'string' || !url.startsWith('/api/v1/')) return { status: 400, type: 'application/json', body: JSON.stringify({ error: 'invalid', message: 'Not an API path.' }) };
+  const res = await fetch(new URL(url.slice(1), server.endsWith('/') ? server : `${server}/`), {
+    method,
+    headers: { ...(contentType ? { 'content-type': contentType } : {}), 'x-api-key': key },
+    body: method === 'GET' || method === 'HEAD' ? undefined : body,
+  });
+  return { status: res.status, type: res.headers.get('content-type') ?? '', body: await res.text() };
 }
 
 const unescape = (s) =>

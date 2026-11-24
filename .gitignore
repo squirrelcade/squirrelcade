@@ -38,3 +38,6 @@ coverage/
 
 # The photo reader's runtime and models, copied from node_modules (apps/web/scripts/reader-files.mjs)
 apps/web/public/reader/lib/
+
+# The Deal check extension's drawer, built from apps/web (npm run build:extension --workspace @squirrelcade/web)
+extension/drawer/
