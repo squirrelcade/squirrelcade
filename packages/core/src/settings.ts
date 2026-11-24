@@ -2666,6 +2666,13 @@ export const settingDefinitions = {
     description: 'On a computer or a tablet held sideways, a spread as it was printed; one page at a time on a phone.',
     default: true,
   }),
+  'magazines.edgeArrows': bool({
+    page: 'magazines',
+    section: 'The reader',
+    label: "Turn pages from the page's edges",
+    description: "A narrow arrow down each side of the pages, as a comic reader has: tap or click it to go back or forward a page. The arrows beside the page number and swiping still work.",
+    default: true,
+  }),
   'magazines.pageWidth': num({
     page: 'magazines',
     section: 'The reader',

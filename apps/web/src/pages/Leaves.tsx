@@ -309,6 +309,7 @@ export function IssueReaderPage() {
   const issue = useQuery({ queryKey: ['magazines', 'issue', id], queryFn: () => api<Issue>(`/magazines/issues/${id}`) });
   const wide = useMediaQuery('(min-width: 62em)') ?? false;
   const twoPages = useSetting('magazines.twoPages', true) && wide;
+  const edgeArrows = useSetting('magazines.edgeArrows', true);
   const keyOf = `squirrelcade:leaves:${id}`;
   const stored = (() => {
     try {
@@ -336,14 +337,28 @@ export function IssueReaderPage() {
     next.set('page', String(to));
     setParams(next, { replace: true });
   };
+  const forward = () => go(left + step);
+  const back = () => go(left - (twoPages && left > 2 ? 2 : 1));
   useHotkeys([
-    ['ArrowRight', () => go(left + step)],
-    ['ArrowLeft', () => go(left - (twoPages && left > 2 ? 2 : 1))],
+    ['ArrowRight', forward],
+    ['ArrowLeft', back],
   ]);
   const touch = useRef<number | null>(null);
+  // The edge arrows stand inside the scroll bar, so it can still be dragged.
+  const scroller = useRef<HTMLDivElement | null>(null);
+  const [scrollBar, setScrollBar] = useState(0);
+  const measure = () => {
+    const el = scroller.current;
+    if (el) setScrollBar(el.offsetWidth - el.clientWidth);
+  };
   const imgs = useRef<(HTMLImageElement | null)[]>([]);
   const [, setLoaded] = useState(0);
   useEffect(() => setZoom(1), [left]);
+  useEffect(() => {
+    measure();
+    window.addEventListener('resize', measure);
+    return () => window.removeEventListener('resize', measure);
+  }, [zoom, left]);
   if (!issue.data) return issue.isError ? <Text c="red">This issue couldn't be shown.</Text> : <Loader />;
   const i = issue.data;
   return (
@@ -365,14 +380,14 @@ export function IssueReaderPage() {
           <ActionIcon variant="default" onClick={() => setZoom((z) => Math.min(4, z + 0.5))} aria-label="Zoom in">
             <IconZoomIn size={16} />
           </ActionIcon>
-          <ActionIcon variant="default" onClick={() => go(left - (twoPages && left > 2 ? 2 : 1))} disabled={left <= 1} aria-label="Previous page">
+          <ActionIcon variant="default" onClick={back} disabled={left <= 1} aria-label="Previous page">
             <IconChevronLeft size={16} />
           </ActionIcon>
           <NumberInput size="xs" w={70} min={1} max={pages} value={page} onChange={(v) => typeof v === 'number' && go(v)} aria-label="Page" />
           <Text size="xs" c="dimmed">
             of {pages}
           </Text>
-          <ActionIcon variant="default" onClick={() => go(left + step)} disabled={left + step > pages} aria-label="Next page">
+          <ActionIcon variant="default" onClick={forward} disabled={left + step > pages} aria-label="Next page">
             <IconChevronRight size={16} />
           </ActionIcon>
           {editable && <PrintedPage issueId={i.id} filePage={left} offset={i.pageOffset} />}
@@ -387,37 +402,55 @@ export function IssueReaderPage() {
           )}
         </Group>
       </Group>
-      <Box
-        style={{ overflow: 'auto', maxHeight: 'calc(100dvh - 140px)', touchAction: zoom > 1 ? 'pan-x pan-y' : 'pan-y' }}
-        onTouchStart={(e) => {
-          touch.current = zoom === 1 ? (e.touches[0]?.clientX ?? null) : null;
-        }}
-        onTouchEnd={(e) => {
-          const start = touch.current;
-          const end = e.changedTouches[0]?.clientX;
-          touch.current = null;
-          if (start === null || end === undefined || Math.abs(end - start) < 60) return;
-          go(end < start ? left + step : left - (twoPages && left > 2 ? 2 : 1));
-        }}
-        onDoubleClick={() => setZoom((z) => (z > 1 ? 1 : 2))}
-      >
-        <Group gap={4} wrap="nowrap" justify="center" align="flex-start" style={{ width: `${zoom * 100}%` }}>
-          {shown.map((n, k) => (
-            <Box key={n} pos="relative" style={{ flex: `0 1 ${100 / shown.length}%`, lineHeight: 0 }}>
-              <img
-                ref={(el) => {
-                  imgs.current[k] = el;
-                }}
-                src={pageUrl(i.id, n, i.version, (window.innerWidth * zoom) / shown.length)}
-                alt={`Page ${n}`}
-                style={{ width: '100%', height: 'auto', display: 'block' }}
-                onLoad={() => setLoaded((x) => x + 1)}
-              />
-              <Marks issueId={i.id} page={n} words={words} img={imgs.current[k] ?? null} />
-              <PageGames issueId={i.id} page={n} marking={marking} shown={outlines} />
-            </Box>
-          ))}
-        </Group>
+      <Box pos="relative">
+        <Box
+          ref={scroller}
+          style={{ overflow: 'auto', maxHeight: 'calc(100dvh - 140px)', touchAction: zoom > 1 ? 'pan-x pan-y' : 'pan-y' }}
+          onTouchStart={(e) => {
+            touch.current = zoom === 1 ? (e.touches[0]?.clientX ?? null) : null;
+          }}
+          onTouchEnd={(e) => {
+            const start = touch.current;
+            const end = e.changedTouches[0]?.clientX;
+            touch.current = null;
+            if (start === null || end === undefined || Math.abs(end - start) < 60) return;
+            if (end < start) forward();
+            else back();
+          }}
+          onDoubleClick={() => setZoom((z) => (z > 1 ? 1 : 2))}
+        >
+          <Group gap={4} wrap="nowrap" justify="center" align="flex-start" style={{ width: `${zoom * 100}%` }}>
+            {shown.map((n, k) => (
+              <Box key={n} pos="relative" style={{ flex: `0 1 ${100 / shown.length}%`, lineHeight: 0 }}>
+                <img
+                  ref={(el) => {
+                    imgs.current[k] = el;
+                  }}
+                  src={pageUrl(i.id, n, i.version, (window.innerWidth * zoom) / shown.length)}
+                  alt={`Page ${n}`}
+                  style={{ width: '100%', height: 'auto', display: 'block' }}
+                  onLoad={() => {
+                    setLoaded((x) => x + 1);
+                    measure();
+                  }}
+                />
+                <Marks issueId={i.id} page={n} words={words} img={imgs.current[k] ?? null} />
+                <PageGames issueId={i.id} page={n} marking={marking} shown={outlines} />
+              </Box>
+            ))}
+          </Group>
+        </Box>
+        {/* A comic reader's turn (the owner: "a full page, but really narrow sort of arrow to the left and right"). */}
+        {edgeArrows && !marking && left > 1 && (
+          <button type="button" className="sc-edge-turn sc-edge-turn-back" onClick={back} aria-label="Back a page" title="Back a page">
+            <IconChevronLeft size={20} />
+          </button>
+        )}
+        {edgeArrows && !marking && left + step <= pages && (
+          <button type="button" className="sc-edge-turn sc-edge-turn-on" style={{ right: scrollBar }} onClick={forward} aria-label="Forward a page" title="Forward a page">
+            <IconChevronRight size={20} />
+          </button>
+        )}
       </Box>
       <IssueGames issueId={i.id} />
       {/* The next pages, fetched ahead so a turn is at once. */}

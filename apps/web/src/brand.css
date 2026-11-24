@@ -695,6 +695,42 @@ button.sc-star {
   grid-template-columns: repeat(10, minmax(0, 1fr));
   gap: 6px;
 }
+/* The reader's edge arrows (D248): a narrow strip down each side of the pages, as a comic reader has. */
+.sc-edge-turn {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  z-index: 3;
+  width: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  border: 0;
+  color: #fff;
+  background: rgba(20, 22, 26, 0.16);
+  opacity: 0.6;
+  cursor: pointer;
+  transition: opacity 120ms, background 120ms;
+}
+.sc-edge-turn:hover,
+.sc-edge-turn:focus-visible {
+  opacity: 1;
+  background: rgba(20, 22, 26, 0.42);
+}
+.sc-edge-turn-back {
+  left: 0;
+  border-radius: 0 8px 8px 0;
+}
+.sc-edge-turn-on {
+  right: 0;
+  border-radius: 8px 0 0 8px;
+}
+@media (max-width: 48em) {
+  .sc-edge-turn {
+    width: 22px;
+  }
+}
 .sc-square {
   position: relative;
   aspect-ratio: 1 / 1;
