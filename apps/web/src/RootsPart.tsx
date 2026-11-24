@@ -200,12 +200,23 @@ export interface GameVideos {
   mode?: 'light' | 'deep';
 }
 
+/** How a video plays: in the player here, or (external) on YouTube in a new tab, as the extension's drawer sets it. */
+export const playerOptions = { external: false };
+
 /**
  * The player (D168): YouTube's privacy-enhanced player in a window (the whole screen on a phone), full screen too; the
  * frame sends its origin, as YouTube's player needs (Squirrelcade's own pages send only same-origin referrers).
  */
 export function VideoPlayer({ video, onClose }: { video: GameVideo | null; onClose: () => void }) {
   const narrow = useMediaQuery('(max-width: 48em)');
+  // In the Deal check extension's drawer (D246), YouTube's player won't play inside a store's page: the video opens on
+  // YouTube in a new tab instead.
+  useEffect(() => {
+    if (!video || !playerOptions.external) return;
+    window.open(`https://www.youtube.com/watch?v=${video.videoId}`, '_blank', 'noopener');
+    onClose();
+  }, [video, onClose]);
+  if (playerOptions.external) return null;
   return (
     <Modal opened={video !== null} onClose={onClose} size="xl" fullScreen={Boolean(narrow)} title={video?.title} centered>
       {video && (

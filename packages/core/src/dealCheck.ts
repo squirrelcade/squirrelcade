@@ -50,10 +50,20 @@ const STORE_WORDS = new Set(
 
 const norm = (s: string) => ` ${s.toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim()} `;
 
+/** Stores' own short names for consoles, beside PLATFORM_SHORT_NAMES ("DRAGON QUEST III HD-2D Remake (NSW)" on Amazon). */
+const STORE_SHORT_NAMES: Record<string, string[]> = {
+  'nintendo-switch': ['nsw', 'ns1', 'switch 1'],
+  'nintendo-switch-2': ['nsw2', 'ns2', 'switch2'],
+  'playstation-5': ['ps 5'],
+  'playstation-4': ['ps 4'],
+  'xbox-series-x': ['xbsx', 'xbox series x s', 'xbox series x|s'],
+  'xbox-one': ['xb1', 'xbo'],
+};
+
 /** Every name a console goes by, longest first, for taking them out of a piece of a title. */
 function consoleNames(platforms: readonly PlatformLike[]): string[] {
   const names = new Set<string>();
-  for (const p of platforms) for (const n of [p.name, ...(p.labels ?? []), ...(PLATFORM_SHORT_NAMES[p.key] ?? [])]) {
+  for (const p of platforms) for (const n of [p.name, ...(p.labels ?? []), ...(PLATFORM_SHORT_NAMES[p.key] ?? []), ...(STORE_SHORT_NAMES[p.key] ?? [])]) {
     const w = norm(n).trim();
     if (w) names.add(w);
   }
@@ -104,7 +114,9 @@ export function readListing(text: string, platforms: readonly PlatformLike[], hi
   if ((t.match(/,\s/g) ?? []).length >= 2) t = t.slice(0, t.search(/,\s/));
   // Pieces after a dash, a bar or a comma go when they're only a console and the store's words.
   const pieces = t.split(/\s+[-–—|]\s+|\s*[|–—]\s*|,\s+/);
-  const kept = [pieces[0]!, ...pieces.slice(1).filter((p) => !storeOnly(p, names) && !GAME_KEY_CARD.test(p))];
+  // A first piece that's only a console ("NSW - PERSONA 4 GOLDEN", as eBay sellers write) goes too, when more follows.
+  const first = pieces.length > 1 && storeOnly(pieces[0]!, names) ? pieces.slice(1) : pieces;
+  const kept = [first[0]!, ...first.slice(1).filter((p) => !storeOnly(p, names) && !GAME_KEY_CARD.test(p))];
   t = kept.join(' - ');
   // A console's full name in the middle of a title: what follows is a store's facts ("Pokemon Legends: Arceus Nintendo
   // Switch Role-Playing Game Cards"). A title that starts with one (Nintendo Switch Sports, Sega Genesis Classics) keeps

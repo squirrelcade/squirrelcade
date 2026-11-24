@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { comingItems } from './db/schema.js';
 import { seedCatalogs, setUp, testApp, type TestApp } from './test-helpers.js';
 
 let g: TestApp;
@@ -64,6 +65,18 @@ describe('POST /api/v1/deal-check', () => {
     expect(put.statusCode).toBe(200);
     const [again] = (await check([{ title: 'Halo Reach', platform: 'Xbox 360' }])).json().results;
     expect(again.preference.value).toBe('Must Have');
+  });
+
+  it('says when a game is on its way to you', async () => {
+    g.settings.update({ 'orders.page': true });
+    g.db
+      .insert(comingItems)
+      .values({ mailRef: 'test:1', itemIndex: 0, store: 'eBay', orderDate: '2026-11-20', listingTitle: 'Halo Reach Xbox 360 CIB', readBy: 'plain', platformKey: 'xbox-360', title: 'Halo Reach', status: 'waiting', createdAt: new Date().toISOString() })
+      .run();
+    const [reach, halo] = (await check([{ title: 'Halo Reach', platform: 'Xbox 360' }, { title: 'Halo 3 - Xbox 360' }])).json().results;
+    expect(reach).toMatchObject({ chest: 'coming', onTheWay: { store: 'eBay', orderDate: '2026-11-20' } });
+    // A game you have keeps its chest.
+    expect(halo).toMatchObject({ chest: 'own', onTheWay: null });
   });
 
   it('takes 1 to 50 listings', async () => {

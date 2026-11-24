@@ -4,6 +4,28 @@
 
 const BATCH = 50;
 
+// Updating itself (the owner's wish, 2026-11-24): loaded from a folder, the extension can't be updated by a store, so it
+// reads its own manifest on disk now and then and reloads itself when the version there is newer than the one running.
+// The next store page's bar says so.
+const CHECK_MINUTES = 10;
+async function checkForUpdate() {
+  try {
+    const res = await fetch(chrome.runtime.getURL('manifest.json'), { cache: 'no-store' });
+    const onDisk = (await res.json()).version;
+    if (onDisk && onDisk !== chrome.runtime.getManifest().version) {
+      await chrome.storage.local.set({ updated: onDisk });
+      chrome.runtime.reload();
+    }
+  } catch {
+    // A manifest being written just now: the next check reads it whole.
+  }
+}
+chrome.runtime.onStartup.addListener(checkForUpdate);
+chrome.runtime.onInstalled.addListener(() => chrome.alarms.create('update-check', { periodInMinutes: CHECK_MINUTES }));
+chrome.alarms.onAlarm.addListener((a) => {
+  if (a.name === 'update-check') checkForUpdate();
+});
+
 chrome.action.onClicked.addListener(async (tab) => {
   if (!tab.id) return;
   const { server, key } = await chrome.storage.local.get(['server', 'key']);
@@ -12,6 +34,8 @@ chrome.action.onClicked.addListener(async (tab) => {
     return;
   }
   try {
+    // Pressed: check now, whatever the store's Auto says.
+    await chrome.scripting.executeScript({ target: { tabId: tab.id }, func: () => { window.__squirrelcadeManual = true; } });
     await chrome.scripting.executeScript({ target: { tabId: tab.id }, files: ['content.js'] });
   } catch (e) {
     // A page the browser keeps extensions out of (its own pages, the extension stores).
@@ -30,6 +54,14 @@ chrome.runtime.onMessage.addListener((message, _sender, reply) => {
   }
   if (message?.type === 'api') {
     api(message).then(reply, (e) => reply({ status: 502, type: 'application/json', body: JSON.stringify({ error: 'error', message: String(e?.message ?? e) }) }));
+    return true;
+  }
+  if (message?.type === 'picture') {
+    picture(message.url).then((dataUrl) => reply({ dataUrl }), () => reply({ dataUrl: null }));
+    return true;
+  }
+  if (message?.type === 'rate') {
+    rate(message.from, message.to).then((r) => reply({ rate: r }), () => reply({ rate: null }));
     return true;
   }
   if (message?.type === 'options') {
@@ -79,6 +111,34 @@ async function api({ url, method = 'GET', contentType = null, body = null }) {
     body: method === 'GET' || method === 'HEAD' ? undefined : body,
   });
   return { status: res.status, type: res.headers.get('content-type') ?? '', body: await res.text() };
+}
+
+/** A picture Squirrelcade keeps (a video's thumbnail, a magazine's page), as a data: address for the drawer's frame. */
+async function picture(url) {
+  const { server, key } = await chrome.storage.local.get(['server', 'key']);
+  if (!server || !key || typeof url !== 'string' || !url.startsWith('/api/v1/')) return null;
+  const res = await fetch(new URL(url.slice(1), server.endsWith('/') ? server : `${server}/`), { headers: { 'x-api-key': key } });
+  if (!res.ok) return null;
+  const type = res.headers.get('content-type') ?? 'image/jpeg';
+  if (!type.startsWith('image/')) return null;
+  const bytes = new Uint8Array(await res.arrayBuffer());
+  let binary = '';
+  for (let i = 0; i < bytes.length; i += 0x8000) binary += String.fromCharCode(...bytes.subarray(i, i + 0x8000));
+  return `data:${type};base64,${btoa(binary)}`;
+}
+
+/** Today's exchange rate (Frankfurter, api.frankfurter.dev: the European Central Bank's, no account), kept for the day. */
+async function rate(from, to) {
+  if (!/^[A-Z]{3}$/.test(from) || !/^[A-Z]{3}$/.test(to)) return null;
+  const day = new Date().toISOString().slice(0, 10);
+  const key = `rate:${from}:${to}`;
+  const kept = (await chrome.storage.local.get(key))[key];
+  if (kept?.day === day) return kept.rate;
+  const res = await fetch(`https://api.frankfurter.dev/v1/latest?from=${from}&to=${to}`);
+  if (!res.ok) return kept?.rate ?? null;
+  const r = (await res.json()).rates?.[to] ?? null;
+  if (r) await chrome.storage.local.set({ [key]: { day, rate: r } });
+  return r;
 }
 
 const unescape = (s) =>

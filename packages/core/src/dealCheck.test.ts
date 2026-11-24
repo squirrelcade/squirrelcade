@@ -21,6 +21,9 @@ describe('readListing', () => {
     expect(read('Halo 3 Xbox 360 Complete CIB Tested')).toMatchObject({ title: 'Halo 3', platformKey: 'xbox-360' });
     expect(read('Pokemon Legends: Arceus Nintendo Switch Role-Playing Game Cards, RPG, Action, Adventure, Parental Controls')).toMatchObject({ title: 'Pokemon Legends: Arceus', platformKey: 'nintendo-switch' });
     expect(read('Nintendo Switch Sports - Nintendo Switch').title).toBe('Nintendo Switch Sports');
+    expect(read('DRAGON QUEST III HD-2D Remake (NSW)')).toMatchObject({ title: 'DRAGON QUEST III HD-2D Remake', platformKey: 'nintendo-switch' });
+    expect(read('Mario Kart World (NS2)')).toMatchObject({ title: 'Mario Kart World', platformKey: 'nintendo-switch-2' });
+    expect(read('NSW - PERSONA 4 GOLDEN (STANDARD - SWITCH)')).toMatchObject({ title: 'PERSONA 4 GOLDEN', platformKey: 'nintendo-switch' });
     expect(read('Sega Genesis Classics - PlayStation 4').title).toBe('Sega Genesis Classics');
     expect(read('LEGO DC Super-Villains - Nintendo Switch').title).toBe('LEGO DC Super-Villains');
   });

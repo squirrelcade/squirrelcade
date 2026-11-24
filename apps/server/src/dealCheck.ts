@@ -1,7 +1,8 @@
-import { baseTitle, findPlatforms, KNOWN_PLATFORMS, markOrder, markSvg, matchKey, numbersDiffer, priceChartingUrl, readListing, surenessOf, type ListingFlag, type Sureness } from '@squirrelcade/core';
+import { baseTitle, findPlatforms, normalizeTitle, KNOWN_PLATFORMS, markOrder, markSvg, matchKey, numbersDiffer, priceChartingUrl, readListing, surenessOf, type ListingFlag, type Sureness } from '@squirrelcade/core';
 import type { FastifyInstance } from 'fastify';
 import { AiToolError, type AiTools, type AiView } from './aiTools.js';
 import type { MarksService } from './marks.js';
+import type { OnTheWay } from './orders.js';
 import type { SettingsService } from './settings.js';
 import type { WishlistService } from './wishlist.js';
 
@@ -44,8 +45,10 @@ export interface DealCheckAnswer {
   wishlist: { acorns: number; priority: string; rank: number | null; platform: string } | null;
   flags: ListingFlag[];
   priceChartingUrl: string;
-  /** The chest: filled (yours on this console), half (yours on another console or PC) or grey. */
-  chest: 'own' | 'elsewhere' | 'none';
+  /** The chest: filled (yours on this console), coming (on its way to you: soft red), half (yours on another console or PC) or grey. */
+  chest: 'own' | 'coming' | 'elsewhere' | 'none';
+  /** The order it's on, when the game is on On the way on this console. */
+  onTheWay: { store: string; orderDate: string | null; paidCents: number | null } | null;
   /** Every console the game came out on (and those you have it on), newest first, PC last: in color where it's yours. */
   marks: { key: string; name: string; owned: boolean; svg: string }[];
   /** The game to open in the drawer (its console and title as Squirrelcade knows them), when there's one. */
@@ -71,6 +74,8 @@ export class DealCheckService {
     private readonly settings: SettingsService,
     private readonly wishlist?: WishlistService,
     private readonly marks?: MarksService,
+    /** On the way's games, by "platform key|normalized title" (Store Mode's index). */
+    private readonly coming?: () => Map<string, OnTheWay>,
   ) {}
 
   /** The preferences a game can have, best first, with the acorns each adds (Do Not Recommend keeps it off the wishlist). */
@@ -131,7 +136,9 @@ export class DealCheckService {
             : null;
       const prefTitle = wish?.title ?? read.title;
       const preference = answer !== 'own' && known ? { platformKey: known.key, title: prefTitle, value: this.wishlist?.preferenceOf(known.key, prefTitle) ?? null } : null;
-      const chest: DealCheckAnswer['chest'] = answer === 'own' ? 'own' : answer === 'elsewhere' ? 'elsewhere' : 'none';
+      // On its way to you: by the game the drawer opens, the wishlist's title or the listing's, on this console.
+      const way = answer !== 'own' && known ? this.onTheWay(known.key, [drawer?.title, wish?.title, read.title]) : null;
+      const chest: DealCheckAnswer['chest'] = answer === 'own' ? 'own' : way ? 'coming' : answer === 'elsewhere' ? 'elsewhere' : 'none';
       const out: DealCheckAnswer = {
         listing: item.title,
         title: read.title,
@@ -150,6 +157,7 @@ export class DealCheckService {
         marks: [],
         drawer,
         preference,
+        onTheWay: way,
       };
       return { answer: out, markTitle: shown?.title ?? read.title };
     });
@@ -168,6 +176,22 @@ export class DealCheckService {
       }
     }
     return { result: this.tools.check({ titles: [title] }, OWNER_VIEW).results[0]!, filtered: false };
+  }
+
+  private comingIndex: Map<string, OnTheWay> | null = null;
+  private comingAt = 0;
+  /** The order a game is on, on On the way (the index read at most once every 30 seconds). */
+  private onTheWay(platformKey: string, titles: (string | null | undefined)[]): DealCheckAnswer['onTheWay'] {
+    if (!this.coming) return null;
+    if (!this.comingIndex || Date.now() - this.comingAt > 30_000) {
+      this.comingIndex = this.coming();
+      this.comingAt = Date.now();
+    }
+    for (const t of titles) {
+      const hit = t ? this.comingIndex.get(`${platformKey}|${normalizeTitle(t)}`) : undefined;
+      if (hit) return { store: hit.store, orderDate: hit.orderDate, paidCents: hit.paidCents };
+    }
+    return null;
   }
 
   /** The wishlist's place on the listing's console, or the best one without a console. */

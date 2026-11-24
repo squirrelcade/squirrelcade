@@ -3,9 +3,11 @@
 // them through the extension, and puts a badge on each: the Stash's chest (filled: yours; half: yours on another console;
 // grey: not) and the console marks, which open the game's drawer; its acorns, a button to change your preference;
 // PriceCharting's prices and the deal meter; and H, M or L for how sure the answer is, with why.
-// Pressing the button again checks the page again (more results may have loaded).
+// Pressing the button again checks the page again. On the stores it reads it also runs by itself (Auto, each store's
+// own switch in the bar), and checks new results as they load.
 (() => {
   if (window.__squirrelcadeDeal) {
+    window.__squirrelcadeManual = false;
     window.__squirrelcadeDeal.scan();
     return;
   }
@@ -18,6 +20,37 @@
   };
   const FLAGS = { 'game-key-card': 'Game-Key Card', 'code-in-box': 'Code in box', digital: 'Digital' };
 
+  // Another region's release named in brackets ("(JPN Import - Multi-Language)", "[Asia English]", "(PAL)", "(EU
+  // Version)"): taken out of the title so it matches the game itself, and shown as an Import flag. A region-free
+  // console's import is the same game in your collection (Squirrelcade's region settings decide the rest).
+  const REGION = /\s*[([]\s*((?:jpn?|japan(?:ese)?|asia(?:n)?|eur?(?:ope(?:an)?)?|uk|pal|hk|hong kong|korea(?:n)?|chinese|aus(?:tralian)?)\b[^)\]]*|[^)\]]*\bimport\b[^)\]]*)[)\]]/i;
+  // A collector line's number before the title ("Switch Limited Run #94: Celeste", "SRG#158: ...", "[Deluxe Edition] DE#9:
+  // ..."): the game is what follows (Squirrelcade's sets know the lines).
+  const LINE_NUMBER = /^(?:\[[^\]]{2,30}\]\s*)?(?:(?:switch|nsw|ps[345]|ps vita|vita|xbox one|xbox series x(?:\|s)?|pc)\s+)?(?:limited run|lrg|srg|srgc|de|srg deluxe|strictly limited|sl)\s*#\s*\d+\s*[:\-–]\s*/i;
+  const KEY_SUFFIX = /\s+(?:(EU|US|UK|NA|USA|Global|Asia|ROW|LATAM)\s+)?(Nintendo Switch 2|Nintendo Switch|Xbox Series X\|S|Xbox One|Xbox|PS5|PS4|PlayStation 5|PlayStation 4|Steam)?\s*(?:CD Key|Key|Digital Code|Account)$/i;
+  function withoutRegion(listing) {
+    // A collector number at the end ("PERSONA 4 GOLDEN (STANDARD - SWITCH) LRG #214"): not the game's words.
+    listing = { ...listing, title: listing.title.replace(/\s+(?:LRG|SRG|Limited Run(?: Games)?|Strictly Limited)\s*#\s*\d+\s*$/i, '') };
+    const line = LINE_NUMBER.exec(listing.title);
+    // The console the line's number names ("Switch Limited Run #94") stays as the hint.
+    if (line) listing = { ...listing, title: listing.title.replace(LINE_NUMBER, ''), hint: listing.hint ?? consoleIn(line[0]) };
+    // A key shop's title ("Mario Kart World EU Nintendo Switch 2 CD Key"): the game, its console as the hint, "[Digital
+    // Code]" for Squirrelcade's flag, and a region other than the US as an import.
+    const key = KEY_SUFFIX.exec(listing.title);
+    if (key) {
+      const region = key[1] && !/^(us|na|usa)$/i.test(key[1]) ? key[1] : listing.region;
+      listing = { ...listing, title: `${listing.title.slice(0, key.index).trim()} [Digital Code]`, hint: listing.hint ?? consoleIn(key[2] ?? '') ?? key[2] ?? null, region };
+    }
+    // Language and cover tags (Play-Asia's "(Multi-Language) (Cover - Asian)"): not the game's words; an Asian or Japanese
+    // cover is another region's release.
+    const cover = /[([]\s*cover\s*-\s*(asian?|japanese|chinese|korean)\s*[)\]]/i.exec(listing.title);
+    const cleaned = listing.title.replace(/\s*[([]\s*(?:multi-?language|multi-?lingual|english(?: (?:subs?|version|cover))?|cover\s*-\s*[^)\]]+|(?:chinese|japanese|korean)(?: subs?)?)\s*[)\]]/gi, '').replace(/\s+/g, ' ').trim();
+    if (cleaned !== listing.title) listing = { ...listing, title: cleaned, region: listing.region ?? (cover ? `${cover[1]} cover` : undefined) };
+    const m = REGION.exec(listing.title);
+    if (!m) return listing;
+    return { ...listing, title: (listing.title.slice(0, m.index) + listing.title.slice(m.index + m[0].length)).replace(/\s+/g, ' ').trim(), region: m[1].trim() };
+  }
+
   // The Stash's chest and the acorn, exactly as Squirrelcade draws them (apps/web/src/Acorn.tsx). The chest is filled
   // (yours on this console), grey (not yours), or half: its lower right filled, its upper left grey (yours on another
   // console or PC; the owner's design, 2026-11-24).
@@ -26,8 +59,11 @@
   const CHEST_LOCK = 'M3 2h1v2H3z';
   const chestParts = (owned) =>
     `<path d="${CHEST_FRAME}" fill="${owned ? '#6b3a10' : OFF}"/>${owned ? `<path d="${CHEST_FILL}" fill="#c27a3f"/>` : ''}<path d="${CHEST_LOCK}" fill="${owned ? '#e9b44c' : OFF}"/>`;
+  // On its way to you: the chest whole, in a soft red (the owner's design, 2026-11-24).
+  const comingParts = () => `<path d="${CHEST_FRAME}" fill="#b5483c"/><path d="${CHEST_FILL}" fill="#ee9b90"/><path d="${CHEST_LOCK}" fill="#fde3df"/>`;
   const chest = (kind, size = 14) => {
     const shown = kind === true ? 'own' : kind === false ? 'none' : kind;
+    if (shown === 'coming') return `<svg viewBox="0 0 7 6" width="${Math.round((size * 7) / 6)}" height="${size}" shape-rendering="crispEdges" aria-hidden="true">${comingParts()}</svg>`;
     const body = shown === 'elsewhere' ? `<defs><clipPath id="sc-half"><path d="M7 0V6H0z"/></clipPath></defs>${chestParts(false)}<g clip-path="url(#sc-half)">${chestParts(true)}</g>` : chestParts(shown === 'own');
     return `<svg viewBox="0 0 7 6" width="${Math.round((size * 7) / 6)}" height="${size}" shape-rendering="crispEdges" aria-hidden="true">${body}</svg>`;
   };
@@ -59,8 +95,10 @@
       read() {
         const pageHint = consoleIn(query('k'));
         const out = [];
-        for (const card of document.querySelectorAll('div[data-component-type="s-search-result"][data-asin]')) {
-          if (!card.dataset.asin) continue;
+        // Every card with a product id and a title: the results list, and the grids and rows between them ("featured"
+        // rows, which aren't marked as search results). The innermost, so a card inside another counts once.
+        const cards = [...document.querySelectorAll('[data-asin]:not([data-asin=""])')].filter((c) => c.querySelector('h2') && ![...c.querySelectorAll('[data-asin]:not([data-asin=""])')].some((d) => d.querySelector('h2')));
+        for (const card of cards) {
           // Amazon's newer cards put the brand in a small h2 of its own ("Busjoy") above the title's: take the longest.
           const h2 = [...card.querySelectorAll('h2')].sort((a, b) => text(b).length - text(a).length)[0];
           if (!h2) continue;
@@ -111,7 +149,296 @@
         return out;
       },
     },
+    ebay: {
+      name: 'eBay',
+      test: () => /(^|\.)ebay\.(com|ca)$/.test(location.hostname),
+      read() {
+        const pageHint = consoleIn(query('_nkw'));
+        const out = [];
+        for (const card of document.querySelectorAll('li.s-card, li.s-item')) {
+          const t = card.querySelector('.s-card__title, .s-item__title');
+          const title = text(t?.querySelector('span.primary, span[role="heading"]') ?? t).replace(/^New Listing\s*/i, '').replace(/Opens in a new window or tab$/i, '').trim();
+          if (!t || !title || /^shop on ebay$/i.test(title)) continue;
+          out.push({ at: t, title, price: priceIn(text(card.querySelector('.s-card__price, .s-item__price'))), seller: null, marketplace: false, hint: consoleIn(title) ? null : pageHint });
+        }
+        const h1 = document.querySelector('h1.x-item-title__mainTitle, h1[data-testid="x-item-title"]');
+        if (h1) out.push({ at: h1, title: text(h1), price: priceIn(text(document.querySelector('.x-price-primary'))), seller: null, marketplace: false, hint: null });
+        return out;
+      },
+    },
+    mercari: {
+      name: 'Mercari',
+      test: () => /(^|\.)mercari\.com$/.test(location.hostname),
+      read() {
+        const pageHint = consoleIn(query('keyword'));
+        const out = [];
+        for (const card of document.querySelectorAll('[data-testid="ProductThumbWrapper"], [data-testid="SearchResults"] a[href*="/item/"]')) {
+          const t = card.querySelector('[data-testid="ItemName"]');
+          const title = text(t) || card.querySelector('img')?.alt || '';
+          if (!title) continue;
+          out.push({ at: t ?? card, title, price: priceIn(text(card.querySelector('[data-testid="ProductThumbItemPrice"], [data-testid*="Price"]')) || text(card)), seller: null, marketplace: false, hint: consoleIn(title) ? null : pageHint });
+        }
+        const h1 = document.querySelector('[data-testid="ItemName"]:not([data-testid="ProductThumbWrapper"] *), h1');
+        if (!out.length && h1 && /\/item\//.test(location.pathname)) out.push({ at: h1, title: text(h1), price: priceIn(text(document.querySelector('[data-testid="ItemPrice"]'))), seller: null, marketplace: false, hint: null });
+        return out;
+      },
+    },
+    gamestop: {
+      name: 'GameStop',
+      test: () => /(^|\.)gamestop\.com$/.test(location.hostname),
+      read() {
+        const out = [];
+        for (const card of document.querySelectorAll('div.product-tile')) {
+          const t = card.querySelector('.render-tile-name, .pd-name, .product-tile-header');
+          if (!t) continue;
+          const href = card.querySelector('a[href*="/products/"]')?.getAttribute('href') ?? '';
+          out.push({ at: t, title: text(t), price: priceIn(text(card.querySelector('.render-sale-price, .actual-price, .price'))), seller: null, marketplace: false, hint: consoleIn(href.replace(/[-/]+/g, ' ')) });
+        }
+        const h1 = document.querySelector('h1.product-name, h2.product-name, .pdp-product-name h1');
+        if (h1) out.push({ at: h1, title: text(h1), price: priceIn(text(document.querySelector('.primary-details-row .actual-price, .render-sale-price'))), seller: null, marketplace: false, hint: consoleIn(location.pathname.replace(/[-/]+/g, ' ')) });
+        return out;
+      },
+    },
+    target: {
+      name: 'Target',
+      test: () => /(^|\.)target\.com$/.test(location.hostname),
+      read() {
+        const pageHint = consoleIn(query('searchTerm'));
+        const out = [];
+        for (const card of document.querySelectorAll('[data-test="ListingPageProductListing"], [data-test="@web/site-top-of-funnel/ProductCardWrapper"]')) {
+          const img = card.querySelector('a[aria-label]');
+          const title = (img?.getAttribute('aria-label') ?? '').replace(/\s*Sponsored\s*$/i, '').trim();
+          const at = card.querySelector('a[data-test="content"]') ?? card.querySelector('a[data-test="product-title"]') ?? img;
+          if (!title || !at) continue;
+          out.push({ at, title, price: priceIn(text(card.querySelector('[data-test="current-price"]')) || text(at)), seller: null, marketplace: false, hint: consoleIn(title) ? null : pageHint });
+        }
+        const h1 = document.querySelector('h1[data-test="product-title"]');
+        if (h1) out.push({ at: h1, title: text(h1), price: priceIn(text(document.querySelector('[data-test="product-price"]'))), seller: null, marketplace: false, hint: null });
+        return out;
+      },
+    },
+    bestbuy: {
+      name: 'Best Buy',
+      test: () => /(^|\.)bestbuy\.(com|ca)$/.test(location.hostname),
+      read() {
+        const pageHint = consoleIn(query('st'));
+        const out = [];
+        for (const card of document.querySelectorAll('div.list-item, li.sku-item')) {
+          const t = card.querySelector('a.sku-title, .sku-title a, h4.sku-header a');
+          if (!t) continue;
+          out.push({ at: t, title: text(t), price: priceIn(text(card.querySelector('[data-testid="customer-price"], .priceView-customer-price')) || text(card.querySelector('.font-sans.text-default'))), seller: null, marketplace: false, hint: consoleIn(text(t)) ? null : pageHint });
+        }
+        const h1 = document.querySelector('h1.h4, .sku-title h1, h1[class*="title"]');
+        if (!out.length && h1) out.push({ at: h1, title: text(h1), price: priceIn(text(document.querySelector('[data-testid="customer-price"], .priceView-customer-price'))), seller: null, marketplace: false, hint: null });
+        return out;
+      },
+    },
+    gamefly: {
+      name: 'GameFly',
+      test: () => /(^|\.)gamefly\.com$/.test(location.hostname),
+      read() {
+        const out = [];
+        for (const card of document.querySelectorAll('gf-thumbnail')) {
+          const t = card.querySelector('.thumbnail-title');
+          if (!t) continue;
+          const alt = card.querySelector('img')?.alt ?? '';
+          out.push({ at: t, title: text(t), price: priceIn(text(card.querySelector('ion-col.ion-text-right')) || text(card)), seller: null, marketplace: false, hint: consoleIn(alt.replace(/^.* on /, '')) });
+        }
+        if (!out.length && /\/game\//.test(location.pathname)) {
+          const h1 = document.querySelector('h1');
+          if (h1) out.push({ at: h1, title: text(h1), price: priceIn(text(document.querySelector('[class*="price"]'))), seller: null, marketplace: false, hint: consoleIn(text(document.querySelector('[class*="platform"]')) || document.title) });
+        }
+        return out;
+      },
+    },
+    nintendo: {
+      name: 'Nintendo eShop',
+      test: () => /(^|\.)nintendo\.com$/.test(location.hostname),
+      read() {
+        const out = [];
+        const seen = new Set();
+        for (const card of document.querySelectorAll('a[href*="/store/products/"]')) {
+          const t = card.querySelector('h2, h3');
+          const href = card.getAttribute('href') ?? '';
+          if (!t || seen.has(href)) continue;
+          seen.add(href);
+          // The product's address ends with its console: "...-switch/", "...-switch-2/".
+          const hint = /-switch-2\/?$/.test(href) ? 'Nintendo Switch 2' : /-switch\/?$/.test(href) ? 'Nintendo Switch' : 'Nintendo Switch';
+          out.push({ at: t, title: text(t), price: priceIn(text(card)), seller: null, marketplace: false, hint });
+        }
+        const h1 = document.querySelector('h1');
+        if (!out.length && h1 && /\/store\/products\//.test(location.pathname)) out.push({ at: h1, title: text(h1), price: priceIn(text(document.querySelector('[class*="price" i]'))), seller: null, marketplace: false, hint: /-switch-2\/?$/.test(location.pathname) ? 'Nintendo Switch 2' : 'Nintendo Switch' });
+        return out;
+      },
+    },
+    // Shops read by the general reader (repeated product cards; a product's own page by its structured data).
+    shops: {
+      name: 'this shop',
+      test: () => GENERAL_SHOPS.some((s) => s.host.test(location.hostname)),
+      read() {
+        const shop = GENERAL_SHOPS.find((s) => s.host.test(location.hostname));
+        this.name = shop.name;
+        return generalRead(shop);
+      },
+    },
+    vgp: {
+      name: 'Video Games Plus',
+      test: () => /(^|\.)videogamesplus\.ca$/.test(location.hostname),
+      read() {
+        const pageHint = consoleIn(query('q'));
+        const out = [];
+        for (const card of document.querySelectorAll('.productitem')) {
+          const t = card.querySelector('.productitem--title');
+          if (!t) continue;
+          const stock = text(card.querySelector('.productitem--badge, [class*="inventory"], [class*="stock"]'));
+          out.push({ at: t, title: text(t), price: priceIn(text(card.querySelector('.price__current'))), currency: 'CAD', seller: null, marketplace: false, hint: consoleIn(text(t)) ? null : pageHint, soldOut: /sold out/i.test(stock + text(card)) });
+        }
+        const h1 = document.querySelector('h1.product-title');
+        if (h1 && !h1.closest('.productitem')) {
+          const price = priceIn(text(document.querySelector('.product-pricing .price__current, .product-main .price__current, .price__current')));
+          out.push({ at: h1, title: text(h1), price, currency: 'CAD', seller: null, marketplace: false, hint: null });
+        }
+        return out;
+      },
+    },
   };
+
+  // The shops the general reader covers (2026-11-24: where the owner has bought games). `currency` when a shop prices in
+  // another one; `pageHint` the address's query word that names a console.
+  const GENERAL_SHOPS = [
+    { name: 'Limited Run Games', host: /(^|\.)limitedrungames\.com$/ },
+    { name: 'Super Rare Games', host: /(^|\.)superraregames\.com$/ },
+    { name: 'Fangamer', host: /(^|\.)fangamer\.com$/ },
+    { name: 'Woot', host: /(^|\.)woot\.com$/ },
+    { name: 'Play-Asia', host: /(^|\.)play-asia\.com$/ },
+    { name: 'eStarland', host: /(^|\.)estarland\.com$/ },
+    { name: 'DKOldies', host: /(^|\.)dkoldies\.com$/ },
+    { name: 'PNP Games', host: /(^|\.)pnpgames(online)?\.com$/ },
+    { name: 'Square Enix Store', host: /(^|\.)square-enix-games\.com$/ },
+    { name: 'Deku Deals', host: /(^|\.)dekudeals\.com$/, defaultHint: 'Nintendo Switch' },
+    { name: 'PlayStation Store', host: /^store\.playstation\.com$/, defaultHint: 'PlayStation 5' },
+    { name: 'Xbox Store', host: /(^|\.)xbox\.com$/, defaultHint: 'Xbox Series X' },
+    { name: 'Microsoft Store', host: /^(www\.)?microsoft\.com$/, defaultHint: 'Xbox Series X' },
+    { name: 'Nintendo eShop', host: /(^|\.)nintendo\.com$/, defaultHint: 'Nintendo Switch' },
+    { name: 'Kinguin', host: /(^|\.)kinguin\.net$/ },
+    { name: 'Outpost Gaming', host: /(^|\.)outpostgaming\.(com|net|shop)$/ },
+  ];
+
+  // Words that are never a game's title on a card: prices, buttons, ratings, delivery, badges.
+  const NOT_A_TITLE = /^(add to (cart|bag|wishlist)|buy( now)?|sold out|out of stock|in stock|pre-?order|sponsored|sale|new|used|quick (view|shop)|choose options|select options|view (details|full details)|notify me|compare|free shipping.*|.*\bout of 5\b.*|\(?\d[\d,.]*\)?( reviews?| ratings?)?|save .*|\d+% off|released .*|ships .*|arrives .*|.*delivery.*|limited|exclusive|best ?seller|featured)$/i;
+  const looksLikeTitle = (s) => s.length >= 3 && s.length <= 200 && !NOT_A_TITLE.test(s) && !/^(\$|£|€|¥|C\$|CA\$|USD)\s?\d/.test(s) && !/^<|<\/?[a-z]+[\s>]/i.test(s) && /[a-z]/i.test(s);
+
+  /** A card's title: an element named for it (title, name, heading), else its product link's words, else its longest words. */
+  function cardTitle(card) {
+    const named = [...card.querySelectorAll('[class*="title" i], [class*="name" i], [class*="heading" i], [itemprop="name"], h2, h3, h4')].filter((e) => looksLikeTitle(text(e)) && text(e).length < 160);
+    if (named.length) return named.sort((a, b) => text(b).length - text(a).length)[0];
+    const links = [...card.querySelectorAll('a[href]')].filter((a) => looksLikeTitle(text(a)));
+    if (links.length) return links.sort((a, b) => text(b).length - text(a).length)[0];
+    const leaves = [...card.querySelectorAll('*')].filter((e) => e.children.length === 0 && looksLikeTitle(text(e)));
+    return leaves.sort((a, b) => text(b).length - text(a).length)[0] ?? null;
+  }
+
+  /** The page's currency, when a shop says it (Shopify does); dollars otherwise. */
+  const pageCurrency = () => window.Shopify?.currency?.active ?? (/\bC\$|CA\$/.test(document.body.innerText.slice(0, 20000)) ? 'CAD' : null);
+
+  /**
+   * The general reader: a page's repeated product cards (an element with a link, a picture and a price; the kind found
+   * most often, at least three of it), or a product's own page (its structured data, or its heading and price).
+   */
+  function generalRead(shop) {
+    const pageHint = consoleIn(document.title) ?? consoleIn(decodeURIComponent(location.search.replace(/[+&=?]/g, ' ')));
+    // Prices, also those split into pieces ("US$<span>51</span>.99"): the smallest element whose words are a price.
+    const PRICE = /^[^\d$£€¥]{0,12}(US\$|CA?\$|\$|£|€|¥)\s?\d[\d,.]*\s*\S{0,4}$/;
+    const priced = [...document.querySelectorAll('body *')].filter((e) => {
+      const t = text(e);
+      if (t.length > 24 || !PRICE.test(t) || e.closest('.squirrelcade-deal')) return false;
+      return ![...e.children].some((c) => PRICE.test(text(c)));
+    });
+    const groups = new Map();
+    for (const p of priced) {
+      let c = p;
+      for (let i = 0; i < 10 && c.parentElement; i++) {
+        c = c.parentElement;
+        if ((c.matches('a[href]') || c.querySelector('a[href]')) && c.querySelector('img') && text(c).length > 12) break;
+      }
+      if (!(c.matches('a[href]') || c.querySelector('a[href]')) || !c.querySelector('img')) continue;
+      const sig = `${c.tagName}.${[...c.classList].slice(0, 2).join('.')}`;
+      const list = groups.get(sig) ?? [];
+      if (!list.includes(c)) list.push(c);
+      groups.set(sig, list);
+    }
+    // Shown cards only: a page that lists each game twice (eStarland's phone and desktop rows) keeps the visible ones.
+    const shown = (c) => c.getClientRects().length > 0 && getComputedStyle(c).visibility !== 'hidden';
+    const cards = [...groups.values()].map((list) => list.filter(shown)).sort((a, b) => b.length - a.length)[0] ?? [];
+    const out = [];
+    const currency = shop.currency ?? pageCurrency();
+    if (cards.length >= 3) {
+      for (const card of cards) {
+        const t = cardTitle(card);
+        if (!t) continue;
+        let title = text(t);
+        // A title cut off with an ellipsis ("Chained Echoes Complete Edition (Swi..."): the whole one from the picture's
+        // description or a tooltip that starts the same way.
+        if (/(\.\.\.|…)$/.test(title)) {
+          const start = title.replace(/(\.\.\.|…)$/, '').trim();
+          const whole = [...card.querySelectorAll('img[alt], [title], [aria-label]')].map((e) => e.getAttribute('alt') ?? e.getAttribute('title') ?? e.getAttribute('aria-label') ?? '').find((x) => x.length > start.length && x.startsWith(start));
+          if (whole) title = whole;
+        }
+        const href = (card.matches('a[href]') ? card : card.querySelector('a[href]'))?.getAttribute('href') ?? '';
+        const hint = consoleIn(title) ? null : consoleIn(card.querySelector('img')?.alt) ?? consoleIn(text(card)) ?? consoleIn(href.replace(/[-_/]+/g, ' ')) ?? pageHint ?? shop.defaultHint ?? null;
+        out.push({ at: t, title, price: priceIn(text(priced.find((p) => card.contains(p)))), currency, seller: null, marketplace: false, hint });
+      }
+      if (out.length) return out;
+    }
+    // Cards without a price on them (Fangamer's grid): the page's product links, each once, with the link's words (or
+    // its picture's) for the title. Not on a product's own page, whose links are other products.
+    const PRODUCT_LINK = /\/(products?|item|itm|game|games|offers|p)\/[^/?#]{3,}/i;
+    const onProductPage = PRODUCT_LINK.test(location.pathname) && document.querySelector('h1');
+    if (!onProductPage) {
+      const seen = new Set();
+      for (const a of document.querySelectorAll('a[href]')) {
+        let u;
+        try {
+          u = new URL(a.href);
+        } catch {
+          continue;
+        }
+        if (u.host !== location.host || !PRODUCT_LINK.test(u.pathname) || seen.has(u.pathname) || a.closest('nav, header, footer, .squirrelcade-deal')) continue;
+        const named = [...a.querySelectorAll('*')].find((e) => e.children.length === 0 && looksLikeTitle(text(e))) ?? (looksLikeTitle(text(a)) ? a : null);
+        const title = named ? text(named) : (a.querySelector('img')?.alt ?? '').trim();
+        if (!looksLikeTitle(title)) continue;
+        seen.add(u.pathname);
+        out.push({ at: named ?? a, title, price: null, currency, seller: null, marketplace: false, hint: consoleIn(title) ? null : consoleIn(a.closest('li, article, [class*="card" i], [class*="product" i]')?.textContent) ?? pageHint ?? shop.defaultHint ?? null });
+      }
+      if (out.length >= 3) return out;
+      out.length = 0;
+    }
+    // A product's own page: schema.org Product data first, then the page's heading.
+    for (const s of document.querySelectorAll('script[type="application/ld+json"]')) {
+      let data;
+      try {
+        data = JSON.parse(s.textContent);
+      } catch {
+        continue;
+      }
+      const items = (Array.isArray(data) ? data : [data]).flatMap((d) => (d['@graph'] ? d['@graph'] : [d]));
+      const product = items.find((d) => /Product|VideoGame/.test([].concat(d['@type'] ?? []).join(' ')));
+      if (product?.name) {
+        const offer = [].concat(product.offers ?? [])[0] ?? {};
+        const h1 = document.querySelector('h1');
+        const price = offer.price ?? offer.lowPrice;
+        out.push({ at: h1, title: String(product.name), price: price ? Math.round(Number(price) * 100) : null, currency: offer.priceCurrency && offer.priceCurrency !== 'USD' ? offer.priceCurrency : currency, seller: null, marketplace: false, hint: consoleIn(String(product.name)) ? null : consoleIn([].concat(product.gamePlatform ?? []).join(' ')) ?? pageHint });
+        return out;
+      }
+    }
+    const h1 = document.querySelector('h1');
+    const metaPrice = document.querySelector('meta[property="product:price:amount"], meta[itemprop="price"], [itemprop="price"]');
+    if (h1 && looksLikeTitle(text(h1)) && metaPrice) {
+      const amount = metaPrice.getAttribute('content') ?? text(metaPrice);
+      out.push({ at: h1, title: text(h1), price: priceIn(`$${amount}`), currency, seller: null, marketplace: false, hint: consoleIn(text(h1)) ? null : pageHint });
+    }
+    return out;
+  }
 
   /** Any other page: the lines of what's selected, one title a line. */
   function selectedLines() {
@@ -158,7 +485,7 @@
     .opt[disabled] { opacity: .5; cursor: wait; }
   `;
 
-  const state = { rows: [], hosts: [], bar: null, pop: null, drawer: null, store: 'this page', preferences: [] };
+  const state = { rows: [], hosts: [], bar: null, pop: null, drawer: null, store: 'this page', preferences: [], seen: new WeakSet(), leftOut: 0, observer: null };
 
   function clear() {
     for (const h of state.hosts) h.remove();
@@ -177,6 +504,7 @@
   /** The chest's hover text: yours here, yours elsewhere (which consoles), or not. */
   function chestLabel(r) {
     if (r.chest === 'own') return 'Stash (owned)';
+    if (r.chest === 'coming') return `Stash (on the way: ${r.onTheWay.store}${r.onTheWay.orderDate ? `, ordered ${r.onTheWay.orderDate}` : ''})`;
     if (r.chest === 'elsewhere') return `Stash (owned on ${r.ownedOn.join(', ')}, not this console)`;
     return 'Stash (unowned)';
   }
@@ -187,14 +515,16 @@
     const r = row.result;
     const host = document.createElement('span');
     host.className = 'squirrelcade-deal';
-    host.style.display = 'block';
+    // Above the link a store spreads over its whole tile (Walmart's, at z-index 1), so the badge's buttons get the clicks;
+    // low enough to stay under the store's own header.
+    Object.assign(host.style, { display: 'block', position: 'relative', zIndex: '3' });
     const root = host.attachShadow({ mode: 'open' });
     const level = LEVEL[r.sure];
     const marks = (r.marks ?? []).map((m) => m.svg).join('');
     const acornsButton = r.preference
       ? `<button type="button" class="acorns" title="Your acorns for it: change your preference">${acorn()} ${r.wishlist ? `${r.wishlist.acorns} <span class="muted">${esc(r.wishlist.priority)}</span>` : '<span class="muted">Acorns</span>'}${r.preference.value ? ` <span class="muted">· ${esc(r.preference.value)}</span>` : ''}</button>`
       : '';
-    const flags = [...r.flags.map((f) => `<span class="flag${f === 'game-key-card' ? ' bad' : ''}">${esc(FLAGS[f] ?? f)}</span>`), row.marketplace ? `<span class="flag" title="${esc(row.seller)}">Marketplace seller</span>` : ''].join('');
+    const flags = [...r.flags.map((f) => `<span class="flag${f === 'game-key-card' ? ' bad' : ''}">${esc(FLAGS[f] ?? f)}</span>`), row.marketplace ? `<span class="flag" title="${esc(row.seller)}">Marketplace seller</span>` : '', row.region ? `<span class="flag" title="${esc(row.region)}">Import</span>` : ''].join('');
     const label = `${chestLabel(r)}: open it in Squirrelcade`;
     root.innerHTML =
       `<style>${css}</style><span class="b${r.chest === 'own' ? ' own' : ''}">` +
@@ -258,7 +588,9 @@
     const answer =
       r.chest === 'own'
         ? 'You have it on this console'
-        : r.chest === 'elsewhere'
+        : r.chest === 'coming'
+          ? `On its way to you: ${esc(r.onTheWay.store)}${r.onTheWay.orderDate ? `, ordered ${esc(r.onTheWay.orderDate)}` : ''}${r.onTheWay.paidCents !== null ? ` (${money(r.onTheWay.paidCents)})` : ''}`
+          : r.chest === 'elsewhere'
           ? `You have it on ${esc(r.ownedOn.join(', '))}, not this console`
           : r.answer === 'maybe'
             ? `Maybe: close to your ${esc(r.match?.title ?? '')}`
@@ -370,6 +702,15 @@
     return `<div style="margin:2px 0 10px"><div style="display:flex;gap:3px;align-items:flex-end">${cells}</div><div style="font-size:12px;margin-top:6px;color:#5c6a60"><b style="color:${tone}">${delta}</b> the usual ${money(usual)} (new ${money(newCents)} + ${money(SHIPPING)} typical shipping)</div></div>`;
   }
 
+  /** A listing's price in US cents for the deal meter, from another currency at today's rate (Frankfurter, the ECB's). */
+  async function inDollars(row) {
+    if (row.price === null || row.price === undefined) return null;
+    if (!row.currency || row.currency === 'USD') return row.price;
+    const answer = await chrome.runtime.sendMessage({ type: 'rate', from: row.currency, to: 'USD' });
+    return answer?.rate ? Math.round(row.price * answer.rate) : null;
+  }
+  const listingPrice = (row) => (row.currency && row.currency !== 'USD' ? `${money(row.price)} ${row.currency}` : money(row.price));
+
   async function showPrices(row, button) {
     const r = row.result;
     const { host, draw } = popup(button, gameHeading(r));
@@ -382,13 +723,15 @@
       return;
     }
     row.prices = best;
+    const dollars = await inDollars(row);
+    if (!host.isConnected) return;
     const others = answer.products.slice(1).map((p) => `<div class="o"><a href="${esc(p.url)}" target="_blank" rel="noopener">${esc(p.title)}</a> · ${esc(p.console)}: ${money(p.loose)} / ${money(p.cib)} / ${money(p.new)}</div>`).join('');
     draw(
       `<div class="muted">${esc(best.title)} · ${esc(best.console)}</div>` +
         `<table><tr><th>Loose</th><td class="n">${money(best.loose)}</td></tr><tr><th>Complete (CIB)</th><td class="n">${money(best.cib)}</td></tr><tr><th>New</th><td class="n">${money(best.new)}</td></tr>` +
-        (row.price !== null ? `<tr><th>This listing</th><td class="n">${money(row.price)}</td></tr>` : '') +
+        (row.price !== null ? `<tr><th>This listing</th><td class="n">${listingPrice(row)}${dollars !== null && dollars !== row.price ? ` <span class="muted">(${money(dollars)})</span>` : ''}</td></tr>` : '') +
         (r.valueCents !== null ? `<tr><th>Your copy</th><td class="n">${money(r.valueCents)}</td></tr>` : '') +
-        `</table>${dealMeter(row.price, best.new)}<a href="${esc(best.url)}" target="_blank" rel="noopener">Open on PriceCharting ›</a>${others ? `<div style="margin-top:8px" class="muted">Other matches</div>${others}` : ''}`,
+        `</table>${dealMeter(dollars, best.new)}<a href="${esc(best.url)}" target="_blank" rel="noopener">Open on PriceCharting ›</a>${others ? `<div style="margin-top:8px" class="muted">Other matches</div>${others}` : ''}`,
     );
   }
 
@@ -405,11 +748,15 @@
       .bar { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; max-width: min(560px, calc(100vw - 32px)); padding: 8px 10px 8px 12px; border-radius: 12px;
              background: #fff; border: 1px solid #d8ddd9; box-shadow: 0 8px 24px rgba(0,0,0,.18); font: 600 13px/1.4 system-ui, -apple-system, "Segoe UI", sans-serif; color: #1f2a22; }
       .t { display: inline-flex; align-items: center; gap: 6px; }
-    </style><div class="bar" role="status"><span class="t">${chest(true, 15)} ${message}</span>${opts.options ? '<button type="button" class="opt">Options</button>' : ''}${state.rows.length ? '<button type="button" class="copy">Copy for Claude</button>' : ''}<button type="button" class="again">Check again</button><button type="button" class="close" aria-label="Clear the badges">×</button></div>`;
+    </style><div class="bar" role="status"><span class="t">${chest(true, 15)} ${message}</span>${opts.options ? '<button type="button" class="opt">Options</button>' : ''}${state.rows.length ? '<button type="button" class="copy">Copy for Claude</button>' : ''}<button type="button" class="again">Check again</button>${autoKey() !== 'auto:' ? `<button type="button" class="auto" title="Check this store's pages by themselves">Auto: ${state.observer ? 'on' : 'off'}</button>` : ''}<button type="button" class="close" aria-label="Clear the badges">×</button></div>`;
     root.querySelector('.opt')?.addEventListener('click', () => chrome.runtime.sendMessage({ type: 'options' }));
     root.querySelector('.copy')?.addEventListener('click', copyForClaude);
-    root.querySelector('.again').addEventListener('click', scan);
-    root.querySelector('.close').addEventListener('click', clear);
+    root.querySelector('.again').addEventListener('click', () => scan());
+    root.querySelector('.auto')?.addEventListener('click', toggleAuto);
+    root.querySelector('.close').addEventListener('click', () => {
+      unwatch();
+      clear();
+    });
   }
 
   /** The page's results as a short table to paste into a chat with Claude. */
@@ -427,7 +774,7 @@
         const mine = r.answer === 'own' ? 'yes' : r.answer === 'elsewhere' ? `on ${r.ownedOn.join(', ')}` : r.answer === 'maybe' ? `maybe (${r.match?.title ?? ''})` : 'no';
         const pc = row.prices ? `${money(row.prices.loose)} / ${money(row.prices.cib)} / ${money(row.prices.new)}` : '';
         const flags = [...r.flags.map((f) => FLAGS[f] ?? f), row.marketplace ? 'marketplace seller' : ''].filter(Boolean).join(', ');
-        return `| ${cell(row.title)} | ${cell(r.title)} | ${cell(r.platform ?? '?')} | ${row.price !== null ? money(row.price) : ''} | ${cell(row.seller ?? '')} | ${cell(mine)} | ${SURE[r.sure].word} | ${r.wishlist ? `${r.wishlist.acorns} (${r.wishlist.priority})` : ''} | ${pc} | ${cell(flags)} |`;
+        return `| ${cell(row.title)} | ${cell(r.title)} | ${cell(r.platform ?? '?')} | ${row.price !== null ? listingPrice(row) : ''} | ${cell(row.seller ?? '')} | ${cell(mine)} | ${SURE[r.sure].word} | ${r.wishlist ? `${r.wishlist.acorns} (${r.wishlist.priority})` : ''} | ${pc} | ${cell(flags)} |`;
       }),
     ];
     try {
@@ -438,51 +785,111 @@
     }
   }
 
-  async function scan() {
-    clear();
+  // What the page's games add up to, for the bar.
+  function summary() {
+    const games = new Map(state.rows.map((r) => [`${r.result.title}|${r.result.platformKey}`, r.result]));
+    const mine = [...games.values()].filter((r) => r.answer === 'own').length;
+    const wanted = [...games.values()].filter((r) => r.answer !== 'own' && r.wishlist).length;
+    const unsure = [...games.values()].filter((r) => r.sure === 'unsure').length;
+    const list = state.hosts.length === 0 && state.rows.length > 0 ? ' (selected lines: the table is in Copy for Claude)' : '';
+    const others = state.leftOut ? ` · ${state.leftOut} not games left out` : '';
+    return `${games.size} games: ${mine} yours, ${wanted} on your wishlist${unsure ? `, ${unsure} to check` : ''}${others}${list}`;
+  }
+
+  /**
+   * Checks the page. `more`: only the listings not checked yet (more results loaded as you scroll), added to what's
+   * there. `auto`: run by itself on a store's page, so a problem (Squirrelcade not answering away from home) stays quiet.
+   */
+  async function scan({ more = false, auto = false } = {}) {
+    if (!more) {
+      clear();
+      state.seen = new WeakSet();
+      state.leftOut = 0;
+    }
     const reader = Object.values(READERS).find((r) => r.test());
-    state.store = reader?.name ?? location.hostname;
     let listings = reader ? reader.read() : [];
-    if (listings.length === 0) listings = selectedLines();
-    listings = listings.filter((l) => l.title && l.title.length >= 2);
+    state.store = reader?.name ?? location.hostname;
+    if (listings.length === 0 && !auto) listings = selectedLines();
+    listings = listings.filter((l) => l.title && l.title.length >= 2 && !(l.at && state.seen.has(l.at))).map(withoutRegion);
+    for (const l of listings) if (l.at) state.seen.add(l.at);
     if (listings.length === 0) {
-      drawBar(reader ? 'No games found on this page.' : 'Select the titles to check, then press the button again.');
+      if (!more && !auto) drawBar(reader ? 'No games found on this page.' : 'Select the titles to check, then press the button again.');
       return;
     }
-    drawBar(`Checking ${listings.length} listings…`);
+    if (!more && !auto) drawBar(`Checking ${listings.length} listings…`);
     // Each title once, with its console.
     const keyOf = (l) => `${l.title}|${l.hint ?? ''}`;
     const unique = [...new Map(listings.map((l) => [keyOf(l), { title: l.title, platform: l.hint }])).entries()];
     const answer = await chrome.runtime.sendMessage({ type: 'check', items: unique.map(([, i]) => i) });
     if (!answer || answer.error) {
-      drawBar(esc(answer?.error ?? 'Squirrelcade didn’t answer.'), { options: answer?.options });
+      // Run by itself, the page stays as it was; asked for, the bar says why.
+      if (auto) {
+        // Away from home, say: it stops for this page rather than asking again at every change.
+        unwatch();
+      } else {
+        drawBar(esc(answer?.error ?? 'Squirrelcade didn’t answer.'), { options: answer?.options });
+      }
       return;
     }
-    state.preferences = answer.preferences ?? [];
+    state.preferences = answer.preferences ?? state.preferences;
     const byKey = new Map(unique.map(([k], i) => [k, answer.results[i]]));
-    let leftOut = 0;
     for (const l of listings) {
       const row = { ...l, result: byKey.get(keyOf(l)) };
       if (!row.result) continue;
       if (notAGame(row)) {
-        leftOut++;
+        state.leftOut++;
         continue;
       }
       state.rows.push(row);
-      if (row.at) {
+      if (row.at?.isConnected) {
         const host = badge(row);
         row.host = host;
         row.at.after(host);
         state.hosts.push(host);
       }
     }
-    const games = new Map(state.rows.map((r) => [`${r.result.title}|${r.result.platformKey}`, r.result]));
-    const mine = [...games.values()].filter((r) => r.answer === 'own').length;
-    const wanted = [...games.values()].filter((r) => r.answer !== 'own' && r.wishlist).length;
-    const unsure = [...games.values()].filter((r) => r.sure === 'unsure').length;
-    const list = state.hosts.length === 0 ? ' (selected lines: the table is in Copy for Claude)' : '';
-    const others = leftOut ? ` · ${leftOut} not games left out` : '';
-    drawBar(`${games.size} games: ${mine} yours, ${wanted} on your wishlist${unsure ? `, ${unsure} to check` : ''}${others}${list}`);
+    if (state.rows.length > 0 || !auto) {
+      const { updated } = await chrome.storage.local.get('updated');
+      drawBar(updated ? `${summary()} · Deal check updated to ${esc(updated)}` : summary());
+      if (updated) await chrome.storage.local.remove('updated');
+    }
+  }
+
+  // Running by itself on the stores Deal check reads (the owner's choice, 2026-11-24): on by default, off for a store
+  // with the bar's "Auto" button. New results as you scroll are checked a couple of seconds after they appear; a
+  // store's page that changes its address without reloading (a new search) is checked afresh.
+  const autoKey = () => (Object.values(READERS).some((r) => r.test()) ? `auto:${location.hostname.replace(/^www\./, '')}` : 'auto:');
+  async function autoOn() {
+    const key = autoKey();
+    return key !== 'auto:' && (await chrome.storage.local.get(key))[key] !== false;
+  }
+  function watch() {
+    if (state.observer) return;
+    let timer = null;
+    let page = location.href;
+    state.observer = new MutationObserver((changes) => {
+      // The badges' own changes don't count.
+      if (changes.every((c) => [...c.addedNodes, ...c.removedNodes].every((n) => n.classList?.contains?.('squirrelcade-deal')))) return;
+      clearTimeout(timer);
+      timer = setTimeout(() => {
+        if (location.href !== page) {
+          page = location.href;
+          scan({ auto: true });
+        } else scan({ more: true, auto: true });
+      }, 1500);
+    });
+    state.observer.observe(document.body, { childList: true, subtree: true });
+  }
+  function unwatch() {
+    state.observer?.disconnect();
+    state.observer = null;
+  }
+  async function toggleAuto() {
+    const on = !(await autoOn());
+    await chrome.storage.local.set({ [autoKey()]: on });
+    if (on) watch();
+    else unwatch();
+    drawBar(on ? `Runs by itself on ${esc(state.store)} again.` : `Won’t run by itself on ${esc(state.store)}: press the button to check.`);
   }
 
   // Accessories and hardware a store lists among its games (a stand, a case, grips, a console bundle): left out when
@@ -503,6 +910,23 @@
     return ACCESSORY.test(r.title) || HARDWARE.test(r.title) || HARDWARE.test(row.title);
   }
 
-  window.__squirrelcadeDeal = { scan, clear };
-  scan();
+  // `peek` lists what the page's reader finds, without asking Squirrelcade: for checking the readers (the monthly check).
+  const peek = () => {
+    const reader = Object.values(READERS).find((r) => r.test());
+    const listings = (reader ? reader.read() : []).map(withoutRegion);
+    return { store: reader?.name ?? null, count: listings.length, listings: listings.map((l) => ({ title: l.title, price: l.price, currency: l.currency ?? null, hint: l.hint, region: l.region ?? null, badgeSpot: Boolean(l.at) })) };
+  };
+  window.__squirrelcadeDeal = { scan, clear, peek };
+  if (window.__squirrelcadeManual) {
+    window.__squirrelcadeManual = false;
+    scan();
+  } else {
+    autoOn().then(async (on) => {
+      const { server, key } = await chrome.storage.local.get(['server', 'key']);
+      if (!on || !server || !key) return;
+      // Watching first, so the bar's first drawing already says Auto: on.
+      watch();
+      await scan({ auto: true });
+    });
+  }
 })();
