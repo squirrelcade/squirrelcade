@@ -453,7 +453,7 @@
 
   const css = `
     :host { all: initial; }
-    .b { display: inline-flex; align-items: center; gap: 5px; flex-wrap: wrap; margin: 4px 0 2px; padding: 3px 6px 3px 8px; border-radius: 999px;
+    .b { display: inline-flex; align-items: center; gap: 5px; row-gap: 4px; flex-wrap: wrap; margin: 4px 0 2px; padding: 4px 7px 4px 8px; border-radius: 12px;
          font: 600 12px/1.3 system-ui, -apple-system, "Segoe UI", sans-serif; color: #1f2a22; background: #fff; border: 1px solid #d8ddd9;
          box-shadow: 0 1px 2px rgba(0,0,0,.06); cursor: default; }
     .b.own { background: #f3faf5; border-color: #b8dcc4; }
@@ -509,6 +509,25 @@
     return 'Stash (unowned)';
   }
 
+  // When each console came out, for keeping a badge's marks to the listing's own era: a remake shares its name with the
+  // original ("Star Fox" on Switch 2 and on the Super Nintendo), and Squirrelcade's marks go by the name.
+  const CONSOLE_YEAR = {
+    'nintendo-entertainment-system': 1985, 'super-nintendo': 1991, 'nintendo-64': 1996, 'nintendo-gamecube': 2001, wii: 2006, 'wii-u': 2012,
+    'nintendo-switch': 2017, 'nintendo-switch-2': 2025, 'game-boy': 1989, 'game-boy-color': 1998, 'game-boy-advance': 2001, 'nintendo-ds': 2004,
+    'nintendo-3ds': 2011, 'virtual-boy': 1995, playstation: 1995, 'playstation-2': 2000, 'playstation-3': 2006, 'playstation-4': 2013,
+    'playstation-5': 2020, psp: 2005, 'playstation-portable': 2005, 'playstation-vita': 2012, xbox: 2001, 'xbox-360': 2005, 'xbox-one': 2013,
+    'xbox-series-x': 2020, 'sega-master-system': 1986, 'sega-genesis': 1989, 'sega-cd': 1992, 'sega-32x': 1994, 'sega-saturn': 1995,
+    'sega-dreamcast': 1999, 'sega-game-gear': 1991, 'atari-2600': 1977, 'turbografx-16': 1989, 'neo-geo': 1990,
+  };
+  const yearOf = (key) => CONSOLE_YEAR[key] ?? CONSOLE_YEAR[key.replace(/-(jp|japan|pal|eu|kr|cn)$/, '')] ?? null;
+  /** The marks of consoles from the listing's era (within 9 years of its console), PC kept; all of them without a console. */
+  function marksOfItsTime(r) {
+    const marks = r.marks ?? [];
+    const anchor = r.platformKey ? yearOf(r.platformKey) : null;
+    if (anchor === null) return marks;
+    return marks.filter((m) => m.key === 'pc' || yearOf(m.key) === null || Math.abs(yearOf(m.key) - anchor) <= 9);
+  }
+
   // One listing's badge: the chest and console marks (they open the game's drawer), the acorns (your preference), the
   // copy's flags, PriceCharting, and how sure the answer is (H, M, L).
   function badge(row) {
@@ -520,7 +539,7 @@
     Object.assign(host.style, { display: 'block', position: 'relative', zIndex: '3' });
     const root = host.attachShadow({ mode: 'open' });
     const level = LEVEL[r.sure];
-    const marks = (r.marks ?? []).map((m) => m.svg).join('');
+    const marks = marksOfItsTime(r).map((m) => m.svg).join('');
     const acornsButton = r.preference
       ? `<button type="button" class="acorns" title="Your acorns for it: change your preference">${acorn()} ${r.wishlist ? `${r.wishlist.acorns} <span class="muted">${esc(r.wishlist.priority)}</span>` : '<span class="muted">Acorns</span>'}${r.preference.value ? ` <span class="muted">· ${esc(r.preference.value)}</span>` : ''}</button>`
       : '';
