@@ -188,6 +188,22 @@ An email's `status` is `applied`, `pending` (held for you), `refused`, `duplicat
 
 A barcode's answer: `{code, known, productName, searchedFor, platformKey, platformName, results, message}`. `code` is the barcode as Squirrelcade keeps it (a UPC read with zeros in front is its 12 digits). `known` is true for a barcode you linked (`POST /api/v1/barcodes` with `{code, platformKey, title}`). For a new one, `productName` is what the barcode service calls it, `searchedFor` the title found in that name (or the name cleaned of packaging words when none fits), and `platformKey` and `platformName` the console the name gives, whose games come first in `results`. The phone check (`GET /api/v1/check?barcode=<digits>`) also answers `lookupUrl`, PriceCharting's page for the barcode, and its PriceCharting link for the scanned game goes by the barcode.
 
+### Deal check (a store's listings)
+
+```
+POST   /api/v1/deal-check                {"items": [{"title": "WWE 2K26 - Nintendo Switch 2 Standard Edition", "platform": null}, ...]}  (1 to 50)
+```
+
+What the browser extension (`extension/`, [Deal check](help/wishlist.md#deal-check-the-browser-extension)) sends: each listing's title as the store writes it, and `platform`, a console the page names around it when the title doesn't (a console the title names wins). Owner only. Each answer: `{listing, title, platformKey, platform, answer, sure, why, match, ownedOn, valueCents, wishlist, flags, priceChartingUrl}`:
+
+- `title` and `platform`: the game and console read from the listing (the store's words, the console and the copy's kind taken out).
+- `answer`: `own` (on that console; anywhere when none is known), `elsewhere` (on another console or PC: `ownedOn`), `maybe` (only a near miss: `match`) or `need`.
+- `sure`: `sure`, `likely` or `unsure` (green, yellow, red), from the match's confidence and the closest near miss on that console (cut-offs: Settings > Acorns ranking > Deal check; without a console, never `sure`); `why` says it in words. A near miss with other numbers ("WWE 2K25" for "WWE 2K26") is another game and doesn't count.
+- `wishlist`: `{acorns, priority, rank, platform}` on that console, for a game you don't have there.
+- `valueCents`: what your copy on that console is worth (your PriceCharting export).
+- `flags`: `game-key-card`, `code-in-box`, `digital`, as the listing says.
+- `priceChartingUrl`: PriceCharting's search for the game and console. Squirrelcade fetches nothing from the store or PriceCharting for this.
+
 ## The wishlist
 
 ```

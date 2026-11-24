@@ -37,6 +37,7 @@ import { computeHealth, importFolder, registerSettingsRoutes, registerSystemRout
 import { registerAiSetupRoutes } from './aiSetup.js';
 import { SettingsError, SettingsService } from './settings.js';
 import { registerCheckRoutes } from './check.js';
+import { DealCheckService, registerDealCheckRoutes } from './dealCheck.js';
 import { registerShelfRoutes } from './shelfCheck.js';
 import { VisionClient } from './vision.js';
 import { HelperQueue, registerHelperRoutes } from './helper.js';
@@ -780,6 +781,8 @@ export async function buildApp(options: BuildOptions = {}): Promise<Squirrelcade
   const aiTools = new AiTools({ db, settings, pc, details, wishlist, igdb, history, notes, rules: buyingRules });
   // Talk to Squirrelcade (D148): the connector's read-only tools, with the AI model set up for Check a shelf.
   registerTalkRoutes(app, new TalkService({ settings, vision, helpers, tools: aiTools, lookup, notes }));
+  // Deal check (D245): the titles on a store's page, from the browser extension, answered with the same matcher.
+  registerDealCheckRoutes(app, new DealCheckService(aiTools, settings));
   collection.events.on('changed', () => aiTools.invalidate());
   collection.events.on('remapped', () => aiTools.invalidate());
   pc.events.on('changed', () => aiTools.invalidate());

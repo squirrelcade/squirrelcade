@@ -988,6 +988,30 @@ export const settingDefinitions = {
       "With a wishlist on PriceCharting, it emails you when one of its games is listed on eBay below the market value. Squirrelcade reads those emails too and lists the deals on Acorns > Deals, next to your own wishlist's ranks; the game of the day favors a game with a fresh deal.",
     default: true,
   }),
+  'dealCheck.sureAt': num({
+    page: 'wishlist',
+    section: 'Deal check',
+    label: 'Green (sure) from',
+    description:
+      "The Deal check browser extension puts a dot beside each game's chest on a store's page: green when it's sure, yellow when it's pretty sure, red when it isn't. A game you have shows green when its title matches yours at least this closely (100 is the same title; an edition or a spelling scores less).",
+    default: 95,
+    min: 85,
+    max: 100,
+    unit: '%',
+    advanced: true,
+  }),
+  'dealCheck.unsureAt': num({
+    page: 'wishlist',
+    section: 'Deal check',
+    label: 'Red (unsure) from',
+    description:
+      "A game you don't have shows red when one of yours on that console comes at least this close to its title (it could be the same game under another name), yellow when one comes closer than 60, and green when none does.",
+    default: 75,
+    min: 60,
+    max: 85,
+    unit: '%',
+    advanced: true,
+  }),
   'mail.dealAccounts': list({
     page: 'wishlist',
     section: "PriceCharting's deal emails",

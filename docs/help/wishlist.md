@@ -90,7 +90,22 @@ With a wishlist on PriceCharting, PriceCharting emails you when someone lists on
 
 PriceCharting emails every deal on its wishlist. To be told only about the ones that matter, **Acorns ranking > PriceCharting's deal emails > "Tell me about deals on my wishlist's top"** (25, say) sends a message only for the deals on games your Squirrelcade wishlist ranks that high.
 
-Prices for new copies in shops aren't read anywhere (no shop or price site offers them to apps like this). The shop links in each game's drawer (Deku Deals for Switch games, Amazon, Best Buy...) open a search there.
+Prices for new copies in shops aren't read anywhere (no shop or price site offers them to apps like this). The shop links in each game's drawer (Deku Deals for Switch games, Amazon, Best Buy...) open a search there. For a store's page you have open, use Deal check (next).
+
+## Deal check (the browser extension)
+
+**Squirrelcade Deal check** is a browser extension for Edge, Chrome and the other Chromium browsers. On a store's page, press its button (or Alt+Shift+S) and each game listed gets a badge:
+
+- **The Stash's chest:** filled when you have the game on that console, grey when you don't. "On PlayStation 5" means you have it on another console.
+- **A dot for how sure that is:** green when it's sure, yellow when it's pretty sure (an edition of yours, or the console came from the page rather than the listing), red when it isn't (one of yours comes close under another name). Hover over the dot to see why.
+- **Its acorns** and priority when it's on your wishlist, what your copy is worth, and flags for a Game-Key Card, a code in a box, a digital code or a marketplace seller.
+- **PriceCharting:** opens PriceCharting's loose, complete and new prices for the game beside the listing's price, with a link to its page there.
+
+A bar in the corner counts the games, and **Copy for Claude** copies them as a table to paste into a chat with Claude (or any AI app) and ask about them.
+
+Nothing runs until you press the button, and only on that page: it never opens other pages or scrolls. Amazon and Walmart have readers of their own (search results and a game's page); on any other site, select the titles and press the button. PriceCharting's prices are read from its search page in your browser when you click the button, as if you opened it yourself.
+
+To set it up: load the `extension` folder of Squirrelcade's source in your browser (Extensions > turn on Developer mode > Load unpacked), then in the extension's options enter the address you open Squirrelcade at and its API key (Settings > Security). It talks to your Squirrelcade from your browser, so it works where your browser can reach it (your home network, for most). Where the green and red start are **Acorns ranking > Deal check**.
 
 ## Coming soon and Past releases
 
