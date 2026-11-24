@@ -1,8 +1,8 @@
 # Squirrelcade Deal check (browser extension)
 
-On a store's page each game listed gets a badge: the Stash's chest (filled: you have it on that console; soft red: it's on its way to you; half filled: you have it on another console; grey: you don't) with the marks of every console it came out on, your acorns (a button to set your preference), its flags, PriceCharting's prices with a deal meter, and H, M or L for how sure the answer is. The chest opens Squirrelcade's own game drawer over the page. **Copy for Claude** copies the page's games as a table to paste into a chat. How it works and what each part means: [Deal check in Help](../docs/help/wishlist.md#deal-check-the-browser-extension).
+On a store's page each game listed gets a badge: the Stash's chest (filled: you have it on that console; soft red: it's on its way to you; half filled: you have it on another console; grey: you don't) with the marks of every console it came out on, your acorns (a button to set your preference), its flags, PriceCharting's prices with a deal meter, and H, M or L for how sure the answer is. The chest opens Squirrelcade's own game drawer over the page. Its toolbar button shows how many games it found; its window has the counts, **Check again**, **Copy for Claude** (the page's games as a table to paste into a chat) and the store's **Auto** switch. How it works and what each part means: [Deal check in Help](../docs/help/wishlist.md#deal-check-the-browser-extension).
 
-It works in Edge, Chrome and the other Chromium browsers. On the stores it reads (below) it runs by itself as a page loads (each store's **Auto** button in the bar turns that off); anywhere else, press its button, and it reads only that page.
+It works in Edge, Chrome and the other Chromium browsers. On the stores it reads (below) it runs by itself as a page loads (each store's **Auto** switch in the window turns that off); anywhere else, use the window's **Check this page** on the titles you've selected. It reads only that page.
 
 ## Install
 
@@ -12,7 +12,7 @@ It works in Edge, Chrome and the other Chromium browsers. On the stores it reads
 4. Pin the Squirrelcade button to the toolbar (the puzzle-piece menu).
 5. The options page opens on the first press: enter the address you open Squirrelcade at (for example `http://192.168.1.20:7575`) and its API key (Squirrelcade: Settings > Security). The browser asks once to let the extension reach that address.
 
-**Updates:** the extension updates itself. Every 10 minutes (and when the browser starts) it reads the `manifest.json` in its folder, and when the version there differs from the one running, it reloads; the next store page's bar says "Deal check updated to ...". So after pulling new code (or a change made here), nothing needs pressing. A change that should reach the browsers needs a new `version` in `manifest.json`.
+**Updates:** the extension updates itself. Every 10 minutes (and when the browser starts) it reads the `manifest.json` in its folder, and when the version there differs from the one running, it reloads, and its window says "Deal check updated itself to ..." the next time it opens. So after pulling new code (or a change made here), nothing needs pressing. A change that should reach the browsers needs a new `version` in `manifest.json`.
 
 ## Stores
 
@@ -26,7 +26,8 @@ Store pages change. **Ticky T-592** checks every reader monthly: `node .work/dea
 
 - `manifest.json`: Manifest V3. Permissions: `activeTab` and `scripting` (the page you press the button on), `storage` (your address and key, in this browser only), `alarms` (the update check), PriceCharting and the exchange-rate service, and your Squirrelcade's address (asked for when you save it). `content_scripts` puts `content.js` on the stores it reads.
 - `background.js`: the button, the update check, the calls to Squirrelcade with your key (`POST /api/v1/deal-check`, the drawer's API calls and pictures), PriceCharting's prices and the exchange rate.
-- `content.js`: reads the listings and draws the badges, the windows (PriceCharting, acorns, H/M/L) and the bar; `window.__squirrelcadeDeal.peek()` lists what the page's reader finds without asking Squirrelcade.
+- `popup.html`, `popup.js`: the toolbar button's window (counts, Check again, Copy for Claude, Auto), talking to the page's `content.js`.
+- `content.js`: reads the listings and draws the badges and their windows (PriceCharting, acorns, H/M/L); `window.__squirrelcadeDeal.peek()` lists what the page's reader finds without asking Squirrelcade.
 - `options.html`, `options.js`: your Squirrelcade's address and API key.
 - `drawer/` (built, not in git): Squirrelcade's game drawer from `apps/web/src/embed/drawer.tsx`, shown in a frame over the store's page. It asks Squirrelcade through `background.js` (a store's https page can't show Squirrelcade's http address); its pictures come the same way, videos open on YouTube and Squirrelcade's pages open at home in a new tab.
 

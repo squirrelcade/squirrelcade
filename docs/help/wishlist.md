@@ -94,7 +94,7 @@ Prices for new copies in shops aren't read anywhere (no shop or price site offer
 
 ## Deal check (the browser extension)
 
-**Squirrelcade Deal check** is a browser extension for Edge, Chrome and the other Chromium browsers. On the stores it reads it runs by itself as a page loads (and as more results load when you scroll); anywhere else, press its button (or Alt+Shift+S). Each game listed gets a badge:
+**Squirrelcade Deal check** is a browser extension for Edge, Chrome and the other Chromium browsers. On the stores it reads it runs by itself as a page loads (and as more results load when you scroll); anywhere else, select the titles and use its toolbar window (Alt+Shift+S opens it). Each game listed gets a badge:
 
 - **The Stash's chest and the console marks:** the chest is filled when you have the game on that console, soft red when it's on its way to you (on On the way: hover for the store and the order's date), half filled (its lower right) when you have it on another console or PC, grey when you don't; the marks are every console the game came out on, in color where you have it. Click them to open the game's drawer from Squirrelcade, over the store's page.
 - **Your acorns:** its acorns and priority (or just "Acorns" when it isn't on your wishlist). Click to pick your preference (Must Have, Strong Interest...): Squirrelcade keeps it and the badge shows the new acorns.
@@ -104,11 +104,11 @@ Prices for new copies in shops aren't read anywhere (no shop or price site offer
 
 Accessories, amiibo, controllers and consoles a store lists among its games get no badge.
 
-A bar in the corner counts the games, and **Copy for Claude** copies them as a table to paste into a chat with Claude (or any AI app) and ask about them.
+The toolbar button shows how many games it found on the page. Click it for its window: the games, yours and on your wishlist (and how many are on their way or to check), **Check again**, **Copy for Claude** (the page's games as a table to paste into a chat with Claude or any AI app), and the store's **Auto** switch.
 
-It reads only the page you're on: it never opens other pages or scrolls for you. **The stores it reads:** Amazon, Walmart, eBay, Mercari, GameStop, Target, Best Buy, GameFly, Video Games Plus (its Canadian prices shown in dollars too), Limited Run Games, Super Rare Games, Fangamer, Play-Asia, eStarland, DKOldies, PNP Games, Woot, the Square Enix Store, Deku Deals, Kinguin, and the PlayStation, Xbox and Nintendo stores; a general reader finds the product cards on the smaller shops, so a change to their pages rarely stops it. On each, the bar's **Auto** button turns running by itself off or on for that store. On any other site, select the titles and press the button. PriceCharting's prices are read from its search page in your browser when you click PriceCharting, as if you opened it yourself.
+It reads only the page you're on: it never opens other pages or scrolls for you. **The stores it reads:** Amazon, Walmart, eBay, Mercari, GameStop, Target, Best Buy, GameFly, Video Games Plus (its Canadian prices shown in dollars too), Limited Run Games, Super Rare Games, Fangamer, Play-Asia, eStarland, DKOldies, PNP Games, Woot, the Square Enix Store, Deku Deals, Kinguin, and the PlayStation, Xbox and Nintendo stores; a general reader finds the product cards on the smaller shops, so a change to their pages rarely stops it. On each, the window's **Auto** switch turns running by itself off or on for that store. On any other site, select the titles and press **Check this page** in its window. PriceCharting's prices are read from its search page in your browser when you click PriceCharting, as if you opened it yourself.
 
-Loaded from a folder, the extension can't be updated by a store, so it updates itself: about every 10 minutes it looks at its folder, and when a newer version is there it reloads, and the next store page's bar says "Deal check updated to ...".
+Loaded from a folder, the extension can't be updated by a store, so it updates itself: about every 10 minutes it looks at its folder, and when a newer version is there it reloads, and its window says "Deal check updated itself to ..." the next time you open it.
 
 To set it up: load the `extension` folder of Squirrelcade's source in your browser (Extensions > turn on Developer mode > Load unpacked), then in the extension's options enter the address you open Squirrelcade at and its API key (Settings > Security). It talks to your Squirrelcade from your browser, so it works where your browser can reach it (your home network, for most). Where the green and red start are **Acorns ranking > Deal check**.
 

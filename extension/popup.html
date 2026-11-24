@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Squirrelcade Deal check</title>
+    <style>
+      :root { color-scheme: light dark; --bg: #fff; --card: #f4f6f5; --ink: #1f2a22; --muted: #5c6a60; --line: #d8ddd9; --accent: #2b7a4b; --btn: #eef1ef; --btn-hover: #dfe5e1; }
+      @media (prefers-color-scheme: dark) { :root { --bg: #1b201c; --card: #252b27; --ink: #e6ece7; --muted: #9aa79e; --line: #343c36; --accent: #6cc28f; --btn: #2c332e; --btn-hover: #364039; } }
+      body { margin: 0; width: 320px; background: var(--bg); color: var(--ink); font: 13px/1.45 system-ui, -apple-system, "Segoe UI", sans-serif; }
+      main { padding: 12px 14px 14px; }
+      header { display: flex; align-items: center; gap: 8px; font-weight: 700; font-size: 14px; }
+      header img { width: 20px; height: 20px; }
+      header .store { margin-left: auto; font-weight: 500; color: var(--muted); font-size: 12px; text-align: right; }
+      .message { margin: 10px 0 8px; font-weight: 600; }
+      .message.bad { color: #c9473d; }
+      .counts { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; margin: 8px 0 12px; }
+      .count { background: var(--card); border-radius: 10px; padding: 7px 6px; text-align: center; }
+      .count b { display: block; font-size: 18px; line-height: 1.1; }
+      .count span { color: var(--muted); font-size: 11px; }
+      .row { display: flex; flex-wrap: wrap; gap: 6px; }
+      button { border: 0; border-radius: 999px; padding: 6px 11px; background: var(--btn); color: var(--ink); font: 600 12.5px system-ui, sans-serif; cursor: pointer; }
+      button:hover { background: var(--btn-hover); }
+      button.primary { background: var(--accent); color: #fff; }
+      button:disabled { opacity: .55; cursor: default; }
+      .note { margin-top: 10px; font-size: 12px; color: var(--muted); }
+      .note a { color: var(--accent); font-weight: 600; }
+      .updated { margin-top: 10px; padding: 6px 9px; border-radius: 8px; background: var(--card); font-size: 12px; }
+      [hidden] { display: none !important; }
+    </style>
+  </head>
+  <body>
+    <main>
+      <header><img src="icons/icon-32.png" alt="" /> Deal check <span class="store" id="store"></span></header>
+      <div class="message" id="message">Looking at this page…</div>
+      <div class="counts" id="counts" hidden>
+        <div class="count"><b id="games">0</b><span>games</span></div>
+        <div class="count"><b id="mine">0</b><span>yours</span></div>
+        <div class="count"><b id="wanted">0</b><span>on your wishlist</span></div>
+      </div>
+      <div class="row">
+        <button type="button" class="primary" id="check">Check again</button>
+        <button type="button" id="copy" hidden>Copy for Claude</button>
+        <button type="button" id="auto" hidden>Auto: on</button>
+        <button type="button" id="clear" hidden>Clear badges</button>
+      </div>
+      <div class="note" id="extra" hidden></div>
+      <div class="updated" id="updated" hidden></div>
+      <div class="note"><a href="#" id="options">Options</a> · <a href="https://github.com/squirrelcade/squirrelcade/blob/main/docs/help/wishlist.md#deal-check-the-browser-extension" target="_blank" rel="noopener">Help</a></div>
+    </main>
+    <script src="popup.js"></script>
+  </body>
+</html>

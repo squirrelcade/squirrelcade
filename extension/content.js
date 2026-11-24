@@ -3,8 +3,8 @@
 // them through the extension, and puts a badge on each: the Stash's chest (filled: yours; half: yours on another console;
 // grey: not) and the console marks, which open the game's drawer; its acorns, a button to change your preference;
 // PriceCharting's prices and the deal meter; and H, M or L for how sure the answer is, with why.
-// Pressing the button again checks the page again. On the stores it reads it also runs by itself (Auto, each store's
-// own switch in the bar), and checks new results as they load.
+// On the stores it reads it runs by itself (Auto, each store's own switch in the toolbar button's window) and checks
+// new results as they load; the window's Check again checks the page afresh, and on any other page reads the selection.
 (() => {
   if (window.__squirrelcadeDeal) {
     window.__squirrelcadeManual = false;
@@ -754,32 +754,17 @@
     );
   }
 
-  function drawBar(message, opts = {}) {
-    if (!state.bar) {
-      state.bar = document.createElement('div');
-      state.bar.className = 'squirrelcade-deal';
-      Object.assign(state.bar.style, { position: 'fixed', right: '16px', bottom: '16px', zIndex: '2147483647' });
-      state.bar.attachShadow({ mode: 'open' });
-      document.body.appendChild(state.bar);
-    }
-    const root = state.bar.shadowRoot;
-    root.innerHTML = `<style>${css}
-      .bar { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; max-width: min(560px, calc(100vw - 32px)); padding: 8px 10px 8px 12px; border-radius: 12px;
-             background: #fff; border: 1px solid #d8ddd9; box-shadow: 0 8px 24px rgba(0,0,0,.18); font: 600 13px/1.4 system-ui, -apple-system, "Segoe UI", sans-serif; color: #1f2a22; }
-      .t { display: inline-flex; align-items: center; gap: 6px; }
-    </style><div class="bar" role="status"><span class="t">${chest(true, 15)} ${message}</span>${opts.options ? '<button type="button" class="opt">Options</button>' : ''}${state.rows.length ? '<button type="button" class="copy">Copy for Claude</button>' : ''}<button type="button" class="again">Check again</button>${autoKey() !== 'auto:' ? `<button type="button" class="auto" title="Check this store's pages by themselves">Auto: ${state.observer ? 'on' : 'off'}</button>` : ''}<button type="button" class="close" aria-label="Clear the badges">×</button></div>`;
-    root.querySelector('.opt')?.addEventListener('click', () => chrome.runtime.sendMessage({ type: 'options' }));
-    root.querySelector('.copy')?.addEventListener('click', copyForClaude);
-    root.querySelector('.again').addEventListener('click', () => scan());
-    root.querySelector('.auto')?.addEventListener('click', toggleAuto);
-    root.querySelector('.close').addEventListener('click', () => {
-      unwatch();
-      clear();
-    });
+  // What the toolbar button's window shows (it took the corner bar's place, the owner's wish, 2026-11-24): the last
+  // word on the page, and the number of games on the button itself.
+  function report(message, opts = {}) {
+    state.message = message;
+    state.needsOptions = Boolean(opts.options);
+    const games = new Set(state.rows.map((r) => `${r.result.title}|${r.result.platformKey}`)).size;
+    chrome.runtime.sendMessage({ type: 'badge', text: games ? String(games) : '' }).catch(() => {});
   }
 
-  /** The page's results as a short table to paste into a chat with Claude. */
-  async function copyForClaude() {
+  /** The page's results as a short table to paste into a chat with Claude (the window writes it to the clipboard). */
+  function copyText() {
     const when = new Date().toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' });
     const cell = (s) => String(s ?? '').replace(/\|/g, '/').replace(/\s+/g, ' ').trim();
     const lines = [
@@ -796,15 +781,10 @@
         return `| ${cell(row.title)} | ${cell(r.title)} | ${cell(r.platform ?? '?')} | ${row.price !== null ? listingPrice(row) : ''} | ${cell(row.seller ?? '')} | ${cell(mine)} | ${SURE[r.sure].word} | ${r.wishlist ? `${r.wishlist.acorns} (${r.wishlist.priority})` : ''} | ${pc} | ${cell(flags)} |`;
       }),
     ];
-    try {
-      await navigator.clipboard.writeText(lines.join('\n'));
-      drawBar(`Copied ${state.rows.length} games. Paste them into Claude.`);
-    } catch {
-      drawBar('The browser wouldn’t let me copy. Click the page once, then try again.');
-    }
+    return lines.join('\n');
   }
 
-  // What the page's games add up to, for the bar.
+  // What the page's games add up to, in a sentence.
   function summary() {
     const games = new Map(state.rows.map((r) => [`${r.result.title}|${r.result.platformKey}`, r.result]));
     const mine = [...games.values()].filter((r) => r.answer === 'own').length;
@@ -832,10 +812,10 @@
     listings = listings.filter((l) => l.title && l.title.length >= 2 && !(l.at && state.seen.has(l.at))).map(withoutRegion);
     for (const l of listings) if (l.at) state.seen.add(l.at);
     if (listings.length === 0) {
-      if (!more && !auto) drawBar(reader ? 'No games found on this page.' : 'Select the titles to check, then press the button again.');
+      if (!more && !auto) report(reader ? 'No games found on this page.' : 'Select the titles to check, then press Check this page.');
       return;
     }
-    if (!more && !auto) drawBar(`Checking ${listings.length} listings…`);
+    if (!more && !auto) report(`Checking ${listings.length} listings…`);
     // Each title once, with its console.
     const keyOf = (l) => `${l.title}|${l.hint ?? ''}`;
     const unique = [...new Map(listings.map((l) => [keyOf(l), { title: l.title, platform: l.hint }])).entries()];
@@ -846,7 +826,7 @@
         // Away from home, say: it stops for this page rather than asking again at every change.
         unwatch();
       } else {
-        drawBar(esc(answer?.error ?? 'Squirrelcade didn’t answer.'), { options: answer?.options });
+        report(answer?.error ?? 'Squirrelcade didn’t answer.', { options: answer?.options });
       }
       return;
     }
@@ -867,11 +847,7 @@
         state.hosts.push(host);
       }
     }
-    if (state.rows.length > 0 || !auto) {
-      const { updated } = await chrome.storage.local.get('updated');
-      drawBar(updated ? `${summary()} · Deal check updated to ${esc(updated)}` : summary());
-      if (updated) await chrome.storage.local.remove('updated');
-    }
+    if (state.rows.length > 0 || !auto) report(summary());
   }
 
   // Running by itself on the stores Deal check reads (the owner's choice, 2026-11-24): on by default, off for a store
@@ -908,7 +884,7 @@
     await chrome.storage.local.set({ [autoKey()]: on });
     if (on) watch();
     else unwatch();
-    drawBar(on ? `Runs by itself on ${esc(state.store)} again.` : `Won’t run by itself on ${esc(state.store)}: press the button to check.`);
+    report(on ? `Runs by itself on ${state.store} again.` : `Won’t run by itself on ${state.store}: use Check again here.`);
   }
 
   // Accessories and hardware a store lists among its games (a stand, a case, grips, a console bundle): left out when
@@ -936,6 +912,40 @@
     return { store: reader?.name ?? null, count: listings.length, listings: listings.map((l) => ({ title: l.title, price: l.price, currency: l.currency ?? null, hint: l.hint, region: l.region ?? null, badgeSpot: Boolean(l.at) })) };
   };
   window.__squirrelcadeDeal = { scan, clear, peek };
+
+  /** The page's state for the toolbar button's window. */
+  function forWindow() {
+    const games = new Map(state.rows.map((r) => [`${r.result.title}|${r.result.platformKey}`, r.result]));
+    const list = [...games.values()];
+    return {
+      store: state.store,
+      message: state.message ?? null,
+      needsOptions: Boolean(state.needsOptions),
+      games: games.size,
+      mine: list.filter((r) => r.answer === 'own').length,
+      coming: list.filter((r) => r.chest === 'coming').length,
+      wanted: list.filter((r) => r.answer !== 'own' && r.wishlist).length,
+      unsure: list.filter((r) => r.sure === 'unsure').length,
+      leftOut: state.leftOut ?? 0,
+      autoAvailable: autoKey() !== 'auto:',
+      auto: Boolean(state.observer),
+      checked: state.message !== undefined,
+    };
+  }
+  chrome.runtime.onMessage.addListener((m, _sender, reply) => {
+    if (m?.type === 'window') reply(forWindow());
+    else if (m?.type === 'rescan') scan().then(() => reply(forWindow()));
+    else if (m?.type === 'toggleAuto') toggleAuto().then(() => reply(forWindow()));
+    else if (m?.type === 'copyText') reply({ text: copyText(), count: state.rows.length });
+    else if (m?.type === 'clearBadges') {
+      unwatch();
+      clear();
+      state.message = undefined;
+      chrome.runtime.sendMessage({ type: 'badge', text: '' }).catch(() => {});
+      reply(forWindow());
+    } else return false;
+    return true;
+  });
   if (window.__squirrelcadeManual) {
     window.__squirrelcadeManual = false;
     scan();

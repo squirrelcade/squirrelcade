@@ -26,23 +26,6 @@ chrome.alarms.onAlarm.addListener((a) => {
   if (a.name === 'update-check') checkForUpdate();
 });
 
-chrome.action.onClicked.addListener(async (tab) => {
-  if (!tab.id) return;
-  const { server, key } = await chrome.storage.local.get(['server', 'key']);
-  if (!server || !key) {
-    chrome.runtime.openOptionsPage();
-    return;
-  }
-  try {
-    // Pressed: check now, whatever the store's Auto says.
-    await chrome.scripting.executeScript({ target: { tabId: tab.id }, func: () => { window.__squirrelcadeManual = true; } });
-    await chrome.scripting.executeScript({ target: { tabId: tab.id }, files: ['content.js'] });
-  } catch (e) {
-    // A page the browser keeps extensions out of (its own pages, the extension stores).
-    console.warn('Squirrelcade Deal check cannot run here:', e);
-  }
-});
-
 chrome.runtime.onMessage.addListener((message, _sender, reply) => {
   if (message?.type === 'check') {
     check(message.items).then(reply, (e) => reply({ error: String(e?.message ?? e) }));
@@ -63,6 +46,12 @@ chrome.runtime.onMessage.addListener((message, _sender, reply) => {
   if (message?.type === 'rate') {
     rate(message.from, message.to).then((r) => reply({ rate: r }), () => reply({ rate: null }));
     return true;
+  }
+  if (message?.type === 'badge' && _sender.tab?.id) {
+    // The games found on the page, on the toolbar button.
+    chrome.action.setBadgeBackgroundColor({ tabId: _sender.tab.id, color: '#2f7d4f' });
+    chrome.action.setBadgeText({ tabId: _sender.tab.id, text: message.text ?? '' });
+    return false;
   }
   if (message?.type === 'options') {
     chrome.runtime.openOptionsPage();

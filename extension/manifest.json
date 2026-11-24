@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "name": "Squirrelcade Deal check",
   "short_name": "Deal check",
-  "version": "0.4.1",
+  "version": "0.5.0",
   "description": "Shows which games you have in your Squirrelcade on a store's page, with their acorns and PriceCharting's prices: by itself on the stores it reads, and with its button anywhere else.",
   "icons": {
     "16": "icons/icon-16.png",
@@ -15,7 +15,8 @@
     "default_icon": {
       "16": "icons/icon-16.png",
       "32": "icons/icon-32.png"
-    }
+    },
+    "default_popup": "popup.html"
   },
   "background": {
     "service_worker": "background.js"
@@ -51,7 +52,7 @@
       "suggested_key": {
         "default": "Alt+Shift+S"
       },
-      "description": "Check this page in Squirrelcade"
+      "description": "Open Deal check's window"
     }
   },
   "content_scripts": [
