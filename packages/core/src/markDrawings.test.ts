@@ -17,6 +17,20 @@ describe("the consoles' drawn marks (D185)", () => {
     }
   });
 
+  it("stand the chest's height, each part placed whole (D247)", () => {
+    // A drawing and its word or number are each one group, scaled and moved onto the 24-unit height.
+    const placed = /^<g transform="translate\(-?[\d.]+ -?[\d.]+\) scale\([\d.]+\)">/;
+    const words = ['playstation-5', 'nintendo-switch-2', 'xbox-series-x', 'atari-2600', 'wii-u'];
+    for (const [key, d] of Object.entries(MARK_DRAWINGS)) {
+      const parts = d.svg.replace(/^<defs>.*?<\/defs>/, '').split(/(?=<g transform="translate\(-?[\d.]+ -?[\d.]+\) scale)/);
+      for (const p of parts) expect(p, key).toMatch(placed);
+      if (words.includes(key)) expect(parts, key).toHaveLength(2);
+      if (d.faded) expect(d.faded, key).toMatch(placed);
+    }
+    // PlayStation's drawing grew to the full height, so its mark is now wider than Switch 2's (40 units).
+    expect(MARK_DRAWINGS['playstation-5']!.width).toBeGreaterThan(MARK_DRAWINGS['nintendo-switch-2']!.width);
+  });
+
   it('is drawn for consoles Squirrelcade knows (collected, or followed in Roots)', () => {
     // A collected console's key, or a followed one's (Roots: IGDB's consoles).
     const known = new Set([...KNOWN_PLATFORMS.map((p) => p.key), ...Object.keys(IGDB_PLATFORM_IDS), ...Object.keys(IGDB_EXTRA_PLATFORM_IDS), 'pc', 'arcade']);

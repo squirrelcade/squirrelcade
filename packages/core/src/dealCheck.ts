@@ -168,9 +168,9 @@ export function markSvg(platformKey: string, name: string, owned: boolean, size 
   }
   const mark = consoleMark(platformKey, name);
   const rows = markPixels(mark);
-  const height = 8;
+  // The tile fills the mark's height, as a drawn mark and the Stash's chest do (D247).
+  const height = rows.length;
   const width = Math.max(...rows.map((r) => r.length));
-  const dy = (height - rows.length) / 2;
   const ink = markInk(mark.color);
   let cells = '';
   rows.forEach((row, y) =>
@@ -180,7 +180,7 @@ export function markSvg(platformKey: string, name: string, owned: boolean, size 
       if (mark.icon) fill = owned ? (mark.icon.colors['ABCDEFGH'.indexOf(ch)] ?? mark.color) : MARK_OFF;
       else if (owned) fill = ch === '+' ? ink : mark.color;
       else fill = ch === '+' ? null : MARK_OFF;
-      if (fill) cells += `<rect x="${x}" y="${y + dy}" width="1" height="1" fill="${fill}"/>`;
+      if (fill) cells += `<rect x="${x}" y="${y}" width="1" height="1" fill="${fill}"/>`;
     }),
   );
   return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${width} ${height}" width="${Math.round((size / height) * width * 10) / 10}" height="${size}" role="img" aria-label="${label}" shape-rendering="crispEdges" style="flex:none"><title>${label}</title>${cells}</svg>`;

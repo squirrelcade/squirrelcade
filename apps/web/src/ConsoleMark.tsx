@@ -89,10 +89,9 @@ export function ConsoleMark({
   }
   const mark = consoleMark(platformKey, name);
   const rows = markPixels(mark);
-  const height = 8;
+  // The tile fills the mark's height, as a drawn mark and the Stash's chest do (D247).
+  const height = rows.length;
   const width = Math.max(...rows.map((r) => r.length));
-  // A tile is 7 pixels tall: it's centered in the 8 a drawn mark has, so all marks stand the same height.
-  const dy = (height - rows.length) / 2;
   const ink = markInk(mark.color);
   const cells: ReactElement[] = [];
   rows.forEach((row, y) =>
@@ -103,7 +102,7 @@ export function ConsoleMark({
       // Faded like a drawn mark's (D185): the tile grey, its letters cut out.
       else if (owned) fill = ch === '+' ? ink : mark.color;
       else fill = ch === '+' ? null : 'var(--sc-mark-off)';
-      if (fill) cells.push(<rect key={`${x},${y}`} x={x} y={y + dy} width={1} height={1} fill={fill} />);
+      if (fill) cells.push(<rect key={`${x},${y}`} x={x} y={y} width={1} height={1} fill={fill} />);
     }),
   );
   return (

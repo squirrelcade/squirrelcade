@@ -51,6 +51,7 @@ Two symbols say what the owner has (D142, D175, D185; the owner's rule, 2026-11-
   - a count or a bar of what they have of one console (Nutshell's Games and Complete columns, the console cards' bar);
   - a game's verdict ("You own it").
 - **The console marks mean "where".** When a game is shown across consoles, its marks show which ones: in color where the owner has it, grey where they don't, PC at the right end. Where a page is already about one console (its row, its card, its page), the console isn't repeated: the chest alone says it's theirs.
+- **One height:** the chest and every console mark stand the same height (D247): a console's drawing fills it, a lone number (PS5's 5, Switch 2's 2) is as tall, and a word or a longer number (X|S, 360, PSP) has one smaller size in every mark. A new drawing follows the same rule; a mark grows wider, never shorter.
 - **On every cover, both:** a banner at the top shows, in order:
   1. the chest: filled when the owner has the game on any console or PC, grey when they don't;
   2. two console marks, one per company: the newest consoles they have it on, then the newest other consoles it came out on, grey;
