@@ -100,7 +100,7 @@ Prices for new copies in shops aren't read anywhere (no shop or price site offer
 - **Your acorns:** its acorns and priority (or just "Acorns" when it isn't on your wishlist). Click to pick your preference (Must Have, Strong Interest...): Squirrelcade keeps it and the badge shows the new acorns.
 - **Flags** for a Game-Key Card, a code in a box, a digital code, an import (another region's release: "(JPN Import)", "(PAL)", an Asian cover, a key for the EU) or a marketplace seller.
 - **PriceCharting:** PriceCharting's loose, complete and new prices beside the listing's price, the deal meter (the listing's price against the usual price, PriceCharting's new price plus typical shipping: Overpriced, Pricey, Fair, Deal or Steal), and a link to its page there.
-- **H, M or L:** how sure the answer is (high: the same title on that console; medium: an edition of yours, or the console came from the page rather than the listing; low: one of yours comes close under another name). Click it for why, and what Squirrelcade read from the listing.
+- **H, M or L:** how sure the answer is (high: the same title on that console; medium: an edition of yours, or the console came from the page rather than the listing; low: one of yours comes close under another name). Click it for why, and the game Squirrelcade takes the listing for. If that's wrong, **Wrong game?** opens a search of your games (filled in with what it read): pick the right one, or say it's **Not a game** or **A lot**. Squirrelcade remembers it for that listing's words, so every later check gets it right.
 
 Accessories, amiibo, controllers and consoles a store lists among its games get no badge.
 

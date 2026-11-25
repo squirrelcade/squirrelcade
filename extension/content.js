@@ -590,6 +590,8 @@
    */
   function honestSureness(row) {
     const r = row.result;
+    if (r.corrected?.kind === 'lot') row.lot = true;
+    if (r.corrected) return r;
     if (LOT.test(row.title) && r.answer !== 'own') {
       row.lot = true;
       return { ...r, sure: 'unsure', chest: r.chest === 'coming' ? 'coming' : 'none', preference: null, why: 'Not sure: this listing is a lot of several games, and its title doesn’t say which, so Squirrelcade can’t tell whether you have them.' };
@@ -723,7 +725,107 @@
     const thinks = row.lot
       ? 'several games (a lot), none named'
       : `<b>${esc(r.match && r.match.confidence >= 0.85 ? r.match.title : r.title)}</b>${r.platform ? ` <span class="muted">(${esc(r.platform)})</span>` : ''}`;
-    popup(button, gameHeading(r)).draw(`<div class="thinks">Squirrelcade thinks this is ${thinks}</div><table>${rows.map(([k, v]) => `<tr><th>${k}</th><td>${v}</td></tr>`).join('')}</table><div class="o">The chest opens it in Squirrelcade.</div>`);
+    popup(button, gameHeading(r)).draw(`<div class="thinks">Squirrelcade thinks this is ${thinks}</div><table>${rows.map(([k, v]) => `<tr><th>${k}</th><td>${v}</td></tr>`).join('')}</table><div class="o">The chest opens it in Squirrelcade.</div><button type="button" class="opt wrong"><span>Wrong game?</span><span class="muted">tell Squirrelcade</span></button>`)
+      .querySelector('.wrong')
+      .addEventListener('click', () => showWrong(row, button));
+  }
+
+  /** The listing asked again, and its badge drawn afresh: after a preference or a correction is kept. */
+  async function recheck(row) {
+    const again = await ask({ type: 'check', items: [{ title: row.title, platform: row.hint }] });
+    if (!again?.results?.[0] || !row.host) return;
+    row.lot = false;
+    row.result = again.results[0];
+    row.result = honestSureness(row);
+    if (row.result.corrected?.kind === 'not-game') {
+      row.host.remove();
+      state.hosts.splice(state.hosts.indexOf(row.host), 1);
+      state.rows.splice(state.rows.indexOf(row), 1);
+      state.leftOut++;
+      report(summary());
+      return;
+    }
+    const fresh = badge(row);
+    row.host.replaceWith(fresh);
+    state.hosts[state.hosts.indexOf(row.host)] = fresh;
+    row.host = fresh;
+  }
+
+  /**
+   * Wrong game? (the owner's wish, 2026-11-24): pick the game the listing really is from Squirrelcade's own (search
+   * prefilled with what it read, on the listing's console), or say it's no game or a lot. Squirrelcade keeps it for
+   * these words, every later check reads them so, and the monthly reader check (T-592) looks over what was corrected.
+   */
+  function showWrong(row, button) {
+    const r = row.result;
+    const { draw } = popup(button, gameHeading(r));
+    let everywhere = !r.platformKey;
+    const render = (query, found, message = '') => {
+      const root = draw(
+        `<div class="muted" style="margin-bottom:6px">Which game is it? Squirrelcade will read “${esc(r.listing)}” as your pick from now on.</div>` +
+          `<form class="find"><input type="search" value="${esc(query)}" aria-label="Search your games" style="width:100%;box-sizing:border-box;padding:6px 8px;border:1px solid #c9cfcc;border-radius:7px;font:inherit"></form>` +
+          (r.platformKey ? `<label class="muted" style="display:block;margin:6px 0"><input type="checkbox" class="all"${everywhere ? ' checked' : ''}> Every console, not only ${esc(r.platform)}</label>` : '') +
+          (found === null ? '<div class="muted">Looking…</div>' : found.length === 0 ? '<div class="muted">Nothing by that name. Try fewer words.</div>' : found.map((g, i) => `<button type="button" class="opt pick" data-i="${i}"><span>${esc(g.title)}</span><span class="muted">${esc(g.platform)}</span></button>`).join('')) +
+          '<div style="display:flex;gap:6px;margin-top:6px"><button type="button" class="opt kind" data-k="not-game"><span>Not a game</span></button><button type="button" class="opt kind" data-k="lot"><span>A lot</span></button></div>' +
+          (message ? `<div class="o">${esc(message)}</div>` : ''),
+      );
+      const input = root.querySelector('input[type=search]');
+      root.querySelector('.find').addEventListener('submit', (e) => {
+        e.preventDefault();
+        search(input.value);
+      });
+      root.querySelector('.all')?.addEventListener('change', (e) => {
+        everywhere = e.currentTarget.checked;
+        search(input.value);
+      });
+      const save = async (body) => {
+        root.querySelectorAll('button').forEach((b) => b.setAttribute('disabled', ''));
+        const res = await ask({
+          type: 'api',
+          url: '/api/v1/deal-check/corrections',
+          method: 'POST',
+          contentType: 'application/json',
+          body: JSON.stringify({ listing: r.listing, wasTitle: r.title, wasPlatformKey: r.platformKey, ...body }),
+        });
+        if (!res || res.error || !(res.status < 300)) {
+          render(input.value, found, res?.stale ? STALE : res?.status === 404 ? 'Squirrelcade needs its next update for this.' : 'Squirrelcade didn’t take it. Try again in a moment.');
+          return;
+        }
+        state.pop?.remove();
+        await recheck(row);
+      };
+      root.querySelectorAll('.pick').forEach((b) => b.addEventListener('click', () => {
+        const g = found[Number(b.getAttribute('data-i'))];
+        save({ kind: 'game', title: g.title, platformKey: g.platformKey });
+      }));
+      root.querySelectorAll('.kind').forEach((b) => b.addEventListener('click', () => save({ kind: b.getAttribute('data-k') })));
+      return input;
+    };
+    const search = async (query) => {
+      const q = query.trim();
+      render(q, null);
+      if (!q) return render(q, []);
+      const ask1 = async (platform) => {
+        const res = await ask({ type: 'api', url: `/api/v1/lookup?q=${encodeURIComponent(q)}&games=8&brief=1${platform ? `&platform=${encodeURIComponent(platform)}` : ''}` });
+        if (!res || res.error || !(res.status < 300)) return [];
+        const seen = new Set();
+        return (JSON.parse(res.body).results ?? []).filter((g) => {
+          const k = `${g.platformKey}|${g.title}`;
+          if (seen.has(k)) return false;
+          seen.add(k);
+          return true;
+        }).slice(0, 12);
+      };
+      let found = await ask1(everywhere ? null : r.platformKey);
+      // Nothing on the listing's console: the same search everywhere.
+      if (found.length === 0 && !everywhere) {
+        everywhere = true;
+        found = await ask1(null);
+      }
+      const input = render(q, found);
+      input.focus();
+    };
+    search(r.match?.title?.replace(/\s*\[[^\]]*\]\s*$/, '') ?? r.title);
   }
 
   /** Your preference for the game (its acorns): picked here, kept in Squirrelcade, then the listing is checked again. */
@@ -754,15 +856,8 @@
             return;
           }
           // The listing asked again: its acorns, priority and preference as Squirrelcade has them now.
-          const again = await ask({ type: 'check', items: [{ title: row.title, platform: row.hint }] });
-          if (again?.results?.[0] && row.host) {
-            row.result = again.results[0];
-            const fresh = badge(row);
-            row.host.replaceWith(fresh);
-            state.hosts[state.hosts.indexOf(row.host)] = fresh;
-            row.host = fresh;
-          }
           state.pop?.remove();
+          await recheck(row);
         }),
       );
     };
@@ -928,7 +1023,7 @@
       let at = unique.length;
       // The better answer wins: yours here, then yours elsewhere, then a close one ("Capcom Resident Evil 6" only came
       // close to your Resident Evil 6, which the second reading finds), then on the wishlist, then nothing.
-      const rank = (r) => (!r ? -1 : ({ own: 4, elsewhere: 3, maybe: 1, need: 0 }[r.answer] ?? 0) + (r.wishlist ? 0.5 : 0) + (r.sure === 'sure' ? 0.2 : r.sure === 'likely' ? 0.1 : 0));
+      const rank = (r) => (!r ? -1 : r.corrected ? 99 : ({ own: 4, elsewhere: 3, maybe: 1, need: 0 }[r.answer] ?? 0) + (r.wishlist ? 0.5 : 0) + (r.sure === 'sure' ? 0.2 : r.sure === 'likely' ? 0.1 : 0));
       seconds.forEach((sec, i) => {
         if (!sec) return;
         const second = answer.results[at++];
@@ -952,7 +1047,7 @@
       const row = { ...l, result: byKey.get(keyOf(l)) };
       if (!row.result) continue;
       row.result = honestSureness(row);
-      if (notAGame(row)) {
+      if (row.result.corrected?.kind === 'not-game' || (!row.result.corrected && notAGame(row))) {
         state.leftOut++;
         continue;
       }

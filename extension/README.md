@@ -27,7 +27,7 @@ Store pages change. **Ticky T-592** checks every reader monthly: `node .work/dea
 - `manifest.json`: Manifest V3. Permissions: `activeTab` and `scripting` (the page you press the button on), `storage` (your address and key, in this browser only), `alarms` (the update check), PriceCharting and the exchange-rate service, and your Squirrelcade's address (asked for when you save it). `content_scripts` puts `content.js` on the stores it reads.
 - `background.js`: the button, the update check, the calls to Squirrelcade with your key (`POST /api/v1/deal-check`, the drawer's API calls and pictures), PriceCharting's prices and the exchange rate.
 - `popup.html`, `popup.js`: the toolbar button's window (counts, Check again, Copy for Claude, Auto), talking to the page's `content.js`.
-- `content.js`: reads the listings and draws the badges and their windows (PriceCharting, acorns, H/M/L); `window.__squirrelcadeDeal.peek()` lists what the page's reader finds without asking Squirrelcade.
+- `content.js`: reads the listings and draws the badges and their windows (PriceCharting, acorns, H/M/L and its Wrong game? picker); `window.__squirrelcadeDeal.peek()` lists what the page's reader finds without asking Squirrelcade.
 - `options.html`, `options.js`: your Squirrelcade's address and API key.
 - `drawer/` (built, not in git): Squirrelcade's game drawer from `apps/web/src/embed/drawer.tsx`, shown in a frame over the store's page. It asks Squirrelcade through `background.js` (a store's https page can't show Squirrelcade's http address); its pictures come the same way, videos open on YouTube and Squirrelcade's pages open at home in a new tab.
 

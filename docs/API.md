@@ -192,6 +192,9 @@ A barcode's answer: `{code, known, productName, searchedFor, platformKey, platfo
 
 ```
 POST   /api/v1/deal-check                {"items": [{"title": "WWE 2K26 - Nintendo Switch 2 Standard Edition", "platform": null}, ...]}  (1 to 50)
+GET    /api/v1/deal-check/corrections    {corrections: [{listing, kind, platformKey, title, wasTitle, wasPlatformKey, at}]}, newest first
+POST   /api/v1/deal-check/corrections    {"listing": "...", "kind": "game" | "not-game" | "lot", "title": "...", "platformKey": "...", "wasTitle": "...", "wasPlatformKey": "..."}: what a listing really is (title required for a game)
+DELETE /api/v1/deal-check/corrections?listing=...   forgets one (404 when there's none)
 ```
 
 What the browser extension (`extension/`, [Deal check](help/wishlist.md#deal-check-the-browser-extension)) sends: each listing's title as the store writes it, and `platform`, a console the page names around it when the title doesn't (a console the title names wins). Owner only. Each answer: `{listing, title, platformKey, platform, answer, sure, why, match, ownedOn, valueCents, wishlist, flags, priceChartingUrl}`:
@@ -202,6 +205,7 @@ What the browser extension (`extension/`, [Deal check](help/wishlist.md#deal-che
 - `wishlist`: `{acorns, priority, rank, platform}` on that console, for a game you don't have there.
 - `valueCents`: what your copy on that console is worth (your PriceCharting export).
 - `flags`: `game-key-card`, `code-in-box`, `digital`, as the listing says.
+- `corrected`: `{kind, platformKey, title}` when you told Squirrelcade what this listing is (Wrong game? in the extension, `POST /api/v1/deal-check/corrections`, by the listing's words): a game is read as that game and answered `sure`; `not-game` answers `need` without matching, `lot` answers `maybe`, `unsure`.
 - `priceChartingUrl`: PriceCharting's search for the game and console. Squirrelcade fetches nothing from the store or PriceCharting for this.
 - `chest`: `own`, `coming` (on its way to you: `onTheWay` is `{store, orderDate, paidCents}`, from On the way), `elsewhere` (half filled) or `none`; `marks`: `[{key, name, owned, svg}]`, every console the game came out on and those you have it on, newest first, PC last, each with its mark as an SVG.
 - `drawer`: `{platformKey, title}`, the game to open (`GET /api/v1/game`); `preference`: `{platformKey, title, value}`, where your preference for it is kept (`PUT /api/v1/wishlist/preferences`).
