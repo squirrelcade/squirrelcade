@@ -522,7 +522,11 @@
     .b { display: inline-flex; align-items: center; gap: 5px; row-gap: 4px; flex-wrap: wrap; margin: 4px 0 2px; padding: 4px 7px 4px 8px; border-radius: 12px;
          font: 600 12px/1.3 system-ui, -apple-system, "Segoe UI", sans-serif; color: #1f2a22; background: #fff; border: 1px solid #d8ddd9;
          box-shadow: 0 1px 2px rgba(0,0,0,.06); cursor: default; max-width: 100%; box-sizing: border-box; }
-    .b.own { background: #f3faf5; border-color: #b8dcc4; }
+    /* The answer in the badge's color (the owner's wish, 2026-11-24): green, yours (here or on another console) and sure;
+       red, sure you don't have it; grey, medium or low (to look at). On its way stays plain. */
+    .b.yes { background: #e2f3e7; border-color: #93cba5; }
+    .b.no { background: #fbe8e6; border-color: #e3aaa4; }
+    .b.check { background: #eceeed; border-color: #c9cecb; }
     .muted { color: #5c6a60; font-weight: 500; }
     .flag { padding: 0 6px; border-radius: 4px; background: #fff3cd; color: #7a5300; font-weight: 600; }
     .flag.bad { background: #ffe3e3; color: #9b1c1c; }
@@ -642,7 +646,7 @@
     const flags = [...r.flags.map((f) => `<span class="flag${f === 'game-key-card' ? ' bad' : ''}">${esc(FLAGS[f] ?? f)}</span>`), row.marketplace ? `<span class="flag" title="${esc(row.seller)}">Marketplace seller</span>` : '', row.region ? `<span class="flag" title="${esc(row.region)}">Import</span>` : '', row.lot ? '<span class="flag bad" title="Several games in one listing">Lot</span>' : ''].join('');
     const label = `${chestLabel(r)}: open it in Squirrelcade`;
     root.innerHTML =
-      `<style>${css}</style><span class="b${r.chest === 'own' ? ' own' : ''}">` +
+      `<style>${css}</style><span class="b ${tone(r, level)}">` +
       `<button type="button" class="stash" title="${esc(label)}" aria-label="${esc(label)}">${chest(r.chest)}${marks}</button>` +
       `${acornsButton}${flags}<button type="button" class="pc" title="PriceCharting's prices">PriceCharting</button>` +
       `<button type="button" class="sure ${level}" title="How sure: ${LEVEL_WORD[level]}" aria-label="How sure: ${LEVEL_WORD[level]}">${level}</button></span>`;
@@ -663,6 +667,9 @@
     on('.sure', (b) => showSure(row, b));
     return host;
   }
+
+  /** The badge's color: yes (yours, here or elsewhere, sure), no (sure it isn't), check (medium or low), or plain (on its way). */
+  const tone = (r, level) => (level !== 'H' ? 'check' : r.chest === 'own' || r.chest === 'elsewhere' ? 'yes' : r.chest === 'coming' ? '' : 'no');
 
   /** A small window by a badge's button; `draw` fills it. Esc or a click elsewhere closes it. */
   function popup(button, heading) {

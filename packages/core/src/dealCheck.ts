@@ -123,6 +123,9 @@ export function readListing(text: string, platforms: readonly PlatformLike[], hi
   t = t.replace(/\b(?:standard|physical|retail)\s+(?:edition|version|copy)\b/gi, ' ').replace(/\bvideo\s*games?\b/gi, ' ').replace(/\s+/g, ' ').trim();
   // Brackets that hold only a console and the store's words go: "(Nintendo Switch, 2017)", "[Game-Key Card]".
   t = t.replace(/\s*[([{]([^()[\]{}]*)[)\]}]/g, (whole, inside: string) => (storeOnly(inside, names) || GAME_KEY_CARD.test(inside) ? ' ' : whole));
+  // What comes with the game in brackets ("(with Undead Nightmare DLC)", "(Includes Season Pass)", "(+ Bonus Disc)") is
+  // the same game with extras.
+  t = t.replace(/\s*[([](?:with|w\/|includes?|incl\.?|including|plus|\+)\s[^()[\]]*[)\]]|\s*[([][^()[\]]*(?:dlc|bonus|season pass|pre-?order)[^()[\]]*[)\]]/gi, ' ').replace(/\s+/g, ' ').trim();
   // A nickname in brackets made of the title's initials ("Grand Theft Auto V (GTA 5)", "(BOTW)") is the same name again.
   t = t.replace(/\s*\(([A-Za-z]{2,6})\s?(\d{0,2}|[IVX]{1,4})\)/g, (whole, letters: string, _n: string, at: number) => (initialsOf(t.slice(0, at), letters) ? ' ' : whole)).replace(/\s+/g, ' ').trim();
   // A title of several commas is a store's list of facts ("LEGO Harry Potter Collection, Warner Bros, Nintendo

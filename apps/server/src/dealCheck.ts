@@ -190,7 +190,7 @@ export class DealCheckService {
       let near = result.near_misses.find((m) => !numbersDiffer(read.title, m.title)) ?? null;
       // The listing is the start of your game's name and the rest is only its subtitle or edition ("Tiger Woods PGA Tour
       // 12" for your "Tiger Woods PGA Tour 12: The Masters"), on this console: yours, pretty sure. "Halo" isn't "Halo 3".
-      const stem = owned.length === 0 && filtered && near && near.held === 'owned' && subtitleOf(read.title, near.title);
+      const stem = owned.length === 0 && filtered && near && near.held === 'owned' && (subtitleOf(read.title, near.title) || sameWords(read.title, near.title));
       if (stem && near) {
         owned = [near];
         near = null;
@@ -223,7 +223,7 @@ export class DealCheckService {
         platform: known?.name ?? null,
         answer,
         sure,
-        why: stem && best ? `Pretty sure: the listing is the start of your ${best.title} (${best.platform}), whose name goes on with its subtitle.` : fix ? `You told Squirrelcade this is ${read.title}${known ? ` (${known.name})` : ''}; ${whyOf(answer, sure, best, near, read.platformFrom, filtered, ownedOn).replace(/^[^:]+: /, '')}` : whyOf(answer, sure, best, near, read.platformFrom, filtered, ownedOn),
+        why: stem && best ? `Pretty sure: ${subtitleOf(read.title, best.title) ? `the listing is the start of your ${best.title} (${best.platform}), whose name goes on with its subtitle` : `the listing has the same words as your ${best.title} (${best.platform})`}.` : fix ? `You told Squirrelcade this is ${read.title}${known ? ` (${known.name})` : ''}; ${whyOf(answer, sure, best, near, read.platformFrom, filtered, ownedOn).replace(/^[^:]+: /, '')}` : whyOf(answer, sure, best, near, read.platformFrom, filtered, ownedOn),
         match: shown ? { title: shown.title, platform: shown.platform, confidence: shown.confidence, gameId: shown.game_id } : null,
         ownedOn,
         valueCents,
@@ -278,6 +278,16 @@ export class DealCheckService {
     const pick = known ? wishes.find((w) => findPlatforms(w.platform, [known]).length > 0) : wishes[0];
     return pick ? { acorns: pick.acorns, priority: pick.priority, rank: pick.rank ?? null, platform: pick.platform, title: pick.title } : null;
   }
+}
+
+/** Words that don't make one game's name another's ("Grand Theft Auto: Trilogy - The Definitive Edition" is your "Grand Theft Auto: The Trilogy [Definitive Edition]"). */
+const SMALL_WORDS = new Set(['the', 'a', 'an', 'of', 'and']);
+
+/** True when the two names have the same words, leaving out "the", "a", "of", "and" and punctuation (order aside). */
+export function sameWords(listing: string, mine: string): boolean {
+  const words = (t: string) => t.toLowerCase().replace(/&/g, ' and ').replace(/[^a-z0-9]+/g, ' ').trim().split(' ').filter((w) => w && !SMALL_WORDS.has(w)).sort().join(' ');
+  const a = words(listing);
+  return a.split(' ').length >= 2 && a === words(mine);
 }
 
 /** True when `mine` is `listing` and then only a subtitle or edition: after a colon, a dash or a bracket. */

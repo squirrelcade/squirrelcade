@@ -30,6 +30,9 @@ describe('subtitleOf', () => {
     expect(subtitleOf('Halo', 'Halo 3')).toBe(false);
     expect(subtitleOf('Halo Reach', 'Halo Reach')).toBe(false);
     expect(subtitleOf('Tiger Woods PGA Tour', 'Tiger Woods PGA Tour 12: The Masters')).toBe(false);
+    const { sameWords } = await import('./dealCheck.js');
+    expect(sameWords('Grand Theft Auto: Trilogy - The Definitive Edition', 'Grand Theft Auto: The Trilogy [Definitive Edition]')).toBe(true);
+    expect(sameWords('Halo 3', 'Halo 3 ODST')).toBe(false);
   });
 });
 

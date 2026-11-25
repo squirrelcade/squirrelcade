@@ -34,6 +34,7 @@ describe('readListing', () => {
     expect(read('LEGO DC Super-Villains - Nintendo Switch').title).toBe('LEGO DC Super-Villains');
     expect(read('Grand Theft Auto V (GTA 5) - PS3, M Mature, Manual Included')).toMatchObject({ title: 'Grand Theft Auto V', platformKey: 'playstation-3' });
     expect(read('Halo 3 (ODST) - Xbox 360').title).toBe('Halo 3 (ODST)');
+    expect(read('Red Dead Redemption (with Undead Nightmare DLC) - PlayStation 5')).toMatchObject({ title: 'Red Dead Redemption', platformKey: 'playstation-5' });
     expect(read('Uncharted 2: Among Thieves PS3 T-Teen NTSC-U/C 2009')).toMatchObject({ title: 'Uncharted 2: Among Thieves', platformKey: 'playstation-3' });
     expect(read('Uncharted 2: Among Thieves PS3 [Game of the Year Greatest Hits]').title).toBe('Uncharted 2: Among Thieves [Game of the Year Greatest Hits]');
   });
