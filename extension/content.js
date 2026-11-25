@@ -181,6 +181,19 @@
           if (!t || !title || /^shop on ebay$/i.test(title)) continue;
           out.push({ at: t, title, price: priceIn(text(card.querySelector('.s-card__price, .s-item__price'))), seller: null, marketplace: false, hint: consoleIn(title) ? null : pageHint });
         }
+        // eBay's rows that scroll sideways ("Picked For You", "Similar sponsored items"): each item a link to its listing.
+        const rowSeen = new Set();
+        for (const a of document.querySelectorAll('.su-scrolling-item-cards a[href*="/itm/"], .carousel__list a[href*="/itm/"]')) {
+          const t = a.querySelector('span.su-styled-text.primary, .s-item__title, [class*="title" i]');
+          const id = /\/itm\/(?:[^/?]*\/)?(\d+)/.exec(a.getAttribute('href') ?? '')?.[1];
+          const title = text(t).replace(/Opens in a new window or tab$/i, '').trim();
+          if (!t || !title || !id || rowSeen.has(id)) continue;
+          rowSeen.add(id);
+          let card = a;
+          for (let i = 0; i < 4 && card.parentElement && !/\$\s?\d/.test(text(card)); i++) card = card.parentElement;
+          const price = [...card.querySelectorAll('span')].map(text).find((x) => /^\$\s?[\d,]+(\.\d\d)?$/.test(x));
+          out.push({ at: t, title, price: priceIn(price), seller: null, marketplace: false, hint: consoleIn(title) ? null : pageHint });
+        }
         const h1 = document.querySelector('h1.x-item-title__mainTitle, h1[data-testid="x-item-title"]');
         if (h1) out.push({ at: h1, title: text(h1), price: priceIn(text(document.querySelector('.x-price-primary'))), seller: null, marketplace: false, hint: null });
         return out;
