@@ -92,6 +92,12 @@ export function readListing(text: string, platforms: readonly PlatformLike[], hi
   if (GAME_KEY_CARD.test(t)) flags.push('game-key-card');
   if (CODE_IN_BOX.test(t)) flags.push('code-in-box');
   else if (!flags.includes('game-key-card') && DIGITAL.test(t)) flags.push('digital');
+  // Sellers' decoration ("** Factory Sealed **") isn't words; a maker and its console before the title ("Sony PlayStation
+  // 3 PS3 Yakuza 4") is the console (read below from the whole text): a game's name never starts with both.
+  const whole = t;
+  t = t.replace(/[*~!]{2,}|\s[*~!]+(?=\s|$)/g, ' ').replace(/\s+/g, ' ').trim();
+  t = t.replace(/^(?:sony\s+(?:playstation\s?[1-5]|ps\s?vita|playstation\s+vita)|microsoft\s+xbox(?:\s+(?:360|one|series\s+[xs](?:\s?\|\s?s)?))?|nintendo\s+(?:gamecube|wii\s?u|wii|3ds|ds|64))\b[\s:\-–|]+(?=\S)/i, '');
+  t = t.replace(/^(ps[1-5]|ps ?vita|nsw2?|ns[12]|x360|xb1|xbo|xsx)\s+(?=\S)/i, '');
 
   // "Hollow Knight - Nintendo Switch 2 Edition": that edition is the console, not the title's words.
   let platformKey: string | null = null;
@@ -101,7 +107,7 @@ export function readListing(text: string, platforms: readonly PlatformLike[], hi
     t = edition.title;
   }
   const withNs2 = platforms.map((p) => (p.key === 'nintendo-switch-2' ? { ...p, labels: [...(p.labels ?? []), 'NS2', 'NSW2'] } : p));
-  platformKey ??= platformInText(t, withNs2);
+  platformKey ??= platformInText(t, withNs2) ?? platformInText(whole, withNs2);
   const platformFrom: ListingRead['platformFrom'] = platformKey ? 'title' : hint && platformInText(hint, withNs2) ? 'hint' : null;
   if (!platformKey && hint) platformKey = platformInText(hint, withNs2);
 

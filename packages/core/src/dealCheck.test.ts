@@ -27,6 +27,9 @@ describe('readListing', () => {
     expect(read('PS3 Teslagrad (Sony PlayStation 3, 2015)')).toMatchObject({ title: 'Teslagrad', platformKey: 'playstation-3' });
     expect(read('Teslagrad (Sony PlayStation 3, 2014) PS3, Tested')).toMatchObject({ title: 'Teslagrad', platformKey: 'playstation-3' });
     expect(read('NES Remix Pack - Wii U').title).toBe('NES Remix Pack');
+    expect(read('Sony PlayStation 3 PS3 Yakuza 4 Brand New ** Factory Sealed **')).toMatchObject({ title: 'Yakuza 4', platformKey: 'playstation-3' });
+    expect(read('Microsoft Xbox 360 Halo 3 Complete')).toMatchObject({ title: 'Halo 3', platformKey: 'xbox-360' });
+    expect(read('Nintendo Switch Sports - Nintendo Switch').title).toBe('Nintendo Switch Sports');
     expect(read('Sega Genesis Classics - PlayStation 4').title).toBe('Sega Genesis Classics');
     expect(read('LEGO DC Super-Villains - Nintendo Switch').title).toBe('LEGO DC Super-Villains');
   });

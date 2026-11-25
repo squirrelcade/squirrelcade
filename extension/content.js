@@ -31,6 +31,11 @@
   function withoutRegion(listing) {
     // A console's short code before the title ("PS3 Teslagrad (Sony PlayStation 3, 2015)", as eBay sellers write): the
     // console, kept as the hint. Only codes no game's name starts with: "Nintendo Switch Sports" and "NES Remix" stay.
+    // Sellers' decoration ("** Factory Sealed **", "~~", "!!!") isn't words; a maker and its console before the title
+    // ("Sony PlayStation 3 PS3 Yakuza 4", "Microsoft Xbox 360 Halo 3") is the console. A game's name never starts with both.
+    listing = { ...listing, title: listing.title.replace(/[*~!]{2,}|\s[*~!]+(?=\s|$)/g, ' ').replace(/\s+/g, ' ').trim() };
+    const maker = /^(?:sony\s+(?:playstation\s?[1-5]|ps\s?vita|playstation\s+vita)|microsoft\s+xbox(?:\s+(?:360|one|series\s+[xs](?:\s?\|\s?s)?))?|nintendo\s+(?:gamecube|wii\s?u|wii|3ds|ds|64))\b[\s:\-–|]+(?=\S)/i.exec(listing.title);
+    if (maker) listing = { ...listing, title: listing.title.slice(maker[0].length), hint: listing.hint ?? consoleIn(maker[0]) };
     const lead = /^(ps[1-5]|ps ?vita|nsw2?|ns[12]|x360|xb1|xbo|xsx)\b[\s:\-–|]+(?=\S)/i.exec(listing.title);
     if (lead) listing = { ...listing, title: listing.title.slice(lead[0].length), hint: listing.hint ?? consoleIn(lead[1]) ?? lead[1] };
     // A collector number at the end ("PERSONA 4 GOLDEN (STANDARD - SWITCH) LRG #214"): not the game's words.
