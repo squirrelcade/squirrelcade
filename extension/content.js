@@ -103,7 +103,23 @@
   // A page open before the extension updated itself keeps this old script, which can't reach the new extension: every
   // question then answers that the page needs a refresh, instead of waiting for ever.
   const STALE = 'Deal check was updated: refresh this page to use it.';
+  /** False once the extension has updated or reloaded under this page: its old script can't reach it any more. */
+  const alive = () => {
+    try {
+      return Boolean(chrome.runtime?.id);
+    } catch {
+      return false;
+    }
+  };
+  // Whatever still tries (a store's page changing, a click) is told quietly, not thrown as an error on every change.
+  window.addEventListener('unhandledrejection', (e) => {
+    if (/Extension context invalidated/i.test(String(e.reason?.message ?? e.reason))) {
+      e.preventDefault();
+      state?.observer?.disconnect();
+    }
+  });
   async function ask(message) {
+    if (!alive()) return { error: STALE, stale: true };
     try {
       return (await chrome.runtime.sendMessage(message)) ?? { error: 'Deal check didn’t answer.' };
     } catch {
@@ -876,6 +892,7 @@
     const target = row.result.drawer;
     if (!target) return;
     closeDrawer();
+    if (!alive()) return report(STALE);
     const { server } = await chrome.storage.local.get(['server']);
     const frame = document.createElement('iframe');
     frame.className = 'squirrelcade-deal';
@@ -961,7 +978,7 @@
     state.message = message;
     state.needsOptions = Boolean(opts.options);
     const games = new Set(state.rows.map((r) => `${r.result.title}|${r.result.platformKey}`)).size;
-    chrome.runtime.sendMessage({ type: 'badge', text: games ? String(games) : '' }).catch(() => {});
+    if (alive()) chrome.runtime.sendMessage({ type: 'badge', text: games ? String(games) : '' }).catch(() => {});
   }
 
   /** The page's results as a short table to paste into a chat with Claude (the window writes it to the clipboard). */
@@ -1075,7 +1092,7 @@
   const autoKey = () => (Object.values(READERS).some((r) => r.test()) ? `auto:${location.hostname.replace(/^www\./, '')}` : 'auto:');
   async function autoOn() {
     const key = autoKey();
-    return key !== 'auto:' && (await chrome.storage.local.get(key))[key] !== false;
+    return key !== 'auto:' && alive() && (await chrome.storage.local.get(key))[key] !== false;
   }
   function watch() {
     if (state.observer) return;
@@ -1160,7 +1177,7 @@
       unwatch();
       clear();
       state.message = undefined;
-      chrome.runtime.sendMessage({ type: 'badge', text: '' }).catch(() => {});
+      if (alive()) chrome.runtime.sendMessage({ type: 'badge', text: '' }).catch(() => {});
       reply(forWindow());
     } else return false;
     return true;

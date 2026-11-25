@@ -2,6 +2,7 @@ import {
   baseTitle,
   COMPLETENESS_LABELS,
   findPlatforms,
+  KNOWN_PLATFORMS,
   matchKey,
   matchTokens,
   NEAR_MISS_AT,
@@ -409,7 +410,7 @@ export class AiTools {
           matches,
           near_misses: near,
           ...(filters.length > 0 ? { elsewhere } : {}),
-          ...(status !== 'owned' ? { wishlist: this.wishes(title) } : {}),
+          ...(status !== 'owned' ? { wishlist: this.wishes(title, input.platforms ?? []) } : {}),
         };
       }),
     };
@@ -440,14 +441,17 @@ export class AiTools {
   }
 
   /** A title's places on the wishlist (acorns, rank), on any console. */
-  private wishes(title: string) {
+  /** The wishlist's places for a title: the best three, and always those on the consoles asked about (a deal check's). */
+  private wishes(title: string, platforms: readonly string[] = []) {
+    const asked = new Set(platforms.flatMap((p) => findPlatforms(p, KNOWN_PLATFORMS).map((k) => k.key)));
     const result = this.d.wishlist.compute();
     if (!this.wishCache || this.wishCache.at !== result.generatedAt) {
       const items = [...result.all.entries()].map(([key, c]) => ({ key, platformKey: c.platformKey, platform: c.platformName, title: c.title }));
       this.wishCache = { at: result.generatedAt, matcher: new TitleMatcher(items, (i) => [i.title]) };
     }
     return this.wishCache.matcher
-      .find(title, { min: SAME_GAME_AT, limit: 3 })
+      .find(title, { min: SAME_GAME_AT, limit: asked.size > 0 ? 20 : 3 })
+      .filter((f, i) => i < 3 || asked.has(f.item.platformKey))
       .map((f) => {
         const c = result.all.get(f.item.key)!;
         const rank = result.index.get(f.item.key)?.rank;
