@@ -81,6 +81,14 @@ function storeOnly(piece: string, names: readonly string[]): boolean {
     .every((w) => STORE_WORDS.has(w) || /^(19|20)\d\d$/.test(w) || /^\d+(gb|tb)$/.test(w));
 }
 
+/** True when `letters` are the first letters of words of `title`, in order ("GTA" in "Grand Theft Auto V"). */
+function initialsOf(title: string, letters: string): boolean {
+  const firsts = title.split(/[^A-Za-z0-9]+/).filter(Boolean).map((w) => w[0]!.toLowerCase()).join('');
+  let i = 0;
+  for (const c of firsts) if (c === letters[i]?.toLowerCase()) i++;
+  return i === letters.length && letters.length >= 2;
+}
+
 /**
  * A listing's title read into the game, its console and the kind of copy. `hint` is a console the page names around
  * the listing (Amazon's "Nintendo Switch 2" under a result, a search for "switch 2 games"); a console the title itself
@@ -115,6 +123,8 @@ export function readListing(text: string, platforms: readonly PlatformLike[], hi
   t = t.replace(/\b(?:standard|physical|retail)\s+(?:edition|version|copy)\b/gi, ' ').replace(/\bvideo\s*games?\b/gi, ' ').replace(/\s+/g, ' ').trim();
   // Brackets that hold only a console and the store's words go: "(Nintendo Switch, 2017)", "[Game-Key Card]".
   t = t.replace(/\s*[([{]([^()[\]{}]*)[)\]}]/g, (whole, inside: string) => (storeOnly(inside, names) || GAME_KEY_CARD.test(inside) ? ' ' : whole));
+  // A nickname in brackets made of the title's initials ("Grand Theft Auto V (GTA 5)", "(BOTW)") is the same name again.
+  t = t.replace(/\s*\(([A-Za-z]{2,6})\s?(\d{0,2}|[IVX]{1,4})\)/g, (whole, letters: string, _n: string, at: number) => (initialsOf(t.slice(0, at), letters) ? ' ' : whole)).replace(/\s+/g, ' ').trim();
   // A title of several commas is a store's list of facts ("LEGO Harry Potter Collection, Warner Bros, Nintendo
   // Switch, Adventure, Action"): the game is the first of them.
   if ((t.match(/,\s/g) ?? []).length >= 2) t = t.slice(0, t.search(/,\s/));
