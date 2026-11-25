@@ -32,6 +32,8 @@ describe('readListing', () => {
     expect(read('Nintendo Switch Sports - Nintendo Switch').title).toBe('Nintendo Switch Sports');
     expect(read('Sega Genesis Classics - PlayStation 4').title).toBe('Sega Genesis Classics');
     expect(read('LEGO DC Super-Villains - Nintendo Switch').title).toBe('LEGO DC Super-Villains');
+    expect(read('Uncharted 2: Among Thieves PS3 T-Teen NTSC-U/C 2009')).toMatchObject({ title: 'Uncharted 2: Among Thieves', platformKey: 'playstation-3' });
+    expect(read('Uncharted 2: Among Thieves PS3 [Game of the Year Greatest Hits]').title).toBe('Uncharted 2: Among Thieves [Game of the Year Greatest Hits]');
   });
 
   it('keeps an edition that is the game', () => {

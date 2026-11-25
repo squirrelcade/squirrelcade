@@ -1,6 +1,9 @@
 import { baseTitle, findPlatforms, normalizeTitle, KNOWN_PLATFORMS, markOrder, markSvg, matchKey, numbersDiffer, priceChartingUrl, readListing, surenessOf, type ListingFlag, type Sureness } from '@squirrelcade/core';
+import { eq } from 'drizzle-orm';
 import type { FastifyInstance } from 'fastify';
 import { AiToolError, type AiTools, type AiView } from './aiTools.js';
+import type { Db } from './db/index.js';
+import { appState } from './db/schema.js';
 import type { MarksService } from './marks.js';
 import type { OnTheWay } from './orders.js';
 import type { SettingsService } from './settings.js';
@@ -15,6 +18,27 @@ import type { WishlistService } from './wishlist.js';
 
 /** At most this many listings in one check (a store's page of results). */
 export const DEAL_CHECK_MAX = 50;
+
+/** app_state key: the owner's corrections, by the listing's words (normalized). */
+const CORRECTIONS = 'deal-check.corrections';
+
+/**
+ * What the owner said a listing is, from the extension's "Wrong game?" (2026-11-24): a game (its console and title as
+ * Squirrelcade knows them), not a game at all, or a lot of several. Every later check of the same words uses it.
+ */
+export interface DealCheckCorrection {
+  /** The listing's words as the store showed them. */
+  listing: string;
+  kind: 'game' | 'not-game' | 'lot';
+  platformKey: string | null;
+  title: string | null;
+  /** What Squirrelcade had read it as before. */
+  wasTitle: string | null;
+  wasPlatformKey: string | null;
+  at: string;
+}
+
+const correctionKey = (listing: string) => normalizeTitle(listing);
 
 export interface DealCheckItem {
   /** The listing's title as the store shows it. */
@@ -55,6 +79,8 @@ export interface DealCheckAnswer {
   drawer: { platformKey: string; title: string } | null;
   /** Where your preference for it is kept (PUT /api/v1/wishlist/preferences), and what it is: for a game you don't have there. */
   preference: { platformKey: string; title: string; value: string | null } | null;
+  /** What you told Squirrelcade this listing is ("Wrong game?"), when you did. */
+  corrected: { kind: DealCheckCorrection['kind']; platformKey: string | null; title: string | null } | null;
 }
 
 /** A deal check's answer: the listings', and the preferences you can give a game (with the acorns each adds). */
@@ -76,7 +102,45 @@ export class DealCheckService {
     private readonly marks?: MarksService,
     /** On the way's games, by "platform key|normalized title" (Store Mode's index). */
     private readonly coming?: () => Map<string, OnTheWay>,
+    /** Where the owner's corrections are kept (none without it). */
+    private readonly db?: Db,
   ) {}
+
+  /** Every correction, newest first. */
+  corrections(): DealCheckCorrection[] {
+    return Object.values(this.correctionMap()).sort((a, b) => b.at.localeCompare(a.at));
+  }
+
+  /** Keeps what the owner said a listing is (replacing what they said before about the same words). */
+  correct(c: Omit<DealCheckCorrection, 'at'>): DealCheckCorrection {
+    const all = this.correctionMap();
+    const saved: DealCheckCorrection = { ...c, at: new Date().toISOString() };
+    all[correctionKey(c.listing)] = saved;
+    this.saveCorrections(all);
+    return saved;
+  }
+
+  /** Forgets a correction; false when there was none. */
+  uncorrect(listing: string): boolean {
+    const all = this.correctionMap();
+    const key = correctionKey(listing);
+    if (!(key in all)) return false;
+    delete all[key];
+    this.saveCorrections(all);
+    return true;
+  }
+
+  private correctionMap(): Record<string, DealCheckCorrection> {
+    if (!this.db) return {};
+    const row = this.db.select().from(appState).where(eq(appState.key, CORRECTIONS)).get();
+    return row ? (JSON.parse(row.value) as Record<string, DealCheckCorrection>) : {};
+  }
+
+  private saveCorrections(all: Record<string, DealCheckCorrection>): void {
+    if (!this.db) throw new Error('Corrections need the database.');
+    const value = JSON.stringify(all);
+    this.db.insert(appState).values({ key: CORRECTIONS, value }).onConflictDoUpdate({ target: appState.key, set: { value } }).run();
+  }
 
   /** The preferences a game can have, best first, with the acorns each adds (Do Not Recommend keeps it off the wishlist). */
   preferences(): DealCheckResponse['preferences'] {
@@ -108,19 +172,32 @@ export class DealCheckService {
   private answer(items: readonly DealCheckItem[]): { answer: DealCheckAnswer; markTitle: string }[] {
     const sureAt = this.settings.get('dealCheck.sureAt') / 100;
     const unsureAt = this.settings.get('dealCheck.unsureAt') / 100;
+    const corrections = this.correctionMap();
     return items.map((item) => {
-      const read = readListing(item.title, KNOWN_PLATFORMS, item.platform);
+      const fix = corrections[correctionKey(item.title)] ?? null;
+      const corrected = fix ? { kind: fix.kind, platformKey: fix.platformKey, title: fix.title } : null;
+      const first = readListing(item.title, KNOWN_PLATFORMS, item.platform);
+      // You said which game it is: that game, on that console, whatever the words say.
+      const read = fix?.kind === 'game' && fix.title ? { ...first, title: fix.title, platformKey: fix.platformKey ?? first.platformKey, platformFrom: 'title' as const } : first;
       const known = read.platformKey ? KNOWN_PLATFORMS.find((p) => p.key === read.platformKey) ?? null : null;
+      if (fix && fix.kind !== 'game') return { answer: notOneGame(item.title, read, known, fix.kind, corrected), markTitle: read.title };
       const r = this.ask(read.title, known?.name ?? null);
       const result = r.result;
       const filtered = r.filtered;
-      const owned = result.matches.filter((m) => m.held === 'owned');
+      let owned = result.matches.filter((m) => m.held === 'owned');
       const elsewhere = (result.elsewhere ?? []).filter((m) => m.held === 'owned');
-      const best = owned[0] ?? result.matches[0] ?? null;
       // A near miss with other numbers is another game of the series ("WWE 2K25" for "WWE 2K26"), not this one.
-      const near = result.near_misses.find((m) => !numbersDiffer(read.title, m.title)) ?? null;
+      let near = result.near_misses.find((m) => !numbersDiffer(read.title, m.title)) ?? null;
+      // The listing is the start of your game's name and the rest is only its subtitle or edition ("Tiger Woods PGA Tour
+      // 12" for your "Tiger Woods PGA Tour 12: The Masters"), on this console: yours, pretty sure. "Halo" isn't "Halo 3".
+      const stem = owned.length === 0 && filtered && near && near.held === 'owned' && subtitleOf(read.title, near.title);
+      if (stem && near) {
+        owned = [near];
+        near = null;
+      }
+      const best = owned[0] ?? result.matches[0] ?? null;
       const answer: DealCheckAnswer['answer'] = owned.length > 0 ? 'own' : elsewhere.length > 0 ? 'elsewhere' : near ? 'maybe' : 'need';
-      const sure = surenessOf({ owned: owned.length > 0, confidence: best?.confidence ?? null, nearMiss: near?.confidence ?? null, consoleKnown: filtered, sureAt, unsureAt });
+      const sure = fix ? 'sure' : stem ? 'likely' : surenessOf({ owned: owned.length > 0, confidence: best?.confidence ?? null, nearMiss: near?.confidence ?? null, consoleKnown: filtered, sureAt, unsureAt });
       const shown = best ?? near ?? elsewhere[0] ?? null;
       const ownedOn = [...new Set([...owned, ...elsewhere].map((m) => m.platform).filter((p) => p !== known?.name))];
       const valueCents = owned.reduce<number | null>((n, m) => ('value_cents' in m && typeof m.value_cents === 'number' ? (n ?? 0) + m.value_cents : n), null);
@@ -146,7 +223,7 @@ export class DealCheckService {
         platform: known?.name ?? null,
         answer,
         sure,
-        why: whyOf(answer, sure, best, near, read.platformFrom, filtered, ownedOn),
+        why: stem && best ? `Pretty sure: the listing is the start of your ${best.title} (${best.platform}), whose name goes on with its subtitle.` : fix ? `You told Squirrelcade this is ${read.title}${known ? ` (${known.name})` : ''}; ${whyOf(answer, sure, best, near, read.platformFrom, filtered, ownedOn).replace(/^[^:]+: /, '')}` : whyOf(answer, sure, best, near, read.platformFrom, filtered, ownedOn),
         match: shown ? { title: shown.title, platform: shown.platform, confidence: shown.confidence, gameId: shown.game_id } : null,
         ownedOn,
         valueCents,
@@ -158,6 +235,7 @@ export class DealCheckService {
         drawer,
         preference,
         onTheWay: way,
+        corrected,
       };
       return { answer: out, markTitle: shown?.title ?? read.title };
     });
@@ -202,6 +280,51 @@ export class DealCheckService {
   }
 }
 
+/** True when `mine` is `listing` and then only a subtitle or edition: after a colon, a dash or a bracket. */
+export function subtitleOf(listing: string, mine: string): boolean {
+  const a = listing.toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
+  if (a.split(' ').length < 2) return false;
+  const words = a.split(' ');
+  // Walk mine's words alongside the listing's, then look at what comes right after the last one in mine's own text.
+  // The words are only letters and digits, so they go into the pattern as they are.
+  const re = new RegExp(`^[^a-z0-9]*${words.join('[^a-z0-9]+')}(?![a-z0-9])`, 'i');
+  const m = re.exec(mine);
+  if (!m) return false;
+  const rest = mine.slice(m[0].length);
+  return /^\s*(?::|[-–—]\s|\[|\()/.test(rest) && rest.replace(/[^a-z0-9]/gi, '').length > 0;
+}
+
+/** A listing you said isn't one game: not a game at all (left out), or a lot (to look at yourself). */
+function notOneGame(
+  listing: string,
+  read: { title: string; platformKey: string | null; flags: ListingFlag[] },
+  known: { key: string; name: string } | null,
+  kind: 'not-game' | 'lot',
+  corrected: DealCheckAnswer['corrected'],
+): DealCheckAnswer {
+  return {
+    listing,
+    title: read.title,
+    platformKey: read.platformKey,
+    platform: known?.name ?? null,
+    answer: kind === 'lot' ? 'maybe' : 'need',
+    sure: kind === 'lot' ? 'unsure' : 'sure',
+    why: kind === 'lot' ? 'You told Squirrelcade this is a lot of several games: look at which ones yourself.' : 'You told Squirrelcade this isn’t a game.',
+    match: null,
+    ownedOn: [],
+    valueCents: null,
+    wishlist: null,
+    flags: read.flags,
+    priceChartingUrl: priceChartingUrl(read.title, known?.name ?? ''),
+    chest: 'none',
+    onTheWay: null,
+    marks: [],
+    drawer: null,
+    preference: null,
+    corrected,
+  };
+}
+
 function whyOf(
   answer: DealCheckAnswer['answer'],
   sure: Sureness,
@@ -240,5 +363,34 @@ export function registerDealCheckRoutes(app: FastifyInstance, deals: DealCheckSe
     if (!items) return reply.code(400).send({ error: `Send {"items": [{"title": "...", "platform": "..."}]}, 1 to ${DEAL_CHECK_MAX} of them.` });
     const response: DealCheckResponse = { results: await deals.check(items), preferences: deals.preferences() };
     return response;
+  });
+
+  app.get('/api/v1/deal-check/corrections', async () => ({ corrections: deals.corrections() }));
+
+  app.post('/api/v1/deal-check/corrections', async (request, reply) => {
+    const b = (request.body ?? {}) as Record<string, unknown>;
+    const text = (v: unknown, max: number) => (typeof v === 'string' && v.trim() && v.length <= max ? v.trim() : null);
+    const listing = text(b.listing, 400);
+    const kind = b.kind === 'game' || b.kind === 'not-game' || b.kind === 'lot' ? b.kind : null;
+    const title = text(b.title, 300);
+    const platformKey = text(b.platformKey, 60);
+    if (!listing || !kind) return reply.code(400).send({ error: 'Send {"listing": "...", "kind": "game" | "not-game" | "lot"}, with "title" and "platformKey" for a game.' });
+    if (kind === 'game' && !title) return reply.code(400).send({ error: 'Which game? Send its "title" (and "platformKey").' });
+    if (platformKey && !KNOWN_PLATFORMS.some((p) => p.key === platformKey)) return reply.code(400).send({ error: `No console "${platformKey}".` });
+    const correction = deals.correct({
+      listing,
+      kind,
+      title: kind === 'game' ? title : null,
+      platformKey: kind === 'game' ? platformKey : null,
+      wasTitle: text(b.wasTitle, 300),
+      wasPlatformKey: text(b.wasPlatformKey, 60),
+    });
+    return { correction };
+  });
+
+  app.delete('/api/v1/deal-check/corrections', async (request, reply) => {
+    const listing = (request.query as { listing?: string }).listing;
+    if (!listing) return reply.code(400).send({ error: 'Which listing? ?listing=...' });
+    return deals.uncorrect(listing) ? { removed: true } : reply.code(404).send({ error: 'No correction for that listing.' });
   });
 }

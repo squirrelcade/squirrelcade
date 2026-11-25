@@ -22,6 +22,47 @@ afterEach(async () => {
 
 const check = (items: unknown) => g.app.inject({ method: 'POST', url: '/api/v1/deal-check', cookies, payload: { items } });
 
+describe('subtitleOf', () => {
+  it('knows a subtitle or an edition from another game', async () => {
+    const { subtitleOf } = await import('./dealCheck.js');
+    expect(subtitleOf('Tiger Woods PGA Tour 12', 'Tiger Woods PGA Tour 12: The Masters')).toBe(true);
+    expect(subtitleOf('Uncharted 2: Among Thieves', 'Uncharted 2: Among Thieves [Game Of The Year]')).toBe(true);
+    expect(subtitleOf('Halo', 'Halo 3')).toBe(false);
+    expect(subtitleOf('Halo Reach', 'Halo Reach')).toBe(false);
+    expect(subtitleOf('Tiger Woods PGA Tour', 'Tiger Woods PGA Tour 12: The Masters')).toBe(false);
+  });
+});
+
+describe('deal-check corrections', () => {
+  const correct = (payload: Record<string, unknown>) => g.app.inject({ method: 'POST', url: '/api/v1/deal-check/corrections', cookies, payload });
+  it('reads a listing as the game you said, sure, from then on', async () => {
+    const listing = 'Bungie Master Chief thing for 360';
+    expect((await correct({ listing, kind: 'game', title: 'Halo 3', platformKey: 'xbox-360', wasTitle: 'Bungie Master Chief thing for 360' })).statusCode).toBe(200);
+    const [r] = (await check([{ title: listing }])).json().results;
+    expect(r).toMatchObject({ title: 'Halo 3', platformKey: 'xbox-360', answer: 'own', sure: 'sure', corrected: { kind: 'game', title: 'Halo 3' } });
+    expect(r.why).toMatch(/^You told Squirrelcade this is Halo 3 \(Xbox 360\)/);
+    const list = (await g.app.inject({ method: 'GET', url: '/api/v1/deal-check/corrections', cookies })).json().corrections;
+    expect(list).toEqual([expect.objectContaining({ listing, kind: 'game', wasTitle: 'Bungie Master Chief thing for 360' })]);
+    expect((await g.app.inject({ method: 'DELETE', url: `/api/v1/deal-check/corrections?listing=${encodeURIComponent(listing)}`, cookies })).statusCode).toBe(200);
+    const [after] = (await check([{ title: listing }])).json().results;
+    expect(after.corrected).toBeNull();
+  });
+
+  it('keeps not-a-game and lots apart', async () => {
+    await correct({ listing: 'Halo 3 Xbox 360 Controller Skin', kind: 'not-game' });
+    await correct({ listing: 'Halo 3 + Gears of War Xbox 360 Bundle', kind: 'lot' });
+    const [skin, lot] = (await check([{ title: 'Halo 3 Xbox 360 Controller Skin' }, { title: 'Halo 3 + Gears of War Xbox 360 Bundle' }])).json().results;
+    expect(skin).toMatchObject({ answer: 'need', chest: 'none', corrected: { kind: 'not-game' } });
+    expect(lot).toMatchObject({ answer: 'maybe', sure: 'unsure', corrected: { kind: 'lot' } });
+  });
+
+  it('turns down a correction it cannot keep', async () => {
+    expect((await correct({ listing: 'x', kind: 'game' })).statusCode).toBe(400);
+    expect((await correct({ listing: 'x', kind: 'game', title: 'Halo 3', platformKey: 'no-such' })).statusCode).toBe(400);
+    expect((await correct({ kind: 'lot' })).statusCode).toBe(400);
+  });
+});
+
 describe('POST /api/v1/deal-check', () => {
   it("answers each listing from the collection, on the listing's console", async () => {
     const res = await check([

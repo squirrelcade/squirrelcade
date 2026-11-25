@@ -135,7 +135,14 @@ export function readListing(text: string, platforms: readonly PlatformLike[], hi
     const m = new RegExp(`(^|[^a-z0-9])${n.split(' ').join('[^a-z0-9]+')}(?![a-z0-9])`, 'i').exec(t);
     if (m && t.slice(0, m.index).trim().split(/\s+/).length >= 2 && (cut < 0 || m.index < cut)) cut = m.index;
   }
-  if (cut > 0) t = t.slice(0, cut);
+  // So does a console's short code no game's name uses ("Uncharted 2: Among Thieves PS3 w/ Manual T-Teen 2009").
+  const code = /(^|[\s:(\[\-–])(?:ps[1-5]|ps ?vita|nsw2?|ns[12]|x360|xb1|xbo|xsx)(?![a-z0-9])/i.exec(t);
+  if (code && t.slice(0, code.index).trim().split(/\s+/).length >= 2 && (cut < 0 || code.index < cut)) cut = code.index;
+  if (cut > 0) {
+    // A printing's label in brackets after it stays: "[Game of the Year Greatest Hits]" is how the copy is matched.
+    const label = [...t.slice(cut).matchAll(/\[([^\]]+)\]/g)].map((m) => m[1]!).find((x) => /game of the year|greatest hits|platinum|player'?s choice|selects|essentials|playstation hits/i.test(x));
+    t = t.slice(0, cut).replace(/[\s:,\-–—|(]+$/, '') + (label ? ` [${label}]` : '');
+  }
   // A console's name or the store's words left at the end ("Super Mario Odyssey Nintendo Switch Brand New").
   for (let changed = true; changed; ) {
     changed = false;
