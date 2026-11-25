@@ -455,7 +455,7 @@
     :host { all: initial; }
     .b { display: inline-flex; align-items: center; gap: 5px; row-gap: 4px; flex-wrap: wrap; margin: 4px 0 2px; padding: 4px 7px 4px 8px; border-radius: 12px;
          font: 600 12px/1.3 system-ui, -apple-system, "Segoe UI", sans-serif; color: #1f2a22; background: #fff; border: 1px solid #d8ddd9;
-         box-shadow: 0 1px 2px rgba(0,0,0,.06); cursor: default; }
+         box-shadow: 0 1px 2px rgba(0,0,0,.06); cursor: default; max-width: 100%; box-sizing: border-box; }
     .b.own { background: #f3faf5; border-color: #b8dcc4; }
     .muted { color: #5c6a60; font-weight: 500; }
     .flag { padding: 0 6px; border-radius: 4px; background: #fff3cd; color: #7a5300; font-weight: 600; }
@@ -464,7 +464,8 @@
              display: inline-flex; align-items: center; gap: 3px; }
     button:hover { background: #dfe5e1; }
     button:focus-visible { outline: 2px solid #2f7d4f; outline-offset: 1px; }
-    .stash { gap: 4px; padding: 1px 4px; border-radius: 6px; background: transparent; }
+    /* A game on many consoles: its marks wrap inside the card rather than run past it (The Wandering Village, six). */
+    .stash { gap: 4px; row-gap: 3px; flex-wrap: wrap; max-width: 100%; padding: 1px 4px; border-radius: 6px; background: transparent; }
     .stash:hover { background: #eef1ef; }
     .stash svg { display: block; }
     .acorns { color: #2b6e46; }
@@ -536,7 +537,7 @@
     host.className = 'squirrelcade-deal';
     // Above the link a store spreads over its whole tile (Walmart's, at z-index 1), so the badge's buttons get the clicks;
     // low enough to stay under the store's own header.
-    Object.assign(host.style, { display: 'block', position: 'relative', zIndex: '3' });
+    Object.assign(host.style, { display: 'block', position: 'relative', zIndex: '3', maxWidth: '100%' });
     const root = host.attachShadow({ mode: 'open' });
     const level = LEVEL[r.sure];
     const marks = marksOfItsTime(r).map((m) => m.svg).join('');

@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "name": "Squirrelcade Deal check",
   "short_name": "Deal check",
-  "version": "0.5.0",
+  "version": "0.5.1",
   "description": "Shows which games you have in your Squirrelcade on a store's page, with their acorns and PriceCharting's prices: by itself on the stores it reads, and with its button anywhere else.",
   "icons": {
     "16": "icons/icon-16.png",
