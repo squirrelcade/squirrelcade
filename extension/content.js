@@ -28,6 +28,7 @@
   // ..."): the game is what follows (Squirrelcade's sets know the lines).
   const LINE_NUMBER = /^(?:\[[^\]]{2,30}\]\s*)?(?:(?:switch|nsw|ps[345]|ps vita|vita|xbox one|xbox series x(?:\|s)?|pc)\s+)?(?:limited run|lrg|srg|srgc|de|srg deluxe|strictly limited|sl)\s*#\s*\d+\s*[:\-–]\s*/i;
   const KEY_SUFFIX = /\s+(?:(EU|US|UK|NA|USA|Global|Asia|ROW|LATAM)\s+)?(Nintendo Switch 2|Nintendo Switch|Xbox Series X\|S|Xbox One|Xbox|PS5|PS4|PlayStation 5|PlayStation 4|Steam)?\s*(?:CD Key|Key|Digital Code|Account)$/i;
+  const PRINTING = /\s*[-–:,(]?\s*\b(goty|game of the year(?: edition)?|greatest hits|platinum hits|player'?s choice|nintendo selects|playstation hits|essentials)\b\s*\)?/gi;
   function withoutRegion(listing) {
     // A console's short code before the title ("PS3 Teslagrad (Sony PlayStation 3, 2015)", as eBay sellers write): the
     // console, kept as the hint. Only codes no game's name starts with: "Nintendo Switch Sports" and "NES Remix" stay.
@@ -40,10 +41,20 @@
       title: listing.title
         .replace(/\s*[/|]\s*(?=(?:cib|complete|with|w\/|tested|disc|game only|manual|case)\b)/gi, ' ')
         .replace(/\b(?:cib|complete in (?:box|case)|complete(?=\s*(?:$|[,/|(\-–]))|(?:with|w\/|includes?) (?:the )?(?:manual|case|box)(?: and (?:manual|case|box))?|tested(?: (?:and|&) working)?|works great|working|disc only|game only|cartridge only|cart only|no manual|great condition|good condition|excellent condition|pre-?owned|used)\b/gi, ' ')
+        .replace(/\b(?:untested|ntsc(?:-u\/c|-u|-j)?|(?:rated )?(?:e|t|m|e10\+?)-(?:everyone(?: 10\+)?|teen|mature(?: 17\+)?))(?=\s|$|[,)\-–])/gi, ' ')
+        .replace(/\(\s*\)|\[\s*\]/g, ' ')
         .replace(/[\s\-–/|,]+$/, '')
         .replace(/\s+/g, ' ')
         .trim(),
     };
+    // A reprint's label ("GOTY Greatest Hits", "Platinum Hits", "Player's Choice") is the same game: in brackets, where
+    // Squirrelcade reads it as a printing ("[Game of the Year]" is your GOTY copy), not as words of the name.
+    const labels = [];
+    const unlabelled = listing.title.replace(PRINTING, (m, label) => {
+      labels.push(/^goty$/i.test(label) ? 'Game of the Year' : label);
+      return ' ';
+    });
+    if (labels.length) listing = { ...listing, title: `${unlabelled.replace(/[\s\-–/|,:]+$/, '').replace(/\s+/g, ' ').trim()} [${labels.join(' ')}]` };
     const maker = /^(?:sony\s+(?:playstation\s?[1-5]|ps\s?vita|playstation\s+vita)|microsoft\s+xbox(?:\s+(?:360|one|series\s+[xs](?:\s?\|\s?s)?))?|nintendo\s+(?:gamecube|wii\s?u|wii|3ds|ds|64))\b[\s:\-–|]+(?=\S)/i.exec(listing.title);
     if (maker) listing = { ...listing, title: listing.title.slice(maker[0].length), hint: listing.hint ?? consoleIn(maker[0]) };
     const lead = /^(ps[1-5]|ps ?vita|nsw2?|ns[12]|x360|xb1|xbo|xsx)\b[\s:\-–|]+(?=\S)/i.exec(listing.title);
@@ -189,6 +200,18 @@
           const t = card.querySelector('.s-card__title, .s-item__title');
           const title = text(t?.querySelector('span.primary, span[role="heading"]') ?? t).replace(/^New Listing\s*/i, '').replace(/Opens in a new window or tab$/i, '').trim();
           if (!t || !title || /^shop on ebay$/i.test(title)) continue;
+          // eBay's own catalog line under the title ("Sony PlayStation 3 · Uncharted 2: Among Thieves"): the game as eBay
+          // filed it, cleaner than the seller's words ("GOTY Greatest Hits (Used) PS3 - CIB -Untested-"). Not for a lot,
+          // whose catalog line names only one of its games.
+          const filed = [...card.querySelectorAll('.s-card__subtitle, .s-item__subtitle, .s-card__subtitle-row span')]
+            .map((e) => /^(.+?)\s+·\s+(.+)$/.exec(text(e)))
+            .find((m) => m && consoleIn(m[1]));
+          if (filed && !LOT.test(title)) {
+            // The seller's reprint label stays ("GOTY Greatest Hits"): eBay files every printing under one name.
+            const label = [...title.matchAll(PRINTING)].map((m) => m[1]).join(' ');
+            out.push({ at: t, title: `${filed[2].trim()}${label ? ` ${label}` : ''}`, price: priceIn(text(card.querySelector('.s-card__price, .s-item__price'))), seller: null, marketplace: false, hint: filed[1].trim() });
+            continue;
+          }
           out.push({ at: t, title, price: priceIn(text(card.querySelector('.s-card__price, .s-item__price'))), seller: null, marketplace: false, hint: consoleIn(title) ? null : pageHint });
         }
         // eBay's rows that scroll sideways ("Picked For You", "Similar sponsored items"): each item a link to its listing.
