@@ -40,11 +40,41 @@ export interface DealCheckCorrection {
 
 const correctionKey = (listing: string) => normalizeTitle(listing);
 
+/** app_state key: the listings Deal check wasn't sure of (its grey badges), by the listing's words (normalized). */
+const UNSURE = 'deal-check.unsure';
+/** At most this many kept: the ones seen last. */
+export const UNSURE_MAX = 500;
+
+/**
+ * A listing Deal check answered at medium or low (the owner's wish, 2026-11-24: "work on decreasing some of the
+ * unknowns"): what the store said, what Squirrelcade read and answered, and what came close. Claude reviews them and
+ * turns repeated misreadings into rules (T-597, T-592); nothing is kept about the owner beyond what the badge showed.
+ */
+export interface DealCheckUnsure {
+  listing: string;
+  /** The console the page named around it, when the title didn't. */
+  hint: string | null;
+  /** The store's address (its host). */
+  store: string | null;
+  title: string;
+  platform: string | null;
+  answer: DealCheckAnswer['answer'];
+  sure: Sureness | 'unknown-title';
+  why: string;
+  match: { title: string; platform: string; confidence: number } | null;
+  /** How many times it's been seen, first and last. */
+  seen: number;
+  first: string;
+  last: string;
+}
+
 export interface DealCheckItem {
   /** The listing's title as the store shows it. */
   title: string;
   /** A console the page names around the listing, when the title doesn't. */
   platform?: string | null;
+  /** A second reading the extension asks besides the first (a publisher left out): not logged as unsure. */
+  second?: boolean;
 }
 
 export interface DealCheckAnswer {
@@ -153,7 +183,86 @@ export class DealCheckService {
     ];
   }
 
-  async check(items: readonly DealCheckItem[]): Promise<DealCheckAnswer[]> {
+  async check(items: readonly DealCheckItem[], store: string | null = null): Promise<DealCheckAnswer[]> {
+    const out = await this.answerAll(items);
+    try {
+      this.logUnsure(items, out, store);
+    } catch {
+      // The log is a help for later, never a reason for a check to fail.
+    }
+    return out;
+  }
+
+  /** The listings it wasn't sure of, seen last first. */
+  unsure(limit = UNSURE_MAX): DealCheckUnsure[] {
+    return Object.values(this.unsureMap())
+      .sort((a, b) => b.last.localeCompare(a.last))
+      .slice(0, limit);
+  }
+
+  /** Forgets one listing, or all of them (after a review). How many went. */
+  clearUnsure(listing?: string): number {
+    if (!this.db) return 0;
+    const all = this.unsureMap();
+    const before = Object.keys(all).length;
+    if (listing === undefined) this.saveState(UNSURE, {});
+    else {
+      delete all[correctionKey(listing)];
+      this.saveState(UNSURE, all);
+    }
+    return before - Object.keys(listing === undefined ? {} : all).length;
+  }
+
+  /**
+   * Keeps each answer the badge shows grey: medium or low, or a title nothing of yours or of your wishlist knows (the
+   * extension shows that one at medium). Not a correction you made, not a second reading.
+   */
+  private logUnsure(items: readonly DealCheckItem[], answers: readonly DealCheckAnswer[], store: string | null): void {
+    if (!this.db) return;
+    const grey = answers
+      .map((a, i) => ({ a, item: items[i]! }))
+      .filter(({ a, item }) => !item.second && !a.corrected && (a.sure !== 'sure' || (a.answer === 'need' && !a.match && !a.wishlist)));
+    if (grey.length === 0) return;
+    const all = this.unsureMap();
+    const now = new Date().toISOString();
+    for (const { a, item } of grey) {
+      const key = correctionKey(item.title);
+      const was = all[key];
+      all[key] = {
+        listing: item.title,
+        hint: item.platform ?? null,
+        store,
+        title: a.title,
+        platform: a.platform,
+        answer: a.answer,
+        sure: a.sure === 'sure' ? 'unknown-title' : a.sure,
+        why: a.why,
+        match: a.match ? { title: a.match.title, platform: a.match.platform, confidence: a.match.confidence } : null,
+        seen: (was?.seen ?? 0) + 1,
+        first: was?.first ?? now,
+        last: now,
+      };
+    }
+    // The ones seen last, at most UNSURE_MAX.
+    const kept = Object.entries(all)
+      .sort((x, y) => y[1].last.localeCompare(x[1].last))
+      .slice(0, UNSURE_MAX);
+    this.saveState(UNSURE, Object.fromEntries(kept));
+  }
+
+  private unsureMap(): Record<string, DealCheckUnsure> {
+    if (!this.db) return {};
+    const row = this.db.select().from(appState).where(eq(appState.key, UNSURE)).get();
+    return row ? (JSON.parse(row.value) as Record<string, DealCheckUnsure>) : {};
+  }
+
+  private saveState(key: string, value: unknown): void {
+    if (!this.db) return;
+    const text = JSON.stringify(value);
+    this.db.insert(appState).values({ key, value: text }).onConflictDoUpdate({ target: appState.key, set: { value: text } }).run();
+  }
+
+  private async answerAll(items: readonly DealCheckItem[]): Promise<DealCheckAnswer[]> {
     const answers = this.answer(items);
     if (!this.marks) return answers.map((a) => a.answer);
     // The consoles each game came out on, asked for all the listings at once.
@@ -359,10 +468,10 @@ function parseItems(body: unknown): DealCheckItem[] | null {
   const items = (body as { items?: unknown } | null)?.items;
   if (!Array.isArray(items) || items.length === 0 || items.length > DEAL_CHECK_MAX) return null;
   const out: DealCheckItem[] = [];
-  for (const i of items as { title?: unknown; platform?: unknown }[]) {
+  for (const i of items as { title?: unknown; platform?: unknown; second?: unknown }[]) {
     if (!i || typeof i.title !== 'string' || !i.title.trim() || i.title.length > 400) return null;
     if (i.platform !== undefined && i.platform !== null && (typeof i.platform !== 'string' || i.platform.length > 100)) return null;
-    out.push({ title: i.title.trim(), platform: (i.platform as string | null | undefined) ?? null });
+    out.push({ title: i.title.trim(), platform: (i.platform as string | null | undefined) ?? null, ...(i.second === true ? { second: true } : {}) });
   }
   return out;
 }
@@ -371,11 +480,24 @@ export function registerDealCheckRoutes(app: FastifyInstance, deals: DealCheckSe
   app.post('/api/v1/deal-check', async (request, reply) => {
     const items = parseItems(request.body);
     if (!items) return reply.code(400).send({ error: `Send {"items": [{"title": "...", "platform": "..."}]}, 1 to ${DEAL_CHECK_MAX} of them.` });
-    const response: DealCheckResponse = { results: await deals.check(items), preferences: deals.preferences() };
+    const store = (request.body as { store?: unknown }).store;
+    const host = typeof store === 'string' && store.length <= 120 ? store : null;
+    const response: DealCheckResponse = { results: await deals.check(items, host), preferences: deals.preferences() };
     return response;
   });
 
   app.get('/api/v1/deal-check/corrections', async () => ({ corrections: deals.corrections() }));
+
+  app.get('/api/v1/deal-check/unsure', async (request) => {
+    const limit = Number((request.query as { limit?: string }).limit);
+    const list = deals.unsure(Number.isInteger(limit) && limit > 0 ? Math.min(limit, UNSURE_MAX) : UNSURE_MAX);
+    return { count: list.length, unsure: list };
+  });
+
+  app.delete('/api/v1/deal-check/unsure', async (request) => {
+    const listing = (request.query as { listing?: string }).listing;
+    return { removed: deals.clearUnsure(listing || undefined) };
+  });
 
   app.post('/api/v1/deal-check/corrections', async (request, reply) => {
     const b = (request.body ?? {}) as Record<string, unknown>;

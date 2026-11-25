@@ -1039,7 +1039,7 @@
     const unique = [...new Map(listings.map((l) => [keyOf(l), { title: l.title, platform: l.hint }])).entries()];
     const seconds = unique.map(([, i]) => {
       const m = PUBLISHER.exec(i.title);
-      return m && i.title.length > m[0].length + 2 ? { title: i.title.slice(m[0].length), platform: i.platform } : null;
+      return m && i.title.length > m[0].length + 2 ? { title: i.title.slice(m[0].length), platform: i.platform, second: true } : null;
     });
     const extra = seconds.filter(Boolean);
     const answer = await ask({ type: 'check', items: [...unique.map(([, i]) => i), ...extra] });

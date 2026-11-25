@@ -195,9 +195,11 @@ POST   /api/v1/deal-check                {"items": [{"title": "WWE 2K26 - Ninten
 GET    /api/v1/deal-check/corrections    {corrections: [{listing, kind, platformKey, title, wasTitle, wasPlatformKey, at}]}, newest first
 POST   /api/v1/deal-check/corrections    {"listing": "...", "kind": "game" | "not-game" | "lot", "title": "...", "platformKey": "...", "wasTitle": "...", "wasPlatformKey": "..."}: what a listing really is (title required for a game)
 DELETE /api/v1/deal-check/corrections?listing=...   forgets one (404 when there's none)
+GET    /api/v1/deal-check/unsure[?limit=N]          {count, unsure: [{listing, hint, store, title, platform, answer, sure, why, match, seen, first, last}]}: the listings it wasn't sure of (grey badges), seen last first, at most 500
+DELETE /api/v1/deal-check/unsure[?listing=...]      forgets one, or all: {removed}
 ```
 
-What the browser extension (`extension/`, [Deal check](help/wishlist.md#deal-check-the-browser-extension)) sends: each listing's title as the store writes it, and `platform`, a console the page names around it when the title doesn't (a console the title names wins). Owner only. Each answer: `{listing, title, platformKey, platform, answer, sure, why, match, ownedOn, valueCents, wishlist, flags, priceChartingUrl}`:
+With `"store"` (the page's host, beside `items`) the unsure log keeps where each grey listing was seen; an item with `"second": true` is a second reading and isn't logged. What the browser extension (`extension/`, [Deal check](help/wishlist.md#deal-check-the-browser-extension)) sends: each listing's title as the store writes it, and `platform`, a console the page names around it when the title doesn't (a console the title names wins). Owner only. Each answer: `{listing, title, platformKey, platform, answer, sure, why, match, ownedOn, valueCents, wishlist, flags, priceChartingUrl}`:
 
 - `title` and `platform`: the game and console read from the listing (the store's words, the console and the copy's kind taken out).
 - `answer`: `own` (on that console; anywhere when none is known), `elsewhere` (on another console or PC: `ownedOn`), `maybe` (only a near miss: `match`) or `need`.

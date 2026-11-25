@@ -28,7 +28,7 @@ chrome.alarms.onAlarm.addListener((a) => {
 
 chrome.runtime.onMessage.addListener((message, _sender, reply) => {
   if (message?.type === 'check') {
-    check(message.items).then(reply, (e) => reply({ error: String(e?.message ?? e) }));
+    check(message.items, hostOf(_sender.tab?.url)).then(reply, (e) => reply({ error: String(e?.message ?? e) }));
     return true;
   }
   if (message?.type === 'prices') {
@@ -60,7 +60,16 @@ chrome.runtime.onMessage.addListener((message, _sender, reply) => {
 });
 
 /** Asks Squirrelcade about the listings, 50 at a time. */
-async function check(items) {
+/** A tab's store, for the unsure log (its host only). */
+const hostOf = (url) => {
+  try {
+    return new URL(url).hostname;
+  } catch {
+    return null;
+  }
+};
+
+async function check(items, store = null) {
   const { server, key } = await chrome.storage.local.get(['server', 'key']);
   if (!server || !key) return { error: 'Set your Squirrelcade address and key in the extension’s options.', options: true };
   const results = [];
@@ -71,7 +80,7 @@ async function check(items) {
       res = await fetch(new URL('api/v1/deal-check', server.endsWith('/') ? server : `${server}/`), {
         method: 'POST',
         headers: { 'content-type': 'application/json', 'x-api-key': key },
-        body: JSON.stringify({ items: items.slice(i, i + BATCH) }),
+        body: JSON.stringify({ items: items.slice(i, i + BATCH), store }),
       });
     } catch {
       return { error: `Squirrelcade didn’t answer at ${server}. It works on your home network only.` };

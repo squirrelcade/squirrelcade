@@ -36,6 +36,29 @@ describe('subtitleOf', () => {
   });
 });
 
+describe('deal-check unsure log', () => {
+  it('keeps the listings it was not sure of, once each, and forgets them on request', async () => {
+    const res = await g.app.inject({
+      method: 'POST',
+      url: '/api/v1/deal-check',
+      cookies,
+      payload: { store: 'www.ebay.com', items: [{ title: 'Halo 3 - Xbox 360' }, { title: 'Zorblax Quest - Xbox 360' }, { title: 'Halo 3' }, { title: 'Zorblax', platform: 'Xbox 360', second: true }] },
+    });
+    expect(res.statusCode).toBe(200);
+    await g.app.inject({ method: 'POST', url: '/api/v1/deal-check', cookies, payload: { items: [{ title: 'Zorblax Quest - Xbox 360' }] } });
+    const log = (await g.app.inject({ method: 'GET', url: '/api/v1/deal-check/unsure', cookies })).json();
+    const titles = log.unsure.map((u: { listing: string }) => u.listing);
+    // Halo 3 on its console is sure; the unknown title and Halo 3 without a console are grey; a second reading isn't kept.
+    expect(titles).toEqual(expect.arrayContaining(['Zorblax Quest - Xbox 360', 'Halo 3']));
+    expect(titles).not.toContain('Halo 3 - Xbox 360');
+    expect(titles).not.toContain('Zorblax');
+    const zorblax = log.unsure.find((u: { listing: string }) => u.listing === 'Zorblax Quest - Xbox 360');
+    expect(zorblax).toMatchObject({ seen: 2, sure: 'unknown-title', title: 'Zorblax Quest', platform: 'Xbox 360' });
+    expect((await g.app.inject({ method: 'DELETE', url: '/api/v1/deal-check/unsure', cookies })).json().removed).toBe(2);
+    expect((await g.app.inject({ method: 'GET', url: '/api/v1/deal-check/unsure', cookies })).json().count).toBe(0);
+  });
+});
+
 describe('deal-check corrections', () => {
   const correct = (payload: Record<string, unknown>) => g.app.inject({ method: 'POST', url: '/api/v1/deal-check/corrections', cookies, payload });
   it('reads a listing as the game you said, sure, from then on', async () => {
