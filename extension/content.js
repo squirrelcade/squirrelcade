@@ -510,6 +510,26 @@
     return 'Stash (unowned)';
   }
 
+  // A listing of several games ("15 ps3 games see discription", "Nintendo switch games lot", "bundle", "bulk"): its title
+  // names no one game, so the answer can't be sure (the owner, 2026-11-24: "how could it know if I had it or not?").
+  // ("2 Games in 1" is one compilation, not a lot.)
+  const LOT = /\b(lots?|bundle|bulk|job ?lot|collection of \d+|mixed)\b|^\s*\d+\s*x?\s*(?:[a-z0-9]+\s+){0,3}(?:video\s*)?(?:games|titles|discs)\b(?!\s+in\s+1)|\b\d+\s+(?:video\s+)?(?:games|titles)\b(?!\s+in\s+1)/i;
+  /**
+   * The answer's sureness, honest about what the listing gives: a lot is Low (which games, it can't say); a title nothing
+   * of yours or of your wishlist knows is at most Medium (it may not be a game's name at all).
+   */
+  function honestSureness(row) {
+    const r = row.result;
+    if (LOT.test(row.title) && r.answer !== 'own') {
+      row.lot = true;
+      return { ...r, sure: 'unsure', chest: r.chest === 'coming' ? 'coming' : 'none', preference: null, why: 'Not sure: this listing is a lot of several games, and its title doesn’t say which, so Squirrelcade can’t tell whether you have them.' };
+    }
+    if (r.answer === 'need' && !r.match && !r.wishlist && r.sure === 'sure') {
+      return { ...r, sure: 'likely', why: 'Pretty sure: nothing of yours comes close, but Squirrelcade doesn’t know this title either (not in its catalogs or your wishlist), so it may not be a game’s name.' };
+    }
+    return r;
+  }
+
   // When each console came out, for keeping a badge's marks to the listing's own era: a remake shares its name with the
   // original ("Star Fox" on Switch 2 and on the Super Nintendo), and Squirrelcade's marks go by the name.
   const CONSOLE_YEAR = {
@@ -544,7 +564,7 @@
     const acornsButton = r.preference
       ? `<button type="button" class="acorns" title="Your acorns for it: change your preference">${acorn()} ${r.wishlist ? `${r.wishlist.acorns} <span class="muted">${esc(r.wishlist.priority)}</span>` : '<span class="muted">Acorns</span>'}${r.preference.value ? ` <span class="muted">· ${esc(r.preference.value)}</span>` : ''}</button>`
       : '';
-    const flags = [...r.flags.map((f) => `<span class="flag${f === 'game-key-card' ? ' bad' : ''}">${esc(FLAGS[f] ?? f)}</span>`), row.marketplace ? `<span class="flag" title="${esc(row.seller)}">Marketplace seller</span>` : '', row.region ? `<span class="flag" title="${esc(row.region)}">Import</span>` : ''].join('');
+    const flags = [...r.flags.map((f) => `<span class="flag${f === 'game-key-card' ? ' bad' : ''}">${esc(FLAGS[f] ?? f)}</span>`), row.marketplace ? `<span class="flag" title="${esc(row.seller)}">Marketplace seller</span>` : '', row.region ? `<span class="flag" title="${esc(row.region)}">Import</span>` : '', row.lot ? '<span class="flag bad" title="Several games in one listing">Lot</span>' : ''].join('');
     const label = `${chestLabel(r)}: open it in Squirrelcade`;
     root.innerHTML =
       `<style>${css}</style><span class="b${r.chest === 'own' ? ' own' : ''}">` +
@@ -836,6 +856,7 @@
     for (const l of listings) {
       const row = { ...l, result: byKey.get(keyOf(l)) };
       if (!row.result) continue;
+      row.result = honestSureness(row);
       if (notAGame(row)) {
         state.leftOut++;
         continue;
