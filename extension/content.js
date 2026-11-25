@@ -902,13 +902,14 @@
     const extra = seconds.filter(Boolean);
     const answer = await ask({ type: 'check', items: [...unique.map(([, i]) => i), ...extra] });
     if (answer && !answer.error && extra.length) {
-      // Each second reading replaces the first only when the first found nothing and the second found something.
       let at = unique.length;
-      const found = (r) => r && (r.answer !== 'need' || r.wishlist || r.match);
+      // The better answer wins: yours here, then yours elsewhere, then a close one ("Capcom Resident Evil 6" only came
+      // close to your Resident Evil 6, which the second reading finds), then on the wishlist, then nothing.
+      const rank = (r) => (!r ? -1 : ({ own: 4, elsewhere: 3, maybe: 1, need: 0 }[r.answer] ?? 0) + (r.wishlist ? 0.5 : 0) + (r.sure === 'sure' ? 0.2 : r.sure === 'likely' ? 0.1 : 0));
       seconds.forEach((sec, i) => {
         if (!sec) return;
         const second = answer.results[at++];
-        if (!found(answer.results[i]) && found(second)) answer.results[i] = second;
+        if (rank(second) > rank(answer.results[i])) answer.results[i] = { ...second, listing: answer.results[i]?.listing ?? second.listing };
       });
       answer.results.length = unique.length;
     }
