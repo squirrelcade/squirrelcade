@@ -24,6 +24,9 @@ describe('readListing', () => {
     expect(read('DRAGON QUEST III HD-2D Remake (NSW)')).toMatchObject({ title: 'DRAGON QUEST III HD-2D Remake', platformKey: 'nintendo-switch' });
     expect(read('Mario Kart World (NS2)')).toMatchObject({ title: 'Mario Kart World', platformKey: 'nintendo-switch-2' });
     expect(read('NSW - PERSONA 4 GOLDEN (STANDARD - SWITCH)')).toMatchObject({ title: 'PERSONA 4 GOLDEN', platformKey: 'nintendo-switch' });
+    expect(read('PS3 Teslagrad (Sony PlayStation 3, 2015)')).toMatchObject({ title: 'Teslagrad', platformKey: 'playstation-3' });
+    expect(read('Teslagrad (Sony PlayStation 3, 2014) PS3, Tested')).toMatchObject({ title: 'Teslagrad', platformKey: 'playstation-3' });
+    expect(read('NES Remix Pack - Wii U').title).toBe('NES Remix Pack');
     expect(read('Sega Genesis Classics - PlayStation 4').title).toBe('Sega Genesis Classics');
     expect(read('LEGO DC Super-Villains - Nintendo Switch').title).toBe('LEGO DC Super-Villains');
   });

@@ -29,6 +29,10 @@
   const LINE_NUMBER = /^(?:\[[^\]]{2,30}\]\s*)?(?:(?:switch|nsw|ps[345]|ps vita|vita|xbox one|xbox series x(?:\|s)?|pc)\s+)?(?:limited run|lrg|srg|srgc|de|srg deluxe|strictly limited|sl)\s*#\s*\d+\s*[:\-–]\s*/i;
   const KEY_SUFFIX = /\s+(?:(EU|US|UK|NA|USA|Global|Asia|ROW|LATAM)\s+)?(Nintendo Switch 2|Nintendo Switch|Xbox Series X\|S|Xbox One|Xbox|PS5|PS4|PlayStation 5|PlayStation 4|Steam)?\s*(?:CD Key|Key|Digital Code|Account)$/i;
   function withoutRegion(listing) {
+    // A console's short code before the title ("PS3 Teslagrad (Sony PlayStation 3, 2015)", as eBay sellers write): the
+    // console, kept as the hint. Only codes no game's name starts with: "Nintendo Switch Sports" and "NES Remix" stay.
+    const lead = /^(ps[1-5]|ps ?vita|nsw2?|ns[12]|x360|xb1|xbo|xsx)\b[\s:\-–|]+(?=\S)/i.exec(listing.title);
+    if (lead) listing = { ...listing, title: listing.title.slice(lead[0].length), hint: listing.hint ?? consoleIn(lead[1]) ?? lead[1] };
     // A collector number at the end ("PERSONA 4 GOLDEN (STANDARD - SWITCH) LRG #214"): not the game's words.
     listing = { ...listing, title: listing.title.replace(/\s+(?:LRG|SRG|Limited Run(?: Games)?|Strictly Limited)\s*#\s*\d+\s*$/i, '') };
     const line = LINE_NUMBER.exec(listing.title);

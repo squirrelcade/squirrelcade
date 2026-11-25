@@ -116,6 +116,8 @@ export function readListing(text: string, platforms: readonly PlatformLike[], hi
   const pieces = t.split(/\s+[-–—|]\s+|\s*[|–—]\s*|,\s+/);
   // A first piece that's only a console ("NSW - PERSONA 4 GOLDEN", as eBay sellers write) goes too, when more follows.
   const first = pieces.length > 1 && storeOnly(pieces[0]!, names) ? pieces.slice(1) : pieces;
+  // A console's short code before the title ("PS3 Teslagrad"): only codes no game's name starts with.
+  first[0] = first[0]!.replace(/^(ps[1-5]|ps ?vita|nsw2?|ns[12]|x360|xb1|xbo|xsx)\s+(?=\S)/i, '');
   const kept = [first[0]!, ...first.slice(1).filter((p) => !storeOnly(p, names) && !GAME_KEY_CARD.test(p))];
   t = kept.join(' - ');
   // A console's full name in the middle of a title: what follows is a store's facts ("Pokemon Legends: Arceus Nintendo
