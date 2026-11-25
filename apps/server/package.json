@@ -1,6 +1,6 @@
 {
   "name": "@squirrelcade/server",
-  "version": "1.6.1-rc.8",
+  "version": "1.6.1-rc.9",
   "private": true,
   "license": "AGPL-3.0-only",
   "description": "Squirrelcade server: API, tasks and database",
