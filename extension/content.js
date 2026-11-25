@@ -34,6 +34,16 @@
     // Sellers' decoration ("** Factory Sealed **", "~~", "!!!") isn't words; a maker and its console before the title
     // ("Sony PlayStation 3 PS3 Yakuza 4", "Microsoft Xbox 360 Halo 3") is the console. A game's name never starts with both.
     listing = { ...listing, title: listing.title.replace(/[*~!]{2,}|\s[*~!]+(?=\s|$)/g, ' ').replace(/\s+/g, ' ').trim() };
+    // A copy's condition ("CIB / Complete In Case with Manual", "Tested & Working", "Disc Only"): the copy, not the game.
+    listing = {
+      ...listing,
+      title: listing.title
+        .replace(/\s*[/|]\s*(?=(?:cib|complete|with|w\/|tested|disc|game only|manual|case)\b)/gi, ' ')
+        .replace(/\b(?:cib|complete in (?:box|case)|complete(?=\s*(?:$|[,/|(\-–]))|(?:with|w\/|includes?) (?:the )?(?:manual|case|box)(?: and (?:manual|case|box))?|tested(?: (?:and|&) working)?|works great|working|disc only|game only|cartridge only|cart only|no manual|great condition|good condition|excellent condition|pre-?owned|used)\b/gi, ' ')
+        .replace(/[\s\-–/|,]+$/, '')
+        .replace(/\s+/g, ' ')
+        .trim(),
+    };
     const maker = /^(?:sony\s+(?:playstation\s?[1-5]|ps\s?vita|playstation\s+vita)|microsoft\s+xbox(?:\s+(?:360|one|series\s+[xs](?:\s?\|\s?s)?))?|nintendo\s+(?:gamecube|wii\s?u|wii|3ds|ds|64))\b[\s:\-–|]+(?=\S)/i.exec(listing.title);
     if (maker) listing = { ...listing, title: listing.title.slice(maker[0].length), hint: listing.hint ?? consoleIn(maker[0]) };
     const lead = /^(ps[1-5]|ps ?vita|nsw2?|ns[12]|x360|xb1|xbo|xsx)\b[\s:\-–|]+(?=\S)/i.exec(listing.title);
@@ -501,6 +511,7 @@
     .stash { gap: 4px; row-gap: 3px; flex-wrap: wrap; max-width: 100%; padding: 1px 4px; border-radius: 6px; background: transparent; }
     .stash:hover { background: #eef1ef; }
     .stash svg { display: block; }
+    .stash svg.unlit { filter: grayscale(1); opacity: .45; }
     .acorns { color: #2b6e46; }
     .sure { min-width: 10px; justify-content: center; padding: 1px 6px; font-weight: 800; }
     .sure.H { background: #e3f4e8; color: #1d7f44; } .sure.M { background: #fbf0d3; color: #8a6200; } .sure.L { background: #fde4e1; color: #b3261e; }
@@ -596,7 +607,10 @@
     Object.assign(host.style, { display: 'block', position: 'relative', zIndex: '3', maxWidth: '100%' });
     const root = host.attachShadow({ mode: 'open' });
     const level = LEVEL[r.sure];
-    const marks = marksOfItsTime(r).map((m) => m.svg).join('');
+    // A console mark lights only as far as the chest agrees (the owner, 2026-11-24): a grey chest greys every mark, a half
+    // chest the listing's own console; the marks of a near miss ("maybe") never say "yours".
+    const lit = (m) => m.owned && (r.chest === 'own' || (r.chest === 'elsewhere' && m.key !== r.platformKey));
+    const marks = marksOfItsTime(r).map((m) => (m.owned && !lit(m) ? m.svg.replace('<svg ', '<svg class="unlit" ') : m.svg)).join('');
     const acornsButton = r.preference
       ? `<button type="button" class="acorns" title="Your acorns for it: change your preference">${acorn()} ${r.wishlist ? `${r.wishlist.acorns} <span class="muted">${esc(r.wishlist.priority)}</span>` : '<span class="muted">Acorns</span>'}${r.preference.value ? ` <span class="muted">· ${esc(r.preference.value)}</span>` : ''}</button>`
       : '';
