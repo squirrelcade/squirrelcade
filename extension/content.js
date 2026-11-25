@@ -79,6 +79,17 @@
   const acorn = (size = 13) =>
     `<svg viewBox="0 0 5 6" width="${Math.round((size * 5) / 6)}" height="${size}" shape-rendering="crispEdges" aria-hidden="true"><path d="M2 0h1v1H2zM0 1h5v2H0z" fill="#6b3a10"/><path d="M1 3h3v2H1zM2 5h1v1H2z" fill="#46a36b"/></svg>`;
 
+  // A page open before the extension updated itself keeps this old script, which can't reach the new extension: every
+  // question then answers that the page needs a refresh, instead of waiting for ever.
+  const STALE = 'Deal check was updated: refresh this page to use it.';
+  async function ask(message) {
+    try {
+      return (await chrome.runtime.sendMessage(message)) ?? { error: 'Deal check didn’t answer.' };
+    } catch {
+      return { error: STALE, stale: true };
+    }
+  }
+
   const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
   const money = (c) => (c === null || c === undefined ? '—' : `$${(c / 100).toFixed(2)}`);
   const priceIn = (text) => {
@@ -519,6 +530,8 @@
     return 'Stash (unowned)';
   }
 
+  const PUBLISHER = /^(?:koei tecmo|tecmo koei|koei|square enix|bandai namco|namco bandai|capcom|konami|ubisoft|electronic arts|activision|atlus|sega|2k games|2k|take-two|warner bros\.?(?: games| interactive)?|wb games|thq nordic|thq|nis america|nippon ichi(?: software)?|xseed(?: games)?|aksys(?: games)?|bethesda(?: softworks)?|devolver(?: digital)?|marvelous(?: usa)?|idea factory|spike chunsoft|level-5|deep silver|focus (?:home|entertainment)|nacon|microids|limited run games|numskull(?: games)?|pqube|rising star(?: games)?|natsume|d3 ?publisher|505 games|gearbox(?: publishing)?|rockstar(?: games)?|nintendo|sony|microsoft|square|tecmo|namco)\b[\s:\-–|]+/i;
+
   // A listing of several games ("15 ps3 games see discription", "Nintendo switch games lot", "bundle", "bulk"): its title
   // names no one game, so the answer can't be sure (the owner, 2026-11-24: "how could it know if I had it or not?").
   // ("2 Games in 1" is one compilation, not a lot.)
@@ -673,19 +686,19 @@
         b.addEventListener('click', async () => {
           root.querySelectorAll('.opt').forEach((x) => x.setAttribute('disabled', ''));
           const name = b.getAttribute('data-p');
-          const res = await chrome.runtime.sendMessage({
+          const res = await ask({
             type: 'api',
             url: '/api/v1/wishlist/preferences',
             method: 'PUT',
             contentType: 'application/json',
             body: JSON.stringify({ platformKey: r.preference.platformKey, title: r.preference.title, preference: name === 'No Adjustment' ? null : name }),
           });
-          if (!res || res.status >= 300) {
-            render('Squirrelcade didn’t take it. Try again in a moment.');
+          if (!res || res.error || !(res.status < 300)) {
+            render(res?.stale ? STALE : 'Squirrelcade didn’t take it. Try again in a moment.');
             return;
           }
           // The listing asked again: its acorns, priority and preference as Squirrelcade has them now.
-          const again = await chrome.runtime.sendMessage({ type: 'check', items: [{ title: row.title, platform: row.hint }] });
+          const again = await ask({ type: 'check', items: [{ title: row.title, platform: row.hint }] });
           if (again?.results?.[0] && row.host) {
             row.result = again.results[0];
             const fresh = badge(row);
@@ -755,7 +768,7 @@
   async function inDollars(row) {
     if (row.price === null || row.price === undefined) return null;
     if (!row.currency || row.currency === 'USD') return row.price;
-    const answer = await chrome.runtime.sendMessage({ type: 'rate', from: row.currency, to: 'USD' });
+    const answer = await ask({ type: 'rate', from: row.currency, to: 'USD' });
     return answer?.rate ? Math.round(row.price * answer.rate) : null;
   }
   const listingPrice = (row) => (row.currency && row.currency !== 'USD' ? `${money(row.price)} ${row.currency}` : money(row.price));
@@ -764,7 +777,7 @@
     const r = row.result;
     const { host, draw } = popup(button, gameHeading(r));
     draw('<div class="muted">Reading PriceCharting…</div>');
-    const answer = await chrome.runtime.sendMessage({ type: 'prices', url: r.priceChartingUrl, title: r.title, platform: r.platform });
+    const answer = await ask({ type: 'prices', url: r.priceChartingUrl, title: r.title, platform: r.platform });
     if (!host.isConnected) return;
     const best = answer?.products?.[0];
     if (!best) {
@@ -849,7 +862,23 @@
     // Each title once, with its console.
     const keyOf = (l) => `${l.title}|${l.hint ?? ''}`;
     const unique = [...new Map(listings.map((l) => [keyOf(l), { title: l.title, platform: l.hint }])).entries()];
-    const answer = await chrome.runtime.sendMessage({ type: 'check', items: unique.map(([, i]) => i) });
+    const seconds = unique.map(([, i]) => {
+      const m = PUBLISHER.exec(i.title);
+      return m && i.title.length > m[0].length + 2 ? { title: i.title.slice(m[0].length), platform: i.platform } : null;
+    });
+    const extra = seconds.filter(Boolean);
+    const answer = await ask({ type: 'check', items: [...unique.map(([, i]) => i), ...extra] });
+    if (answer && !answer.error && extra.length) {
+      // Each second reading replaces the first only when the first found nothing and the second found something.
+      let at = unique.length;
+      const found = (r) => r && (r.answer !== 'need' || r.wishlist || r.match);
+      seconds.forEach((sec, i) => {
+        if (!sec) return;
+        const second = answer.results[at++];
+        if (!found(answer.results[i]) && found(second)) answer.results[i] = second;
+      });
+      answer.results.length = unique.length;
+    }
     if (!answer || answer.error) {
       // Run by itself, the page stays as it was; asked for, the bar says why.
       if (auto) {
