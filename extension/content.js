@@ -501,6 +501,7 @@
     td.n { text-align: right; font-variant-numeric: tabular-nums; font-weight: 600; }
     a { color: #2b7a4b; font-weight: 600; text-decoration: none; } a:hover { text-decoration: underline; }
     .o { font-size: 12px; color: #5c6a60; margin-top: 4px; }
+    .thinks { margin: 2px 0 8px; padding: 7px 9px; border-radius: 8px; background: #f4f6f5; font-size: 13px; }
     .opt { display: flex; justify-content: space-between; width: 100%; box-sizing: border-box; padding: 6px 9px; margin: 2px 0; border-radius: 8px; background: #f4f6f5; }
     .opt.on { background: #dff2e6; box-shadow: inset 0 0 0 1px #8fcca6; }
     .opt[disabled] { opacity: .5; cursor: wait; }
@@ -535,7 +536,7 @@
   // A listing of several games ("15 ps3 games see discription", "Nintendo switch games lot", "bundle", "bulk"): its title
   // names no one game, so the answer can't be sure (the owner, 2026-11-24: "how could it know if I had it or not?").
   // ("2 Games in 1" is one compilation, not a lot.)
-  const LOT = /\b(lots?|bundle|bulk|job ?lot|collection of \d+|mixed)\b|^\s*\d+\s*x?\s*(?:[a-z0-9]+\s+){0,3}(?:video\s*)?(?:games|titles|discs)\b(?!\s+in\s+1)|\b\d+\s+(?:video\s+)?(?:games|titles)\b(?!\s+in\s+1)/i;
+  const LOT = /\b(lots?|bundle|bulk|job ?lot|collection of \d+|mixed|pick (?:your|a|any) games?|choose (?:your|a|any) games?|you (?:pick|choose)|multi-?listing|\$\d+(?:\.\d\d)? each)\b|^\s*(?:ps[1-5]|xbox(?: 360| one)?|switch|wii u?|nintendo \w+|sega \w+|gamecube|n64)\s+(?:video\s+)?games\b|^\s*\d+\s*x?\s*(?:[a-z0-9]+\s+){0,3}(?:video\s*)?(?:games|titles|discs)\b(?!\s+in\s+1)|\b\d+\s+(?:video\s+)?(?:games|titles)\b(?!\s+in\s+1)/i;
   /**
    * The answer's sureness, honest about what the listing gives: a lot is Low (which games, it can't say); a title nothing
    * of yours or of your wishlist knows is at most Medium (it may not be a game's name at all).
@@ -667,7 +668,12 @@
       ['Read as', `${esc(r.title)} <span class="muted">· ${esc(r.platform ?? 'no console')}</span>`],
       r.flags.length || row.marketplace ? ['Flags', esc([...r.flags.map((f) => FLAGS[f] ?? f), row.marketplace ? `marketplace seller (${row.seller})` : ''].filter(Boolean).join(', '))] : null,
     ].filter(Boolean);
-    popup(button, gameHeading(r)).draw(`<table>${rows.map(([k, v]) => `<tr><th>${k}</th><td>${v}</td></tr>`).join('')}</table><div class="o">The chest opens it in Squirrelcade.</div>`);
+    // First, plainly, the game it takes the listing for (the owner's wish, 2026-11-24): the game of his it matched, else
+    // the title it read; a lot names none.
+    const thinks = row.lot
+      ? 'several games (a lot), none named'
+      : `<b>${esc(r.match && r.match.confidence >= 0.85 ? r.match.title : r.title)}</b>${r.platform ? ` <span class="muted">(${esc(r.platform)})</span>` : ''}`;
+    popup(button, gameHeading(r)).draw(`<div class="thinks">Squirrelcade thinks this is ${thinks}</div><table>${rows.map(([k, v]) => `<tr><th>${k}</th><td>${v}</td></tr>`).join('')}</table><div class="o">The chest opens it in Squirrelcade.</div>`);
   }
 
   /** Your preference for the game (its acorns): picked here, kept in Squirrelcade, then the listing is checked again. */
