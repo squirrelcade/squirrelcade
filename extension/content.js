@@ -603,7 +603,7 @@
   // A listing of several games ("15 ps3 games see discription", "Nintendo switch games lot", "bundle", "bulk"): its title
   // names no one game, so the answer can't be sure (the owner, 2026-11-24: "how could it know if I had it or not?").
   // ("2 Games in 1" is one compilation, not a lot.)
-  const LOT = /\b(lots?|bundle|bulk|job ?lot|collection of \d+|mixed|pick (?:your|a|any) games?|choose (?:your|a|any) games?|you (?:pick|choose)|multi-?listing|\$\d+(?:\.\d\d)? each)\b|^\s*(?:ps[1-5]|xbox(?: 360| one)?|switch|wii u?|nintendo \w+|sega \w+|gamecube|n64)\s+(?:video\s+)?games\b|^\s*\d+\s*x?\s*(?:[a-z0-9]+\s+){0,3}(?:video\s*)?(?:games|titles|discs)\b(?!\s+in\s+1)|\b\d+\s+(?:video\s+)?(?:games|titles)\b(?!\s+in\s+1)/i;
+  const LOT = /\b(lots?|(?:games?|console|system) bundle|bundle of \d+|bulk|job ?lot|collection of \d+|mixed|pick (?:your|a|any) games?|choose (?:your|a|any) games?|you (?:pick|choose)|multi-?listing|\$\d+(?:\.\d\d)? each)\b|^\s*(?:ps[1-5]|xbox(?: 360| one)?|switch|wii u?|nintendo \w+|sega \w+|gamecube|n64)\s+(?:video\s+)?games\b|^\s*\d+\s*x?\s*(?:(?:[a-z0-9]+\s+){0,2}(?:ps[1-5]|psp|vita|playstation|xbox|360|switch|wii|u|ds|3ds|nintendo|sega|gamecube|n64|random|assorted|used|mixed|sealed|retro|kids)\s+(?:[a-z0-9]+\s+){0,2})?(?:video\s*)?(?:games|titles|discs)\b(?!\s+in\s+1)|\b\d+\s+(?:video\s+)?(?:games|titles)\b(?!\s+in\s+1)/i;
   // A game sold with its add-ons ("Bundle: game + season pass", "Deluxe Bundle (Game + DLC)") is one game, not a lot.
   const DLC_BUNDLE = /\bdlc\b|\bseason pass\b|\bgame\s*\+|\bbundle\s*:/i;
   const dlcBundle = (title) => /^bundle$/i.test(LOT.exec(title)?.[0] ?? '') && DLC_BUNDLE.test(title);
@@ -1130,7 +1130,7 @@
   // Accessories and hardware a store lists among its games (a stand, a case, grips, a console bundle): left out when
   // nothing of yours or of your wishlist matches them, so a game with one of these words in its name still shows.
   const ACCESSORY =
-    /\b(stands?|cases?|carrying|holders?|chargers?|charging|charge|cables?|cords?|grips?|skins?|decals?|protectors?|tempered glass|docks?|docking|adapters?|headsets?|headphones?|earbuds|memory card|micro ?sd|sd card|bags?|pouch|sleeves?|covers?|shell|thumb ?sticks?|steering wheels?|faceplates?|dongles?|drum (?:kit|set|pads?)|kick pedal|kontrol ?freek|rackets?|straps?|lanyards?|memberships?|subscriptions?|gift card|eshop card|amiibo|mounts?|cooling fan|batter(y|ies)|power bank|keyboard|mouse|plush|poster|t-?shirt|controllers?|joy[- ]?cons?|gamepads?|consoles?)\b/i;
+    /\b(stands?|cases?|carrying|holders?|chargers?|charging|charge|cables?|cords?|grips?|skins?|decals?|protectors?|tempered glass|docks?|docking|adapters?|headsets?|headphones?|earbuds|memory card|micro ?sd|sd card|bags?|pouch|sleeves?|covers?|shell|thumb ?sticks?|steering wheels?|faceplates?|dongles?|drum (?:kit|set|pads?)|kick pedal|kontrol ?freek|rackets?|straps?|lanyards?|memberships?|subscriptions?|gift card|eshop card|amiibo|mounts?|cooling fan|batter(y|ies)|power bank|keyboard|mouse|plush|poster|t-?shirt|controllers?|joy[- ]?cons?|gamepads?|consoles?(?!\s+(?:edition|version)))\b/i;
   const HARDWARE = /^((restored|refurbished|renewed|pre-?owned)\s+)?(nintendo switch( 2| oled| lite)?|playstation ?[45]( pro| slim)?|xbox series [xs]|xbox one)\s*(\+|console|system|bundle|with\b|\(refurbished\))/i;
   // Words no game's name has (an amiibo, a controller): out even when a game of yours comes close ("amiibo - Riju: The
   // Legend of Zelda Series" is close to The Legend of Zelda), unless the listing is one you own.

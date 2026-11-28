@@ -184,6 +184,9 @@ describe('listingKind', () => {
         'Nintendo Switch Sports - Nintendo Switch',
         'Super Mario Maker [Book Bundle] - Wii U',
         'Halo 3 Xbox 360 Games',
+        '7 Days to Die Console Edition - PlayStation 5',
+        '7 Days to Die Console Edition Survival Bundle [Free Shipping] - PlayStation 5',
+        '51 Worldwide Games [EU Import] - Nintendo Switch',
       ],
       null,
     );

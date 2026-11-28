@@ -284,7 +284,8 @@ const LOT: readonly RegExp[] = [
   /(?<!xbox )\b\d+ ?-?games\b(?! ?-? ?in ?-? ?(1|one)\b)/,
   /\b(choose|pick) (your|a|any) games?\b|\byou (pick|choose)\b/,
 ];
-const CONSOLE_WORDS = /\b(console|system|\d+ ?(gb|tb)|digital edition|disc edition|joy-?con)\b/;
+// "Console Edition" is a game's name (7 Days to Die Console Edition), not a console.
+const CONSOLE_WORDS = /\b(console(?! (edition|version))|system|\d+ ?(gb|tb)|digital edition|disc edition|joy-?con)\b/;
 
 // Things you use with a game, not a game. Each is guarded so a game named for one (Mystery Case Files, The Silver Case,
 // A Guidebook Of Babel, Guitar Hero Live [Bundle]) still reads as the game.
