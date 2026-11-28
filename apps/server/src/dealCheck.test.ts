@@ -116,6 +116,40 @@ describe('POST /api/v1/deal-check', () => {
     expect(gears).toMatchObject({ answer: 'own', sure: 'sure', match: { title: 'Gears of War [Platinum Hits]' } });
   });
 
+  it("reads a listing that isn't one game from its own words, and doesn't log it", async () => {
+    const [guide, figure, lot, game] = (
+      await check([
+        { title: 'Halo 3 Legendary Edition Strategy Guide - Xbox 360' },
+        { title: 'Funko Pop! Games: Halo - Master Chief Vinyl Figure' },
+        { title: 'Lot of 5 Xbox 360 Games Halo 3 Gears of War' },
+        { title: 'Halo 3 - Xbox 360' },
+      ])
+    ).json().results;
+    expect(guide).toMatchObject({ kind: 'not-game', answer: 'need', chest: 'none', corrected: null, match: null });
+    expect(guide.why).toMatch(/^Squirrelcade reads this as something that isn/);
+    expect(figure).toMatchObject({ kind: 'not-game' });
+    expect(lot).toMatchObject({ kind: 'lot', answer: 'maybe', sure: 'unsure' });
+    expect(lot.why).toMatch(/^Squirrelcade reads this as a lot/);
+    expect(game).toMatchObject({ kind: null, answer: 'own', sure: 'sure' });
+    const log = (await g.app.inject({ method: 'GET', url: '/api/v1/deal-check/unsure', cookies })).json();
+    expect(log.unsure.map((u: { listing: string }) => u.listing)).toEqual([]);
+  });
+
+  it('never reads a game you have as not one game', async () => {
+    seedCatalogs(g, {
+      owned: [
+        ['1', 'Halo 3', 'Xbox 360'],
+        ['2', 'Cars 2: The Video Game', 'Playstation 3'],
+        ['3', 'Gears of War [Platinum Hits]', 'Xbox 360'],
+        ['4', 'Halo 3 Wireless Controller', 'Xbox 360'],
+      ],
+      catalogs: {},
+    });
+    const [pad, other] = (await check([{ title: 'Halo 3 Wireless Controller - Xbox 360' }, { title: 'Gears of War Wireless Controller - Xbox 360' }])).json().results;
+    expect(pad).toMatchObject({ kind: null, answer: 'own' });
+    expect(other).toMatchObject({ kind: 'not-game' });
+  });
+
   it('is never more than pretty sure without a console', async () => {
     const [halo] = (await check([{ title: 'Halo 3' }])).json().results;
     expect(halo).toMatchObject({ answer: 'own', sure: 'likely', platformKey: null });

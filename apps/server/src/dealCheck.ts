@@ -1,4 +1,4 @@
-import { baseTitle, findPlatforms, normalizeTitle, KNOWN_PLATFORMS, markOrder, markSvg, matchKey, numbersDiffer, priceChartingUrl, readListing, surenessOf, type ListingFlag, type Sureness } from '@squirrelcade/core';
+import { baseTitle, findPlatforms, listingKind, normalizeTitle, KNOWN_PLATFORMS, markOrder, markSvg, matchKey, numbersDiffer, priceChartingUrl, readListing, surenessOf, type ListingFlag, type Sureness } from '@squirrelcade/core';
 import { eq } from 'drizzle-orm';
 import type { FastifyInstance } from 'fastify';
 import { AiToolError, type AiTools, type AiView } from './aiTools.js';
@@ -111,6 +111,8 @@ export interface DealCheckAnswer {
   preference: { platformKey: string; title: string; value: string | null } | null;
   /** What you told Squirrelcade this listing is ("Wrong game?"), when you did. */
   corrected: { kind: DealCheckCorrection['kind']; platformKey: string | null; title: string | null } | null;
+  /** When the listing isn't one game, by your correction or by its own words ("Funko Pop", "Lot of 5 games", "Strategy Guide"): not-game or lot. */
+  kind: 'not-game' | 'lot' | null;
 }
 
 /** A deal check's answer: the listings', and the preferences you can give a game (with the acorns each adds). */
@@ -215,13 +217,14 @@ export class DealCheckService {
 
   /**
    * Keeps each answer the badge shows grey: medium or low, or a title nothing of yours or of your wishlist knows (the
-   * extension shows that one at medium). Not a correction you made, not a second reading.
+   * extension shows that one at medium). Not a correction you made, not a listing its own words say isn't one game
+   * (a figure, a guide, a lot), not a second reading.
    */
   private logUnsure(items: readonly DealCheckItem[], answers: readonly DealCheckAnswer[], store: string | null): void {
     if (!this.db) return;
     const grey = answers
       .map((a, i) => ({ a, item: items[i]! }))
-      .filter(({ a, item }) => !item.second && !a.corrected && (a.sure !== 'sure' || (a.answer === 'need' && !a.match && !a.wishlist)));
+      .filter(({ a, item }) => !item.second && !a.corrected && !a.kind && (a.sure !== 'sure' || (a.answer === 'need' && !a.match && !a.wishlist)));
     if (grey.length === 0) return;
     const all = this.unsureMap();
     const now = new Date().toISOString();
@@ -289,10 +292,15 @@ export class DealCheckService {
       // You said which game it is: that game, on that console, whatever the words say.
       const read = fix?.kind === 'game' && fix.title ? { ...first, title: fix.title, platformKey: fix.platformKey ?? first.platformKey, platformFrom: 'title' as const } : first;
       const known = read.platformKey ? KNOWN_PLATFORMS.find((p) => p.key === read.platformKey) ?? null : null;
-      if (fix && fix.kind !== 'game') return { answer: notOneGame(item.title, read, known, fix.kind, corrected), markTitle: read.title };
+      if (fix && fix.kind !== 'game') return { answer: notOneGame(item.title, read, known, fix.kind, corrected, 'told'), markTitle: read.title };
       const r = this.ask(read.title, known?.name ?? null);
       const result = r.result;
       const filtered = r.filtered;
+      // Its own words say it isn't one game (a figure, a guide, a lot): unless it is, word for word, a game you have.
+      const auto = fix ? null : listingKind(item.title);
+      if (auto && !result.matches.some((m) => m.held === 'owned' && sameWords(read.title, m.title))) {
+        return { answer: notOneGame(item.title, read, known, auto, null, 'read'), markTitle: read.title };
+      }
       let owned = result.matches.filter((m) => m.held === 'owned');
       const elsewhere = (result.elsewhere ?? []).filter((m) => m.held === 'owned');
       // A near miss with other numbers is another game of the series ("WWE 2K25" for "WWE 2K26"), not this one.
@@ -345,6 +353,7 @@ export class DealCheckService {
         preference,
         onTheWay: way,
         corrected,
+        kind: null,
       };
       return { answer: out, markTitle: shown?.title ?? read.title };
     });
@@ -413,14 +422,18 @@ export function subtitleOf(listing: string, mine: string): boolean {
   return /^\s*(?::|[-–—]\s|\[|\()/.test(rest) && rest.replace(/[^a-z0-9]/gi, '').length > 0;
 }
 
-/** A listing you said isn't one game: not a game at all (left out), or a lot (to look at yourself). */
+/** A listing that isn't one game, because you said so or its words say so: not a game at all (left out), or a lot (to look at yourself). */
 function notOneGame(
   listing: string,
   read: { title: string; platformKey: string | null; flags: ListingFlag[] },
   known: { key: string; name: string } | null,
   kind: 'not-game' | 'lot',
   corrected: DealCheckAnswer['corrected'],
+  by: 'told' | 'read',
 ): DealCheckAnswer {
+  const who = by === 'told' ? 'You told Squirrelcade' : 'Squirrelcade reads';
+  const lot = by === 'told' ? `${who} this is a lot of several games: look at which ones yourself.` : `${who} this as a lot of several games: look at which ones yourself.`;
+  const notGame = by === 'told' ? `${who} this isn’t a game.` : `${who} this as something that isn’t a game (merchandise, an accessory or a guide).`;
   return {
     listing,
     title: read.title,
@@ -428,7 +441,7 @@ function notOneGame(
     platform: known?.name ?? null,
     answer: kind === 'lot' ? 'maybe' : 'need',
     sure: kind === 'lot' ? 'unsure' : 'sure',
-    why: kind === 'lot' ? 'You told Squirrelcade this is a lot of several games: look at which ones yourself.' : 'You told Squirrelcade this isn’t a game.',
+    why: kind === 'lot' ? lot : notGame,
     match: null,
     ownedOn: [],
     valueCents: null,
@@ -441,6 +454,7 @@ function notOneGame(
     drawer: null,
     preference: null,
     corrected,
+    kind,
   };
 }
 

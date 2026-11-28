@@ -247,3 +247,84 @@ export function surenessOf(a: { owned: boolean; confidence: number | null; nearM
   else s = a.nearMiss >= a.unsureAt ? 'unsure' : 'likely';
   return s === 'sure' && !a.consoleKnown ? 'likely' : s;
 }
+
+/** What a listing is when it isn't one game: not a game at all, or several (a lot, a console bundle). */
+export type ListingKind = 'not-game' | 'lot';
+
+// Things that are never a game, whatever else the listing says. Each is guarded against real game titles: Funko Fusion,
+// Animal Crossing: amiibo Festival, Zombicide: Tactics & Shotguns, Disney Infinity itself, The Surge and Pure.
+const NEVER_A_GAME: readonly RegExp[] = [
+  // A store page's own furniture read as a title (Amazon's sustainability badges).
+  /^(sustainability features|global recycled( standard)?|greencircle|the forest stewardship council|forest stewardship|climate pledge)\b/,
+  /\bfunko\b(?! fusion)/,
+  /\b(bitty pop|jakks( pacific)?|neca|squishmallows?|pop mart|labubu)\b/,
+  /\bamiibo\b(?! (festival|tap|party))/,
+  /\b(gift ?cards?|e-?gift|robux|v-bucks|physical gift)\b/,
+  /\beshop (card|gift|credit)\b/,
+  /\b(board games?|cmon|booster (pack|box)|trading cards?|miniatures)\b/,
+  /\bzombicide\b(?!.*\btactics\b)/,
+  /\b(wera|tool-check|socket set|bit set|tool set)\b/,
+  /\bpower discs?\b/,
+  /\bboost(ing)?\b.*\b(diablo|carry|service)\b|\b(diablo|carry)\b.*\bboost(ing)?\b/,
+  /\b(batteries|surge protector|battery backup|uninterruptible)\b/,
+  /\bups\b.*\b(\d+ ?va|\d+ ?w(atts)?|backup|outlets?)\b|\b(\d+ ?va)\b.*\bups\b/,
+  /\baccessor(y|ies)\b/,
+];
+
+// Merchandise: not a game when the listing names no console. With one, it's a game's bonus ("Paw Patrol Dino World -
+// Amazon Exclusive Poster - Nintendo Switch", "Collector's Edition with T-Shirt - PS5").
+const MERCH = /\b(vinyl figure|action figures?|figurines?|figure set|plush(ie)?|playset|posters?|hoodie|t-shirt|tumbler|blanket|dice set|hot wheels)\b/;
+const ANY_CONSOLE = /\b(nintendo|switch|playstation|ps[1-5]|psp|vita|xbox|wii|3ds|nds|gamecube|n64|sega|genesis|dreamcast|game ?boy|pc|steam)\b/;
+
+// Several games, or a console with games: never one game's answer.
+const CONSOLE_START = /^(nintendo switch( 2| oled| lite)?|switch( 2| oled| lite)|playstation \d( pro| slim)?|ps[2345]( pro| slim)?|xbox (series [xs]( ?\/ ?s)?|one( [xs])?|360( [se])?)|slim console)\b(?!(\s\S+)?\s(edition|version)\b)/;
+const LOT: readonly RegExp[] = [
+  /\b(job )?lots?\b(?! of (fun|love))/,
+  /\bbulk\b/,
+  /(?<!xbox )\b\d+ ?-?games\b(?! ?-? ?in ?-? ?(1|one)\b)/,
+  /\b(choose|pick) (your|a|any) games?\b|\byou (pick|choose)\b/,
+];
+const CONSOLE_WORDS = /\b(console|system|\d+ ?(gb|tb)|digital edition|disc edition|joy-?con)\b/;
+
+// Things you use with a game, not a game. Each is guarded so a game named for one (Mystery Case Files, The Silver Case,
+// A Guidebook Of Babel, Guitar Hero Live [Bundle]) still reads as the game.
+const ACCESSORY: readonly RegExp[] = [
+  /\bcontrollers?\b/,
+  /\b(wireless|wired|replacement) guitar\b/,
+  /\b(drum (set|kit|pads?|covers?|pedal)|kick pedal|faceplate|dongle|strap|headset|charger|charging (dock|station)|steering wheels?|thumbsticks?|kontrolfreek|aim boost|precision rings)\b/,
+  /\badapters?\b/,
+  /\bbattery (cover|plate|kit|door|pack)\b/,
+  /\b(carrying|travel|storage|protective|hard|replacement|empty|display) case\b|\bcase (only|holder)\b|\bcase for (the )?(nintendo|switch|ps\d|playstation|xbox|wii|3ds|ds)\b/,
+];
+
+// Printed matter: a guide or a magazine is never the game, even one sold with it.
+const PRINT: readonly RegExp[] = [
+  /\b(strategy|official|prima|players?'?|game|collector'?s|walkthrough|edition) guide\b|\bguide book\b|\bbradygames\b|\bprima games\b/,
+  /\bmagazines?\b|\bgame informer\b|\bnintendo power\b.*\b(issue|vol|volume|#\s?\d)/,
+];
+
+/**
+ * What a listing is, when it isn't one game: 'not-game' (merchandise, gift cards, board games, accessories, a store's
+ * own page furniture) or 'lot' (several games, a console bundle), or null for an ordinary game. Read from the
+ * listing's own words before the game is looked up. A game sold with its DLC ("Bundle (game + DLC)", "Bundle: DK Island")
+ * stays one game, as do games named for an accessory word (Mystery Case Files, Animal Crossing: amiibo Festival).
+ */
+export function listingKind(text: string): ListingKind | null {
+  const t = text
+    .replace(/[™®©]/g, '')
+    .replace(/[([](with|includes?|incl\.?)\b[^)\]]*[)\]]/gi, ' ')
+    .toLowerCase()
+    .replace(/\s+/g, ' ')
+    .trim();
+  if (NEVER_A_GAME.some((r) => r.test(t))) return 'not-game';
+  if (MERCH.test(t) && !ANY_CONSOLE.test(t)) return 'not-game';
+  const dlcBundle = /\bbundle\b/.test(t) && /\b(dlc|game ?\+|season pass|expansion pass)\b|\bbundle ?:/.test(t);
+  if (LOT.some((r) => r.test(t))) return 'lot';
+  if (!dlcBundle && /\bbundle\b/.test(t) && (CONSOLE_START.test(t) || CONSOLE_WORDS.test(t))) return 'lot';
+  // A console's own games ("Xbox 360 Games ...") at the start.
+  if (/\bgames\b/.test(t) && /^(\w+ ){0,3}games\b/.test(t) && CONSOLE_START.test(t)) return 'lot';
+  if (PRINT.some((r) => r.test(t))) return 'not-game';
+  // An accessory, unless the listing also sells the game with it ("Guitar Hero World Tour Bundle Drums Guitar + Games").
+  if (ACCESSORY.some((r) => r.test(t)) && !/\b(bundle|game|games)\b/.test(t.replace(/\bgame (case|guide)\b/g, ''))) return 'not-game';
+  return null;
+}

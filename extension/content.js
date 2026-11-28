@@ -139,7 +139,7 @@
   const CONSOLE_LINE =
     /^(nintendo switch 2|nintendo switch|switch 2|playstation ?[1-5]|ps[1-5]|playstation vita|ps vita|xbox series x\s*[|/]?\s*s?|xbox series s|xbox one|xbox 360|wii u|wii|nintendo 3ds|nintendo ds|nintendo gamecube|gamecube|nintendo 64|super nintendo|game boy advance|game boy color|game boy|sega genesis|sega dreamcast)$/i;
   const CONSOLE_WORDS =
-    /\b(nintendo switch 2|switch 2|ns2|nintendo switch|switch|playstation ?[1-5]|ps[1-5]|xbox series x|xbox series|xbox one|xbox 360|wii u|wii|3ds|gamecube|n64|snes|nes|genesis|dreamcast)\b/i;
+    /\b(nintendo switch 2|switch 2|ns2|nintendo switch|switch|playstation ?[1-5]|playstation vita|ps ?vita|vita|psp|ps[1-5]|xbox series x|xbox series|xbox one|xbox 360|wii u|wii|3ds|gamecube|n64|snes|nes|genesis|dreamcast)\b/i;
   const FORMAT_LINE = /^(digital code in (a )?box|(game )?(download )?code in (a )?box|game[- ]key card|digital code|online game code|email delivery)$/i;
   const consoleIn = (s) => CONSOLE_WORDS.exec(s ?? '')?.[1] ?? null;
   const query = (name) => new URLSearchParams(location.search).get(name);
@@ -604,15 +604,19 @@
   // names no one game, so the answer can't be sure (the owner, 2026-11-24: "how could it know if I had it or not?").
   // ("2 Games in 1" is one compilation, not a lot.)
   const LOT = /\b(lots?|bundle|bulk|job ?lot|collection of \d+|mixed|pick (?:your|a|any) games?|choose (?:your|a|any) games?|you (?:pick|choose)|multi-?listing|\$\d+(?:\.\d\d)? each)\b|^\s*(?:ps[1-5]|xbox(?: 360| one)?|switch|wii u?|nintendo \w+|sega \w+|gamecube|n64)\s+(?:video\s+)?games\b|^\s*\d+\s*x?\s*(?:[a-z0-9]+\s+){0,3}(?:video\s*)?(?:games|titles|discs)\b(?!\s+in\s+1)|\b\d+\s+(?:video\s+)?(?:games|titles)\b(?!\s+in\s+1)/i;
+  // A game sold with its add-ons ("Bundle: game + season pass", "Deluxe Bundle (Game + DLC)") is one game, not a lot.
+  const DLC_BUNDLE = /\bdlc\b|\bseason pass\b|\bgame\s*\+|\bbundle\s*:/i;
+  const dlcBundle = (title) => /^bundle$/i.test(LOT.exec(title)?.[0] ?? '') && DLC_BUNDLE.test(title);
   /**
    * The answer's sureness, honest about what the listing gives: a lot is Low (which games, it can't say); a title nothing
    * of yours or of your wishlist knows is at most Medium (it may not be a game's name at all).
    */
   function honestSureness(row) {
     const r = row.result;
-    if (r.corrected?.kind === 'lot') row.lot = true;
-    if (r.corrected) return r;
-    if (LOT.test(row.title) && r.answer !== 'own') {
+    // Your correction, or Squirrelcade reading the listing's own words as a lot or as no game: its answer stands.
+    if (r.corrected?.kind === 'lot' || r.kind === 'lot') row.lot = true;
+    if (r.corrected || r.kind) return r;
+    if (LOT.test(row.title) && !dlcBundle(row.title) && r.answer !== 'own') {
       row.lot = true;
       return { ...r, sure: 'unsure', chest: r.chest === 'coming' ? 'coming' : 'none', preference: null, why: 'Not sure: this listing is a lot of several games, and its title doesn’t say which, so Squirrelcade can’t tell whether you have them.' };
     }
@@ -760,7 +764,7 @@
     row.lot = false;
     row.result = again.results[0];
     row.result = honestSureness(row);
-    if (row.result.corrected?.kind === 'not-game') {
+    if (row.result.corrected?.kind === 'not-game' || row.result.kind === 'not-game') {
       row.host.remove();
       state.hosts.splice(state.hosts.indexOf(row.host), 1);
       state.rows.splice(state.rows.indexOf(row), 1);
@@ -1071,7 +1075,7 @@
       const row = { ...l, result: byKey.get(keyOf(l)) };
       if (!row.result) continue;
       row.result = honestSureness(row);
-      if (row.result.corrected?.kind === 'not-game' || (!row.result.corrected && notAGame(row))) {
+      if (row.result.corrected?.kind === 'not-game' || row.result.kind === 'not-game' || (!row.result.corrected && !row.result.kind && notAGame(row))) {
         state.leftOut++;
         continue;
       }
@@ -1126,11 +1130,11 @@
   // Accessories and hardware a store lists among its games (a stand, a case, grips, a console bundle): left out when
   // nothing of yours or of your wishlist matches them, so a game with one of these words in its name still shows.
   const ACCESSORY =
-    /\b(stands?|cases?|carrying|holders?|chargers?|charging|charge|cables?|cords?|grips?|skins?|decals?|protectors?|tempered glass|docks?|docking|adapters?|headsets?|headphones?|earbuds|memory card|micro ?sd|sd card|bags?|pouch|sleeves?|covers?|shell|thumb ?sticks?|steering wheel|rackets?|straps?|lanyards?|memberships?|subscriptions?|gift card|eshop card|amiibo|mounts?|cooling fan|batter(y|ies)|power bank|keyboard|mouse|plush|poster|t-?shirt|controllers?|joy[- ]?cons?|gamepads?|consoles?)\b/i;
+    /\b(stands?|cases?|carrying|holders?|chargers?|charging|charge|cables?|cords?|grips?|skins?|decals?|protectors?|tempered glass|docks?|docking|adapters?|headsets?|headphones?|earbuds|memory card|micro ?sd|sd card|bags?|pouch|sleeves?|covers?|shell|thumb ?sticks?|steering wheels?|faceplates?|dongles?|drum (?:kit|set|pads?)|kick pedal|kontrol ?freek|rackets?|straps?|lanyards?|memberships?|subscriptions?|gift card|eshop card|amiibo|mounts?|cooling fan|batter(y|ies)|power bank|keyboard|mouse|plush|poster|t-?shirt|controllers?|joy[- ]?cons?|gamepads?|consoles?)\b/i;
   const HARDWARE = /^((restored|refurbished|renewed|pre-?owned)\s+)?(nintendo switch( 2| oled| lite)?|playstation ?[45]( pro| slim)?|xbox series [xs]|xbox one)\s*(\+|console|system|bundle|with\b|\(refurbished\))/i;
   // Words no game's name has (an amiibo, a controller): out even when a game of yours comes close ("amiibo - Riju: The
   // Legend of Zelda Series" is close to The Legend of Zelda), unless the listing is one you own.
-  const NEVER_A_GAME = /\b(amiibo|action figures?|figurines?|controllers?|gamepads?|joy[- ]?cons?|headsets?|gift card|eshop card|memberships?|subscriptions?|plush)\b/i;
+  const NEVER_A_GAME = /\b(amiibo|action figures?|figurines?|controllers?|gamepads?|joy[- ]?cons?|headsets?|gift card|egift|eshop card|memberships?|subscriptions?|plush|funko pop|bitty pop|strategy guide|trading cards?|booster (?:pack|box)|board game|v-bucks|robux)\b/i;
   function notAGame(row) {
     const r = row.result;
     if (r.answer === 'own') return false;

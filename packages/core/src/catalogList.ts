@@ -362,7 +362,7 @@ const NICKNAMES: Record<string, string[]> = {
   // PlayStation VR games are PlayStation 4 games, VR2 games PlayStation 5 games.
   'playstation-4': ['ps4', 'ps 4', 'psvr', 'ps vr'],
   'playstation-5': ['ps5', 'ps 5', 'psvr2', 'ps vr2'],
-  'playstation-vita': ['ps vita', 'vita', 'psv'],
+  'playstation-vita': ['ps vita', 'psvita', 'vita', 'psv'],
   'xbox-360': ['x360'],
   'xbox-one': ['xb1', 'xbo'],
   'xbox-series-x': ['series x', 'xbox series x s', 'series x s', 'xsx', 'xbox series'],
